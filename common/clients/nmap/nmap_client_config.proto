@@ -1,0 +1,67 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.configs.clients;
+
+option go_package = "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto";
+option java_multiple_files = true;
+option java_outer_classname = "NmapClientConfigOuterClass";
+option java_package = "com.google.goonami.proto.configs.clients";
+
+message NmapClientConfig {
+  enum Technique {
+    UNKNOWN = 0;
+    // Perform a connect scan. Option: -sT
+    CONNECT = 1;
+    // Perform a UDP scan. Option: -sU
+    UDP = 2;
+  }
+
+  // (Optional) Path to the nmap binary. If empty, the client will try to use
+  // the nmap binary found in the current PATH.
+  string binary_path = 1;
+
+  // Maximum time nmap is allowed to run. This option is handled by the client
+  // library and enforced on the nmap binary.
+  int32 timeout_seconds = 2;
+
+  // The scan technique (SYN, CONNECT, ...) (e.g. -sS, -sT)
+  Technique scan_technique = 3;
+  // Intensity (from 1 to 5) of the scan (-T1 to -T5).
+  uint32 scan_intensity = 4;
+  // Host discovery; when disabled: -Pn
+  bool enable_host_discovery = 5;
+
+  ///////////////////////
+  // VERSION DETECTION //
+  ///////////////////////
+
+  // version detection; -sV
+  bool enable_version_detection = 6;
+  // --version-intensity, ignored if enable_version_detection is false
+  uint32 version_intensity = 7;
+
+  /////////////
+  // SCRIPTS //
+  /////////////
+
+  // scripts: Enable HTTP methods detection (--script http-methods).
+  bool enable_http_methods_detection = 8;
+  // scripts: Enable SSL detection (--script ssl-cert,ssl-enum-ciphers)
+  bool enable_ssl_detection = 9;
+}
