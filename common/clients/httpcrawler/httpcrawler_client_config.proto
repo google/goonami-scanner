@@ -1,0 +1,80 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.configs.clients;
+
+option go_package = "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HttpCrawlerClientConfigOuterClass";
+option java_package = "com.google.goonami.proto.configs.clients";
+
+message HttpCrawlerClientConfig {
+  enum ScopePolicy {
+    SCOPE_POLICY_UNSPECIFIED = 0;
+    // Only use the scope defined in this config.
+    SCOPE_POLICY_CONFIG_ONLY = 1;
+    // Use the scope defined in this config and derive a new scope for each of
+    // the initial URLs sent to the crawler.
+    SCOPE_POLICY_EXPAND = 2;
+  }
+
+  // Note that this is a copy of the Scope from Tsunami. It was copied because
+  // of its simplicity and the challenge of resolving remote proto definitions.
+  // See https://github.com/google/tsunami-security-scanner/blob/master/proto/web_crawl.proto
+  message Scope {
+    // The domain to crawl.
+    string domain = 1;
+    // The subpath (a directory) to crawl. Expected to be slash terminated.
+    string path = 2;
+  }
+
+  // The maximum number of concurrent requests to be made. Note that this
+  // concurrency is a product of the core engine concurrency: if the core engine
+  // has a concurrency of 2 and this one 5, the scale can go up to 10.
+  int32 max_concurrency = 1;
+
+  // The maximum size (in Bytes) of a page. Pages larger than this size will be
+  // dropped by the crawler. This field has to be set, a value of 0 will read
+  // nothing. Note that is can drastically increase memory usage: each crawler
+  // goroutine will have its own buffer. So for example, if the total number of
+  // goroutines is 100 and this size is 1MB, that is already 100MB of memory.
+  int32 max_page_size_bytes = 2;
+
+  // The maximum depth to crawl. The depth is defined by the number of links
+  // followed in a chain.
+  int32 max_depth = 3;
+
+  // Maximum number of requests to be made. This is a hard limit on the number
+  // of requests made by the crawler. It is enforced at the client level, it
+  // means that its count will be shared between calls to Crawl(). In other
+  // words, it is shared between targets crawled.
+  int32 max_requests = 4;
+
+  // Paths to exclude from the crawl. This is a list of regular expressions that
+  // will be matched against the URL of a page before it is crawled.
+  repeated string exclusions = 5;
+
+  // Policy to use for the scope. If unspecified, SCOPE_POLICY_EXPAND will be
+  // used.
+  ScopePolicy scope_policy = 6;
+
+  // The scopes to crawl. How this scopes are used is defined by the scope
+  // policy.
+  repeated Scope scopes = 7;
+}
