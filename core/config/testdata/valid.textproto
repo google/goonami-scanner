@@ -1,0 +1,9 @@
+# proto-file: goonami/core/config/config.proto
+# proto-message: Config
+
+globalcfg: {
+  performance: {
+    max_concurrency: 10
+    timeout_per_request_seconds: 30
+  }
+}
