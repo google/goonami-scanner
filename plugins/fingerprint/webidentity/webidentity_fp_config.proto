@@ -1,0 +1,37 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.configs.fingerprinters;
+
+option go_package = "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WebIdentityFpConfigOuterClass";
+option java_package = "com.google.goonami.proto.configs.fingerprinters";
+
+message WebIdentityFpConfig {
+  // Whether to write the HTML response to a file as we crawl the web service.
+  bool write_html_to_file = 1;
+
+  // If storing the HTML response, this is the maximum size of one file.
+  int64 maximum_file_size_bytes= 2;
+
+  // If storing the HTML response, this is the maximum amount of storage space
+  // to use.
+  int64 maximum_storage_space_bytes = 3;
+}
