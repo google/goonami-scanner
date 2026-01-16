@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<nmaprun scanner="nmap" args="nmap -n -sS -sV -Pn -O -p 23 -&#45;script=banner -oX /tmp/o.xml localhost" start="1579619379" startstr="Tue Jan 21 16:09:39 2020" version="7.80" xmloutputversion="1.04">
+  <host starttime="1579619379" endtime="1579619381"><status state="up" reason="user-set" reason_ttl="0"/>
+    <address addr="127.0.0.1" addrtype="ipv4"/>
+    <address addr="192.168.1.1" addrtype="ipv4"/>
+  </host>
+</nmaprun>

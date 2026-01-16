@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.80 scan initiated Tue Aug 25 17:10:59 2020 as: nmap -p 80 -oX - localhost -->
+<nmaprun scanner="nmap" args="nmap -p 80 -oX - localhost" start="1598368259" startstr="Tue Aug 25 17:10:59 2020" version="7.80" xmloutputversion="1.04">
+<host starttime="1598368259" endtime="1598368259"><status state="up" reason="syn-ack" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="user"/>
+</hostnames>
+<ports>
+  <port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" method="table" conf="3"/></port>
+  <port protocol="tcp" portid="443"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="https" method="table" conf="3"/></port>
+</ports>
+</host>
+</nmaprun>
