@@ -1,0 +1,60 @@
+# proto-file: goonami/core/config/config.proto
+# proto-message: goonami.proto.Config
+
+globalcfg: {
+  performance: {
+    max_concurrency: 10
+    timeout_per_request_seconds: 15
+    max_packets_per_second: 0  # no limit
+    max_http_requests_per_second: 0  # no limit
+  }
+
+  user_agent: "GoonamiScanner"
+
+  # left empty so that it scans all ports.
+  ports_to_scan: []
+}
+
+clients: {
+  nmap: {
+    timeout_seconds: 300
+
+    scan_technique: CONNECT
+    scan_intensity: 4
+    enable_host_discovery: false
+
+    # version detection
+    enable_version_detection: false
+    version_intensity: 5
+
+    # scripts; requires version detection to be enabled.
+    enable_http_methods_detection: false
+    enable_ssl_detection: false
+  }
+
+  http_crawler: {
+    max_concurrency: 3
+    max_page_size_bytes: 5242880 # 5 MB
+    max_depth: 1
+    max_requests: 200
+
+    # ensure the crawler does not perform any destructive actions.
+    exclusions: [
+      ".*abort.*",
+      ".*delete.*",
+      ".*drop.*",
+      ".*huphuphup.*",
+      ".*kill.*",
+      ".*quit.*",
+      ".*remove.*"
+    ]
+  }
+}
+
+plugins: {
+  webidentity: {
+    write_html_to_file: true
+    maximum_file_size_bytes: 512000  # 500 KB
+    maximum_storage_space_bytes: 51200000  # 100 pages (~48 MB total)
+  }
+}
