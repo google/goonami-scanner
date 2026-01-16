@@ -1,0 +1,169 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package netendpoint
+
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+
+	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
+)
+
+func TestNewFromString(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  *npb.NetworkEndpoint
+	}{
+		{
+			name:  "not_ip_returns_hostname",
+			input: "example.com",
+			want: npb.NetworkEndpoint_builder{
+				Type:     npb.NetworkEndpoint_HOSTNAME,
+				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+			}.Build(),
+		},
+		{
+			name:  "ipv4_returns_ip_ipv4",
+			input: "127.0.0.1",
+			want: npb.NetworkEndpoint_builder{
+				Type: npb.NetworkEndpoint_IP,
+				IpAddress: npb.IpAddress_builder{
+					Address:       "127.0.0.1",
+					AddressFamily: npb.AddressFamily_IPV4,
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name:  "ipv6_returns_ip_ipv6",
+			input: "::1",
+			want: npb.NetworkEndpoint_builder{
+				Type: npb.NetworkEndpoint_IP,
+				IpAddress: npb.IpAddress_builder{
+					Address:       "::1",
+					AddressFamily: npb.AddressFamily_IPV6,
+				}.Build(),
+			}.Build(),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := FromString(tc.input)
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("NewFromString(%q) returned diff (-want +got):\n%s", tc.input, diff)
+			}
+		})
+	}
+}
+
+func TestToURIAuthority(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   *npb.NetworkEndpoint
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "ipv4_ip_only",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+			}.Build(),
+			want: "127.0.0.1",
+		},
+		{
+			name: "ipv6_ip_only",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
+			}.Build(),
+			want: "[3ffe::1]",
+		},
+		{
+			name: "ipv4_ip_port",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+				Port:      npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "127.0.0.1:80",
+		},
+		{
+			name: "ipv6_ip_port",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
+				Port:      npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "[3ffe::1]:80",
+		},
+		{
+			name: "hostname_only",
+			input: npb.NetworkEndpoint_builder{
+				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+			}.Build(),
+			want: "example.com",
+		},
+		{
+			name: "hostname_port",
+			input: npb.NetworkEndpoint_builder{
+				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+				Port:     npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "example.com:80",
+		},
+		{
+			name: "ip_hostname_prioritizes_hostname",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+				Hostname:  npb.Hostname_builder{Name: "host.com"}.Build(),
+			}.Build(),
+			want: "host.com",
+		},
+		{
+			name: "ip_hostname_port_prioritizes_hostname",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+				Hostname:  npb.Hostname_builder{Name: "example.com"}.Build(),
+				Port:      npb.Port_builder{PortNumber: 443}.Build(),
+			}.Build(),
+			want: "example.com:443",
+		},
+		{
+			name:    "no_ip_no_hostname_returns_error",
+			input:   npb.NetworkEndpoint_builder{}.Build(),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ToURIAuthority(tc.input)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("ToURIAuthority(%v) succeeded, want error", tc.input)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ToURIAuthority(%v) returned an unexpected error: %v", tc.input, err)
+			}
+			if got != tc.want {
+				t.Errorf("ToURIAuthority(%v) = %q, want: %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
