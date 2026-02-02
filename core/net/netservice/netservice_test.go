@@ -19,8 +19,11 @@ package netservice
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestHasTLS(t *testing.T) {
@@ -130,6 +133,124 @@ func TestBuildWebRoot(t *testing.T) {
 			}
 			if got != tc.want {
 				t.Errorf("BuildWebRoot(%v) = %v, want: %v", tc.service, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAddCrawlResults(t *testing.T) {
+	tests := []struct {
+		name         string
+		service      *nspb.NetworkService
+		crawlResults []*wcpb.CrawlResult
+		want         *nspb.NetworkService
+	}{
+		{
+			name:    "no_service_context",
+			service: nspb.NetworkService_builder{}.Build(),
+			crawlResults: []*wcpb.CrawlResult{
+				wcpb.CrawlResult_builder{
+					CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+				}.Build(),
+			},
+			want: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name: "no_web_service_context",
+			service: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{}.Build(),
+			}.Build(),
+			crawlResults: []*wcpb.CrawlResult{
+				wcpb.CrawlResult_builder{
+					CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+				}.Build(),
+			},
+			want: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name: "no_crawl_results",
+			service: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{}.Build(),
+				}.Build(),
+			}.Build(),
+			crawlResults: []*wcpb.CrawlResult{
+				wcpb.CrawlResult_builder{
+					CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+				}.Build(),
+			},
+			want: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name: "with_crawl_results",
+			service: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			crawlResults: []*wcpb.CrawlResult{
+				wcpb.CrawlResult_builder{
+					CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+				}.Build(),
+			},
+			want: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			AddCrawlResults(tc.service, tc.crawlResults)
+			if diff := cmp.Diff(tc.want, tc.service, protocmp.Transform()); diff != "" {
+				t.Errorf("AddCrawlResults(%v, %v) returned diff (-want +got):\n%s", tc.service, tc.crawlResults, diff)
 			}
 		})
 	}

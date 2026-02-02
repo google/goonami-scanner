@@ -29,8 +29,12 @@ type Fingerprinter interface {
 	// Name of the module. Should be inherited from the BaseModule.
 	Name() string
 
-	// Fingerprint provides **in-place** enrichment of a network service through fingerprinting.
-	Fingerprint(ctx context.Context, service *nspb.NetworkService) error
+	// Fingerprint tries to provide more information out of a network service. For example, does the
+	// service support SSL? Does it run HTTP? It returns a list of network services with enriched
+	// information. Note: You might be wondering: why a list when only one service come as input?
+	// For historical reasons, Tsunami fingerprinters can "split" a single service if it contains
+	// several identified software (e.g. wordpress on one root and drupal on another).
+	Fingerprint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error)
 }
 
 // InitFingerprinterFn is the function signature for initializing a fingerprinter module.

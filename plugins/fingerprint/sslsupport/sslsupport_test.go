@@ -110,13 +110,17 @@ func TestFingerprint_Connection(t *testing.T) {
 				log.Fatalf("[watcher] test killed: maybe timeout handling is broken?")
 			}()
 
-			err = mod.Fingerprint(context.Background(), service)
+			gotServices, err := mod.Fingerprint(context.Background(), service)
 			if err != nil {
 				t.Errorf("Fingerprint() error = %v, want nil", err)
 				return
 			}
 
-			got := service.GetSupportedSslVersions()
+			if len(gotServices) != 1 {
+				t.Fatalf("Fingerprint() returned an unexpected number of services: %v, want 1", len(gotServices))
+			}
+
+			got := gotServices[0].GetSupportedSslVersions()
 			if diff := cmp.Diff(tt.wantSSLVersions, got); diff != "" {
 				t.Errorf("Fingerprint() returned diff (-want +got):\n%s", diff)
 			}
@@ -165,7 +169,7 @@ func TestFingerprint_Validation(t *testing.T) {
 				t.Fatalf("New failed: %v", err)
 			}
 
-			err = mod.Fingerprint(context.Background(), tt.service)
+			gotServices, err := mod.Fingerprint(context.Background(), tt.service)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Fingerprint() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -175,7 +179,12 @@ func TestFingerprint_Validation(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tt.want, tt.service, protocmp.Transform()); diff != "" {
+			if len(gotServices) != 1 {
+				t.Fatalf("Fingerprint() returned an unexpected number of services: %v, want 1", len(gotServices))
+			}
+
+			got := gotServices[0]
+			if diff := cmp.Diff(tt.want, got, protocmp.Transform()); diff != "" {
 				t.Errorf("Fingerprint() returned diff (-want +got):\n%s", diff)
 			}
 		})

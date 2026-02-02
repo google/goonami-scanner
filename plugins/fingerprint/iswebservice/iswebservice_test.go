@@ -129,11 +129,17 @@ func TestFingerprint(t *testing.T) {
 			tc.service.NetworkEndpoint = endpoint
 			service := tc.service.Build()
 
-			if err = m.Fingerprint(context.Background(), service); err != nil {
+			gotServices, err := m.Fingerprint(context.Background(), service)
+			if err != nil {
 				t.Fatalf("Fingerprint(%v) returned an unexpected error: %v", service, err)
 			}
 
-			if diff := cmp.Diff(tc.wantMethods, service.GetSupportedHttpMethods(), protocmp.Transform()); diff != "" {
+			if len(gotServices) != 1 {
+				t.Fatalf("Fingerprint(%v) returned an unexpected number of services: %v, want 1", service, len(gotServices))
+			}
+
+			got := gotServices[0]
+			if diff := cmp.Diff(tc.wantMethods, got.GetSupportedHttpMethods(), protocmp.Transform()); diff != "" {
 				t.Errorf("Fingerprint(%v) returned an unexpected diff (-want +got):\n%s", tc.service, diff)
 			}
 		})

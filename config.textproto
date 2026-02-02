@@ -34,7 +34,7 @@ clients: {
 
   http_crawler: {
     max_concurrency: 3
-    max_page_size_bytes: 5242880 # 5 MB
+    max_page_size_bytes: 5242880  # 5 MB
     max_depth: 1
     max_requests: 200
 
@@ -53,6 +53,7 @@ clients: {
 
 plugins: {
   webidentity: {
+    signatures_directory: "plugins/fingerprint/webidentity/fingerprints"
     write_html_to_file: true
     maximum_file_size_bytes: 512000  # 500 KB
     maximum_storage_space_bytes: 51200000  # 100 pages (~48 MB total)

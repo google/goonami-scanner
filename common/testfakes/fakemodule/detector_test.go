@@ -17,15 +17,123 @@
 package fakemodule
 
 import (
+	"context"
 	"errors"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
+	"google.golang.org/protobuf/testing/protocmp"
 )
+
+func TestFakeDetectFnNoFindings(t *testing.T) {
+	if _, err := FakeDetectFnNoFindings(context.Background(), nil); err != nil {
+		t.Errorf("FakeDetectFnNoFindings() = %v, want nil", err)
+	}
+}
+
+func TestFakeDetectFnErrors(t *testing.T) {
+	if _, err := FakeDetectFnErrors(context.Background(), nil); err != ErrFakeDetectGeneric {
+		t.Errorf("FakeDetectFnErrors() = %v, want %v", err, ErrFakeDetectGeneric)
+	}
+}
+
+func TestNewFakeVulnDetector(t *testing.T) {
+	fake := NewFakeVulnDetector("test", FakeDetectFnNoFindings)
+	if fake.Name() != "test" {
+		t.Errorf("NewFakeVulnDetector() created fake with name %q, want %q", fake.Name(), "test")
+	}
+
+	if fake.CountCalls() != 0 {
+		t.Errorf("NewFakeVulnDetector() created fake with %d calls, want 0", fake.CountCalls())
+	}
+}
+
+func TestFakeVulnDetectorCountCalls(t *testing.T) {
+	fake := NewFakeVulnDetector("test", FakeDetectFnNoFindings)
+	if fake.CountCalls() != 0 {
+		t.Errorf("CountCalls() = %d, want 0", fake.CountCalls())
+	}
+
+	fake.Detect(context.Background(), nil)
+	if fake.CountCalls() != 1 {
+		t.Errorf("CountCalls() = %d, want 1", fake.CountCalls())
+	}
+}
+
+func TestFakeVulnDetectorDetect(t *testing.T) {
+	tests := []struct {
+		name     string
+		detectFn FakeDetectFn
+		wantErr  error
+		want     *dpb.DetectionReportList
+	}{
+		{
+			name: "detect_success",
+			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+				return dpb.DetectionReportList_builder{
+					DetectionReports: []*dpb.DetectionReport{
+						dpb.DetectionReport_builder{
+							Vulnerability: vulnpb.Vulnerability_builder{
+								Title: "test-vuln",
+							}.Build(),
+						}.Build(),
+					},
+				}.Build(), nil
+			},
+			want: dpb.DetectionReportList_builder{
+				DetectionReports: []*dpb.DetectionReport{
+					dpb.DetectionReport_builder{
+						Vulnerability: vulnpb.Vulnerability_builder{
+							Title: "test-vuln",
+						}.Build(),
+					}.Build(),
+				},
+			}.Build(),
+		},
+		{
+			name: "detect_error_returns_error",
+			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+				return nil, ErrFakeDetectGeneric
+			},
+			wantErr: ErrFakeDetectGeneric,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := NewFakeVulnDetector("test", tc.detectFn)
+			svc := nspb.NetworkService_builder{
+				ServiceName: "original",
+			}.Build()
+			got, err := fake.Detect(context.Background(), svc)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Detect() error = %v, want %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
+			}
+
+			if fake.CountCalls() != 1 {
+				t.Errorf("Detect() call count = %d, want 1", fake.CountCalls())
+			}
+
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Detect() diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
 
 func TestInitFakeVulnDetector(t *testing.T) {
 	testCases := []struct {
-		name    string
-		initErr error
-		wantErr bool
+		name     string
+		initErr  error
+		override FakeDetectFn
+		wantErr  bool
 	}{
 		{
 			name:    "no_error_returns_fake",
@@ -41,7 +149,7 @@ func TestInitFakeVulnDetector(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			initFn := InitFakeVulnDetector("test", tc.initErr)
+			initFn := InitFakeVulnDetector("test", tc.initErr, tc.override)
 
 			if initFn == nil {
 				t.Fatalf("InitFakeVulnDetector() returned nil, want init function")

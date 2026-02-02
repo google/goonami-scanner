@@ -19,6 +19,9 @@ package hash
 import (
 	"net/http"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func TestFromResponse(t *testing.T) {
@@ -121,5 +124,69 @@ func TestUpdate(t *testing.T) {
 	want := "62086d24223bfd1b6f9ee96e2fe508bc"
 	if got := h.Hex(); got != want {
 		t.Errorf("New(resp).Update(content) returned %q, want %q", got, want)
+	}
+}
+
+func TestIntersectVersions(t *testing.T) {
+	tests := []struct {
+		name         string
+		id           *Identity
+		newMatch     *Identity
+		wantVersions []string
+	}{
+		{
+			name: "new_match_is_nil_no_change",
+			id: &Identity{
+				Software: "sw",
+				Versions: []string{"1", "2"},
+			},
+			newMatch:     nil,
+			wantVersions: []string{"1", "2"},
+		},
+		{
+			name: "different_software_no_change",
+			id: &Identity{
+				Software: "sw",
+				Versions: []string{"1", "2"},
+			},
+			newMatch: &Identity{
+				Software: "othersw",
+				Versions: []string{"1"},
+			},
+			wantVersions: []string{"1", "2"},
+		},
+		{
+			name: "no_intersection",
+			id: &Identity{
+				Software: "sw",
+				Versions: []string{"1", "2"},
+			},
+			newMatch: &Identity{
+				Software: "sw",
+				Versions: []string{"3", "4"},
+			},
+			wantVersions: []string{"1", "2"},
+		},
+		{
+			name: "intersection_leads_to_reduction",
+			id: &Identity{
+				Software: "sw",
+				Versions: []string{"1", "2", "3"},
+			},
+			newMatch: &Identity{
+				Software: "sw",
+				Versions: []string{"2", "3", "4"},
+			},
+			wantVersions: []string{"2", "3"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.id.IntersectVersions(tc.newMatch)
+			if diff := cmp.Diff(tc.wantVersions, tc.id.Versions, cmpopts.EquateEmpty()); diff != "" {
+				t.Errorf("IntersectVersions(%v) resulted in unexpected Versions (-want +got):\n%s", tc.newMatch, diff)
+			}
+		})
 	}
 }

@@ -19,6 +19,7 @@ package simplerunner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,6 +29,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
@@ -186,8 +188,8 @@ func TestRegisterDetector(t *testing.T) {
 		{
 			name: "valid_modules",
 			modules: []module.VulnDetector{
-				fakemodule.NewFakeVulnDetector("det1"),
-				fakemodule.NewFakeVulnDetector("det2"),
+				fakemodule.NewFakeVulnDetector("det1", fakemodule.FakeDetectFnNoFindings),
+				fakemodule.NewFakeVulnDetector("det2", fakemodule.FakeDetectFnNoFindings),
 			},
 			wantErr: nil,
 		},
@@ -315,10 +317,10 @@ func TestFingerprintStep(t *testing.T) {
 		},
 	}.Build()
 	fpAppendNameFn := func(val string) fakemodule.FakeFingerprintFn {
-		return func(ctx context.Context, svc *nspb.NetworkService) error {
+		return func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 			name := svc.GetServiceName() + val
 			svc.SetServiceName(name)
-			return nil
+			return []*nspb.NetworkService{svc}, nil
 		}
 	}
 
@@ -360,6 +362,26 @@ func TestFingerprintStep(t *testing.T) {
 			want:    nil,
 			wantErr: fakemodule.ErrFakeFingerprintGeneric,
 		},
+		{
+			name: "fingerprinter_returns_multiple_services_are_accumulated",
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+					return []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: fmt.Sprintf("%s_fp1_1", svc.GetServiceName())}.Build(),
+						nspb.NetworkService_builder{ServiceName: fmt.Sprintf("%s_fp1_2", svc.GetServiceName())}.Build(),
+					}, nil
+				}),
+				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
+			},
+			want: rpb.FingerprintingReport_builder{
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{ServiceName: "svc1_fp1_1_fp2"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc1_fp1_2_fp2"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc2_fp1_1_fp2"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc2_fp1_2_fp2"}.Build(),
+				},
+			}.Build(),
+		},
 	}
 
 	for _, tc := range tests {
@@ -381,6 +403,115 @@ func TestFingerprintStep(t *testing.T) {
 
 			if diff := cmp.Diff(tc.want, got, protocmp.Transform(), protocmp.SortRepeatedFields(&rpb.FingerprintingReport{}, "network_services")); diff != "" {
 				t.Errorf("FingerprintStep() returned diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestDetectStep(t *testing.T) {
+	fingerprintReport := rpb.FingerprintingReport_builder{
+		NetworkServices: []*nspb.NetworkService{
+			nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+			nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+		},
+	}.Build()
+	fakeDetectFnWithFinding := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		return dpb.DetectionReportList_builder{
+			DetectionReports: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: svc,
+				}.Build(),
+			},
+		}.Build(), nil
+	}
+
+	tests := []struct {
+		name      string
+		detectors []module.VulnDetector
+		want      []*dpb.DetectionReport
+		wantErr   error
+	}{
+		{
+			name:      "no_detector_returns_nil",
+			detectors: []module.VulnDetector{},
+			want:      nil,
+			wantErr:   nil,
+		},
+		{
+			name: "detector_with_no_findings",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
+			},
+			want:    nil,
+			wantErr: nil,
+		},
+		{
+			name: "detector_with_findings_returns_reports",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnWithFinding),
+			},
+			want: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+			},
+			wantErr: nil,
+		},
+		{
+			name: "multiple_detectors_findings_are_accumulated",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnWithFinding),
+				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
+			},
+			want: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+			},
+			wantErr: nil,
+		},
+		{
+			name: "detector_error_propagates",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
+				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
+			},
+			want:    nil,
+			wantErr: fakemodule.ErrFakeDetectGeneric,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := New(defaultConfig)
+			if err != nil {
+				t.Fatalf("New() returned error %v, want nil", err)
+			}
+
+			r.detectors = tc.detectors
+			got, err := r.DetectStep(context.Background(), fingerprintReport)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("DetectStep() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
+			}
+
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform(), protocmp.SortRepeated(func(a, b *dpb.DetectionReport) bool { return a.String() < b.String() })); diff != "" {
+				t.Errorf("DetectStep() returned diff (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -412,6 +543,7 @@ func TestRun(t *testing.T) {
 		name           string
 		portScanner    module.PortScanner
 		fingerprinters []module.Fingerprinter
+		detectors      []module.VulnDetector
 		target         string
 		wantErr        error
 		want           *srpb.ScanResults
@@ -435,13 +567,28 @@ func TestRun(t *testing.T) {
 			wantErr: fakemodule.ErrFakeFingerprintGeneric,
 		},
 		{
+			name:        "detector_fails_returns_error",
+			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
+			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
+			},
+			wantErr: fakemodule.ErrFakeDetectGeneric,
+		},
+		{
 			name:        "success_returns_report",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
 			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
+			},
 			wantErr: nil,
 			want: srpb.ScanResults_builder{
+				FullDetectionReports: &srpb.FullDetectionReports{},
 				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 					TargetInfo: rpb.TargetInfo_builder{
 						NetworkEndpoints: []*npb.NetworkEndpoint{
@@ -472,6 +619,7 @@ func TestRun(t *testing.T) {
 
 			r.portScanner = tc.portScanner
 			r.fingerprinters = tc.fingerprinters
+			r.detectors = tc.detectors
 			got, err := r.Run(context.Background(), "irrelevant")
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Run() error = %v, wantErr %v", err, tc.wantErr)

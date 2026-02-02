@@ -16,15 +16,21 @@
 
 package module
 
-import "github.com/google/goonami-scanner/core/config"
+import (
+	"context"
+
+	"github.com/google/goonami-scanner/core/config"
+	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+)
 
 // VulnDetector is a module that can detect vulnerabilities.
 type VulnDetector interface {
 	// Name of the module. Should be inherited from the BaseModule.
 	Name() string
 
-	// TODO: b/456152069 - To be implemented. Will probably take a NetworkService as input and return
-	// a set of vulnerabilities.
+	// Detect the presence of a vulnerability on the network service.
+	Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error)
 }
 
 // InitVulnDetectorFn is the function signature for initializing a detector module.

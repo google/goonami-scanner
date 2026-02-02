@@ -114,7 +114,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 					fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing),
 				},
 				Detectors: []module.InitVulnDetectorFn{
-					fakemodule.InitFakeVulnDetector("d1", nil),
+					fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings),
 				},
 			},
 			wantErr: false,
@@ -148,8 +148,8 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 					fakemodule.InitFakeFingerprinter("fp1", nil, nil),
 				},
 				Detectors: []module.InitVulnDetectorFn{
-					fakemodule.InitFakeVulnDetector("d1", genericErr),
-					fakemodule.InitFakeVulnDetector("d2", nil),
+					fakemodule.InitFakeVulnDetector("d1", genericErr, fakemodule.FakeDetectFnNoFindings),
+					fakemodule.InitFakeVulnDetector("d2", nil, fakemodule.FakeDetectFnNoFindings),
 				},
 			},
 			wantErr: true,

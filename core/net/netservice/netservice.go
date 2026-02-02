@@ -23,6 +23,7 @@ import (
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 )
 
 // HasTLS returns whether the network service supports SSL/TLS.
@@ -48,4 +49,21 @@ func BuildWebRoot(service *nspb.NetworkService) (string, error) {
 	}
 
 	return fmt.Sprintf("%s://%s", protocol, authority), nil
+}
+
+// AddCrawlResults adds the given set of crawl results to the service context.
+func AddCrawlResults(service *nspb.NetworkService, crawlResults []*wcpb.CrawlResult) {
+	if !service.HasServiceContext() {
+		service.SetServiceContext(&nspb.ServiceContext{})
+	}
+
+	if !service.GetServiceContext().HasWebServiceContext() {
+		service.SetServiceContext(nspb.ServiceContext_builder{
+			WebServiceContext: &nspb.WebServiceContext{},
+		}.Build())
+	}
+
+	results := service.GetServiceContext().GetWebServiceContext().GetCrawlResults()
+	results = append(results, crawlResults...)
+	service.GetServiceContext().GetWebServiceContext().SetCrawlResults(results)
 }

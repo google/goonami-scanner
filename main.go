@@ -36,6 +36,7 @@ import (
 	// fingerprinters
 	"github.com/google/goonami-scanner/plugins/fingerprint/iswebservice"
 	"github.com/google/goonami-scanner/plugins/fingerprint/sslsupport"
+	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
@@ -47,6 +48,10 @@ var portScanner = nmap.New
 var fingerprinters = []module.InitFingerprinterFn{
 	sslsupport.New,
 	iswebservice.New,
+
+	// note: keep last. The webidentity plugin can fork the existing list of service. For efficiency,
+	// it should be the last plugin in the list.
+	webidentity.New,
 }
 
 var (

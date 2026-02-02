@@ -20,10 +20,11 @@ package sslsupport
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
+	"errors"
 	"net"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"github.com/google/goonami-scanner/core/net/netservice"
@@ -33,6 +34,10 @@ import (
 
 const (
 	moduleName = "fp/sslsupport"
+)
+
+var (
+	errNotTLSConn = errors.New("connection is not an SSL/TLS connection")
 )
 
 // Module is the fingerprinter to detect if a network service supports SSL.
@@ -50,10 +55,12 @@ func New(config *config.Config) (module.Fingerprinter, error) {
 }
 
 // Fingerprint connects to the network service and checks if it supports SSL.
-func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) error {
+func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	result := []*nspb.NetworkService{service}
+
 	// The fingerprinting was already performed, probably by a port scanner.
 	if netservice.HasTLS(service) {
-		return nil
+		return result, nil
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, m.config.TimeoutPerRequest())
@@ -61,20 +68,21 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 
 	authority, err := netendpoint.ToURIAuthority(service.GetNetworkEndpoint())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Note: If SSL connection fails, we consider that the service does not support SSL.
 	tlsConn, err := m.connect(ctx, "tcp", authority)
 	if err != nil {
-		return nil
+		return result, nil
 	}
 	defer tlsConn.Close()
 
+	log.Debugf(log.DebugLevelService, "[fp/sslsupport] port:%d supports SSL connections", service.GetNetworkEndpoint().GetPort().GetPortNumber())
 	version := tls.VersionName(tlsConn.ConnectionState().Version)
 	tlsversions := append(service.GetSupportedSslVersions(), version)
 	service.SetSupportedSslVersions(tlsversions)
-	return nil
+	return result, nil
 }
 
 func (m *Module) connect(ctx context.Context, protocol string, addr string) (*tls.Conn, error) {
@@ -88,13 +96,13 @@ func (m *Module) connect(ctx context.Context, protocol string, addr string) (*tl
 
 	conn, err := dialer.Dial(protocol, addr)
 	if err != nil {
-		return nil, fmt.Errorf("connection failure: %v", err)
+		return nil, err
 	}
 
 	tlsConn, ok := conn.(*tls.Conn)
 	if !ok {
 		conn.Close()
-		return nil, fmt.Errorf("connection is not a TLS connection")
+		return nil, errNotTLSConn
 	}
 
 	return tlsConn, nil

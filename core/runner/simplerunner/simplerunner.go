@@ -28,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
+	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -129,6 +130,15 @@ func (r *SimpleRunner) FingerprintStep(ctx context.Context, portscan *rpb.PortSc
 	return r.runFingerprinters(ctx, portscan)
 }
 
+func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.FingerprintingReport) ([]*dpb.DetectionReport, error) {
+	if len(r.detectors) == 0 {
+		log.Warnf("[runner] skipping detection: no detectors found")
+		return nil, nil
+	}
+
+	return r.runDetectors(ctx, fpreport)
+}
+
 // Run runs the Goonami modules in the order of port scan, fingerprinting and then detection.
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
 	portscan, err := r.PortScanStep(ctx, target)
@@ -136,8 +146,14 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 		return nil, err
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] Port scan complete. Found %d open services", len(portscan.GetNetworkServices()))
-	fingerprints, err := r.FingerprintStep(ctx, portscan)
+	log.Debugf(log.DebugLevelSession, "[runner] port scan complete: Found %d open services", len(portscan.GetNetworkServices()))
+	fpreport, err := r.FingerprintStep(ctx, portscan)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debugf(log.DebugLevelSession, "[runner] fingerprinting phase complete")
+	detections, err := r.DetectStep(ctx, fpreport)
 	if err != nil {
 		return nil, err
 	}
@@ -145,36 +161,60 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 	results := srpb.ScanResults_builder{
 		ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 			TargetInfo:      portscan.GetTargetInfo(),
-			NetworkServices: fingerprints.GetNetworkServices(),
+			NetworkServices: fpreport.GetNetworkServices(),
+		}.Build(),
+		FullDetectionReports: srpb.FullDetectionReports_builder{
+			DetectionReports: detections,
 		}.Build(),
 	}.Build()
 
-	// TODO: b/456152069 - Perform vulnerability detection here.
-
-	log.Debugf(log.DebugLevelSession, "[runner] Fingerprinting phase complete.")
+	log.Debugf(log.DebugLevelSession, "[runner] scan complete")
 	return results, nil
 }
 
 func (r *SimpleRunner) runFingerprinters(ctx context.Context, portscan *rpb.PortScanningReport) (*rpb.FingerprintingReport, error) {
-	report := &rpb.FingerprintingReport_builder{}
+	concurrency := int(r.config.GlobalConfig().GetPerformance().GetMaxConcurrency())
+	services, err := runConcurrent(ctx, concurrency, portscan.GetNetworkServices(), r.fingerprintService)
+	if err != nil {
+		return nil, err
+	}
+
+	return rpb.FingerprintingReport_builder{
+		NetworkServices: services,
+	}.Build(), nil
+}
+
+func (r *SimpleRunner) runDetectors(ctx context.Context, fpreport *rpb.FingerprintingReport) ([]*dpb.DetectionReport, error) {
+	concurrency := int(r.config.GlobalConfig().GetPerformance().GetMaxConcurrency())
+	return runConcurrent(ctx, concurrency, fpreport.GetNetworkServices(), r.detectService)
+}
+
+// processFn abstract a function that is run concurrently against a specific network service.
+type processFn[E any] func(context.Context, *nspb.NetworkService) ([]E, error)
+
+// runConcurrent goes through the network services and apply processSvc to all of them concurrently.
+// Then, it accumulates the results and returns them all together.
+func runConcurrent[E any](ctx context.Context, concurrency int, services []*nspb.NetworkService, processSvc processFn[E]) ([]E, error) {
+	var results []E
 	var mut sync.Mutex
 	group, grpctx := errgroup.WithContext(ctx)
-	group.SetLimit(int(r.config.GlobalConfig().GetPerformance().GetMaxConcurrency()))
+	group.SetLimit(concurrency)
 
-	for _, netservice := range portscan.GetNetworkServices() {
+	for _, service := range services {
 		if grpctx.Err() != nil {
 			return nil, grpctx.Err()
 		}
 
 		group.Go(func() error {
-			ns, err := r.fingerprintService(grpctx, portscan.GetTargetInfo(), netservice)
+			serviceCpy := proto.Clone(service).(*nspb.NetworkService)
+			res, err := processSvc(grpctx, serviceCpy)
 			if err != nil {
 				return err
 			}
 
 			mut.Lock()
 			defer mut.Unlock()
-			report.NetworkServices = append(report.NetworkServices, ns)
+			results = append(results, res...)
 			return nil
 		})
 	}
@@ -183,22 +223,53 @@ func (r *SimpleRunner) runFingerprinters(ctx context.Context, portscan *rpb.Port
 		return nil, err
 	}
 
-	return report.Build(), nil
+	return results, nil
 }
 
-// note: Fingerprinters work in place. That means that they will modify we provide as input. To
-// avoid side-effects, we provide them with a deep-copy.
-func (r *SimpleRunner) fingerprintService(ctx context.Context, target *rpb.TargetInfo, svc *nspb.NetworkService) (*nspb.NetworkService, error) {
-	svcCopy := proto.Clone(svc).(*nspb.NetworkService)
+// Note fingerprintService fingerprints a specific service. It starts with only one network service
+// coming directly from the port scan. But each fingerprinter can technically "split" that network
+// service into several ones.
+func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	var services []*nspb.NetworkService = []*nspb.NetworkService{svc}
 	for _, fp := range r.fingerprinters {
+		var accumulator []*nspb.NetworkService
+
+		for _, sv := range services {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+
+			res, err := fp.Fingerprint(ctx, sv)
+			if err != nil {
+				log.Errorf("[runner] portd:%d fatal fingerprinting error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), fp.Name(), err)
+				return nil, err
+			}
+
+			accumulator = append(accumulator, res...)
+		}
+
+		services = accumulator
+	}
+
+	return services, nil
+}
+
+func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkService) ([]*dpb.DetectionReport, error) {
+	var reports []*dpb.DetectionReport
+
+	for _, dt := range r.detectors {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 
-		if err := fp.Fingerprint(ctx, svcCopy); err != nil {
+		res, err := dt.Detect(ctx, svc)
+		if err != nil {
+			log.Errorf("[runner] port:%d fatal detection error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), dt.Name(), err)
 			return nil, err
 		}
+
+		reports = append(reports, res.GetDetectionReports()...)
 	}
 
-	return svcCopy, nil
+	return reports, nil
 }

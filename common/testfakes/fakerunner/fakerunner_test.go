@@ -147,7 +147,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 	}{
 		{
 			name:  "no_override",
-			d:     fakemodule.NewFakeVulnDetector("d1"),
+			d:     fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
 			wantD: true,
 		},
 		{
@@ -155,7 +155,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			overrideFn: func(d module.VulnDetector) error {
 				return nil
 			},
-			d:     fakemodule.NewFakeVulnDetector("d1"),
+			d:     fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
 			wantD: false,
 		},
 		{
@@ -163,7 +163,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			overrideFn: func(d module.VulnDetector) error {
 				return errors.New("override error")
 			},
-			d:       fakemodule.NewFakeVulnDetector("d1"),
+			d:       fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
 			wantErr: true,
 			wantD:   false,
 		},

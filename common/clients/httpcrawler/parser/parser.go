@@ -102,7 +102,7 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 
 func parseURL(base string, redirect string) (string, error) {
 	if strings.HasPrefix(redirect, "javascript:") || strings.HasPrefix(redirect, "mailto:") {
-		return "", fmt.Errorf("unsupported URL type: %q", redirect)
+		return "", fmt.Errorf("unsupported javascript/mailto URL type")
 	}
 
 	redirurl, err := url.Parse(redirect)

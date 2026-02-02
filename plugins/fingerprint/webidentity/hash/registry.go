@@ -80,6 +80,11 @@ func (s *Registry) Find(hash string, path string) *Identity {
 		}
 	}
 
+	// If we cannot infer the root, there might be an issue.
+	if len(id.PotentialRoots) > 0 && len(roots) == 0 {
+		return nil
+	}
+
 	return &Identity{
 		Software:       id.Software,
 		PotentialRoots: roots,

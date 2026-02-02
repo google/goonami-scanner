@@ -27,14 +27,13 @@ import (
 )
 
 func TestFakeFingerprintFnDoNothing(t *testing.T) {
-	err := FakeFingerprintFnDoNothing(context.Background(), nil)
-	if err != nil {
+	if _, err := FakeFingerprintFnDoNothing(context.Background(), nil); err != nil {
 		t.Errorf("FakeFingerprintFnDoNothing() = %v, want nil", err)
 	}
 }
 
 func TestFakeFingerprintFnErrors(t *testing.T) {
-	if err := FakeFingerprintFnErrors(context.Background(), nil); err != ErrFakeFingerprintGeneric {
+	if _, err := FakeFingerprintFnErrors(context.Background(), nil); err != ErrFakeFingerprintGeneric {
 		t.Errorf("FakeFingerprintFnErrors() = %v, want %v", err, ErrFakeFingerprintGeneric)
 	}
 }
@@ -71,9 +70,9 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 	}{
 		{
 			name: "finperprint_success",
-			scanFn: func(ctx context.Context, svc *nspb.NetworkService) error {
+			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 				svc.SetServiceName("modified")
-				return nil
+				return []*nspb.NetworkService{svc}, nil
 			},
 			wantSvc: nspb.NetworkService_builder{
 				ServiceName: "modified",
@@ -81,8 +80,8 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 		},
 		{
 			name: "fingerprint_error_returns_error",
-			scanFn: func(ctx context.Context, svc *nspb.NetworkService) error {
-				return ErrFakeFingerprintGeneric
+			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+				return nil, ErrFakeFingerprintGeneric
 			},
 			wantErr: ErrFakeFingerprintGeneric,
 		},
@@ -94,7 +93,7 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 			svc := nspb.NetworkService_builder{
 				ServiceName: "original",
 			}.Build()
-			err := fake.Fingerprint(context.Background(), svc)
+			gotServices, err := fake.Fingerprint(context.Background(), svc)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Fingerprint() error = %v, want %v", err, tc.wantErr)
 			}
@@ -103,11 +102,16 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 				return
 			}
 
+			if len(gotServices) != 1 {
+				t.Fatalf("Fingerprint() returned an unexpected number of services: %v, want 1", len(gotServices))
+			}
+
 			if fake.CountCalls() != 1 {
 				t.Errorf("Fingerprint() call count = %d, want 1", fake.CountCalls())
 			}
 
-			if diff := cmp.Diff(tc.wantSvc, svc, protocmp.Transform()); diff != "" {
+			got := gotServices[0]
+			if diff := cmp.Diff(tc.wantSvc, got, protocmp.Transform()); diff != "" {
 				t.Errorf("Fingerprint() service diff (-want +got):\n%s", diff)
 			}
 		})

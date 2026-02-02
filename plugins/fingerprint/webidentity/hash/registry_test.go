@@ -209,10 +209,10 @@ func TestRegistryFind(t *testing.T) {
 			want: &Identity{Software: "sw1", Versions: []string{"1.0"}},
 		},
 		{
-			name: "hash_with_roots_no_versions_no_path_match",
+			name: "path_mismatch_is_ignored",
 			hash: "hash2",
 			path: "/otherpath",
-			want: &Identity{Software: "sw1"},
+			want: nil,
 		},
 		{
 			name: "hash_with_roots_single_path_match_exact",
@@ -237,12 +237,6 @@ func TestRegistryFind(t *testing.T) {
 			hash: "hash2",
 			path: "/a/b/path2",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/a/b/"}},
-		},
-		{
-			name: "empty_request_path",
-			hash: "hash3",
-			path: "",
-			want: &Identity{Software: "sw1"},
 		},
 		{
 			name: "request_path_equals_content_path",

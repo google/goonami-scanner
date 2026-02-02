@@ -28,19 +28,19 @@ import (
 )
 
 // FakeFingerprintFn is the function that overrides the Fingerprint() of the fake fingerprinter.
-type FakeFingerprintFn func(ctx context.Context, svc *nspb.NetworkService) error
+type FakeFingerprintFn func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error)
 
 // FakeFingerprintFnDoNothing is a fake fingerprinting function that does nothing.
-func FakeFingerprintFnDoNothing(ctx context.Context, svc *nspb.NetworkService) error {
-	return nil
+func FakeFingerprintFnDoNothing(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	return []*nspb.NetworkService{svc}, nil
 }
 
 // ErrFakeFingerprintGeneric is a generic fake fingerprinting error.
 var ErrFakeFingerprintGeneric = errors.New("generic fake fingerprinting error")
 
 // FakeFingerprintFnErrors is a fake fingerprinting function that errors out.
-func FakeFingerprintFnErrors(ctx context.Context, svc *nspb.NetworkService) error {
-	return ErrFakeFingerprintGeneric
+func FakeFingerprintFnErrors(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	return nil, ErrFakeFingerprintGeneric
 }
 
 // FakeFingerprinter is a test double for module.Fingerprinter.
@@ -67,7 +67,7 @@ func (m *FakeFingerprinter) CountCalls() int {
 }
 
 // Fingerprint the service using the registered override function.
-func (m *FakeFingerprinter) Fingerprint(ctx context.Context, svc *nspb.NetworkService) error {
+func (m *FakeFingerprinter) Fingerprint(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 	m.mut.Lock()
 	m.scanCalls++
 	m.mut.Unlock()

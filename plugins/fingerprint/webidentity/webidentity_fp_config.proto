@@ -25,13 +25,16 @@ option java_outer_classname = "WebIdentityFpConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.fingerprinters";
 
 message WebIdentityFpConfig {
+  // Directory where the signatures definition are stored.
+  string signatures_directory = 1;
+
   // Whether to write the HTML response to a file as we crawl the web service.
-  bool write_html_to_file = 1;
+  bool write_html_to_file = 2;
 
   // If storing the HTML response, this is the maximum size of one file.
-  int64 maximum_file_size_bytes= 2;
+  int64 maximum_file_size_bytes= 3;
 
   // If storing the HTML response, this is the maximum amount of storage space
   // to use.
-  int64 maximum_storage_space_bytes = 3;
+  int64 maximum_storage_space_bytes = 4;
 }

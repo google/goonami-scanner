@@ -50,10 +50,11 @@ func New(config *config.Config) (module.Fingerprinter, error) {
 }
 
 // Fingerprint provides in-place enrichment of a network service through fingerprinting.
-func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) error {
+func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	result := []*nspb.NetworkService{service}
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, m.config.TimeoutPerRequest())
@@ -61,22 +62,21 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 
 	req, err := http.NewRequestWithContext(ctx, "GET", webroot, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// If the request failed, this is not a web service but not an issue.
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
-		log.Debugf(log.DebugLevelService, "[fp/iswebservice] %q is not a web service", webroot)
-		return nil
+		return result, nil
 	}
 	defer resp.Body.Close()
 
-	log.Debugf(log.DebugLevelService, "[fp/iswebservice] %q is a web service", webroot)
+	log.Debugf(log.DebugLevelService, "[fp/iswebservice] port:%d is a web service", service.GetNetworkEndpoint().GetPort().GetPortNumber())
 	if !slices.Contains(service.GetSupportedHttpMethods(), "GET") {
 		supported := append(service.GetSupportedHttpMethods(), "GET")
 		service.SetSupportedHttpMethods(supported)
 	}
 
-	return nil
+	return result, nil
 }
