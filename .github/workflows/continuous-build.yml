@@ -1,0 +1,32 @@
+name: continuous-build
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Run every 2 hours.
+    - cron: "0 */2 * * *"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: google/goonami-scanner
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          labels: ${{ steps.meta.outputs.labels }}
