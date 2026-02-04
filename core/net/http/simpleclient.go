@@ -17,7 +17,7 @@
 package http
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -25,16 +25,18 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// SimpleClient is a simple HTTP client that uses the standard library client and a rate limiter.
-type SimpleClient struct {
-	client  *http.Client
+var ErrEmptyConfig = errors.New("config is nil")
+
+// RateLimitClient add rate-limiting to an underlying HTTP client.
+type RateLimitClient struct {
+	client  Client
 	limiter *rate.Limiter
 }
 
-// NewSimpleClient creates a new SimpleClient.
-func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
+// NewRateLimitClient creates a new SimpleClient.
+func NewRateLimitClient(client Client, cfg *config.Config) (*RateLimitClient, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
+		return nil, ErrEmptyConfig
 	}
 
 	qps := cfg.GlobalConfig().GetPerformance().GetMaxHttpRequestsPerSecond()
@@ -45,14 +47,14 @@ func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
 		limiter.SetLimit(rate.Inf)
 	}
 
-	return &SimpleClient{
-		client:  &http.Client{},
+	return &RateLimitClient{
+		client:  client,
 		limiter: limiter,
 	}, nil
 }
 
 // Do sends an HTTP request and returns an HTTP response in case of success.
-func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
+func (c *RateLimitClient) Do(req *http.Request) (*http.Response, error) {
 	if err := c.limiter.Wait(req.Context()); err != nil {
 		return nil, err
 	}

@@ -23,7 +23,12 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 )
 
-// Client is the interface for HTTP clients.
+type NewClientFunc func(cfg *config.Config) (Client, error)
+
+var defaultClientFunc NewClientFunc = nil
+
+// Client is the interface for HTTP clients. Note that these clients will be wrappers in higher
+// level constructs providing additional functionality (such as rate limiting).
 type Client interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -32,7 +37,7 @@ var defaultClient Client = nil
 
 // InitializeDefaults initializes the default HTTP client with a SimpleClient.
 func InitializeDefaults(cfg *config.Config) error {
-	client, err := NewSimpleClient(cfg)
+	client, err := NewRateLimitClient(cfg)
 	if err != nil {
 		return err
 	}

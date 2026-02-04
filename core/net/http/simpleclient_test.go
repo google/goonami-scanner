@@ -71,7 +71,7 @@ func TestNewSimpleClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewSimpleClient(tt.cfg)
+			c, err := NewRateLimitClient(tt.cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewSimpleClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -106,7 +106,7 @@ func TestDoWithoutRateLimit(t *testing.T) {
 		}.Build(),
 	}.Build())
 
-	c, err := NewSimpleClient(cfg)
+	c, err := NewRateLimitClient(cfg)
 	if err != nil {
 		t.Fatalf("NewSimpleClient() failed: %v", err)
 	}
