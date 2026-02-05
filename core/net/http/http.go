@@ -18,9 +18,16 @@
 package http
 
 import (
+	"errors"
+	"io"
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
+)
+
+var (
+	// ErrPageTooBig is returned when the response body is larger than the maximum size.
+	ErrPageTooBig = errors.New("page is too big")
 )
 
 // Client is the interface for HTTP clients.
@@ -55,4 +62,24 @@ func DefaultClient() Client {
 	}
 
 	return defaultClient
+}
+
+// ReadBody reads the body of an HTTP response up to a maximum size. Note that if the response is
+// exactly of the maximum size, this function will return an error.
+func ReadBody(resp *http.Response, maxsize int) ([]byte, error) {
+	buffer := make([]byte, maxsize)
+	n, err := io.ReadFull(resp.Body, buffer)
+
+	// We expect an ErrUnexpectedEOF error here (ironic, uh?). If we do not see that error, that means
+	// that there is more to read on the page than our buffer (which is the maximum we want to read).
+	if err == nil {
+		return nil, ErrPageTooBig
+	}
+
+	// Something went wrong.
+	if err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+
+	return buffer[:n], nil
 }

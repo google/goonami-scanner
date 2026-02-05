@@ -186,8 +186,24 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return err
 	}
 
-	content, err := c.readBody(page.URL, resp)
+	maxsize := int(c.config.GetMaxPageSizeBytes())
+	content, err := goohttp.ReadBody(resp, maxsize)
 	if err != nil {
+		if err == goohttp.ErrPageTooBig {
+			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (page too big): %q", page.URL)
+			return nil
+		}
+
+		if strings.Contains(err.Error(), "context deadline exceeded") {
+			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (deadline exceeded): %q", page.URL)
+			return nil
+		}
+
+		if err == io.EOF {
+			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (empty page): %q", page.URL)
+			return nil
+		}
+
 		return err
 	}
 	resp.Body.Close()
@@ -197,37 +213,6 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 	}
 
 	return c.processResponse(run, page, resp, content)
-}
-
-func (c *SimpleCrawler) readBody(url string, resp *http.Response) ([]byte, error) {
-	buffer := make([]byte, c.config.GetMaxPageSizeBytes())
-	n, err := io.ReadFull(resp.Body, buffer)
-
-	// We expect an ErrUnexpectedEOF error here (ironic, uh?). If we do not see that error, that means
-	// that there is more to read on the page than our buffer (which is the maximum we want to read).
-	if err == nil {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (max page size): %q", url)
-		return nil, nil
-	}
-
-	// Something went wrong.
-	if err != io.ErrUnexpectedEOF {
-		// A deadline exceeded is not a fatal error, so we silence it.
-		if strings.Contains(err.Error(), "context deadline exceeded") {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (deadline exceeded): %q", url)
-			return nil, nil
-		}
-
-		// If the response is completely empty, we receive an EOF.
-		if err == io.EOF {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] empty response: %q", url)
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	return buffer[:n], nil
 }
 
 func (c *SimpleCrawler) processResponse(run *crawlRun, page *PageInfo, resp *http.Response, content []byte) error {
