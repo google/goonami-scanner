@@ -54,6 +54,23 @@ clients: {
     timeout_per_request_sec: 240  # 4 minutes
     max_attempts: 3
     retry_delay_sec: 10
+
+    tools: {
+      http_client_config: {
+        allowed_methods: ["GET", "POST"]
+        max_requests_per_service: 50
+        max_answer_size_bytes: 1048576  # 1 MB
+        forbidden_paths: [
+          ".*abort.*",
+          ".*delete.*",
+          ".*drop.*",
+          ".*huphuphup.*",
+          ".*kill.*",
+          ".*quit.*",
+          ".*remove.*"
+        ]
+      }
+    }
   }
 }
 
