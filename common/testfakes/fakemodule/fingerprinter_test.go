@@ -69,7 +69,7 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 		wantSvc *nspb.NetworkService
 	}{
 		{
-			name: "finperprint_success",
+			name: "when_fingerprinting_succeeds_returns_modified_service",
 			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 				svc.SetServiceName("modified")
 				return []*nspb.NetworkService{svc}, nil
@@ -79,7 +79,7 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "fingerprint_error_returns_error",
+			name: "when_fingerprinting_errors_it_propagates_error",
 			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 				return nil, ErrFakeFingerprintGeneric
 			},
@@ -125,12 +125,12 @@ func TestInitFakeFingerprinter(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "no_error_returns_fake",
+			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
 			wantErr: false,
 		},
 		{
-			name:    "with_error_returns_err",
+			name:    "when_init_has_error_it_returns_error",
 			initErr: errors.New("init error"),
 			wantErr: true,
 		},

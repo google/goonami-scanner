@@ -33,7 +33,7 @@ func TestFromResponse(t *testing.T) {
 		want        string
 	}{
 		{
-			name:        "react_app_sample",
+			name:        "when_response_is_a_sample_react_app_returns_correct_hash",
 			statusCode:  200,
 			contentType: "application/json",
 			content: []byte(`{
@@ -55,7 +55,7 @@ func TestFromResponse(t *testing.T) {
 			want: "62086d24223bfd1b6f9ee96e2fe508bc",
 		},
 		{
-			name:        "empty_content",
+			name:        "when_response_is_empty_returns_correct_hash",
 			statusCode:  404,
 			contentType: "text/html",
 			content:     []byte{},
@@ -135,7 +135,7 @@ func TestIntersectVersions(t *testing.T) {
 		wantVersions []string
 	}{
 		{
-			name: "new_match_is_nil_no_change",
+			name: "when_new_match_is_nil_it_returns_no_change",
 			id: &Identity{
 				Software: "sw",
 				Versions: []string{"1", "2"},
@@ -144,7 +144,7 @@ func TestIntersectVersions(t *testing.T) {
 			wantVersions: []string{"1", "2"},
 		},
 		{
-			name: "different_software_no_change",
+			name: "when_software_names_differ_it_returns_no_change",
 			id: &Identity{
 				Software: "sw",
 				Versions: []string{"1", "2"},
@@ -156,7 +156,7 @@ func TestIntersectVersions(t *testing.T) {
 			wantVersions: []string{"1", "2"},
 		},
 		{
-			name: "no_intersection",
+			name: "when_versions_do_not_intersect_it_returns_no_change",
 			id: &Identity{
 				Software: "sw",
 				Versions: []string{"1", "2"},
@@ -168,7 +168,7 @@ func TestIntersectVersions(t *testing.T) {
 			wantVersions: []string{"1", "2"},
 		},
 		{
-			name: "intersection_leads_to_reduction",
+			name: "when_versions_intersect_it_returns_the_intersection",
 			id: &Identity{
 				Software: "sw",
 				Versions: []string{"1", "2", "3"},

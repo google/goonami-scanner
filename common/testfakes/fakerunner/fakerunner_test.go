@@ -41,12 +41,12 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 		wantPs     bool
 	}{
 		{
-			name:   "no_override",
+			name:   "when_no_override_is_provided_it_registers_successfully",
 			ps:     fakemodule.NewFakePortScanner("ps1", nil),
 			wantPs: true,
 		},
 		{
-			name: "override_with_success",
+			name: "when_override_returns_success_it_uses_override_logic",
 			overrideFn: func(ps module.PortScanner) error {
 				return nil
 			},
@@ -54,7 +54,7 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 			wantPs: false,
 		},
 		{
-			name: "override_with_error",
+			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ps module.PortScanner) error {
 				return errors.New("override error")
 			},
@@ -94,12 +94,12 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 		wantFp     bool
 	}{
 		{
-			name:   "no_override",
+			name:   "when_no_override_is_provided_it_registers_successfully",
 			fp:     fakemodule.NewFakeFingerprinter("fp1", nil),
 			wantFp: true,
 		},
 		{
-			name: "override_with_success",
+			name: "when_override_returns_success_it_uses_override_logic",
 			overrideFn: func(fp module.Fingerprinter) error {
 				return nil
 			},
@@ -107,7 +107,7 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 			wantFp: false,
 		},
 		{
-			name: "override_with_error",
+			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(fp module.Fingerprinter) error {
 				return errors.New("override error")
 			},
@@ -146,12 +146,12 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 		wantD      bool
 	}{
 		{
-			name:  "no_override",
+			name:  "when_no_override_is_provided_it_registers_successfully",
 			d:     fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
 			wantD: true,
 		},
 		{
-			name: "override_with_success",
+			name: "when_override_returns_success_it_uses_override_logic",
 			overrideFn: func(d module.VulnDetector) error {
 				return nil
 			},
@@ -159,7 +159,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			wantD: false,
 		},
 		{
-			name: "override_with_error",
+			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(d module.VulnDetector) error {
 				return errors.New("override error")
 			},
@@ -197,17 +197,17 @@ func TestFakeRunner_Run(t *testing.T) {
 		wantErr    bool
 	}{
 		{
-			name: "no_override",
+			name: "when_no_override_is_provided_it_returns_nil",
 		},
 		{
-			name: "override_with_success",
+			name: "when_override_returns_success_it_returns_results",
 			overrideFn: func(ctx context.Context, target string) (*srpb.ScanResults, error) {
 				return &srpb.ScanResults{}, nil
 			},
 			wantRes: true,
 		},
 		{
-			name: "override_with_error",
+			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ctx context.Context, target string) (*srpb.ScanResults, error) {
 				return nil, errors.New("override error")
 			},

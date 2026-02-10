@@ -41,19 +41,19 @@ func TestDefaultLoggerDebugf(t *testing.T) {
 		wantOutput bool
 	}{
 		{
-			name:       "configured_level_equals_outputs",
+			name:       "when_configured_level_equals_log_level_it_outputs",
 			wantToSee:  DebugLevelSession,
 			logAtLevel: DebugLevelSession,
 			wantOutput: true,
 		},
 		{
-			name:       "configured_level_higher_outputs",
+			name:       "when_configured_level_is_higher_than_log_level_it_outputs",
 			wantToSee:  DebugLevelService,
 			logAtLevel: DebugLevelSession,
 			wantOutput: true,
 		},
 		{
-			name:       "configured_level_lower_no_output",
+			name:       "when_configured_level_is_lower_than_log_level_it_does_not_output",
 			wantToSee:  DebugLevelSession,
 			logAtLevel: DebugLevelRequest,
 			wantOutput: false,
@@ -90,19 +90,19 @@ func TestDefaultLoggerDebug(t *testing.T) {
 		wantOutput bool
 	}{
 		{
-			name:       "configured_level_equals_outputs",
+			name:       "when_configured_level_equals_log_level_it_outputs",
 			wantToSee:  DebugLevelSession,
 			logAtLevel: DebugLevelSession,
 			wantOutput: true,
 		},
 		{
-			name:       "configured_level_higher_outputs",
+			name:       "when_configured_level_is_higher_than_log_level_it_outputs",
 			wantToSee:  DebugLevelService,
 			logAtLevel: DebugLevelSession,
 			wantOutput: true,
 		},
 		{
-			name:       "configured_level_lower_no_output",
+			name:       "when_configured_level_is_lower_than_log_level_it_does_not_output",
 			wantToSee:  DebugLevelSession,
 			logAtLevel: DebugLevelRequest,
 			wantOutput: false,

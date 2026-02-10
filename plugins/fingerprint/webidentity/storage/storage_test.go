@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 		want    *Storage
 	}{
 		{
-			name:    "new_with_enforce",
+			name:    "when_enforcement_is_enabled_it_returns_storage_with_enforcement",
 			enforce: true,
 			maxSize: 100,
 			want: &Storage{
@@ -38,7 +38,7 @@ func TestNew(t *testing.T) {
 			},
 		},
 		{
-			name:    "new_without_enforce",
+			name:    "when_enforcement_is_disabled_it_returns_storage_without_enforcement",
 			enforce: false,
 			maxSize: 0,
 			want: &Storage{
@@ -74,7 +74,7 @@ func TestStorage_Reserve(t *testing.T) {
 		wantUsedSpace int64
 	}{
 		{
-			name: "reserve_when_not_enforced",
+			name: "when_enforcement_is_disabled_reserve_returns_true",
 			storage: &Storage{
 				enforce:     false,
 				maxSize:     100,
@@ -85,7 +85,7 @@ func TestStorage_Reserve(t *testing.T) {
 			wantUsedSpace: 0,
 		},
 		{
-			name: "reserve_below_limit",
+			name: "when_requested_size_is_below_limit_reserve_returns_true",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -96,7 +96,7 @@ func TestStorage_Reserve(t *testing.T) {
 			wantUsedSpace: 10,
 		},
 		{
-			name: "reserve_above_limit",
+			name: "when_requested_size_is_above_limit_reserve_returns_false",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -107,7 +107,7 @@ func TestStorage_Reserve(t *testing.T) {
 			wantUsedSpace: 0,
 		},
 		{
-			name: "reserve_to_limit",
+			name: "when_requested_size_is_exactly_the_limit_reserve_returns_true",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -118,7 +118,7 @@ func TestStorage_Reserve(t *testing.T) {
 			wantUsedSpace: 100,
 		},
 		{
-			name: "reserve_below_limit_with_usage",
+			name: "when_usage_plus_requested_size_is_at_limit_reserve_returns_true",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -129,7 +129,7 @@ func TestStorage_Reserve(t *testing.T) {
 			wantUsedSpace: 100,
 		},
 		{
-			name: "reserve_above_limit_with_usage",
+			name: "when_usage_plus_requested_size_is_above_limit_reserve_returns_false",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -162,7 +162,7 @@ func TestStorage_Release(t *testing.T) {
 		wantUsedSpace int64
 	}{
 		{
-			name: "release_when_not_enforced",
+			name: "when_enforcement_is_disabled_release_does_not_change_usage",
 			storage: &Storage{
 				enforce:     false,
 				maxSize:     100,
@@ -172,7 +172,7 @@ func TestStorage_Release(t *testing.T) {
 			wantUsedSpace: 0,
 		},
 		{
-			name: "release_with_limit",
+			name: "when_enforcement_is_enabled_release_reduces_usage",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -182,7 +182,7 @@ func TestStorage_Release(t *testing.T) {
 			wantUsedSpace: 90,
 		},
 		{
-			name: "release_to_zero",
+			name: "when_releasing_entire_usage_returns_zero_usage",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,
@@ -192,7 +192,7 @@ func TestStorage_Release(t *testing.T) {
 			wantUsedSpace: 0,
 		},
 		{
-			name: "release_below_zero",
+			name: "when_releasing_more_than_usage_returns_zero_usage",
 			storage: &Storage{
 				enforce:     true,
 				maxSize:     100,

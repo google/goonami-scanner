@@ -35,14 +35,14 @@ func TestNewSimpleClient(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "nil_config_returns_err",
+			name:      "when_config_is_nil_returns_error",
 			cfg:       nil,
 			wantLimit: 0,
 			wantBurst: 0,
 			wantErr:   true,
 		},
 		{
-			name: "qps_10_has_limiter_with_10_qps",
+			name: "when_max_requests_per_second_is_ten_returns_limiter_with_ten_qps",
 			cfg: config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
@@ -55,7 +55,7 @@ func TestNewSimpleClient(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name: "qps_0_has_unlimited_limiter",
+			name: "when_max_requests_per_second_is_zero_returns_unlimited_limiter",
 			cfg: config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{

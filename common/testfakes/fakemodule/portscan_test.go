@@ -93,20 +93,20 @@ func TestFakePortScannerScan(t *testing.T) {
 		wantErr    error
 	}{
 		{
-			name: "scan_success_increases_call_count",
+			name: "when_scan_succeeds_it_increases_call_count",
 			scanFn: func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 				return nil, nil
 			},
 		},
 		{
-			name: "scan_success_returns_report",
+			name: "when_scan_succeeds_it_returns_report",
 			scanFn: func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 				return testReport, nil
 			},
 			wantReport: testReport,
 		},
 		{
-			name: "scan_error_returns_error",
+			name: "when_scan_errors_it_propagates_error",
 			scanFn: func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 				return nil, ErrFakePortScanGeneric
 			},
@@ -144,12 +144,12 @@ func TestInitFakePortScanner(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "no_error_returns_fake",
+			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
 			wantErr: false,
 		},
 		{
-			name:    "with_error_returns_err",
+			name:    "when_init_has_error_it_returns_error",
 			initErr: errors.New("init error"),
 			wantErr: true,
 		},

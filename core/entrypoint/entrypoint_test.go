@@ -105,7 +105,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "modules_successfully_initialized_modules_are_registered",
+			name: "when_modules_are_successfully_initialized_they_are_registered",
 			options: &Options{
 				Config:      cfg,
 				Runner:      fakerunner.New(),
@@ -120,7 +120,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "port_scanner_init_fails_returns_err",
+			name: "when_port_scanner_init_fails_returns_error",
 			options: &Options{
 				Config:      cfg,
 				PortScanner: fakemodule.InitFakePortScanner("ps1", genericErr, fakemodule.FakePortScanFnDoNothing),
@@ -128,7 +128,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "fingerprinter_init_fails_returns_err",
+			name: "when_fingerprinter_init_fails_returns_error",
 			options: &Options{
 				Config:      cfg,
 				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
@@ -140,7 +140,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "detector_init_fails_returns_err",
+			name: "when_detector_init_fails_returns_error",
 			options: &Options{
 				Config:      cfg,
 				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
@@ -196,14 +196,14 @@ func TestRun(t *testing.T) {
 		report    *srpb.ScanResults
 	}{
 		{
-			name: "runner_succeeds",
+			name: "when_runner_succeeds_returns_report",
 			report: srpb.ScanResults_builder{
 				ScanStatus: srpb.ScanStatus_SUCCEEDED,
 			}.Build(),
 			runnerErr: nil,
 		},
 		{
-			name:      "runner_fails",
+			name:      "when_runner_fails_returns_error",
 			report:    nil,
 			runnerErr: errors.New("runner failure"),
 		},

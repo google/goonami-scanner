@@ -42,13 +42,13 @@ func TestRegistryLoad(t *testing.T) {
 		wantRegistryState map[uint64]*Identity
 	}{
 		{
-			name:              "empty_fingerprints",
+			name:              "when_fingerprints_is_empty_returns_empty_registry",
 			fingerprints:      []*fpb.Fingerprints{fpb.Fingerprints_builder{}.Build()},
 			wantHashCount:     0,
 			wantRegistryState: map[uint64]*Identity{},
 		},
 		{
-			name: "load_hash_versions",
+			name: "when_loading_hash_versions_it_populates_registry",
 			fingerprints: []*fpb.Fingerprints{
 				fpb.Fingerprints_builder{
 					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
@@ -66,7 +66,7 @@ func TestRegistryLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "load_content_hashes",
+			name: "when_loading_content_hashes_it_populates_registry",
 			fingerprints: []*fpb.Fingerprints{
 				fpb.Fingerprints_builder{
 					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
@@ -81,7 +81,7 @@ func TestRegistryLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "load_hash_and_content_hashes",
+			name: "when_loading_both_hash_and_content_hashes_it_populates_registry",
 			fingerprints: []*fpb.Fingerprints{
 				fpb.Fingerprints_builder{
 					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
@@ -100,7 +100,7 @@ func TestRegistryLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "hash_collision_different_software",
+			name: "when_hash_collision_occurs_with_different_software_it_marks_as_invalid",
 			fingerprints: []*fpb.Fingerprints{
 				fpb.Fingerprints_builder{
 					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
@@ -121,7 +121,7 @@ func TestRegistryLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "duplicate_versions_and_paths",
+			name: "when_loading_duplicate_versions_and_paths_it_deduplicates",
 			fingerprints: []*fpb.Fingerprints{
 				fpb.Fingerprints_builder{
 					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
@@ -197,61 +197,61 @@ func TestRegistryFind(t *testing.T) {
 		want *Identity
 	}{
 		{
-			name: "hash_not_found",
+			name: "when_hash_is_not_found_returns_nil",
 			hash: "unknown_hash",
 			path: "/",
 			want: nil,
 		},
 		{
-			name: "hash_with_versions_no_roots",
+			name: "when_hash_has_versions_but_no_roots_returns_identity_with_versions",
 			hash: "hash1",
 			path: "/",
 			want: &Identity{Software: "sw1", Versions: []string{"1.0"}},
 		},
 		{
-			name: "path_mismatch_is_ignored",
+			name: "when_path_mismatches_it_returns_nil",
 			hash: "hash2",
 			path: "/otherpath",
 			want: nil,
 		},
 		{
-			name: "hash_with_roots_single_path_match_exact",
+			name: "when_path_matches_exactly_it_returns_identity_with_root",
 			hash: "hash2",
 			path: "/path1",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/"}},
 		},
 		{
-			name: "hash_with_roots_single_path_match_suffix",
+			name: "when_path_matches_as_suffix_it_returns_identity_with_root",
 			hash: "hash2",
 			path: "/app/path1",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/app/"}},
 		},
 		{
-			name: "hash_with_multiple_roots_and_path_matches_1",
+			name: "when_hash_has_multiple_roots_and_path_matches_it_returns_identity_with_root_1",
 			hash: "hash2",
 			path: "/a/b/path1",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/a/b/"}},
 		},
 		{
-			name: "hash_with_multiple_roots_and_path_matches_2",
+			name: "when_hash_has_multiple_roots_and_path_matches_it_returns_identity_with_root_2",
 			hash: "hash2",
 			path: "/a/b/path2",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/a/b/"}},
 		},
 		{
-			name: "request_path_equals_content_path",
+			name: "when_request_path_equals_content_path_returns_identity_with_slash_root",
 			hash: "hash3",
 			path: "/imgs/logo.png",
 			want: &Identity{Software: "sw1", PotentialRoots: []string{"/"}},
 		},
 		{
-			name: "multiple_root_matches",
+			name: "when_multiple_roots_match_it_returns_identity_with_all_matching_roots",
 			hash: "hash4",
 			path: "/a/bar/foo",
 			want: &Identity{Software: "sw2", PotentialRoots: []string{"/a/", "/a/bar/"}},
 		},
 		{
-			name: "hash_collision_different_software_returns_nil",
+			name: "when_hash_collision_occurs_with_different_software_returns_nil",
 			hash: "hashcollide",
 			path: "/collide/sw1",
 			want: nil,

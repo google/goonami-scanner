@@ -57,13 +57,13 @@ func TestFingerprint(t *testing.T) {
 		wantMethods []string
 	}{
 		{
-			name:        "service_is_web_server",
+			name:        "when_service_is_web_server_returns_supported_methods",
 			server:      okServer.Listener,
 			service:     &nspb.NetworkService_builder{ServiceName: "http"},
 			wantMethods: []string{"GET"},
 		},
 		{
-			name:   "service_is_web_server_with_existing_methods",
+			name:   "when_service_is_web_server_with_existing_methods_returns_all_supported_methods",
 			server: okServer.Listener,
 			service: &nspb.NetworkService_builder{
 				ServiceName:          "http",
@@ -72,13 +72,13 @@ func TestFingerprint(t *testing.T) {
 			wantMethods: []string{"POST", "GET"},
 		},
 		{
-			name:        "service_not_http_no_error",
+			name:        "when_service_not_http_returns_no_methods",
 			server:      tcpServer,
 			service:     &nspb.NetworkService_builder{ServiceName: "ssh"},
 			wantMethods: nil,
 		},
 		{
-			name:        "request_timed_out_no_error",
+			name:        "when_request_times_out_returns_no_methods",
 			server:      sleepServer.Listener,
 			service:     &nspb.NetworkService_builder{ServiceName: "http"},
 			wantMethods: nil,

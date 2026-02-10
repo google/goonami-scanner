@@ -31,7 +31,7 @@ func TestParseXMLOutput(t *testing.T) {
 		want *OutputXML
 	}{
 		{
-			name: "closed_ports",
+			name: "when_parsing_xml_with_closed_ports_returns_parsed_output",
 			file: "testdata/nmapxml/closedTelnet.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -80,7 +80,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "hostname_open_port_no_scripts",
+			name: "when_parsing_xml_with_hostname_and_open_port_without_scripts_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttp.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -123,7 +123,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "hostname_open_port_no_known_ip",
+			name: "when_parsing_xml_with_hostname_and_open_port_without_ip_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpHostnameOnly.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -163,7 +163,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_open_port_no_scripts",
+			name: "when_parsing_xml_with_ip_and_open_port_without_scripts_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpIpOnly.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -200,7 +200,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_open_port_ssl_tunnel",
+			name: "when_parsing_xml_with_ip_and_open_port_with_ssl_tunnel_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpSslTunnel.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -237,7 +237,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_open_port_cpe",
+			name: "when_parsing_xml_with_ip_and_open_port_with_cpe_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpWithCpe.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -278,7 +278,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_http_script_no_methods",
+			name: "when_parsing_xml_with_ip_and_http_script_without_methods_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpWithoutMethods.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -368,7 +368,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_http_script_without_multi_key_string",
+			name: "when_parsing_xml_with_ip_and_http_script_without_multi_key_string_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpWithoutMethodsMultiKeyString.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -452,7 +452,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_http_with_scripts",
+			name: "when_parsing_xml_with_ip_and_http_scripts_returns_parsed_output",
 			file: "testdata/nmapxml/localhostHttpsWithSslVersionsAndMethods.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},
@@ -644,7 +644,7 @@ func TestParseXMLOutput(t *testing.T) {
 			},
 		},
 		{
-			name: "ip_open_ssh_script",
+			name: "when_parsing_xml_with_ip_and_open_ssh_port_with_script_returns_parsed_output",
 			file: "testdata/nmapxml/localhostSsh.xml",
 			want: &OutputXML{
 				XMLName:   xml.Name{Space: "", Local: "nmaprun"},

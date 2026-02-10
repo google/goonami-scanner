@@ -51,20 +51,20 @@ func TestFingerprint_Connection(t *testing.T) {
 			// note: it seems that the TLS server implementation will not really consider the connection
 			// active until some bytes are written. Given that we have tests to ensure the timeout is
 			// enforced, we can just make the connection happy here by writing a byte.
-			name:            "service_supports_ssl",
+			name:            "when_service_supports_ssl_returns_ssl_versions",
 			server:          tlsServer,
 			dispatch:        func(conn net.Conn) { conn.Write([]byte("\n")) },
 			wantSSLVersions: []string{"TLS 1.3"},
 		},
 		{
-			name:     "connection_fails_no_error",
+			name:     "when_connection_fails_returns_no_ssl_versions",
 			server:   tlsServer,
 			dispatch: func(conn net.Conn) {},
 		},
 		{
 			// note: if timeout are not set correctly, this test will hang. We register a watcher
 			// goroutine below to catch this case.
-			name:     "connection_timeout",
+			name:     "when_connection_times_out_returns_no_ssl_versions",
 			server:   hangingServer,
 			dispatch: func(_ net.Conn) { time.Sleep(time.Hour * 3) },
 		},
@@ -146,12 +146,12 @@ func TestFingerprint_Validation(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "fingerprint_already_done_no_changes",
+			name:    "when_fingerprint_is_already_done_returns_no_changes",
 			service: proto.Clone(service).(*nspb.NetworkService),
 			want:    proto.Clone(service).(*nspb.NetworkService),
 		},
 		{
-			name: "invalid_network_endpoint",
+			name: "when_network_endpoint_is_invalid_returns_error",
 			service: nspb.NetworkService_builder{
 				NetworkEndpoint: nepb.NetworkEndpoint_builder{
 					Type: nepb.NetworkEndpoint_TYPE_UNSPECIFIED,

@@ -33,12 +33,12 @@ func TestHasTLS(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "no_ssl_versions",
+			name:    "when_no_ssl_versions_are_present_returns_false",
 			service: nspb.NetworkService_builder{}.Build(),
 			want:    false,
 		},
 		{
-			name: "ssl_versions_present",
+			name: "when_ssl_versions_are_present_returns_true",
 			service: nspb.NetworkService_builder{
 				SupportedSslVersions: []string{"TLSv1.2"},
 			}.Build(),
@@ -62,12 +62,12 @@ func TestIsWebService(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "no_http_methods",
+			name:    "when_no_http_methods_are_present_returns_false",
 			service: nspb.NetworkService_builder{}.Build(),
 			want:    false,
 		},
 		{
-			name: "http_methods_present",
+			name: "when_http_methods_are_present_returns_true",
 			service: nspb.NetworkService_builder{
 				SupportedHttpMethods: []string{"GET"},
 			}.Build(),
@@ -92,7 +92,7 @@ func TestBuildWebRoot(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "no_tls_is_http",
+			name: "when_no_tls_is_supported_returns_http_uri",
 			service: nspb.NetworkService_builder{
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Hostname: npb.Hostname_builder{Name: "localhost.lan"}.Build(),
@@ -103,7 +103,7 @@ func TestBuildWebRoot(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "with_tls_is_https",
+			name: "when_tls_is_supported_returns_https_uri",
 			service: nspb.NetworkService_builder{
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Hostname: npb.Hostname_builder{Name: "localhost.lan"}.Build(),
@@ -115,7 +115,7 @@ func TestBuildWebRoot(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "endpoint_invalid_uri_authority",
+			name: "when_endpoint_is_missing_address_returns_error",
 			service: nspb.NetworkService_builder{
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Port: npb.Port_builder{PortNumber: 80}.Build(),
@@ -146,7 +146,7 @@ func TestAddCrawlResults(t *testing.T) {
 		want         *nspb.NetworkService
 	}{
 		{
-			name:    "no_service_context",
+			name:    "when_service_context_is_missing_it_is_created",
 			service: nspb.NetworkService_builder{}.Build(),
 			crawlResults: []*wcpb.CrawlResult{
 				wcpb.CrawlResult_builder{
@@ -166,7 +166,7 @@ func TestAddCrawlResults(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "no_web_service_context",
+			name: "when_web_service_context_is_missing_it_is_created",
 			service: nspb.NetworkService_builder{
 				ServiceContext: nspb.ServiceContext_builder{}.Build(),
 			}.Build(),
@@ -188,7 +188,7 @@ func TestAddCrawlResults(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "no_crawl_results",
+			name: "when_crawl_results_are_missing_they_are_initialized_with_new_results",
 			service: nspb.NetworkService_builder{
 				ServiceContext: nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{}.Build(),
@@ -212,7 +212,7 @@ func TestAddCrawlResults(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "with_crawl_results",
+			name: "when_crawl_results_already_exist_new_results_are_appended",
 			service: nspb.NetworkService_builder{
 				ServiceContext: nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{

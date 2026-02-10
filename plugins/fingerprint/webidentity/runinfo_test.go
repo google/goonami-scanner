@@ -43,7 +43,7 @@ func TestRunInfo_AddMatch(t *testing.T) {
 		want     map[string][]*hash.Identity
 	}{
 		{
-			name: "add_first_identity",
+			name: "when_adding_first_identity_it_creates_a_new_entry",
 			existing: func() map[string][]*hash.Identity {
 				return make(map[string][]*hash.Identity)
 			},
@@ -63,7 +63,7 @@ func TestRunInfo_AddMatch(t *testing.T) {
 			},
 		},
 		{
-			name: "add_identity_no_root_match_is_new_entry",
+			name: "when_adding_identity_with_different_root_it_creates_a_new_entry",
 			existing: func() map[string][]*hash.Identity {
 				return map[string][]*hash.Identity{
 					"test": []*hash.Identity{{
@@ -94,7 +94,7 @@ func TestRunInfo_AddMatch(t *testing.T) {
 			},
 		},
 		{
-			name: "add_identity_path_is_more_specific",
+			name: "when_adding_identity_with_more_specific_path_it_updates_existing_entry",
 			existing: func() map[string][]*hash.Identity {
 				return map[string][]*hash.Identity{
 					"test": []*hash.Identity{{

@@ -36,17 +36,17 @@ func TestFromFile(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid_config",
+			name:    "when_config_is_valid_returns_no_error",
 			path:    validConfig,
 			wantErr: false,
 		},
 		{
-			name:    "invalid_config",
+			name:    "when_config_is_invalid_returns_error",
 			path:    invalidConfig,
 			wantErr: true,
 		},
 		{
-			name:    "file_not_found",
+			name:    "when_file_not_found_returns_error",
 			path:    "not/existing/path",
 			wantErr: true,
 		},
@@ -71,7 +71,7 @@ func TestCreateDirectories(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid_workdir_creates_all_directories",
+			name: "when_workdir_is_valid_creates_all_directories",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				return t.TempDir()
@@ -79,7 +79,7 @@ func TestCreateDirectories(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "empty_workdir_returns_error",
+			name: "when_workdir_is_empty_returns_error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				return ""
@@ -87,7 +87,7 @@ func TestCreateDirectories(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "tempdir_creation_fails_because_file_exists",
+			name: "when_tempdir_creation_fails_because_file_exists_returns_error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -99,7 +99,7 @@ func TestCreateDirectories(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "workdir_does_not_exist_returns_error",
+			name: "when_workdir_does_not_exist_returns_error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				return path.Join("path", "to", "a", "non-existing", "directory")
@@ -107,7 +107,7 @@ func TestCreateDirectories(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "artifactsdir_creation_fails_because_file_exists",
+			name: "when_artifactsdir_creation_fails_because_file_exists_returns_error",
 			setup: func(t *testing.T) string {
 				t.Helper()
 				dir := t.TempDir()
@@ -157,12 +157,12 @@ func TestClose(t *testing.T) {
 		wantErr    error
 	}{
 		{
-			name:       "initialized_config_removes_tempdir",
+			name:       "when_config_is_initialized_close_removes_tempdir",
 			initialize: true,
 			wantErr:    nil,
 		},
 		{
-			name:       "uninitialized_config_returns_error",
+			name:       "when_config_is_uninitialized_close_returns_error",
 			initialize: false,
 			wantErr:    ErrUninitialized,
 		},

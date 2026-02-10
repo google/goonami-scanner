@@ -71,7 +71,7 @@ func TestFakeVulnDetectorDetect(t *testing.T) {
 		want     *dpb.DetectionReportList
 	}{
 		{
-			name: "detect_success",
+			name: "when_detection_succeeds_returns_report",
 			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
 				return dpb.DetectionReportList_builder{
 					DetectionReports: []*dpb.DetectionReport{
@@ -94,7 +94,7 @@ func TestFakeVulnDetectorDetect(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "detect_error_returns_error",
+			name: "when_detection_errors_it_propagates_error",
 			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
 				return nil, ErrFakeDetectGeneric
 			},
@@ -136,12 +136,12 @@ func TestInitFakeVulnDetector(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:    "no_error_returns_fake",
+			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
 			wantErr: false,
 		},
 		{
-			name:    "with_error_returns_err",
+			name:    "when_init_has_error_it_returns_error",
 			initErr: errors.New("init error"),
 			wantErr: true,
 		},

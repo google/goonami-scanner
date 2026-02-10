@@ -31,14 +31,14 @@ func TestFromProto(t *testing.T) {
 		want  *Scope
 	}{
 		{
-			name: "scope_with_domain_only",
+			name: "when_scope_has_domain_only_returns_normalized_scope",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
 				Domain: "foo.com",
 			}.Build(),
 			want: &Scope{Domain: "foo.com", Path: "/"},
 		},
 		{
-			name: "scope_with_domain_and_path",
+			name: "when_scope_has_domain_and_path_returns_normalized_scope",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
 				Domain: "foo.com",
 				Path:   "/path",
@@ -46,7 +46,7 @@ func TestFromProto(t *testing.T) {
 			want: &Scope{Domain: "foo.com", Path: "/path/"},
 		},
 		{
-			name: "scope_with_domain_and_file",
+			name: "when_scope_has_domain_and_file_path_returns_normalized_scope_with_parent_dir",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
 				Domain: "foo.com",
 				Path:   "/path/foo.html",
@@ -73,22 +73,22 @@ func TestFromURL(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid_url",
+			name: "when_url_is_valid_returns_scope",
 			url:  "http://foo.com/path",
 			want: &Scope{Domain: "foo.com", Path: "/path/"},
 		},
 		{
-			name: "valid_url_with_port",
+			name: "when_url_has_port_returns_scope_with_port",
 			url:  "http://foo.com:8080/path",
 			want: &Scope{Domain: "foo.com:8080", Path: "/path/"},
 		},
 		{
-			name: "valid_url_with_file",
+			name: "when_url_has_file_returns_scope_with_parent_dir",
 			url:  "http://foo.com/path/index.html",
 			want: &Scope{Domain: "foo.com", Path: "/path/"},
 		},
 		{
-			name:    "invalid_url",
+			name:    "when_url_is_invalid_returns_error",
 			url:     "://foo.com",
 			wantErr: true,
 		},
@@ -122,7 +122,7 @@ func TestLoad(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "policy_config_only_ignores_seed_urls",
+			name: "when_policy_is_config_only_it_ignores_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_CONFIG_ONLY,
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
@@ -141,7 +141,7 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "policy_expand_uses_seed_urls",
+			name: "when_policy_is_expand_it_uses_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
 			}.Build(),
@@ -159,7 +159,7 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "policy_expand_with_config_and_seed_urls",
+			name: "when_policy_is_expand_it_uses_both_config_and_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
@@ -173,7 +173,7 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid_seed_url_returns_error",
+			name: "when_seed_url_is_invalid_returns_error",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
 			}.Build(),
@@ -210,38 +210,38 @@ func TestScope_Decision(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "in_scope_domain_only",
+			name:      "when_target_matches_domain_it_is_in_scope",
 			scope:     &Scope{Domain: "foo.com"},
 			targetURL: "http://foo.com/path",
 			want:      DecisionInScope,
 		},
 		{
-			name:      "in_scope_domain_and_path",
+			name:      "when_target_matches_domain_and_path_it_is_in_scope",
 			scope:     &Scope{Domain: "foo.com", Path: "/path"},
 			targetURL: "http://foo.com/path/sub",
 			want:      DecisionInScope,
 		},
 		{
-			name:      "in_scope_with_port",
+			name:      "when_target_matches_domain_with_port_it_is_in_scope",
 			scope:     &Scope{Domain: "foo.com:8080", Path: "/"},
 			targetURL: "http://foo.com:8080/",
 			want:      DecisionInScope,
 		},
 
 		{
-			name:      "domain_mismatch",
+			name:      "when_target_domain_mismatches_it_is_not_in_scope",
 			scope:     &Scope{Domain: "foo.com"},
 			targetURL: "http://bar.com/path",
 			want:      DecisionDomainMismatch,
 		},
 		{
-			name:      "path_mismatch",
+			name:      "when_target_path_mismatches_it_is_not_in_scope",
 			scope:     &Scope{Domain: "foo.com", Path: "/path"},
 			targetURL: "http://foo.com/other",
 			want:      DecisionPathMismatch,
 		},
 		{
-			name:      "invalid_url",
+			name:      "when_target_url_is_invalid_returns_error",
 			targetURL: "://foo.com",
 			wantErr:   true,
 		},
@@ -275,19 +275,19 @@ func TestScope_Matches(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "in_scope",
+			name:      "when_target_is_in_scope_returns_true",
 			scope:     &Scope{Domain: "foo.com", Path: "/"},
 			targetURL: "http://foo.com/",
 			want:      true,
 		},
 		{
-			name:      "not_in_scope",
+			name:      "when_target_is_not_in_scope_returns_false",
 			scope:     &Scope{Domain: "foo.com", Path: "/"},
 			targetURL: "http://bar.com/",
 			want:      false,
 		},
 		{
-			name:      "invalid_url",
+			name:      "when_target_url_is_invalid_returns_error",
 			targetURL: "://foo.com",
 			wantErr:   true,
 		},
@@ -358,7 +358,7 @@ func TestMatchAnyScope(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "url_matches_first_scope",
+			name: "when_url_matches_first_scope_returns_true",
 			scopes: []*Scope{
 				&Scope{Domain: "foo.com", Path: "/"},
 				&Scope{Domain: "bar.com", Path: "/path/"},
@@ -367,7 +367,7 @@ func TestMatchAnyScope(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "url_matches_second_scope",
+			name: "when_url_matches_second_scope_returns_true",
 			scopes: []*Scope{
 				&Scope{Domain: "foo.com", Path: "/"},
 				&Scope{Domain: "bar.com", Path: "/path/"},
@@ -376,7 +376,7 @@ func TestMatchAnyScope(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "url_does_not_match",
+			name: "when_url_matches_no_scope_returns_false",
 			scopes: []*Scope{
 				&Scope{Domain: "foo.com", Path: "/"},
 				&Scope{Domain: "bar.com", Path: "/path/"},
@@ -385,7 +385,7 @@ func TestMatchAnyScope(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "invalid_url",
+			name: "when_url_is_invalid_returns_error",
 			scopes: []*Scope{
 				&Scope{Domain: "foo.com", Path: "/"},
 			},

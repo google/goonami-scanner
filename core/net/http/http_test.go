@@ -33,27 +33,27 @@ func TestReadBody(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "body_smaller_than_maxsize_is_returned",
+			name:    "when_body_is_smaller_than_maxsize_it_is_returned",
 			body:    "abc",
 			maxsize: 10,
 			want:    []byte("abc"),
 		},
 		{
-			name:    "body_equal_to_maxsize_returns_error",
+			name:    "when_body_is_equal_to_maxsize_returns_error",
 			body:    "abcdefghij",
 			maxsize: 10,
 			want:    nil,
 			wantErr: ErrPageTooBig,
 		},
 		{
-			name:    "body_larger_than_maxsize_returns_error",
+			name:    "when_body_is_larger_than_maxsize_returns_error",
 			body:    "abcdefghijkl",
 			maxsize: 10,
 			want:    nil,
 			wantErr: ErrPageTooBig,
 		},
 		{
-			name:    "empty_body_returns_eof",
+			name:    "when_body_is_empty_returns_eof",
 			body:    "",
 			maxsize: 10,
 			want:    nil,

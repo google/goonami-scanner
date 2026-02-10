@@ -32,17 +32,17 @@ func TestFromFile(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "valid_xml_file",
+			name:    "when_file_is_valid_xml_returns_no_error",
 			path:    "closedTelnet.xml",
 			wantErr: false,
 		},
 		{
-			name:    "invalid_xml_file",
+			name:    "when_file_is_invalid_xml_returns_error",
 			path:    "invalid.xml",
 			wantErr: true,
 		},
 		{
-			name:    "non_existent_file",
+			name:    "when_file_does_not_exist_returns_error",
 			path:    "path/to/nonexistent.xml",
 			wantErr: true,
 		},
@@ -69,17 +69,17 @@ func TestRun(t *testing.T) {
 		wantErr    error
 	}{
 		{
-			name:       "with_output_without_error",
+			name:       "when_output_is_provided_without_error_returns_output",
 			wantOutput: testOutput,
 			wantErr:    nil,
 		},
 		{
-			name:       "without_output_with_error",
+			name:       "when_error_is_provided_without_output_returns_error",
 			wantOutput: nil,
 			wantErr:    testErr,
 		},
 		{
-			name:       "with_output_with_error",
+			name:       "when_both_output_and_error_are_provided_returns_both",
 			wantOutput: testOutput,
 			wantErr:    testErr,
 		},

@@ -32,7 +32,7 @@ func TestNewFromString(t *testing.T) {
 		want  *npb.NetworkEndpoint
 	}{
 		{
-			name:  "not_ip_returns_hostname",
+			name:  "when_input_is_not_an_ip_returns_hostname",
 			input: "example.com",
 			want: npb.NetworkEndpoint_builder{
 				Type:     npb.NetworkEndpoint_HOSTNAME,
@@ -40,7 +40,7 @@ func TestNewFromString(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:  "ipv4_returns_ip_ipv4",
+			name:  "when_input_is_ipv4_returns_ip_ipv4",
 			input: "127.0.0.1",
 			want: npb.NetworkEndpoint_builder{
 				Type: npb.NetworkEndpoint_IP,
@@ -51,7 +51,7 @@ func TestNewFromString(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:  "ipv6_returns_ip_ipv6",
+			name:  "when_input_is_ipv6_returns_ip_ipv6",
 			input: "::1",
 			want: npb.NetworkEndpoint_builder{
 				Type: npb.NetworkEndpoint_IP,
@@ -81,21 +81,21 @@ func TestToURIAuthority(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "ipv4_ip_only",
+			name: "when_ipv4_ip_only_returns_ip",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 			}.Build(),
 			want: "127.0.0.1",
 		},
 		{
-			name: "ipv6_ip_only",
+			name: "when_ipv6_ip_only_returns_bracketed_ip",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
 			}.Build(),
 			want: "[3ffe::1]",
 		},
 		{
-			name: "ipv4_ip_port",
+			name: "when_ipv4_ip_and_port_returns_ip_port",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 				Port:      npb.Port_builder{PortNumber: 80}.Build(),
@@ -103,7 +103,7 @@ func TestToURIAuthority(t *testing.T) {
 			want: "127.0.0.1:80",
 		},
 		{
-			name: "ipv6_ip_port",
+			name: "when_ipv6_ip_and_port_returns_bracketed_ip_port",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
 				Port:      npb.Port_builder{PortNumber: 80}.Build(),
@@ -111,14 +111,14 @@ func TestToURIAuthority(t *testing.T) {
 			want: "[3ffe::1]:80",
 		},
 		{
-			name: "hostname_only",
+			name: "when_hostname_only_returns_hostname",
 			input: npb.NetworkEndpoint_builder{
 				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
 			}.Build(),
 			want: "example.com",
 		},
 		{
-			name: "hostname_port",
+			name: "when_hostname_and_port_returns_hostname_port",
 			input: npb.NetworkEndpoint_builder{
 				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
 				Port:     npb.Port_builder{PortNumber: 80}.Build(),
@@ -126,7 +126,7 @@ func TestToURIAuthority(t *testing.T) {
 			want: "example.com:80",
 		},
 		{
-			name: "ip_hostname_prioritizes_hostname",
+			name: "when_ip_and_hostname_returns_prioritized_hostname",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 				Hostname:  npb.Hostname_builder{Name: "host.com"}.Build(),
@@ -134,7 +134,7 @@ func TestToURIAuthority(t *testing.T) {
 			want: "host.com",
 		},
 		{
-			name: "ip_hostname_port_prioritizes_hostname",
+			name: "when_ip_hostname_and_port_returns_prioritized_hostname_port",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 				Hostname:  npb.Hostname_builder{Name: "example.com"}.Build(),
@@ -143,7 +143,7 @@ func TestToURIAuthority(t *testing.T) {
 			want: "example.com:443",
 		},
 		{
-			name:    "no_ip_no_hostname_returns_error",
+			name:    "when_no_ip_and_no_hostname_returns_error",
 			input:   npb.NetworkEndpoint_builder{}.Build(),
 			wantErr: true,
 		},

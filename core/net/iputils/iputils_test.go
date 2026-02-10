@@ -26,12 +26,12 @@ func TestIsIP(t *testing.T) {
 		ip   string
 		want bool
 	}{
-		{name: "ipv4_loopback_is_ip", ip: "127.0.0.1", want: true},
-		{name: "ipv4_private_is_ip", ip: "192.168.1.1", want: true},
-		{name: "ipv6_loopback_is_ip", ip: "::1", want: true},
-		{name: "ipv6_public_is_ip", ip: "2001:db8::68", want: true},
-		{name: "hostname_is_not_ip", ip: "hostname", want: false},
-		{name: "empty_is_not_ip", ip: "", want: false},
+		{name: "when_ipv4_loopback_returns_true", ip: "127.0.0.1", want: true},
+		{name: "when_ipv4_private_returns_true", ip: "192.168.1.1", want: true},
+		{name: "when_ipv6_loopback_returns_true", ip: "::1", want: true},
+		{name: "when_ipv6_public_returns_true", ip: "2001:db8::68", want: true},
+		{name: "when_hostname_returns_false", ip: "hostname", want: false},
+		{name: "when_empty_returns_false", ip: "", want: false},
 	}
 
 	for _, tc := range tests {
@@ -50,12 +50,12 @@ func TestIsIPv4(t *testing.T) {
 		ip   string
 		want bool
 	}{
-		{name: "ipv4_loopback_is_ipv4", ip: "127.0.0.1", want: true},
-		{name: "ipv4_private_is_ipv4", ip: "192.168.1.1", want: true},
-		{name: "ipv6_loopback_is_not_ipv4", ip: "::1", want: false},
-		{name: "ipv6_public_is_not_ipv4", ip: "2001:db8::68", want: false},
-		{name: "hostname_is_not_ipv4", ip: "hostname", want: false},
-		{name: "empty_is_not_ipv4", ip: "", want: false},
+		{name: "when_ipv4_loopback_returns_true", ip: "127.0.0.1", want: true},
+		{name: "when_ipv4_private_returns_true", ip: "192.168.1.1", want: true},
+		{name: "when_ipv6_loopback_returns_false", ip: "::1", want: false},
+		{name: "when_ipv6_public_returns_false", ip: "2001:db8::68", want: false},
+		{name: "when_hostname_returns_false", ip: "hostname", want: false},
+		{name: "when_empty_returns_false", ip: "", want: false},
 	}
 
 	for _, tc := range tests {
@@ -74,12 +74,12 @@ func TestIsIPv6(t *testing.T) {
 		ip   string
 		want bool
 	}{
-		{name: "ipv4_loopback_is_not_ipv6", ip: "127.0.0.1", want: false},
-		{name: "ipv4_private_is_not_ipv6", ip: "192.168.1.1", want: false},
-		{name: "ipv6_loopback_is_ipv6", ip: "::1", want: true},
-		{name: "ipv6_public_is_ipv6", ip: "2001:db8::68", want: true},
-		{name: "hostname_is_not_ipv6", ip: "hostname", want: false},
-		{name: "empty_is_not_ipv6", ip: "", want: false},
+		{name: "when_ipv4_loopback_returns_false", ip: "127.0.0.1", want: false},
+		{name: "when_ipv4_private_returns_false", ip: "192.168.1.1", want: false},
+		{name: "when_ipv6_loopback_returns_true", ip: "::1", want: true},
+		{name: "when_ipv6_public_returns_true", ip: "2001:db8::68", want: true},
+		{name: "when_hostname_returns_false", ip: "hostname", want: false},
+		{name: "when_empty_returns_false", ip: "", want: false},
 	}
 
 	for _, tc := range tests {

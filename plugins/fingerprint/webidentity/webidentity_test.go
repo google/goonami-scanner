@@ -53,7 +53,7 @@ func TestNew(t *testing.T) {
 		wantErr    error
 	}{
 		{
-			name: "config_with_webidentity",
+			name: "when_config_has_webidentity_returns_no_error",
 			configFunc: func() *config.Config {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
@@ -69,14 +69,14 @@ func TestNew(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "config_without_webidentity",
+			name: "when_config_does_not_have_webidentity_returns_error",
 			configFunc: func() *config.Config {
 				return config.FromProto(&cpb.Config{})
 			},
 			wantErr: ErrNoConfiguration,
 		},
 		{
-			name: "config_without_signatures_directory",
+			name: "when_config_is_missing_signatures_directory_returns_error",
 			configFunc: func() *config.Config {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
@@ -91,7 +91,7 @@ func TestNew(t *testing.T) {
 			wantErr: ErrNoFingerprintsDirectory,
 		},
 		{
-			name: "config_with_non_existent_signatures_directory",
+			name: "when_signatures_directory_does_not_exist_returns_error",
 			configFunc: func() *config.Config {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
@@ -107,7 +107,7 @@ func TestNew(t *testing.T) {
 			wantErr: os.ErrNotExist,
 		},
 		{
-			name: "config_with_invalid_signatures",
+			name: "when_signatures_are_invalid_returns_error",
 			configFunc: func() *config.Config {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
@@ -160,7 +160,7 @@ func TestFingerprint(t *testing.T) {
 		wantErr     error
 	}{
 		{
-			name: "no_known_hash_has_no_identification",
+			name: "when_no_known_hash_matches_returns_no_identification",
 			knownHashes: fpb.Fingerprints_builder{
 				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "irrelevant"}.Build(),
 				ContentHashes: []*fpb.ContentHash{
@@ -190,7 +190,7 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "known_hash_no_version_is_identified",
+			name: "when_known_hash_has_no_version_it_is_identified_without_version",
 			knownHashes: fpb.Fingerprints_builder{
 				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
 				ContentHashes: []*fpb.ContentHash{
@@ -223,7 +223,7 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "known_hash_version_range_is_identified",
+			name: "when_known_hash_has_version_range_it_is_identified_with_versions",
 			knownHashes: fpb.Fingerprints_builder{
 				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
 				ContentHashes: []*fpb.ContentHash{
@@ -272,7 +272,7 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "known_hashes_gets_to_a_closer_version",
+			name: "when_multiple_known_hashes_match_returns_the_most_specific_versions",
 			knownHashes: fpb.Fingerprints_builder{
 				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
 				ContentHashes: []*fpb.ContentHash{
@@ -338,7 +338,7 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple_roots_are_identified",
+			name: "when_multiple_roots_match_returns_all_identified_roots",
 			knownHashes: fpb.Fingerprints_builder{
 				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
 				ContentHashes: []*fpb.ContentHash{
@@ -508,7 +508,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 		wantFileContentBytes []byte
 	}{
 		{
-			name: "artifacts_disabled",
+			name: "when_artifacts_are_disabled_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
 				WriteHtmlToFile:          false,
 				MaximumFileSizeBytes:     1000,
@@ -518,7 +518,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 			wantFileWritten: false,
 		},
 		{
-			name: "artifacts_enabled",
+			name: "when_artifacts_are_enabled_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
 				WriteHtmlToFile:          true,
 				MaximumFileSizeBytes:     1000,
@@ -529,7 +529,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 			wantFileContentBytes: []byte(pageContent + "\n"),
 		},
 		{
-			name: "file_too_big",
+			name: "when_file_is_too_big_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
 				WriteHtmlToFile:          true,
 				MaximumFileSizeBytes:     10,
@@ -539,7 +539,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 			wantFileWritten: false,
 		},
 		{
-			name: "storage_full",
+			name: "when_storage_is_full_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
 				WriteHtmlToFile:          true,
 				MaximumFileSizeBytes:     1000,

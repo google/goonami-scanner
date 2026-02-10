@@ -117,7 +117,7 @@ func TestCrawl(t *testing.T) {
 		wantCrawled []string
 	}{
 		{
-			name: "nil_callback_returns_error",
+			name: "when_callback_is_nil_returns_error",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -141,7 +141,7 @@ func TestCrawl(t *testing.T) {
 			wantErr:   ErrNoCallback,
 		},
 		{
-			name: "malformed_start_url_returns_error",
+			name: "when_start_url_is_malformed_returns_error",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -165,7 +165,7 @@ func TestCrawl(t *testing.T) {
 			wantErr:   errAny,
 		},
 		{
-			name: "callback_error_propagates",
+			name: "when_callback_errors_it_propagates_error",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -191,7 +191,7 @@ func TestCrawl(t *testing.T) {
 			wantCrawled: []string{rootURL},
 		},
 		{
-			name: "success_no_recursion",
+			name: "when_recursion_is_disabled_it_crawls_only_start_urls",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -217,7 +217,7 @@ func TestCrawl(t *testing.T) {
 			wantCrawled: []string{rootURL},
 		},
 		{
-			name: "respect_max_page_size",
+			name: "when_page_size_exceeds_max_it_is_dropped",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -244,7 +244,7 @@ func TestCrawl(t *testing.T) {
 			wantCrawled: nil,
 		},
 		{
-			name: "respect_max_depth",
+			name: "when_max_depth_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -275,7 +275,7 @@ func TestCrawl(t *testing.T) {
 			},
 		},
 		{
-			name: "respect_max_requests",
+			name: "when_max_requests_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -305,7 +305,7 @@ func TestCrawl(t *testing.T) {
 			},
 		},
 		{
-			name: "respect_exclusions",
+			name: "when_url_matches_exclusion_it_is_not_crawled",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -331,7 +331,7 @@ func TestCrawl(t *testing.T) {
 			wantCrawled: []string{srv.URL, srv.URL + "/d1", srv.URL + "/d2", srv.URL + "/d3"},
 		},
 		{
-			name: "visit_pages_only_once",
+			name: "when_pages_are_linked_multiple_times_they_are_visited_only_once",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -364,7 +364,7 @@ func TestCrawl(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid_url_in_links_error_is_ignored",
+			name: "when_links_contain_invalid_urls_errors_are_ignored",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -391,7 +391,7 @@ func TestCrawl(t *testing.T) {
 			},
 		},
 		{
-			name: "respect_scope",
+			name: "when_links_are_out_of_scope_they_are_not_crawled",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{
@@ -416,7 +416,7 @@ func TestCrawl(t *testing.T) {
 			wantCrawled: []string{srv.URL + "/d2"},
 		},
 		{
-			name: "empty_response_is_ignored",
+			name: "when_response_is_empty_it_is_ignored",
 			config: config.FromProto(
 				cfgpb.Config_builder{
 					Globalcfg: cfgpb.GlobalConfig_builder{

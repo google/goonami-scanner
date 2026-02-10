@@ -52,12 +52,12 @@ func TestNew(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "valid_config",
+			name:    "when_config_is_valid_returns_no_error",
 			config:  config.FromProto(cpb.Config_builder{}.Build()),
 			wantErr: nil,
 		},
 		{
-			name:    "nil_config_returns_error",
+			name:    "when_config_is_nil_returns_error",
 			config:  nil,
 			wantErr: ErrConfigNil,
 		},
@@ -81,19 +81,19 @@ func TestRegisterPortScanner(t *testing.T) {
 		wantErr         error
 	}{
 		{
-			name:            "valid_module",
+			name:            "when_module_is_valid_returns_no_error",
 			module:          fakemodule.NewFakePortScanner("ps1", nil),
 			existingScanner: nil,
 			wantErr:         nil,
 		},
 		{
-			name:            "scanner_already_registered_returns_error",
+			name:            "when_scanner_is_already_registered_returns_error",
 			module:          fakemodule.NewFakePortScanner("ps1", nil),
 			existingScanner: fakemodule.NewFakePortScanner("ps2", nil),
 			wantErr:         ErrPortScannerAlreadyRegistered,
 		},
 		{
-			name:            "nil_module_returns_error",
+			name:            "when_module_is_nil_returns_error",
 			module:          nil,
 			existingScanner: nil,
 			wantErr:         ErrRegistrationNil,
@@ -131,7 +131,7 @@ func TestRegisterFingerprinter(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "valid_modules",
+			name: "when_modules_are_valid_returns_no_error",
 			modules: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", nil),
 				fakemodule.NewFakeFingerprinter("fp2", nil),
@@ -139,7 +139,7 @@ func TestRegisterFingerprinter(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:    "nil_module_returns_error",
+			name:    "when_module_is_nil_returns_error",
 			modules: []module.Fingerprinter{nil},
 			wantErr: ErrRegistrationNil,
 		},
@@ -187,7 +187,7 @@ func TestRegisterDetector(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "valid_modules",
+			name: "when_modules_are_valid_returns_no_error",
 			modules: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("det1", fakemodule.FakeDetectFnNoFindings),
 				fakemodule.NewFakeVulnDetector("det2", fakemodule.FakeDetectFnNoFindings),
@@ -195,7 +195,7 @@ func TestRegisterDetector(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:    "nil_module_returns_error",
+			name:    "when_module_is_nil_returns_error",
 			modules: []module.VulnDetector{nil},
 			wantErr: ErrRegistrationNil,
 		},
@@ -255,7 +255,7 @@ func TestPortScanStep(t *testing.T) {
 		wantScanCalls int
 	}{
 		{
-			name:          "nil_port_scanner_returns_error",
+			name:          "when_port_scanner_is_nil_returns_error",
 			portScanner:   nil,
 			target:        "1.1.1.1",
 			wantErr:       ErrNoPortScanner,
@@ -263,7 +263,7 @@ func TestPortScanStep(t *testing.T) {
 			wantScanCalls: 0,
 		},
 		{
-			name:          "port_scanner_success",
+			name:          "when_port_scanner_succeeds_returns_report",
 			portScanner:   fakemodule.NewFakePortScanner("ps1", testReportFn),
 			target:        "1.1.1.1",
 			wantErr:       nil,
@@ -271,7 +271,7 @@ func TestPortScanStep(t *testing.T) {
 			wantScanCalls: 1,
 		},
 		{
-			name:          "port_scanner_error_returns_error",
+			name:          "when_port_scanner_errors_returns_error",
 			portScanner:   fakemodule.NewFakePortScanner("ps1", fakemodule.FakePortScanFnErrors),
 			target:        "1.1.1.1",
 			wantErr:       fakemodule.ErrFakePortScanGeneric,
@@ -332,7 +332,7 @@ func TestFingerprintStep(t *testing.T) {
 		wantErr        error
 	}{
 		{
-			name:           "no_fingerprinter_registered_no_service_change",
+			name:           "when_no_fingerprinter_is_registered_returns_no_service_change",
 			fingerprinters: []module.Fingerprinter{},
 			want: rpb.FingerprintingReport_builder{
 				NetworkServices: []*nspb.NetworkService{
@@ -342,7 +342,7 @@ func TestFingerprintStep(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "fingerprinters_called_in_order",
+			name: "when_fingerprinters_are_called_they_execute_in_order",
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fpAppendNameFn("_fp1")),
 				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
@@ -355,7 +355,7 @@ func TestFingerprintStep(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "fingerprinter_error_propagates",
+			name: "when_fingerprinter_errors_it_propagates_error",
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
 				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
@@ -364,7 +364,7 @@ func TestFingerprintStep(t *testing.T) {
 			wantErr: fakemodule.ErrFakeFingerprintGeneric,
 		},
 		{
-			name: "fingerprinter_returns_multiple_services_are_accumulated",
+			name: "when_fingerprinter_returns_multiple_services_they_are_accumulated",
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 					return []*nspb.NetworkService{
@@ -433,13 +433,13 @@ func TestDetectStep(t *testing.T) {
 		wantErr   error
 	}{
 		{
-			name:      "no_detector_returns_nil",
+			name:      "when_no_detector_is_registered_returns_nil",
 			detectors: []module.VulnDetector{},
 			want:      nil,
 			wantErr:   nil,
 		},
 		{
-			name: "detector_with_no_findings",
+			name: "when_detector_has_no_findings_returns_nil",
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
 			},
@@ -447,7 +447,7 @@ func TestDetectStep(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "detector_with_findings_returns_reports",
+			name: "when_detector_has_findings_returns_reports",
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnWithFinding),
 			},
@@ -462,7 +462,7 @@ func TestDetectStep(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "multiple_detectors_findings_are_accumulated",
+			name: "when_multiple_detectors_have_findings_reports_are_accumulated",
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnWithFinding),
 				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
@@ -484,7 +484,7 @@ func TestDetectStep(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "detector_error_propagates",
+			name: "when_detector_errors_it_propagates_error",
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
 				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
@@ -551,17 +551,17 @@ func TestRun(t *testing.T) {
 		want           *srpb.ScanResults
 	}{
 		{
-			name:        "no_port_scanner_returns_error",
+			name:        "when_no_port_scanner_is_registered_returns_error",
 			portScanner: nil,
 			wantErr:     ErrNoPortScanner,
 		},
 		{
-			name:        "port_scan_fails_returns_error",
+			name:        "when_port_scan_fails_returns_error",
 			portScanner: fakemodule.NewFakePortScanner("ps1", fakemodule.FakePortScanFnErrors),
 			wantErr:     fakemodule.ErrFakePortScanGeneric,
 		},
 		{
-			name:        "fingerprinting_fails_returns_error",
+			name:        "when_fingerprinting_fails_returns_error",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
@@ -569,7 +569,7 @@ func TestRun(t *testing.T) {
 			wantErr: fakemodule.ErrFakeFingerprintGeneric,
 		},
 		{
-			name:        "detector_fails_returns_error",
+			name:        "when_detector_fails_returns_error",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
@@ -580,7 +580,7 @@ func TestRun(t *testing.T) {
 			wantErr: fakemodule.ErrFakeDetectGeneric,
 		},
 		{
-			name:        "success_returns_report",
+			name:        "when_scan_succeeds_returns_report",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),

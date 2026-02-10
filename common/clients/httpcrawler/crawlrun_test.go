@@ -33,14 +33,14 @@ func TestCrawlRun_Callback(t *testing.T) {
 		wantErr  error
 	}{
 		{
-			name: "callback_successful",
+			name: "when_callback_is_successful_returns_no_error",
 			callback: func(info *PageInfo, _ *http.Response, _ []byte) error {
 				return nil
 			},
 			wantErr: nil,
 		},
 		{
-			name: "callback_error_propagated",
+			name: "when_callback_fails_it_propagates_error",
 			callback: func(info *PageInfo, _ *http.Response, _ []byte) error {
 				return errCallback
 			},
@@ -68,19 +68,19 @@ func TestCrawlRun_AlreadyVisited(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "url_not_visited",
+			name:    "when_url_is_not_visited_returns_false",
 			visited: map[string]bool{},
 			url:     "/test1",
 			want:    false,
 		},
 		{
-			name:    "url_visited",
+			name:    "when_url_is_visited_returns_true",
 			visited: map[string]bool{"/test1": true},
 			url:     "/test1",
 			want:    true,
 		},
 		{
-			name: "url_with_trailing_slash_visited",
+			name: "when_url_with_trailing_slash_is_visited_returns_true",
 			visited: map[string]bool{
 				"/test1": true,
 			},
@@ -107,25 +107,25 @@ func TestCrawlRun_AddToVisited(t *testing.T) {
 		wantCount int32
 	}{
 		{
-			name:      "add_one_url",
+			name:      "when_adding_one_url_it_is_marked_as_visited",
 			add:       []string{"/test1"},
 			want:      map[string]bool{"/test1": true},
 			wantCount: 1,
 		},
 		{
-			name:      "add_one_url_with_trailing_slash",
+			name:      "when_adding_one_url_with_trailing_slash_it_is_marked_as_visited_without_slash",
 			add:       []string{"/test1/"},
 			want:      map[string]bool{"/test1": true},
 			wantCount: 1,
 		},
 		{
-			name:      "add_two_urls",
+			name:      "when_adding_two_urls_both_are_marked_as_visited",
 			add:       []string{"/test1", "/test2/"},
 			want:      map[string]bool{"/test1": true, "/test2": true},
 			wantCount: 2,
 		},
 		{
-			name:      "add_duplicate_urls",
+			name:      "when_adding_duplicate_urls_only_one_is_marked_as_visited",
 			add:       []string{"/test1", "/test1/"},
 			want:      map[string]bool{"/test1": true},
 			wantCount: 1,

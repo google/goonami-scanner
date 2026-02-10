@@ -56,7 +56,7 @@ func TestScan(t *testing.T) {
 		wantErr  error
 	}{
 		{
-			name:     "endpoint_is_hostname",
+			name:     "when_endpoint_is_hostname_returns_hostname_endpoint",
 			testFile: "endpoint_is_hostname.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -70,7 +70,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "endpoint_is_ip_hostname",
+			name:     "when_endpoint_is_ip_hostname_returns_ip_hostname_endpoint",
 			testFile: "endpoint_is_ip_hostname.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -88,7 +88,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "endpoint_is_ipv4",
+			name:     "when_endpoint_is_ipv4_returns_ipv4_endpoint",
 			testFile: "endpoint_is_ipv4.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -105,7 +105,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "endpoint_is_ipv6",
+			name:     "when_endpoint_is_ipv6_returns_ipv6_endpoint",
 			testFile: "endpoint_is_ipv6.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -122,7 +122,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "localhostHttpWithCpe",
+			name:     "when_localhost_http_with_cpe_returns_parsed_service",
 			testFile: "localhostHttpWithCpe.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -159,7 +159,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "localhostHttpsWithSslVersionsAndMethods",
+			name:     "when_localhost_https_with_ssl_versions_and_methods_returns_parsed_service",
 			testFile: "localhostHttpsWithSslVersionsAndMethods.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -206,7 +206,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "service_is_hostname_port_udp",
+			name:     "when_service_is_hostname_port_udp_returns_udp_service",
 			testFile: "service_is_hostname_port_udp.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -233,7 +233,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "service_is_ip_hostname_port",
+			name:     "when_service_is_ip_hostname_port_returns_ip_hostname_port_service",
 			testFile: "service_is_ip_hostname_port.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -268,7 +268,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "service_is_ip_port_tcp",
+			name:     "when_service_is_ip_port_tcp_returns_tcp_services",
 			testFile: "service_is_ip_port_tcp.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -315,7 +315,7 @@ func TestScan(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name:     "service_is_unknown_proto_skipped",
+			name:     "when_service_is_unknown_proto_it_is_skipped",
 			testFile: "service_is_unknown_proto.xml",
 			want: rpb.PortScanningReport_builder{
 				TargetInfo: rpb.TargetInfo_builder{
@@ -333,32 +333,32 @@ func TestScan(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name:     "endpoint_is_invalid_ip",
+			name:     "when_endpoint_is_invalid_ip_returns_error",
 			testFile: "endpoint_is_invalid_ip.xml",
 			wantErr:  ErrInvalidAddressType,
 		},
 		{
-			name:     "endpoint_no_hostname_or_ip",
+			name:     "when_endpoint_no_hostname_or_ip_returns_error",
 			testFile: "endpoint_no_hostname_or_ip.xml",
 			wantErr:  ErrNoAddressOrHostname,
 		},
 		{
-			name:     "host_is_down",
+			name:     "when_host_is_down_returns_nil_report",
 			testFile: "host_is_down.xml",
 			want:     nil,
 		},
 		{
-			name:     "multiple_hosts",
+			name:     "when_multiple_hosts_returns_error",
 			testFile: "multiple_hosts.xml",
 			wantErr:  ErrInvalidHostsCount,
 		},
 		{
-			name:    "nmap_error",
+			name:    "when_nmap_errors_returns_error",
 			client:  fakenmap.New(nil, genericNmapErr),
 			wantErr: genericNmapErr,
 		},
 		{
-			name:    "no_nmap_output",
+			name:    "when_no_nmap_output_returns_error",
 			client:  fakenmap.New(nil, nil),
 			wantErr: ErrNoOutput,
 		},
