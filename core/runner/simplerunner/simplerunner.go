@@ -241,7 +241,7 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 
 			res, err := fp.Fingerprint(ctx, sv)
 			if err != nil {
-				log.Errorf("[runner] portd:%d fatal fingerprinting error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), fp.Name(), err)
+				log.Errorf("[runner] port:%d fatal fingerprinting error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), fp.Name(), err)
 				return nil, err
 			}
 

@@ -51,7 +51,7 @@ message HttpCrawlerClientConfig {
 
   // The maximum size (in Bytes) of a page. Pages larger than this size will be
   // dropped by the crawler. This field has to be set, a value of 0 will read
-  // nothing. Note that is can drastically increase memory usage: each crawler
+  // nothing. Note that it can drastically increase memory usage: each crawler
   // goroutine will have its own buffer. So for example, if the total number of
   // goroutines is 100 and this size is 1MB, that is already 100MB of memory.
   int32 max_page_size_bytes = 2;

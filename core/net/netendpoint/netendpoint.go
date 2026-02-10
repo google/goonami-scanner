@@ -56,7 +56,7 @@ func FromString(endpoint string) *npb.NetworkEndpoint {
 }
 
 // ToURIAuthority converts a NetworkEndpoint to a URI authority.
-// Note that it prioritizes the hostname to allow virtual-host matching of HTTP server to succeed.
+// Note that it prioritizes the hostname to allow virtual-host matching of HTTP servers to succeed.
 //
 // Examples:
 //

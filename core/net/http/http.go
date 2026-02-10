@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package http abstract away HTTP clients so that they can be switched transparently.
+// Package http abstracts away HTTP clients so that they can be switched transparently.
 package http
 
 import (

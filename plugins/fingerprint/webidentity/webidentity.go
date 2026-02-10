@@ -55,7 +55,7 @@ var (
 )
 
 // Module is the fingerprinter to detect what product is running on a web server. It is the module
-// most people refers to as "web fingerprinting".
+// most people refer to as "web fingerprinting".
 type Module struct {
 	*module.BaseModule
 	config     *wfpb.WebIdentityFpConfig
@@ -254,7 +254,7 @@ func serviceFromUnidentifiedCrawls(service *nspb.NetworkService, knownRoots []st
 	return newService
 }
 
-// Make a copy of the provided service with information obtained from the identity.It also adds the
+// Make a copy of the provided service with information obtained from the identity. It also adds the
 // relevant crawl results to the service.
 func identityToNewService(service *nspb.NetworkService, crawls []*wcpb.CrawlResult, identity *hash.Identity) *nspb.NetworkService {
 	newService := proto.Clone(service).(*nspb.NetworkService)
@@ -284,7 +284,7 @@ func identityToNewService(service *nspb.NetworkService, crawls []*wcpb.CrawlResu
 	wsc.SetVersionSet(spb.VersionSet_builder{Versions: versions}.Build())
 
 	if len(identity.PotentialRoots) != 1 {
-		log.Warnf("[fp/webidentity] port:%d software:%q has %d roots. This is likely an issue. Please report to Goonami developpers.", service.GetNetworkEndpoint().GetPort().GetPortNumber(), software, len(identity.PotentialRoots))
+		log.Warnf("[fp/webidentity] port:%d software:%q has %d roots. This is likely an issue. Please report to Goonami developers.", service.GetNetworkEndpoint().GetPort().GetPortNumber(), software, len(identity.PotentialRoots))
 	} else {
 		wsc.SetApplicationRoot(identity.PotentialRoots[0])
 	}

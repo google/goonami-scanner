@@ -38,7 +38,7 @@ var ErrUninitialized = errors.New("configuration was never initialized with Crea
 // options that are global to the scanner. It also keeps track of a set of directories used by the
 // scanner to write files to.
 //
-// The recommend way to use config is:
+// The recommended way to use config is:
 //
 // cfg, err := config.FromFile(path)
 // if err != nil { handle errors }

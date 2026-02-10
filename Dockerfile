@@ -12,7 +12,7 @@ RUN mkdir -p /goonami/src /goonami/bin
 COPY . /goonami/src/
 RUN chown -R 1000:1000 /goonami
 
-# Note: By default, Goonami uses nmap with connect mode and does not requires
+# Note: By default, Goonami uses nmap with connect mode and does not require
 # root permissions. If you change the configuration, you might have to also
 # change this Dockerfile.
 #
