@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
@@ -510,7 +511,8 @@ func TestDetectStep(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.want, got, protocmp.Transform(), protocmp.SortRepeated(func(a, b *dpb.DetectionReport) bool { return a.String() < b.String() })); diff != "" {
+			sortFn := func(a, b *dpb.DetectionReport) bool { return a.String() < b.String() }
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform(), cmpopts.SortSlices(sortFn)); diff != "" {
 				t.Errorf("DetectStep() returned diff (-want +got):\n%s", diff)
 			}
 		})
@@ -629,7 +631,11 @@ func TestRun(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.want, got, protocmp.Transform(), protocmp.SortRepeatedFields(&rpb.ReconnaissanceReport{}, "network_services")); diff != "" {
+			opts := []cmp.Option{
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(&rpb.ReconnaissanceReport{}, "network_services"),
+			}
+			if diff := cmp.Diff(tc.want, got, opts...); diff != "" {
 				t.Errorf("Run() returned diff (-want +got):\n%s", diff)
 			}
 		})
