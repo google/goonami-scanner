@@ -27,6 +27,7 @@ option java_package = "com.google.goonami.proto";
 // clients config
 // these configs are in the `goonami.proto.configs.clients` namespace.
 import "common/clients/httpcrawler/httpcrawler_client_config.proto";
+import "common/clients/llm/llm_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
 
 // fingerprinters config
@@ -73,6 +74,7 @@ message GlobalConfig {
 message ClientsConfig {
   goonami.proto.configs.clients.NmapClientConfig nmap = 1;
   goonami.proto.configs.clients.HttpCrawlerClientConfig http_crawler = 2;
+  goonami.proto.configs.clients.LlmClientConfig llm = 3;
 }
 
 // PluginsConfig contains configuration for plugin.

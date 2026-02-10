@@ -49,6 +49,12 @@ clients: {
       ".*remove.*"
     ]
   }
+
+  llm: {
+    timeout_per_request_sec: 240  # 4 minutes
+    max_attempts: 3
+    retry_delay_sec: 10
+  }
 }
 
 plugins: {

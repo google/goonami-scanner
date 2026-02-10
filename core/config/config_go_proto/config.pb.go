@@ -23,6 +23,7 @@ package config_go_proto
 
 import (
 	httpcrawler_client_config_go_proto "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
+	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 	webidentity_fp_config_go_proto "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -262,6 +263,7 @@ type ClientsConfig struct {
 	state                  protoimpl.MessageState                                      `protogen:"opaque.v1"`
 	xxx_hidden_Nmap        *nmap_client_config_go_proto.NmapClientConfig               `protobuf:"bytes,1,opt,name=nmap,proto3"`
 	xxx_hidden_HttpCrawler *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig `protobuf:"bytes,2,opt,name=http_crawler,json=httpCrawler,proto3"`
+	xxx_hidden_Llm         *llm_client_config_go_proto.LlmClientConfig                 `protobuf:"bytes,3,opt,name=llm,proto3"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -305,12 +307,23 @@ func (x *ClientsConfig) GetHttpCrawler() *httpcrawler_client_config_go_proto.Htt
 	return nil
 }
 
+func (x *ClientsConfig) GetLlm() *llm_client_config_go_proto.LlmClientConfig {
+	if x != nil {
+		return x.xxx_hidden_Llm
+	}
+	return nil
+}
+
 func (x *ClientsConfig) SetNmap(v *nmap_client_config_go_proto.NmapClientConfig) {
 	x.xxx_hidden_Nmap = v
 }
 
 func (x *ClientsConfig) SetHttpCrawler(v *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig) {
 	x.xxx_hidden_HttpCrawler = v
+}
+
+func (x *ClientsConfig) SetLlm(v *llm_client_config_go_proto.LlmClientConfig) {
+	x.xxx_hidden_Llm = v
 }
 
 func (x *ClientsConfig) HasNmap() bool {
@@ -327,6 +340,13 @@ func (x *ClientsConfig) HasHttpCrawler() bool {
 	return x.xxx_hidden_HttpCrawler != nil
 }
 
+func (x *ClientsConfig) HasLlm() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Llm != nil
+}
+
 func (x *ClientsConfig) ClearNmap() {
 	x.xxx_hidden_Nmap = nil
 }
@@ -335,11 +355,16 @@ func (x *ClientsConfig) ClearHttpCrawler() {
 	x.xxx_hidden_HttpCrawler = nil
 }
 
+func (x *ClientsConfig) ClearLlm() {
+	x.xxx_hidden_Llm = nil
+}
+
 type ClientsConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Nmap        *nmap_client_config_go_proto.NmapClientConfig
 	HttpCrawler *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig
+	Llm         *llm_client_config_go_proto.LlmClientConfig
 }
 
 func (b0 ClientsConfig_builder) Build() *ClientsConfig {
@@ -348,6 +373,7 @@ func (b0 ClientsConfig_builder) Build() *ClientsConfig {
 	_, _ = b, x
 	x.xxx_hidden_Nmap = b.Nmap
 	x.xxx_hidden_HttpCrawler = b.HttpCrawler
+	x.xxx_hidden_Llm = b.Llm
 	return m0
 }
 
@@ -530,7 +556,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xb3\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xb3\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -544,10 +570,11 @@ const file_config_proto_rawDesc = "" +
 	"\x0fmax_concurrency\x18\x01 \x01(\x05R\x0emaxConcurrency\x12=\n" +
 	"\x1btimeout_per_request_seconds\x18\x02 \x01(\x05R\x18timeoutPerRequestSeconds\x123\n" +
 	"\x16max_packets_per_second\x18\x03 \x01(\x05R\x13maxPacketsPerSecond\x12>\n" +
-	"\x1cmax_http_requests_per_second\x18\x04 \x01(\x05R\x18maxHttpRequestsPerSecond\"\xaf\x01\n" +
+	"\x1cmax_http_requests_per_second\x18\x04 \x01(\x05R\x18maxHttpRequestsPerSecond\"\xf1\x01\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
-	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\"l\n" +
+	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
+	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\"l\n" +
 	"\rPluginsConfig\x12[\n" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentityBm\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassP\x01Z=github.com/google/goonami-scanner/core/config/config_go_protob\x06proto3"
@@ -561,7 +588,8 @@ var file_config_proto_goTypes = []any{
 	(*GlobalConfig_Performance)(nil),                     // 4: goonami.proto.GlobalConfig.Performance
 	(*nmap_client_config_go_proto.NmapClientConfig)(nil), // 5: goonami.proto.configs.clients.NmapClientConfig
 	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil), // 6: goonami.proto.configs.clients.HttpCrawlerClientConfig
-	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 7: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 7: goonami.proto.configs.clients.LlmClientConfig
+	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 8: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 }
 var file_config_proto_depIdxs = []int32{
 	1, // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -570,12 +598,13 @@ var file_config_proto_depIdxs = []int32{
 	4, // 3: goonami.proto.GlobalConfig.performance:type_name -> goonami.proto.GlobalConfig.Performance
 	5, // 4: goonami.proto.ClientsConfig.nmap:type_name -> goonami.proto.configs.clients.NmapClientConfig
 	6, // 5: goonami.proto.ClientsConfig.http_crawler:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig
-	7, // 6: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	7, // 6: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
+	8, // 7: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
