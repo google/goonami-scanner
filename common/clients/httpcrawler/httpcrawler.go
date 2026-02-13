@@ -180,7 +180,6 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return nil
 	}
 
-	log.DebugContextf(ctx, log.DebugLevelRequest, "visiting: %q", page.URL)
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
 		// Do not consider deadline errors as fatal.

@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/log"
 
 	"golang.org/x/time/rate"
 )
@@ -52,9 +53,17 @@ func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
 
 // Do sends an HTTP request and returns an HTTP response in case of success.
 func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
-	if err := c.limiter.Wait(req.Context()); err != nil {
+	ctx := req.Context()
+	if err := c.limiter.Wait(ctx); err != nil {
 		return nil, err
 	}
 
-	return c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q error: %v", req.Method, req.URL.Path, err)
+		return resp, err
+	}
+
+	log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q status:%d", req.Method, req.URL.Path, resp.StatusCode)
+	return resp, err
 }
