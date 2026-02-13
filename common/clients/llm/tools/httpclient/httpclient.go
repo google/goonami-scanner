@@ -33,6 +33,7 @@ import (
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/protobuf/proto"
 
 	hccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -83,8 +84,8 @@ type Response struct {
 func DefaultConfig() *hccpb.HttpClientConfig {
 	return hccpb.HttpClientConfig_builder{
 		AllowedMethods:        []string{"GET", "POST"},
-		MaxRequestsPerService: 50,
-		MaxAnswerSizeBytes:    1 * 1024 * 1024, // 1 MB
+		MaxRequestsPerService: proto.Int32(50),
+		MaxAnswerSizeBytes:    proto.Int32(1 * 1024 * 1024), // 1 MB
 		ForbiddenPaths: []string{
 			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
 			".*kill.*", ".*quit.*", ".*remove.*",

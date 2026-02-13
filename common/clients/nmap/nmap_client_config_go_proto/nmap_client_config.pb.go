@@ -83,15 +83,17 @@ func (x NmapClientConfig_Technique) Number() protoreflect.EnumNumber {
 
 type NmapClientConfig struct {
 	state                                 protoimpl.MessageState     `protogen:"opaque.v1"`
-	xxx_hidden_BinaryPath                 string                     `protobuf:"bytes,1,opt,name=binary_path,json=binaryPath,proto3"`
-	xxx_hidden_TimeoutSeconds             int32                      `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3"`
-	xxx_hidden_ScanTechnique              NmapClientConfig_Technique `protobuf:"varint,3,opt,name=scan_technique,json=scanTechnique,proto3,enum=goonami.proto.configs.clients.NmapClientConfig_Technique"`
-	xxx_hidden_ScanIntensity              uint32                     `protobuf:"varint,4,opt,name=scan_intensity,json=scanIntensity,proto3"`
-	xxx_hidden_EnableHostDiscovery        bool                       `protobuf:"varint,5,opt,name=enable_host_discovery,json=enableHostDiscovery,proto3"`
-	xxx_hidden_EnableVersionDetection     bool                       `protobuf:"varint,6,opt,name=enable_version_detection,json=enableVersionDetection,proto3"`
-	xxx_hidden_VersionIntensity           uint32                     `protobuf:"varint,7,opt,name=version_intensity,json=versionIntensity,proto3"`
-	xxx_hidden_EnableHttpMethodsDetection bool                       `protobuf:"varint,8,opt,name=enable_http_methods_detection,json=enableHttpMethodsDetection,proto3"`
-	xxx_hidden_EnableSslDetection         bool                       `protobuf:"varint,9,opt,name=enable_ssl_detection,json=enableSslDetection,proto3"`
+	xxx_hidden_BinaryPath                 *string                    `protobuf:"bytes,1,opt,name=binary_path,json=binaryPath,proto3,oneof"`
+	xxx_hidden_TimeoutSeconds             int32                      `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof"`
+	xxx_hidden_ScanTechnique              NmapClientConfig_Technique `protobuf:"varint,3,opt,name=scan_technique,json=scanTechnique,proto3,enum=goonami.proto.configs.clients.NmapClientConfig_Technique,oneof"`
+	xxx_hidden_ScanIntensity              uint32                     `protobuf:"varint,4,opt,name=scan_intensity,json=scanIntensity,proto3,oneof"`
+	xxx_hidden_EnableHostDiscovery        bool                       `protobuf:"varint,5,opt,name=enable_host_discovery,json=enableHostDiscovery,proto3,oneof"`
+	xxx_hidden_EnableVersionDetection     bool                       `protobuf:"varint,6,opt,name=enable_version_detection,json=enableVersionDetection,proto3,oneof"`
+	xxx_hidden_VersionIntensity           uint32                     `protobuf:"varint,7,opt,name=version_intensity,json=versionIntensity,proto3,oneof"`
+	xxx_hidden_EnableHttpMethodsDetection bool                       `protobuf:"varint,8,opt,name=enable_http_methods_detection,json=enableHttpMethodsDetection,proto3,oneof"`
+	xxx_hidden_EnableSslDetection         bool                       `protobuf:"varint,9,opt,name=enable_ssl_detection,json=enableSslDetection,proto3,oneof"`
+	XXX_raceDetectHookData                protoimpl.RaceDetectHookData
+	XXX_presence                          [1]uint32
 	unknownFields                         protoimpl.UnknownFields
 	sizeCache                             protoimpl.SizeCache
 }
@@ -123,7 +125,10 @@ func (x *NmapClientConfig) ProtoReflect() protoreflect.Message {
 
 func (x *NmapClientConfig) GetBinaryPath() string {
 	if x != nil {
-		return x.xxx_hidden_BinaryPath
+		if x.xxx_hidden_BinaryPath != nil {
+			return *x.xxx_hidden_BinaryPath
+		}
+		return ""
 	}
 	return ""
 }
@@ -137,7 +142,9 @@ func (x *NmapClientConfig) GetTimeoutSeconds() int32 {
 
 func (x *NmapClientConfig) GetScanTechnique() NmapClientConfig_Technique {
 	if x != nil {
-		return x.xxx_hidden_ScanTechnique
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 2) {
+			return x.xxx_hidden_ScanTechnique
+		}
 	}
 	return NmapClientConfig_UNKNOWN
 }
@@ -185,39 +192,156 @@ func (x *NmapClientConfig) GetEnableSslDetection() bool {
 }
 
 func (x *NmapClientConfig) SetBinaryPath(v string) {
-	x.xxx_hidden_BinaryPath = v
+	x.xxx_hidden_BinaryPath = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 9)
 }
 
 func (x *NmapClientConfig) SetTimeoutSeconds(v int32) {
 	x.xxx_hidden_TimeoutSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 9)
 }
 
 func (x *NmapClientConfig) SetScanTechnique(v NmapClientConfig_Technique) {
 	x.xxx_hidden_ScanTechnique = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 9)
 }
 
 func (x *NmapClientConfig) SetScanIntensity(v uint32) {
 	x.xxx_hidden_ScanIntensity = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 9)
 }
 
 func (x *NmapClientConfig) SetEnableHostDiscovery(v bool) {
 	x.xxx_hidden_EnableHostDiscovery = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 9)
 }
 
 func (x *NmapClientConfig) SetEnableVersionDetection(v bool) {
 	x.xxx_hidden_EnableVersionDetection = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 9)
 }
 
 func (x *NmapClientConfig) SetVersionIntensity(v uint32) {
 	x.xxx_hidden_VersionIntensity = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 9)
 }
 
 func (x *NmapClientConfig) SetEnableHttpMethodsDetection(v bool) {
 	x.xxx_hidden_EnableHttpMethodsDetection = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 9)
 }
 
 func (x *NmapClientConfig) SetEnableSslDetection(v bool) {
 	x.xxx_hidden_EnableSslDetection = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 8, 9)
+}
+
+func (x *NmapClientConfig) HasBinaryPath() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *NmapClientConfig) HasTimeoutSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *NmapClientConfig) HasScanTechnique() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *NmapClientConfig) HasScanIntensity() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *NmapClientConfig) HasEnableHostDiscovery() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *NmapClientConfig) HasEnableVersionDetection() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *NmapClientConfig) HasVersionIntensity() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *NmapClientConfig) HasEnableHttpMethodsDetection() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
+func (x *NmapClientConfig) HasEnableSslDetection() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 8)
+}
+
+func (x *NmapClientConfig) ClearBinaryPath() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_BinaryPath = nil
+}
+
+func (x *NmapClientConfig) ClearTimeoutSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_TimeoutSeconds = 0
+}
+
+func (x *NmapClientConfig) ClearScanTechnique() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_ScanTechnique = NmapClientConfig_UNKNOWN
+}
+
+func (x *NmapClientConfig) ClearScanIntensity() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_ScanIntensity = 0
+}
+
+func (x *NmapClientConfig) ClearEnableHostDiscovery() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_EnableHostDiscovery = false
+}
+
+func (x *NmapClientConfig) ClearEnableVersionDetection() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_EnableVersionDetection = false
+}
+
+func (x *NmapClientConfig) ClearVersionIntensity() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_VersionIntensity = 0
+}
+
+func (x *NmapClientConfig) ClearEnableHttpMethodsDetection() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_EnableHttpMethodsDetection = false
+}
+
+func (x *NmapClientConfig) ClearEnableSslDetection() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 8)
+	x.xxx_hidden_EnableSslDetection = false
 }
 
 type NmapClientConfig_builder struct {
@@ -225,39 +349,74 @@ type NmapClientConfig_builder struct {
 
 	// (Optional) Path to the nmap binary. If empty, the client will try to use
 	// the nmap binary found in the current PATH.
-	BinaryPath string
+	BinaryPath *string
 	// Maximum time nmap is allowed to run. This option is handled by the client
 	// library and enforced on the nmap binary.
-	TimeoutSeconds int32
+	// Default: 300
+	TimeoutSeconds *int32
 	// The scan technique (SYN, CONNECT, ...) (e.g. -sS, -sT)
-	ScanTechnique NmapClientConfig_Technique
+	// Default: CONNECT
+	ScanTechnique *NmapClientConfig_Technique
 	// Intensity (from 1 to 5) of the scan (-T1 to -T5).
-	ScanIntensity uint32
+	// Default: 3
+	ScanIntensity *uint32
 	// Host discovery; when disabled: -Pn
-	EnableHostDiscovery bool
+	// Default: false
+	EnableHostDiscovery *bool
 	// version detection; -sV
-	EnableVersionDetection bool
+	// Default: false
+	EnableVersionDetection *bool
 	// --version-intensity, ignored if enable_version_detection is false
-	VersionIntensity uint32
+	// Default: 0
+	VersionIntensity *uint32
 	// scripts: Enable HTTP methods detection (--script http-methods).
-	EnableHttpMethodsDetection bool
+	// Default: false
+	EnableHttpMethodsDetection *bool
 	// scripts: Enable SSL detection (--script ssl-cert,ssl-enum-ciphers)
-	EnableSslDetection bool
+	// Default: false
+	EnableSslDetection *bool
 }
 
 func (b0 NmapClientConfig_builder) Build() *NmapClientConfig {
 	m0 := &NmapClientConfig{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_BinaryPath = b.BinaryPath
-	x.xxx_hidden_TimeoutSeconds = b.TimeoutSeconds
-	x.xxx_hidden_ScanTechnique = b.ScanTechnique
-	x.xxx_hidden_ScanIntensity = b.ScanIntensity
-	x.xxx_hidden_EnableHostDiscovery = b.EnableHostDiscovery
-	x.xxx_hidden_EnableVersionDetection = b.EnableVersionDetection
-	x.xxx_hidden_VersionIntensity = b.VersionIntensity
-	x.xxx_hidden_EnableHttpMethodsDetection = b.EnableHttpMethodsDetection
-	x.xxx_hidden_EnableSslDetection = b.EnableSslDetection
+	if b.BinaryPath != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 9)
+		x.xxx_hidden_BinaryPath = b.BinaryPath
+	}
+	if b.TimeoutSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 9)
+		x.xxx_hidden_TimeoutSeconds = *b.TimeoutSeconds
+	}
+	if b.ScanTechnique != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 9)
+		x.xxx_hidden_ScanTechnique = *b.ScanTechnique
+	}
+	if b.ScanIntensity != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 9)
+		x.xxx_hidden_ScanIntensity = *b.ScanIntensity
+	}
+	if b.EnableHostDiscovery != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 9)
+		x.xxx_hidden_EnableHostDiscovery = *b.EnableHostDiscovery
+	}
+	if b.EnableVersionDetection != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 9)
+		x.xxx_hidden_EnableVersionDetection = *b.EnableVersionDetection
+	}
+	if b.VersionIntensity != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 9)
+		x.xxx_hidden_VersionIntensity = *b.VersionIntensity
+	}
+	if b.EnableHttpMethodsDetection != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 9)
+		x.xxx_hidden_EnableHttpMethodsDetection = *b.EnableHttpMethodsDetection
+	}
+	if b.EnableSslDetection != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 8, 9)
+		x.xxx_hidden_EnableSslDetection = *b.EnableSslDetection
+	}
 	return m0
 }
 
@@ -265,22 +424,31 @@ var File_nmap_client_config_proto protoreflect.FileDescriptor
 
 const file_nmap_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x18nmap_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xa5\x04\n" +
-	"\x10NmapClientConfig\x12\x1f\n" +
-	"\vbinary_path\x18\x01 \x01(\tR\n" +
-	"binaryPath\x12'\n" +
-	"\x0ftimeout_seconds\x18\x02 \x01(\x05R\x0etimeoutSeconds\x12`\n" +
-	"\x0escan_technique\x18\x03 \x01(\x0e29.goonami.proto.configs.clients.NmapClientConfig.TechniqueR\rscanTechnique\x12%\n" +
-	"\x0escan_intensity\x18\x04 \x01(\rR\rscanIntensity\x122\n" +
-	"\x15enable_host_discovery\x18\x05 \x01(\bR\x13enableHostDiscovery\x128\n" +
-	"\x18enable_version_detection\x18\x06 \x01(\bR\x16enableVersionDetection\x12+\n" +
-	"\x11version_intensity\x18\a \x01(\rR\x10versionIntensity\x12A\n" +
-	"\x1denable_http_methods_detection\x18\b \x01(\bR\x1aenableHttpMethodsDetection\x120\n" +
-	"\x14enable_ssl_detection\x18\t \x01(\bR\x12enableSslDetection\".\n" +
+	"\x18nmap_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xa4\x06\n" +
+	"\x10NmapClientConfig\x12$\n" +
+	"\vbinary_path\x18\x01 \x01(\tH\x00R\n" +
+	"binaryPath\x88\x01\x01\x12,\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05H\x01R\x0etimeoutSeconds\x88\x01\x01\x12e\n" +
+	"\x0escan_technique\x18\x03 \x01(\x0e29.goonami.proto.configs.clients.NmapClientConfig.TechniqueH\x02R\rscanTechnique\x88\x01\x01\x12*\n" +
+	"\x0escan_intensity\x18\x04 \x01(\rH\x03R\rscanIntensity\x88\x01\x01\x127\n" +
+	"\x15enable_host_discovery\x18\x05 \x01(\bH\x04R\x13enableHostDiscovery\x88\x01\x01\x12=\n" +
+	"\x18enable_version_detection\x18\x06 \x01(\bH\x05R\x16enableVersionDetection\x88\x01\x01\x120\n" +
+	"\x11version_intensity\x18\a \x01(\rH\x06R\x10versionIntensity\x88\x01\x01\x12F\n" +
+	"\x1denable_http_methods_detection\x18\b \x01(\bH\aR\x1aenableHttpMethodsDetection\x88\x01\x01\x125\n" +
+	"\x14enable_ssl_detection\x18\t \x01(\bH\bR\x12enableSslDetection\x88\x01\x01\".\n" +
 	"\tTechnique\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\v\n" +
 	"\aCONNECT\x10\x01\x12\a\n" +
-	"\x03UDP\x10\x02B\x9b\x01\n" +
+	"\x03UDP\x10\x02B\x0e\n" +
+	"\f_binary_pathB\x12\n" +
+	"\x10_timeout_secondsB\x11\n" +
+	"\x0f_scan_techniqueB\x11\n" +
+	"\x0f_scan_intensityB\x18\n" +
+	"\x16_enable_host_discoveryB\x1b\n" +
+	"\x19_enable_version_detectionB\x14\n" +
+	"\x12_version_intensityB \n" +
+	"\x1e_enable_http_methods_detectionB\x17\n" +
+	"\x15_enable_ssl_detectionB\x9b\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB\x1aNmapClientConfigOuterClassP\x01ZQgithub.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_protob\x06proto3"
 
 var file_nmap_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
@@ -303,6 +471,7 @@ func file_nmap_client_config_proto_init() {
 	if File_nmap_client_config_proto != nil {
 		return
 	}
+	file_nmap_client_config_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

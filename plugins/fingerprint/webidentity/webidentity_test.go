@@ -31,7 +31,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	hccpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
@@ -58,10 +57,10 @@ func TestNew(t *testing.T) {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
 						Webidentity: wfpb.WebIdentityFpConfig_builder{
-							SignaturesDirectory:      "testdata/valid/",
-							WriteHtmlToFile:          true,
-							MaximumFileSizeBytes:     100,
-							MaximumStorageSpaceBytes: 100,
+							SignaturesDirectory:      proto.String("testdata/valid/"),
+							WriteHtmlToFile:          proto.Bool(true),
+							MaximumFileSizeBytes:     proto.Int64(100),
+							MaximumStorageSpaceBytes: proto.Int64(100),
 						}.Build(),
 					}.Build(),
 				}.Build())
@@ -73,7 +72,7 @@ func TestNew(t *testing.T) {
 			configFunc: func() *config.Config {
 				return config.FromProto(&cpb.Config{})
 			},
-			wantErr: ErrNoConfiguration,
+			wantErr: ErrNoFingerprintsDirectory,
 		},
 		{
 			name: "when_config_is_missing_signatures_directory_returns_error",
@@ -81,9 +80,10 @@ func TestNew(t *testing.T) {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
 						Webidentity: wfpb.WebIdentityFpConfig_builder{
-							WriteHtmlToFile:          true,
-							MaximumFileSizeBytes:     100,
-							MaximumStorageSpaceBytes: 100,
+							SignaturesDirectory:      proto.String(""),
+							WriteHtmlToFile:          proto.Bool(true),
+							MaximumFileSizeBytes:     proto.Int64(100),
+							MaximumStorageSpaceBytes: proto.Int64(100),
 						}.Build(),
 					}.Build(),
 				}.Build())
@@ -96,10 +96,10 @@ func TestNew(t *testing.T) {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
 						Webidentity: wfpb.WebIdentityFpConfig_builder{
-							SignaturesDirectory:      "/non/existent/directory/",
-							WriteHtmlToFile:          true,
-							MaximumFileSizeBytes:     100,
-							MaximumStorageSpaceBytes: 100,
+							SignaturesDirectory:      proto.String("/non/existent/directory/"),
+							WriteHtmlToFile:          proto.Bool(true),
+							MaximumFileSizeBytes:     proto.Int64(100),
+							MaximumStorageSpaceBytes: proto.Int64(100),
 						}.Build(),
 					}.Build(),
 				}.Build())
@@ -112,10 +112,10 @@ func TestNew(t *testing.T) {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
 						Webidentity: wfpb.WebIdentityFpConfig_builder{
-							SignaturesDirectory:      "testdata/invalid/",
-							WriteHtmlToFile:          true,
-							MaximumFileSizeBytes:     100,
-							MaximumStorageSpaceBytes: 100,
+							SignaturesDirectory:      proto.String("testdata/invalid/"),
+							WriteHtmlToFile:          proto.Bool(true),
+							MaximumFileSizeBytes:     proto.Int64(100),
+							MaximumStorageSpaceBytes: proto.Int64(100),
 						}.Build(),
 					}.Build(),
 				}.Build())
@@ -435,7 +435,7 @@ func TestFingerprint(t *testing.T) {
 				t.Fatalf("Failed to load known hashes: %v", err)
 			}
 
-			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: false}.Build()
+			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
 			cfg := buildConfig(t, modConfig, "")
 
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
@@ -510,9 +510,9 @@ func TestFingerprintWithWrites(t *testing.T) {
 		{
 			name: "when_artifacts_are_disabled_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
-				WriteHtmlToFile:          false,
-				MaximumFileSizeBytes:     1000,
-				MaximumStorageSpaceBytes: 1000,
+				WriteHtmlToFile:          proto.Bool(false),
+				MaximumFileSizeBytes:     proto.Int64(1000),
+				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
 			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
@@ -520,9 +520,9 @@ func TestFingerprintWithWrites(t *testing.T) {
 		{
 			name: "when_artifacts_are_enabled_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
-				WriteHtmlToFile:          true,
-				MaximumFileSizeBytes:     1000,
-				MaximumStorageSpaceBytes: 1000,
+				WriteHtmlToFile:          proto.Bool(true),
+				MaximumFileSizeBytes:     proto.Int64(1000),
+				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
 			hashes:               &fpb.Fingerprints{},
 			wantFileWritten:      true,
@@ -531,9 +531,9 @@ func TestFingerprintWithWrites(t *testing.T) {
 		{
 			name: "when_file_is_too_big_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
-				WriteHtmlToFile:          true,
-				MaximumFileSizeBytes:     10,
-				MaximumStorageSpaceBytes: 1000,
+				WriteHtmlToFile:          proto.Bool(true),
+				MaximumFileSizeBytes:     proto.Int64(10),
+				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
 			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
@@ -541,9 +541,9 @@ func TestFingerprintWithWrites(t *testing.T) {
 		{
 			name: "when_storage_is_full_no_file_is_written",
 			config: wfpb.WebIdentityFpConfig_builder{
-				WriteHtmlToFile:          true,
-				MaximumFileSizeBytes:     1000,
-				MaximumStorageSpaceBytes: 10,
+				WriteHtmlToFile:          proto.Bool(true),
+				MaximumFileSizeBytes:     proto.Int64(1000),
+				MaximumStorageSpaceBytes: proto.Int64(10),
 			}.Build(),
 			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
@@ -651,24 +651,6 @@ func buildConfig(t *testing.T, modConfig *wfpb.WebIdentityFpConfig, workdir stri
 	t.Helper()
 
 	cfg := config.FromProto(cpb.Config_builder{
-		Globalcfg: cpb.GlobalConfig_builder{
-			Performance: cpb.GlobalConfig_Performance_builder{
-				MaxConcurrency:           1,
-				TimeoutPerRequestSeconds: 1,
-				MaxHttpRequestsPerSecond: 5,
-			}.Build(),
-		}.Build(),
-		Clients: cpb.ClientsConfig_builder{
-			HttpCrawler: hccpb.HttpCrawlerClientConfig_builder{
-				MaxPageSizeBytes: 1024,
-				MaxConcurrency:   1,
-				MaxDepth:         1,
-				MaxRequests:      10,
-				Exclusions:       []string{},
-				ScopePolicy:      hccpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
-				Scopes:           []*hccpb.HttpCrawlerClientConfig_Scope{},
-			}.Build(),
-		}.Build(),
 		Plugins: cpb.PluginsConfig_builder{
 			Webidentity: modConfig,
 		}.Build(),

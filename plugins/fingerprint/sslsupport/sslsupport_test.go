@@ -95,7 +95,7 @@ func TestFingerprint_Connection(t *testing.T) {
 			cfgpb := cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
-						TimeoutPerRequestSeconds: 1,
+						TimeoutPerRequestSeconds: proto.Int32(1),
 					}.Build(),
 				}.Build(),
 			}.Build()

@@ -84,13 +84,15 @@ func (x HttpCrawlerClientConfig_ScopePolicy) Number() protoreflect.EnumNumber {
 
 type HttpCrawlerClientConfig struct {
 	state                       protoimpl.MessageState              `protogen:"opaque.v1"`
-	xxx_hidden_MaxConcurrency   int32                               `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3"`
-	xxx_hidden_MaxPageSizeBytes int32                               `protobuf:"varint,2,opt,name=max_page_size_bytes,json=maxPageSizeBytes,proto3"`
-	xxx_hidden_MaxDepth         int32                               `protobuf:"varint,3,opt,name=max_depth,json=maxDepth,proto3"`
-	xxx_hidden_MaxRequests      int32                               `protobuf:"varint,4,opt,name=max_requests,json=maxRequests,proto3"`
+	xxx_hidden_MaxConcurrency   int32                               `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof"`
+	xxx_hidden_MaxPageSizeBytes int32                               `protobuf:"varint,2,opt,name=max_page_size_bytes,json=maxPageSizeBytes,proto3,oneof"`
+	xxx_hidden_MaxDepth         int32                               `protobuf:"varint,3,opt,name=max_depth,json=maxDepth,proto3,oneof"`
+	xxx_hidden_MaxRequests      int32                               `protobuf:"varint,4,opt,name=max_requests,json=maxRequests,proto3,oneof"`
 	xxx_hidden_Exclusions       []string                            `protobuf:"bytes,5,rep,name=exclusions,proto3"`
-	xxx_hidden_ScopePolicy      HttpCrawlerClientConfig_ScopePolicy `protobuf:"varint,6,opt,name=scope_policy,json=scopePolicy,proto3,enum=goonami.proto.configs.clients.HttpCrawlerClientConfig_ScopePolicy"`
+	xxx_hidden_ScopePolicy      HttpCrawlerClientConfig_ScopePolicy `protobuf:"varint,6,opt,name=scope_policy,json=scopePolicy,proto3,enum=goonami.proto.configs.clients.HttpCrawlerClientConfig_ScopePolicy,oneof"`
 	xxx_hidden_Scopes           *[]*HttpCrawlerClientConfig_Scope   `protobuf:"bytes,7,rep,name=scopes,proto3"`
+	XXX_raceDetectHookData      protoimpl.RaceDetectHookData
+	XXX_presence                [1]uint32
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -157,7 +159,9 @@ func (x *HttpCrawlerClientConfig) GetExclusions() []string {
 
 func (x *HttpCrawlerClientConfig) GetScopePolicy() HttpCrawlerClientConfig_ScopePolicy {
 	if x != nil {
-		return x.xxx_hidden_ScopePolicy
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 5) {
+			return x.xxx_hidden_ScopePolicy
+		}
 	}
 	return HttpCrawlerClientConfig_SCOPE_POLICY_UNSPECIFIED
 }
@@ -173,18 +177,22 @@ func (x *HttpCrawlerClientConfig) GetScopes() []*HttpCrawlerClientConfig_Scope {
 
 func (x *HttpCrawlerClientConfig) SetMaxConcurrency(v int32) {
 	x.xxx_hidden_MaxConcurrency = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *HttpCrawlerClientConfig) SetMaxPageSizeBytes(v int32) {
 	x.xxx_hidden_MaxPageSizeBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *HttpCrawlerClientConfig) SetMaxDepth(v int32) {
 	x.xxx_hidden_MaxDepth = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *HttpCrawlerClientConfig) SetMaxRequests(v int32) {
 	x.xxx_hidden_MaxRequests = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 7)
 }
 
 func (x *HttpCrawlerClientConfig) SetExclusions(v []string) {
@@ -193,10 +201,71 @@ func (x *HttpCrawlerClientConfig) SetExclusions(v []string) {
 
 func (x *HttpCrawlerClientConfig) SetScopePolicy(v HttpCrawlerClientConfig_ScopePolicy) {
 	x.xxx_hidden_ScopePolicy = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
 }
 
 func (x *HttpCrawlerClientConfig) SetScopes(v []*HttpCrawlerClientConfig_Scope) {
 	x.xxx_hidden_Scopes = &v
+}
+
+func (x *HttpCrawlerClientConfig) HasMaxConcurrency() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *HttpCrawlerClientConfig) HasMaxPageSizeBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *HttpCrawlerClientConfig) HasMaxDepth() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *HttpCrawlerClientConfig) HasMaxRequests() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *HttpCrawlerClientConfig) HasScopePolicy() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *HttpCrawlerClientConfig) ClearMaxConcurrency() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_MaxConcurrency = 0
+}
+
+func (x *HttpCrawlerClientConfig) ClearMaxPageSizeBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_MaxPageSizeBytes = 0
+}
+
+func (x *HttpCrawlerClientConfig) ClearMaxDepth() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_MaxDepth = 0
+}
+
+func (x *HttpCrawlerClientConfig) ClearMaxRequests() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_MaxRequests = 0
+}
+
+func (x *HttpCrawlerClientConfig) ClearScopePolicy() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_ScopePolicy = HttpCrawlerClientConfig_SCOPE_POLICY_UNSPECIFIED
 }
 
 type HttpCrawlerClientConfig_builder struct {
@@ -205,27 +274,33 @@ type HttpCrawlerClientConfig_builder struct {
 	// The maximum number of concurrent requests to be made. Note that this
 	// concurrency is a product of the core engine concurrency: if the core engine
 	// has a concurrency of 2 and this one 5, the scale can go up to 10.
-	MaxConcurrency int32
+	// Default: 1
+	MaxConcurrency *int32
 	// The maximum size (in Bytes) of a page. Pages larger than this size will be
 	// dropped by the crawler. This field has to be set, a value of 0 will read
-	// nothing. Note that is can drastically increase memory usage: each crawler
+	// nothing. Note that it can drastically increase memory usage: each crawler
 	// goroutine will have its own buffer. So for example, if the total number of
 	// goroutines is 100 and this size is 1MB, that is already 100MB of memory.
-	MaxPageSizeBytes int32
+	// Default: 1048576 (1MB)
+	MaxPageSizeBytes *int32
 	// The maximum depth to crawl. The depth is defined by the number of links
 	// followed in a chain.
-	MaxDepth int32
+	// Default: 1
+	MaxDepth *int32
 	// Maximum number of requests to be made. This is a hard limit on the number
 	// of requests made by the crawler. It is enforced at the client level, it
 	// means that its count will be shared between calls to Crawl(). In other
 	// words, it is shared between targets crawled.
-	MaxRequests int32
+	// Default: 100
+	MaxRequests *int32
 	// Paths to exclude from the crawl. This is a list of regular expressions that
 	// will be matched against the URL of a page before it is crawled.
+	// Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*", ".*kill.*", ".*quit.*", ".*remove.*"]
 	Exclusions []string
 	// Policy to use for the scope. If unspecified, SCOPE_POLICY_EXPAND will be
 	// used.
-	ScopePolicy HttpCrawlerClientConfig_ScopePolicy
+	// Default: SCOPE_POLICY_EXPAND
+	ScopePolicy *HttpCrawlerClientConfig_ScopePolicy
 	// The scopes to crawl. How this scopes are used is defined by the scope
 	// policy.
 	Scopes []*HttpCrawlerClientConfig_Scope
@@ -235,12 +310,27 @@ func (b0 HttpCrawlerClientConfig_builder) Build() *HttpCrawlerClientConfig {
 	m0 := &HttpCrawlerClientConfig{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_MaxConcurrency = b.MaxConcurrency
-	x.xxx_hidden_MaxPageSizeBytes = b.MaxPageSizeBytes
-	x.xxx_hidden_MaxDepth = b.MaxDepth
-	x.xxx_hidden_MaxRequests = b.MaxRequests
+	if b.MaxConcurrency != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		x.xxx_hidden_MaxConcurrency = *b.MaxConcurrency
+	}
+	if b.MaxPageSizeBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		x.xxx_hidden_MaxPageSizeBytes = *b.MaxPageSizeBytes
+	}
+	if b.MaxDepth != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		x.xxx_hidden_MaxDepth = *b.MaxDepth
+	}
+	if b.MaxRequests != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 7)
+		x.xxx_hidden_MaxRequests = *b.MaxRequests
+	}
 	x.xxx_hidden_Exclusions = b.Exclusions
-	x.xxx_hidden_ScopePolicy = b.ScopePolicy
+	if b.ScopePolicy != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_ScopePolicy = *b.ScopePolicy
+	}
 	x.xxx_hidden_Scopes = &b.Scopes
 	return m0
 }
@@ -325,16 +415,16 @@ var File_httpcrawler_client_config_proto protoreflect.FileDescriptor
 
 const file_httpcrawler_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1fhttpcrawler_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xa7\x04\n" +
-	"\x17HttpCrawlerClientConfig\x12'\n" +
-	"\x0fmax_concurrency\x18\x01 \x01(\x05R\x0emaxConcurrency\x12-\n" +
-	"\x13max_page_size_bytes\x18\x02 \x01(\x05R\x10maxPageSizeBytes\x12\x1b\n" +
-	"\tmax_depth\x18\x03 \x01(\x05R\bmaxDepth\x12!\n" +
-	"\fmax_requests\x18\x04 \x01(\x05R\vmaxRequests\x12\x1e\n" +
+	"\x1fhttpcrawler_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\x9c\x05\n" +
+	"\x17HttpCrawlerClientConfig\x12,\n" +
+	"\x0fmax_concurrency\x18\x01 \x01(\x05H\x00R\x0emaxConcurrency\x88\x01\x01\x122\n" +
+	"\x13max_page_size_bytes\x18\x02 \x01(\x05H\x01R\x10maxPageSizeBytes\x88\x01\x01\x12 \n" +
+	"\tmax_depth\x18\x03 \x01(\x05H\x02R\bmaxDepth\x88\x01\x01\x12&\n" +
+	"\fmax_requests\x18\x04 \x01(\x05H\x03R\vmaxRequests\x88\x01\x01\x12\x1e\n" +
 	"\n" +
 	"exclusions\x18\x05 \x03(\tR\n" +
-	"exclusions\x12e\n" +
-	"\fscope_policy\x18\x06 \x01(\x0e2B.goonami.proto.configs.clients.HttpCrawlerClientConfig.ScopePolicyR\vscopePolicy\x12T\n" +
+	"exclusions\x12j\n" +
+	"\fscope_policy\x18\x06 \x01(\x0e2B.goonami.proto.configs.clients.HttpCrawlerClientConfig.ScopePolicyH\x04R\vscopePolicy\x88\x01\x01\x12T\n" +
 	"\x06scopes\x18\a \x03(\v2<.goonami.proto.configs.clients.HttpCrawlerClientConfig.ScopeR\x06scopes\x1a3\n" +
 	"\x05Scope\x12\x16\n" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12\x12\n" +
@@ -342,7 +432,13 @@ const file_httpcrawler_client_config_proto_rawDesc = "" +
 	"\vScopePolicy\x12\x1c\n" +
 	"\x18SCOPE_POLICY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SCOPE_POLICY_CONFIG_ONLY\x10\x01\x12\x17\n" +
-	"\x13SCOPE_POLICY_EXPAND\x10\x02B\xb0\x01\n" +
+	"\x13SCOPE_POLICY_EXPAND\x10\x02B\x12\n" +
+	"\x10_max_concurrencyB\x16\n" +
+	"\x14_max_page_size_bytesB\f\n" +
+	"\n" +
+	"_max_depthB\x0f\n" +
+	"\r_max_requestsB\x0f\n" +
+	"\r_scope_policyB\xb0\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB!HttpCrawlerClientConfigOuterClassP\x01Z_github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_protob\x06proto3"
 
 var file_httpcrawler_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
@@ -367,6 +463,7 @@ func file_httpcrawler_client_config_proto_init() {
 	if File_httpcrawler_client_config_proto != nil {
 		return
 	}
+	file_httpcrawler_client_config_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

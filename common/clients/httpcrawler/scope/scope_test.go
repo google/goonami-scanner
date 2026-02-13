@@ -124,7 +124,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "when_policy_is_config_only_it_ignores_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
-				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_CONFIG_ONLY,
+				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_CONFIG_ONLY.Enum(),
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
 					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: ""}.Build(),
 					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/path"}.Build(),
@@ -143,7 +143,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "when_policy_is_expand_it_uses_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
-				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 			}.Build(),
 			urls: []string{
 				"http://bar.com/path/",
@@ -161,7 +161,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "when_policy_is_expand_it_uses_both_config_and_seed_urls",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
-				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
 					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/"}.Build(),
 				},
@@ -175,7 +175,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "when_seed_url_is_invalid_returns_error",
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
-				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 			}.Build(),
 			urls:    []string{"://bar.com"},
 			wantErr: true,

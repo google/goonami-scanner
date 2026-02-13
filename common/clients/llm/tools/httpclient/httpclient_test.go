@@ -35,6 +35,7 @@ import (
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -264,7 +265,7 @@ func TestDo(t *testing.T) {
 			},
 			cfg: llmcpb.HttpClientConfig_builder{
 				AllowedMethods:        []string{"GET"},
-				MaxRequestsPerService: 1,
+				MaxRequestsPerService: proto.Int32(1),
 				ForbiddenPaths:        []string{},
 			}.Build(),
 			presetReqs: 1,
@@ -281,8 +282,8 @@ func TestDo(t *testing.T) {
 			},
 			cfg: llmcpb.HttpClientConfig_builder{
 				AllowedMethods:        []string{"GET"},
-				MaxRequestsPerService: 1,
-				MaxAnswerSizeBytes:    10,
+				MaxRequestsPerService: proto.Int32(1),
+				MaxAnswerSizeBytes:    proto.Int32(10),
 				ForbiddenPaths:        []string{},
 			}.Build(),
 			wantErr: goohttp.ErrPageTooBig,
@@ -298,8 +299,8 @@ func TestDo(t *testing.T) {
 			coreConfig := config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
-						TimeoutPerRequestSeconds: 10,
-						MaxConcurrency:           1,
+						TimeoutPerRequestSeconds: proto.Int32(10),
+						MaxConcurrency:           proto.Int32(1),
 					}.Build(),
 				}.Build(),
 			}.Build())

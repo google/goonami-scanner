@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/log"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
@@ -56,6 +57,20 @@ type Config struct {
 	artifactsDir string
 }
 
+// DefaultProto returns the default configuration for Goonami.
+func DefaultProto() *cpb.Config {
+	return cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxConcurrency:           proto.Int32(5),
+				TimeoutPerRequestSeconds: proto.Int32(10),
+				MaxPacketsPerSecond:      proto.Int32(0),
+				MaxHttpRequestsPerSecond: proto.Int32(0),
+			}.Build(),
+		}.Build(),
+	}.Build()
+}
+
 // FromFile creates a new Config from a textproto file. Caller is still responsible for explicitly
 // calling `CreateDirectories` before using the configuration.
 func FromFile(path string) (*Config, error) {
@@ -64,10 +79,12 @@ func FromFile(path string) (*Config, error) {
 		return nil, err
 	}
 
-	cfgpb := &cpb.Config{}
-	if err := prototext.Unmarshal(data, cfgpb); err != nil {
+	cfgpb := DefaultProto()
+	provided := &cpb.Config{}
+	if err := prototext.Unmarshal(data, provided); err != nil {
 		return nil, err
 	}
+	proto.Merge(cfgpb, provided)
 
 	return &Config{
 		proto: cfgpb,
@@ -77,8 +94,17 @@ func FromFile(path string) (*Config, error) {
 // FromProto creates a new Config from a Config proto. Caller is still responsible for explicitly
 // calling `CreateDirectories` before using the configuration.
 func FromProto(cfgpb *cpb.Config) *Config {
+	merged := DefaultProto()
+	proto.Merge(merged, cfgpb)
 	return &Config{
-		proto: cfgpb,
+		proto: merged,
+	}
+}
+
+// Default creates a new Config with the default configuration.
+func Default() *Config {
+	return &Config{
+		proto: DefaultProto(),
 	}
 }
 

@@ -19,42 +19,51 @@ syntax = "proto3";
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto";
+
 option java_multiple_files = true;
 option java_outer_classname = "LlmClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
 
 message LlmClientConfig {
   // Timeout for each request to the LLM.
-  int32 timeout_per_request_sec = 1;
+  // Default: 240 (4 minutes)
+  optional int32 timeout_per_request_seconds = 1;
 
   // Maximum number of attempts to run the agent.
-  int32 max_attempts = 2;
+  // Default: 3
+  optional int32 max_attempts = 2;
 
   // Delay between retries.
-  int32 retry_delay_sec = 3;
+  // Default: 10
+  optional int32 retry_delay_seconds = 3;
 
   // Configuration for the tools that the LLM agent can use.
-  ToolConfig tools = 4;
+  optional ToolConfig tools = 4;
 }
 
 message ToolConfig {
-  HttpClientConfig http_client_config = 1;
+  optional HttpClientConfig http_client_config = 1;
 }
 
 // Configuration for the HTTP client tool. Note that the tool uses the core
 // HTTP client, and thus these options do not need to be duplicated.
 message HttpClientConfig {
   // List of HTTP methods that the agent is allowed to use.
+  // Default: ["GET", "POST"]
   repeated string allowed_methods = 1;
 
   // Maximum number of HTTP requests per network service that the agent is
   // allowed to make.
-  int32 max_requests_per_service = 2;
+  // Default: 50
+  optional int32 max_requests_per_service = 2;
 
   // Maximum size of an HTTP response body to pass to the agent.
-  int32 max_answer_size_bytes = 3;
+  // Default: 1048576 (1MB)
+  optional int32 max_answer_size_bytes = 3;
 
   // Forbidden paths regexps. If the agent tries to request a path that matches
   // any of these regexps, the request will be rejected.
+  // Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
+  // ".*kill.*", ".*quit.*", ".*remove.*"]
   repeated string forbidden_paths = 4;
 }

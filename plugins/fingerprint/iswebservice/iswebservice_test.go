@@ -34,6 +34,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	nepb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
@@ -92,7 +93,7 @@ func TestFingerprint(t *testing.T) {
 			cfg := config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
-						TimeoutPerRequestSeconds: 1,
+						TimeoutPerRequestSeconds: proto.Int32(1),
 					}.Build(),
 				}.Build(),
 			}.Build())

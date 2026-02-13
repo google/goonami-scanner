@@ -32,6 +32,7 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 )
@@ -53,15 +54,15 @@ type Crawler interface {
 // DefaultClientConfig returns the default configuration for the HTTP crawler client.
 func DefaultClientConfig() *cpb.HttpCrawlerClientConfig {
 	return cpb.HttpCrawlerClientConfig_builder{
-		MaxConcurrency:   3,
-		MaxPageSizeBytes: 1 * 1024 * 1024, // 1 MB
-		MaxDepth:         1,
-		MaxRequests:      100,
+		MaxConcurrency:   proto.Int32(1),
+		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024), // 1 MB
+		MaxDepth:         proto.Int32(1),
+		MaxRequests:      proto.Int32(100),
 		Exclusions: []string{
 			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
 			".*kill.*", ".*quit.*", ".*remove.*",
 		},
-		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 	}.Build()
 }
 
@@ -87,12 +88,9 @@ type CrawlStats struct {
 
 // NewSimpleCrawler creates a new SimpleCrawler.
 func NewSimpleCrawler(config *config.Config) *SimpleCrawler {
-	var clientConfig *cpb.HttpCrawlerClientConfig
-	if !config.ClientsConfig().HasHttpCrawler() {
-		log.Warnf("[client/httpcrawler] no configuration bound, using default configuration")
-		clientConfig = DefaultClientConfig()
-	} else {
-		clientConfig = config.ClientsConfig().GetHttpCrawler()
+	clientConfig := DefaultClientConfig()
+	if config.ClientsConfig().HasHttpCrawler() {
+		proto.Merge(clientConfig, config.ClientsConfig().GetHttpCrawler())
 	}
 
 	if clientConfig.GetMaxPageSizeBytes() == 0 {

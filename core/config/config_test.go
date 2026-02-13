@@ -24,6 +24,7 @@ import (
 	"time"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -263,24 +264,28 @@ func TestTimeoutPerRequest(t *testing.T) {
 }
 
 func TestFromProto(t *testing.T) {
-	want := cpb.Config_builder{
+	input := cpb.Config_builder{
 		Globalcfg: cpb.GlobalConfig_builder{
-			UserAgent: "test-agent",
+			UserAgent: proto.String("test-agent"),
 		}.Build(),
 	}.Build()
-	cfg := FromProto(want)
+	cfg := FromProto(input)
 
-	if cfg.proto != want {
-		t.Errorf("FromProto() did not set proto correctly")
+	if cfg.GlobalConfig().GetUserAgent() != "test-agent" {
+		t.Errorf("FromProto() did not set UserAgent correctly: got %q, want %q", cfg.GlobalConfig().GetUserAgent(), "test-agent")
+	}
+	// Check that defaults are also present
+	if cfg.GlobalConfig().GetPerformance().GetMaxConcurrency() != 5 {
+		t.Errorf("FromProto() did not merge defaults: MaxConcurrency = %d, want 1", cfg.GlobalConfig().GetPerformance().GetMaxConcurrency())
 	}
 }
 
 func TestGlobalConfig(t *testing.T) {
-	want := cpb.GlobalConfig_builder{UserAgent: "test-agent"}.Build()
+	want := cpb.GlobalConfig_builder{UserAgent: proto.String("test-agent")}.Build()
 	cfg := FromProto(cpb.Config_builder{Globalcfg: want}.Build())
 
-	if got := cfg.GlobalConfig(); got != want {
-		t.Errorf("GlobalConfig() = %v, want %v", got, want)
+	if got := cfg.GlobalConfig().GetUserAgent(); got != "test-agent" {
+		t.Errorf("GlobalConfig().GetUserAgent() = %v, want %v", got, "test-agent")
 	}
 }
 
@@ -288,7 +293,7 @@ func TestClientsConfig(t *testing.T) {
 	want := cpb.ClientsConfig_builder{}.Build()
 	cfg := FromProto(cpb.Config_builder{Clients: want}.Build())
 
-	if got := cfg.ClientsConfig(); got != want {
+	if got := cfg.ClientsConfig(); !proto.Equal(got, want) {
 		t.Errorf("ClientsConfig() = %v, want %v", got, want)
 	}
 }
@@ -297,7 +302,7 @@ func TestPluginsConfig(t *testing.T) {
 	want := cpb.PluginsConfig_builder{}.Build()
 	cfg := FromProto(cpb.Config_builder{Plugins: want}.Build())
 
-	if got := cfg.PluginsConfig(); got != want {
+	if got := cfg.PluginsConfig(); !proto.Equal(got, want) {
 		t.Errorf("PluginsConfig() = %v, want %v", got, want)
 	}
 }

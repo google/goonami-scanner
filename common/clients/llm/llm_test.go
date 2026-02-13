@@ -34,9 +34,9 @@ import (
 
 func TestNew(t *testing.T) {
 	llmConfig := lccpb.LlmClientConfig_builder{
-		TimeoutPerRequestSec: 1,
-		RetryDelaySec:        1,
-		MaxAttempts:          1,
+		TimeoutPerRequestSeconds: proto.Int32(1),
+		RetryDelaySeconds:        proto.Int32(1),
+		MaxAttempts:              proto.Int32(1),
 	}.Build()
 	cfg := config.FromProto(cpb.Config_builder{
 		Clients: cpb.ClientsConfig_builder{
@@ -70,9 +70,9 @@ func TestNew(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	testConfig := lccpb.LlmClientConfig_builder{
-		TimeoutPerRequestSec: 1,
-		RetryDelaySec:        0,
-		MaxAttempts:          1,
+		TimeoutPerRequestSeconds: proto.Int32(1),
+		RetryDelaySeconds:        proto.Int32(0),
+		MaxAttempts:              proto.Int32(1),
 	}.Build()
 
 	testCases := []struct {
@@ -119,9 +119,9 @@ func TestRun(t *testing.T) {
 		{
 			name: "when_max_attempts_is_reached_error_is_returned",
 			llmConfig: lccpb.LlmClientConfig_builder{
-				TimeoutPerRequestSec: 1,
-				RetryDelaySec:        0,
-				MaxAttempts:          2,
+				TimeoutPerRequestSeconds: proto.Int32(1),
+				RetryDelaySeconds:        proto.Int32(0),
+				MaxAttempts:              proto.Int32(2),
 			}.Build(),
 			agent:    fakellmagent.NewWithSimpleAnswer("bad"),
 			verifier: func(ctx context.Context, result string) error { return errors.New("verifier error") },
@@ -145,9 +145,9 @@ func TestRun(t *testing.T) {
 		{
 			name: "when_verification_fails_once_then_succeeds_result_is_returned",
 			llmConfig: lccpb.LlmClientConfig_builder{
-				TimeoutPerRequestSec: 1,
-				RetryDelaySec:        0,
-				MaxAttempts:          2,
+				TimeoutPerRequestSeconds: proto.Int32(1),
+				RetryDelaySeconds:        proto.Int32(0),
+				MaxAttempts:              proto.Int32(2),
 			}.Build(),
 			agent: fakellmagent.NewWithSimpleAnswer("good"),
 			verifier: func() AgentResultVerifier {
@@ -217,9 +217,9 @@ func TestRun_SessionCreateError(t *testing.T) {
 	cfg := config.FromProto(cpb.Config_builder{
 		Clients: cpb.ClientsConfig_builder{
 			Llm: lccpb.LlmClientConfig_builder{
-				TimeoutPerRequestSec: 1,
-				RetryDelaySec:        0,
-				MaxAttempts:          1,
+				TimeoutPerRequestSeconds: proto.Int32(1),
+				RetryDelaySeconds:        proto.Int32(0),
+				MaxAttempts:              proto.Int32(1),
 			}.Build(),
 		}.Build(),
 	}.Build())

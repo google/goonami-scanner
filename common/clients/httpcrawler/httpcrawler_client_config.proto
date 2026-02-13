@@ -47,32 +47,38 @@ message HttpCrawlerClientConfig {
   // The maximum number of concurrent requests to be made. Note that this
   // concurrency is a product of the core engine concurrency: if the core engine
   // has a concurrency of 2 and this one 5, the scale can go up to 10.
-  int32 max_concurrency = 1;
+  // Default: 1
+  optional int32 max_concurrency = 1;
 
   // The maximum size (in Bytes) of a page. Pages larger than this size will be
   // dropped by the crawler. This field has to be set, a value of 0 will read
   // nothing. Note that it can drastically increase memory usage: each crawler
   // goroutine will have its own buffer. So for example, if the total number of
   // goroutines is 100 and this size is 1MB, that is already 100MB of memory.
-  int32 max_page_size_bytes = 2;
+  // Default: 1048576 (1MB)
+  optional int32 max_page_size_bytes = 2;
 
   // The maximum depth to crawl. The depth is defined by the number of links
   // followed in a chain.
-  int32 max_depth = 3;
+  // Default: 1
+  optional int32 max_depth = 3;
 
   // Maximum number of requests to be made. This is a hard limit on the number
   // of requests made by the crawler. It is enforced at the client level, it
   // means that its count will be shared between calls to Crawl(). In other
   // words, it is shared between targets crawled.
-  int32 max_requests = 4;
+  // Default: 100
+  optional int32 max_requests = 4;
 
   // Paths to exclude from the crawl. This is a list of regular expressions that
   // will be matched against the URL of a page before it is crawled.
+  // Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*", ".*kill.*", ".*quit.*", ".*remove.*"]
   repeated string exclusions = 5;
 
   // Policy to use for the scope. If unspecified, SCOPE_POLICY_EXPAND will be
   // used.
-  ScopePolicy scope_policy = 6;
+  // Default: SCOPE_POLICY_EXPAND
+  optional ScopePolicy scope_policy = 6;
 
   // The scopes to crawl. How this scopes are used is defined by the scope
   // policy.

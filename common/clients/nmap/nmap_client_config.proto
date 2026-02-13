@@ -34,34 +34,46 @@ message NmapClientConfig {
 
   // (Optional) Path to the nmap binary. If empty, the client will try to use
   // the nmap binary found in the current PATH.
-  string binary_path = 1;
+  optional string binary_path = 1;
 
   // Maximum time nmap is allowed to run. This option is handled by the client
   // library and enforced on the nmap binary.
-  int32 timeout_seconds = 2;
+  // Default: 300
+  optional int32 timeout_seconds = 2;
 
   // The scan technique (SYN, CONNECT, ...) (e.g. -sS, -sT)
-  Technique scan_technique = 3;
+  // Default: CONNECT
+  optional Technique scan_technique = 3;
+
   // Intensity (from 1 to 5) of the scan (-T1 to -T5).
-  uint32 scan_intensity = 4;
+  // Default: 3
+  optional uint32 scan_intensity = 4;
+
   // Host discovery; when disabled: -Pn
-  bool enable_host_discovery = 5;
+  // Default: false
+  optional bool enable_host_discovery = 5;
 
   ///////////////////////
   // VERSION DETECTION //
   ///////////////////////
 
   // version detection; -sV
-  bool enable_version_detection = 6;
+  // Default: false
+  optional bool enable_version_detection = 6;
+
   // --version-intensity, ignored if enable_version_detection is false
-  uint32 version_intensity = 7;
+  // Default: 0
+  optional uint32 version_intensity = 7;
 
   /////////////
   // SCRIPTS //
   /////////////
 
   // scripts: Enable HTTP methods detection (--script http-methods).
-  bool enable_http_methods_detection = 8;
+  // Default: false
+  optional bool enable_http_methods_detection = 8;
+
   // scripts: Enable SSL detection (--script ssl-cert,ssl-enum-ciphers)
-  bool enable_ssl_detection = 9;
+  // Default: false
+  optional bool enable_ssl_detection = 9;
 }

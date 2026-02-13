@@ -46,13 +46,19 @@ const (
 )
 
 var (
-	// ErrNoConfiguration indicates that the configuration is missing.
-	ErrNoConfiguration = errors.New("invalid configuration: the webidentity plugin REQUIRES a configuration, none found")
-
 	// ErrNoFingerprintsDirectory indicates that the configuration does not specify the path to the
 	// directory containing the signatures.
 	ErrNoFingerprintsDirectory = errors.New("invalid configuration: the webidentity plugin REQUIRES the path to the directory containing the signatures, none found")
 )
+
+// DefaultConfig returns the default configuration for the webidentity plugin.
+func DefaultConfig() *wfpb.WebIdentityFpConfig {
+	return wfpb.WebIdentityFpConfig_builder{
+		WriteHtmlToFile:          proto.Bool(false),
+		MaximumFileSizeBytes:     proto.Int64(1 * 1024 * 1024),   // 1 MB
+		MaximumStorageSpaceBytes: proto.Int64(100 * 1024 * 1024), // 100 MB
+	}.Build()
+}
 
 // Module is the fingerprinter to detect what product is running on a web server. It is the module
 // most people refer to as "web fingerprinting".
@@ -67,17 +73,16 @@ type Module struct {
 
 // New returns a new instance of the module.
 func New(config *config.Config) (module.Fingerprinter, error) {
-	var modConfig *wfpb.WebIdentityFpConfig
+	modConfig := DefaultConfig()
 
-	if !config.PluginsConfig().HasWebidentity() {
-		return nil, ErrNoConfiguration
+	if config.PluginsConfig().HasWebidentity() {
+		proto.Merge(modConfig, config.PluginsConfig().GetWebidentity())
 	}
 
-	if config.PluginsConfig().GetWebidentity().GetSignaturesDirectory() == "" {
+	if modConfig.GetSignaturesDirectory() == "" {
 		return nil, ErrNoFingerprintsDirectory
 	}
 
-	modConfig = config.PluginsConfig().GetWebidentity()
 	registry := hash.NewRegistry()
 	if err := loadAllFingerprints(modConfig, registry); err != nil {
 		return nil, err

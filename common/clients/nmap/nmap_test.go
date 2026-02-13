@@ -194,17 +194,23 @@ func TestCommandLine(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			globalCfg := cpb.GlobalConfig_builder{
+				PortsToScan: tc.ports,
+			}
+			if tc.rateLimit != 0 {
+				globalCfg.Performance = cpb.GlobalConfig_Performance_builder{
+					MaxPacketsPerSecond: proto.Int32(tc.rateLimit),
+				}.Build()
+			}
+			if tc.userAgent != "" {
+				globalCfg.UserAgent = proto.String(tc.userAgent)
+			}
+
 			cfgpb := cpb.Config_builder{
 				Clients: cpb.ClientsConfig_builder{
 					Nmap: loadNmapConfig(t, tc.configFile),
 				}.Build(),
-				Globalcfg: cpb.GlobalConfig_builder{
-					Performance: cpb.GlobalConfig_Performance_builder{
-						MaxPacketsPerSecond: tc.rateLimit,
-					}.Build(),
-					PortsToScan: tc.ports,
-					UserAgent:   tc.userAgent,
-				}.Build(),
+				Globalcfg: globalCfg.Build(),
 			}.Build()
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)

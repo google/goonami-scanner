@@ -36,13 +36,15 @@ const (
 )
 
 type LlmClientConfig struct {
-	state                           protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_TimeoutPerRequestSec int32                  `protobuf:"varint,1,opt,name=timeout_per_request_sec,json=timeoutPerRequestSec,proto3"`
-	xxx_hidden_MaxAttempts          int32                  `protobuf:"varint,2,opt,name=max_attempts,json=maxAttempts,proto3"`
-	xxx_hidden_RetryDelaySec        int32                  `protobuf:"varint,3,opt,name=retry_delay_sec,json=retryDelaySec,proto3"`
-	xxx_hidden_Tools                *ToolConfig            `protobuf:"bytes,4,opt,name=tools,proto3"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	state                               protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_TimeoutPerRequestSeconds int32                  `protobuf:"varint,1,opt,name=timeout_per_request_seconds,json=timeoutPerRequestSeconds,proto3,oneof"`
+	xxx_hidden_MaxAttempts              int32                  `protobuf:"varint,2,opt,name=max_attempts,json=maxAttempts,proto3,oneof"`
+	xxx_hidden_RetryDelaySeconds        int32                  `protobuf:"varint,3,opt,name=retry_delay_seconds,json=retryDelaySeconds,proto3,oneof"`
+	xxx_hidden_Tools                    *ToolConfig            `protobuf:"bytes,4,opt,name=tools,proto3,oneof"`
+	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
+	XXX_presence                        [1]uint32
+	unknownFields                       protoimpl.UnknownFields
+	sizeCache                           protoimpl.SizeCache
 }
 
 func (x *LlmClientConfig) Reset() {
@@ -70,9 +72,9 @@ func (x *LlmClientConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-func (x *LlmClientConfig) GetTimeoutPerRequestSec() int32 {
+func (x *LlmClientConfig) GetTimeoutPerRequestSeconds() int32 {
 	if x != nil {
-		return x.xxx_hidden_TimeoutPerRequestSec
+		return x.xxx_hidden_TimeoutPerRequestSeconds
 	}
 	return 0
 }
@@ -84,9 +86,9 @@ func (x *LlmClientConfig) GetMaxAttempts() int32 {
 	return 0
 }
 
-func (x *LlmClientConfig) GetRetryDelaySec() int32 {
+func (x *LlmClientConfig) GetRetryDelaySeconds() int32 {
 	if x != nil {
-		return x.xxx_hidden_RetryDelaySec
+		return x.xxx_hidden_RetryDelaySeconds
 	}
 	return 0
 }
@@ -98,20 +100,44 @@ func (x *LlmClientConfig) GetTools() *ToolConfig {
 	return nil
 }
 
-func (x *LlmClientConfig) SetTimeoutPerRequestSec(v int32) {
-	x.xxx_hidden_TimeoutPerRequestSec = v
+func (x *LlmClientConfig) SetTimeoutPerRequestSeconds(v int32) {
+	x.xxx_hidden_TimeoutPerRequestSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *LlmClientConfig) SetMaxAttempts(v int32) {
 	x.xxx_hidden_MaxAttempts = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
-func (x *LlmClientConfig) SetRetryDelaySec(v int32) {
-	x.xxx_hidden_RetryDelaySec = v
+func (x *LlmClientConfig) SetRetryDelaySeconds(v int32) {
+	x.xxx_hidden_RetryDelaySeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
 }
 
 func (x *LlmClientConfig) SetTools(v *ToolConfig) {
 	x.xxx_hidden_Tools = v
+}
+
+func (x *LlmClientConfig) HasTimeoutPerRequestSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *LlmClientConfig) HasMaxAttempts() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *LlmClientConfig) HasRetryDelaySeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
 func (x *LlmClientConfig) HasTools() bool {
@@ -119,6 +145,21 @@ func (x *LlmClientConfig) HasTools() bool {
 		return false
 	}
 	return x.xxx_hidden_Tools != nil
+}
+
+func (x *LlmClientConfig) ClearTimeoutPerRequestSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_TimeoutPerRequestSeconds = 0
+}
+
+func (x *LlmClientConfig) ClearMaxAttempts() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_MaxAttempts = 0
+}
+
+func (x *LlmClientConfig) ClearRetryDelaySeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_RetryDelaySeconds = 0
 }
 
 func (x *LlmClientConfig) ClearTools() {
@@ -129,11 +170,14 @@ type LlmClientConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// Timeout for each request to the LLM.
-	TimeoutPerRequestSec int32
+	// Default: 240 (4 minutes)
+	TimeoutPerRequestSeconds *int32
 	// Maximum number of attempts to run the agent.
-	MaxAttempts int32
+	// Default: 3
+	MaxAttempts *int32
 	// Delay between retries.
-	RetryDelaySec int32
+	// Default: 10
+	RetryDelaySeconds *int32
 	// Configuration for the tools that the LLM agent can use.
 	Tools *ToolConfig
 }
@@ -142,16 +186,25 @@ func (b0 LlmClientConfig_builder) Build() *LlmClientConfig {
 	m0 := &LlmClientConfig{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_TimeoutPerRequestSec = b.TimeoutPerRequestSec
-	x.xxx_hidden_MaxAttempts = b.MaxAttempts
-	x.xxx_hidden_RetryDelaySec = b.RetryDelaySec
+	if b.TimeoutPerRequestSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_TimeoutPerRequestSeconds = *b.TimeoutPerRequestSeconds
+	}
+	if b.MaxAttempts != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_MaxAttempts = *b.MaxAttempts
+	}
+	if b.RetryDelaySeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_RetryDelaySeconds = *b.RetryDelaySeconds
+	}
 	x.xxx_hidden_Tools = b.Tools
 	return m0
 }
 
 type ToolConfig struct {
 	state                       protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_HttpClientConfig *HttpClientConfig      `protobuf:"bytes,1,opt,name=http_client_config,json=httpClientConfig,proto3"`
+	xxx_hidden_HttpClientConfig *HttpClientConfig      `protobuf:"bytes,1,opt,name=http_client_config,json=httpClientConfig,proto3,oneof"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -222,9 +275,11 @@ func (b0 ToolConfig_builder) Build() *ToolConfig {
 type HttpClientConfig struct {
 	state                            protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_AllowedMethods        []string               `protobuf:"bytes,1,rep,name=allowed_methods,json=allowedMethods,proto3"`
-	xxx_hidden_MaxRequestsPerService int32                  `protobuf:"varint,2,opt,name=max_requests_per_service,json=maxRequestsPerService,proto3"`
-	xxx_hidden_MaxAnswerSizeBytes    int32                  `protobuf:"varint,3,opt,name=max_answer_size_bytes,json=maxAnswerSizeBytes,proto3"`
+	xxx_hidden_MaxRequestsPerService int32                  `protobuf:"varint,2,opt,name=max_requests_per_service,json=maxRequestsPerService,proto3,oneof"`
+	xxx_hidden_MaxAnswerSizeBytes    int32                  `protobuf:"varint,3,opt,name=max_answer_size_bytes,json=maxAnswerSizeBytes,proto3,oneof"`
 	xxx_hidden_ForbiddenPaths        []string               `protobuf:"bytes,4,rep,name=forbidden_paths,json=forbiddenPaths,proto3"`
+	XXX_raceDetectHookData           protoimpl.RaceDetectHookData
+	XXX_presence                     [1]uint32
 	unknownFields                    protoimpl.UnknownFields
 	sizeCache                        protoimpl.SizeCache
 }
@@ -288,28 +343,59 @@ func (x *HttpClientConfig) SetAllowedMethods(v []string) {
 
 func (x *HttpClientConfig) SetMaxRequestsPerService(v int32) {
 	x.xxx_hidden_MaxRequestsPerService = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *HttpClientConfig) SetMaxAnswerSizeBytes(v int32) {
 	x.xxx_hidden_MaxAnswerSizeBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
 }
 
 func (x *HttpClientConfig) SetForbiddenPaths(v []string) {
 	x.xxx_hidden_ForbiddenPaths = v
 }
 
+func (x *HttpClientConfig) HasMaxRequestsPerService() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *HttpClientConfig) HasMaxAnswerSizeBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *HttpClientConfig) ClearMaxRequestsPerService() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_MaxRequestsPerService = 0
+}
+
+func (x *HttpClientConfig) ClearMaxAnswerSizeBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_MaxAnswerSizeBytes = 0
+}
+
 type HttpClientConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// List of HTTP methods that the agent is allowed to use.
+	// Default: ["GET", "POST"]
 	AllowedMethods []string
 	// Maximum number of HTTP requests per network service that the agent is
 	// allowed to make.
-	MaxRequestsPerService int32
+	// Default: 50
+	MaxRequestsPerService *int32
 	// Maximum size of an HTTP response body to pass to the agent.
-	MaxAnswerSizeBytes int32
+	// Default: 1048576 (1MB)
+	MaxAnswerSizeBytes *int32
 	// Forbidden paths regexps. If the agent tries to request a path that matches
 	// any of these regexps, the request will be rejected.
+	// Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
+	// ".*kill.*", ".*quit.*", ".*remove.*"]
 	ForbiddenPaths []string
 }
 
@@ -318,8 +404,14 @@ func (b0 HttpClientConfig_builder) Build() *HttpClientConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_AllowedMethods = b.AllowedMethods
-	x.xxx_hidden_MaxRequestsPerService = b.MaxRequestsPerService
-	x.xxx_hidden_MaxAnswerSizeBytes = b.MaxAnswerSizeBytes
+	if b.MaxRequestsPerService != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_MaxRequestsPerService = *b.MaxRequestsPerService
+	}
+	if b.MaxAnswerSizeBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_MaxAnswerSizeBytes = *b.MaxAnswerSizeBytes
+	}
 	x.xxx_hidden_ForbiddenPaths = b.ForbiddenPaths
 	return m0
 }
@@ -328,20 +420,27 @@ var File_llm_client_config_proto protoreflect.FileDescriptor
 
 const file_llm_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xd4\x01\n" +
-	"\x0fLlmClientConfig\x125\n" +
-	"\x17timeout_per_request_sec\x18\x01 \x01(\x05R\x14timeoutPerRequestSec\x12!\n" +
-	"\fmax_attempts\x18\x02 \x01(\x05R\vmaxAttempts\x12&\n" +
-	"\x0fretry_delay_sec\x18\x03 \x01(\x05R\rretryDelaySec\x12?\n" +
-	"\x05tools\x18\x04 \x01(\v2).goonami.proto.configs.clients.ToolConfigR\x05tools\"k\n" +
+	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xcb\x02\n" +
+	"\x0fLlmClientConfig\x12B\n" +
+	"\x1btimeout_per_request_seconds\x18\x01 \x01(\x05H\x00R\x18timeoutPerRequestSeconds\x88\x01\x01\x12&\n" +
+	"\fmax_attempts\x18\x02 \x01(\x05H\x01R\vmaxAttempts\x88\x01\x01\x123\n" +
+	"\x13retry_delay_seconds\x18\x03 \x01(\x05H\x02R\x11retryDelaySeconds\x88\x01\x01\x12D\n" +
+	"\x05tools\x18\x04 \x01(\v2).goonami.proto.configs.clients.ToolConfigH\x03R\x05tools\x88\x01\x01B\x1e\n" +
+	"\x1c_timeout_per_request_secondsB\x0f\n" +
+	"\r_max_attemptsB\x16\n" +
+	"\x14_retry_delay_secondsB\b\n" +
+	"\x06_tools\"\x87\x01\n" +
 	"\n" +
-	"ToolConfig\x12]\n" +
-	"\x12http_client_config\x18\x01 \x01(\v2/.goonami.proto.configs.clients.HttpClientConfigR\x10httpClientConfig\"\xd0\x01\n" +
+	"ToolConfig\x12b\n" +
+	"\x12http_client_config\x18\x01 \x01(\v2/.goonami.proto.configs.clients.HttpClientConfigH\x00R\x10httpClientConfig\x88\x01\x01B\x15\n" +
+	"\x13_http_client_config\"\x91\x02\n" +
 	"\x10HttpClientConfig\x12'\n" +
-	"\x0fallowed_methods\x18\x01 \x03(\tR\x0eallowedMethods\x127\n" +
-	"\x18max_requests_per_service\x18\x02 \x01(\x05R\x15maxRequestsPerService\x121\n" +
-	"\x15max_answer_size_bytes\x18\x03 \x01(\x05R\x12maxAnswerSizeBytes\x12'\n" +
-	"\x0fforbidden_paths\x18\x04 \x03(\tR\x0eforbiddenPathsB\x98\x01\n" +
+	"\x0fallowed_methods\x18\x01 \x03(\tR\x0eallowedMethods\x12<\n" +
+	"\x18max_requests_per_service\x18\x02 \x01(\x05H\x00R\x15maxRequestsPerService\x88\x01\x01\x126\n" +
+	"\x15max_answer_size_bytes\x18\x03 \x01(\x05H\x01R\x12maxAnswerSizeBytes\x88\x01\x01\x12'\n" +
+	"\x0fforbidden_paths\x18\x04 \x03(\tR\x0eforbiddenPathsB\x1b\n" +
+	"\x19_max_requests_per_serviceB\x18\n" +
+	"\x16_max_answer_size_bytesB\x98\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB\x19LlmClientConfigOuterClassP\x01ZOgithub.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_protob\x06proto3"
 
 var file_llm_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
@@ -365,6 +464,9 @@ func file_llm_client_config_proto_init() {
 	if File_llm_client_config_proto != nil {
 		return
 	}
+	file_llm_client_config_proto_msgTypes[0].OneofWrappers = []any{}
+	file_llm_client_config_proto_msgTypes[1].OneofWrappers = []any{}
+	file_llm_client_config_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

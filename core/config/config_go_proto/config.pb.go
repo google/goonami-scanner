@@ -161,9 +161,11 @@ func (b0 Config_builder) Build() *Config {
 // accessible by every plugin.
 type GlobalConfig struct {
 	state                  protoimpl.MessageState    `protogen:"opaque.v1"`
-	xxx_hidden_Performance *GlobalConfig_Performance `protobuf:"bytes,1,opt,name=performance,proto3"`
+	xxx_hidden_Performance *GlobalConfig_Performance `protobuf:"bytes,1,opt,name=performance,proto3,oneof"`
 	xxx_hidden_PortsToScan []uint32                  `protobuf:"varint,2,rep,packed,name=ports_to_scan,json=portsToScan,proto3"`
-	xxx_hidden_UserAgent   string                    `protobuf:"bytes,3,opt,name=user_agent,json=userAgent,proto3"`
+	xxx_hidden_UserAgent   *string                   `protobuf:"bytes,3,opt,name=user_agent,json=userAgent,proto3,oneof"`
+	XXX_raceDetectHookData protoimpl.RaceDetectHookData
+	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -209,7 +211,10 @@ func (x *GlobalConfig) GetPortsToScan() []uint32 {
 
 func (x *GlobalConfig) GetUserAgent() string {
 	if x != nil {
-		return x.xxx_hidden_UserAgent
+		if x.xxx_hidden_UserAgent != nil {
+			return *x.xxx_hidden_UserAgent
+		}
+		return ""
 	}
 	return ""
 }
@@ -223,7 +228,8 @@ func (x *GlobalConfig) SetPortsToScan(v []uint32) {
 }
 
 func (x *GlobalConfig) SetUserAgent(v string) {
-	x.xxx_hidden_UserAgent = v
+	x.xxx_hidden_UserAgent = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
 }
 
 func (x *GlobalConfig) HasPerformance() bool {
@@ -233,8 +239,20 @@ func (x *GlobalConfig) HasPerformance() bool {
 	return x.xxx_hidden_Performance != nil
 }
 
+func (x *GlobalConfig) HasUserAgent() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
 func (x *GlobalConfig) ClearPerformance() {
 	x.xxx_hidden_Performance = nil
+}
+
+func (x *GlobalConfig) ClearUserAgent() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_UserAgent = nil
 }
 
 type GlobalConfig_builder struct {
@@ -243,9 +261,11 @@ type GlobalConfig_builder struct {
 	// Performance related configurations.
 	Performance *GlobalConfig_Performance
 	// Ports that the scanner will target.
+	// Default: empty (scans every port)
 	PortsToScan []uint32
 	// User agent to use throughout the scan.
-	UserAgent string
+	// Default: empty
+	UserAgent *string
 }
 
 func (b0 GlobalConfig_builder) Build() *GlobalConfig {
@@ -254,7 +274,10 @@ func (b0 GlobalConfig_builder) Build() *GlobalConfig {
 	_, _ = b, x
 	x.xxx_hidden_Performance = b.Performance
 	x.xxx_hidden_PortsToScan = b.PortsToScan
-	x.xxx_hidden_UserAgent = b.UserAgent
+	if b.UserAgent != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		x.xxx_hidden_UserAgent = b.UserAgent
+	}
 	return m0
 }
 
@@ -448,10 +471,12 @@ func (b0 PluginsConfig_builder) Build() *PluginsConfig {
 
 type GlobalConfig_Performance struct {
 	state                               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_MaxConcurrency           int32                  `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3"`
-	xxx_hidden_TimeoutPerRequestSeconds int32                  `protobuf:"varint,2,opt,name=timeout_per_request_seconds,json=timeoutPerRequestSeconds,proto3"`
-	xxx_hidden_MaxPacketsPerSecond      int32                  `protobuf:"varint,3,opt,name=max_packets_per_second,json=maxPacketsPerSecond,proto3"`
-	xxx_hidden_MaxHttpRequestsPerSecond int32                  `protobuf:"varint,4,opt,name=max_http_requests_per_second,json=maxHttpRequestsPerSecond,proto3"`
+	xxx_hidden_MaxConcurrency           int32                  `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof"`
+	xxx_hidden_TimeoutPerRequestSeconds int32                  `protobuf:"varint,2,opt,name=timeout_per_request_seconds,json=timeoutPerRequestSeconds,proto3,oneof"`
+	xxx_hidden_MaxPacketsPerSecond      int32                  `protobuf:"varint,3,opt,name=max_packets_per_second,json=maxPacketsPerSecond,proto3,oneof"`
+	xxx_hidden_MaxHttpRequestsPerSecond int32                  `protobuf:"varint,4,opt,name=max_http_requests_per_second,json=maxHttpRequestsPerSecond,proto3,oneof"`
+	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
+	XXX_presence                        [1]uint32
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
 }
@@ -511,44 +536,112 @@ func (x *GlobalConfig_Performance) GetMaxHttpRequestsPerSecond() int32 {
 
 func (x *GlobalConfig_Performance) SetMaxConcurrency(v int32) {
 	x.xxx_hidden_MaxConcurrency = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *GlobalConfig_Performance) SetTimeoutPerRequestSeconds(v int32) {
 	x.xxx_hidden_TimeoutPerRequestSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *GlobalConfig_Performance) SetMaxPacketsPerSecond(v int32) {
 	x.xxx_hidden_MaxPacketsPerSecond = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
 }
 
 func (x *GlobalConfig_Performance) SetMaxHttpRequestsPerSecond(v int32) {
 	x.xxx_hidden_MaxHttpRequestsPerSecond = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *GlobalConfig_Performance) HasMaxConcurrency() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *GlobalConfig_Performance) HasTimeoutPerRequestSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *GlobalConfig_Performance) HasMaxPacketsPerSecond() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *GlobalConfig_Performance) HasMaxHttpRequestsPerSecond() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *GlobalConfig_Performance) ClearMaxConcurrency() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_MaxConcurrency = 0
+}
+
+func (x *GlobalConfig_Performance) ClearTimeoutPerRequestSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_TimeoutPerRequestSeconds = 0
+}
+
+func (x *GlobalConfig_Performance) ClearMaxPacketsPerSecond() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_MaxPacketsPerSecond = 0
+}
+
+func (x *GlobalConfig_Performance) ClearMaxHttpRequestsPerSecond() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_MaxHttpRequestsPerSecond = 0
 }
 
 type GlobalConfig_Performance_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// Maximum number of concurrent requests.
-	MaxConcurrency int32
+	// Default: 5
+	MaxConcurrency *int32
 	// Time in second before a request is aborted. This applies to every HTTP
 	// request and should also apply to most network requests generated by the
 	// core engine.
-	TimeoutPerRequestSeconds int32
+	// Default: 10
+	TimeoutPerRequestSeconds *int32
 	// Rate limiting for packets. This is a **best-effort** limit. Amongst other
 	// things, it is applied to nmap. A value of 0 means no limit.
-	MaxPacketsPerSecond int32
+	// Default: 0 (no limit)
+	MaxPacketsPerSecond *int32
 	// Rate limiting for HTTP requests. A value of 0 means no limit.
-	MaxHttpRequestsPerSecond int32
+	// Default: 0 (no limit)
+	MaxHttpRequestsPerSecond *int32
 }
 
 func (b0 GlobalConfig_Performance_builder) Build() *GlobalConfig_Performance {
 	m0 := &GlobalConfig_Performance{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_MaxConcurrency = b.MaxConcurrency
-	x.xxx_hidden_TimeoutPerRequestSeconds = b.TimeoutPerRequestSeconds
-	x.xxx_hidden_MaxPacketsPerSecond = b.MaxPacketsPerSecond
-	x.xxx_hidden_MaxHttpRequestsPerSecond = b.MaxHttpRequestsPerSecond
+	if b.MaxConcurrency != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_MaxConcurrency = *b.MaxConcurrency
+	}
+	if b.TimeoutPerRequestSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_TimeoutPerRequestSeconds = *b.TimeoutPerRequestSeconds
+	}
+	if b.MaxPacketsPerSecond != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_MaxPacketsPerSecond = *b.MaxPacketsPerSecond
+	}
+	if b.MaxHttpRequestsPerSecond != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_MaxHttpRequestsPerSecond = *b.MaxHttpRequestsPerSecond
+	}
 	return m0
 }
 
@@ -560,17 +653,23 @@ const file_config_proto_rawDesc = "" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
-	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\"\x89\x03\n" +
-	"\fGlobalConfig\x12I\n" +
-	"\vperformance\x18\x01 \x01(\v2'.goonami.proto.GlobalConfig.PerformanceR\vperformance\x12\"\n" +
-	"\rports_to_scan\x18\x02 \x03(\rR\vportsToScan\x12\x1d\n" +
+	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\"\xb6\x04\n" +
+	"\fGlobalConfig\x12N\n" +
+	"\vperformance\x18\x01 \x01(\v2'.goonami.proto.GlobalConfig.PerformanceH\x00R\vperformance\x88\x01\x01\x12\"\n" +
+	"\rports_to_scan\x18\x02 \x03(\rR\vportsToScan\x12\"\n" +
 	"\n" +
-	"user_agent\x18\x03 \x01(\tR\tuserAgent\x1a\xea\x01\n" +
-	"\vPerformance\x12'\n" +
-	"\x0fmax_concurrency\x18\x01 \x01(\x05R\x0emaxConcurrency\x12=\n" +
-	"\x1btimeout_per_request_seconds\x18\x02 \x01(\x05R\x18timeoutPerRequestSeconds\x123\n" +
-	"\x16max_packets_per_second\x18\x03 \x01(\x05R\x13maxPacketsPerSecond\x12>\n" +
-	"\x1cmax_http_requests_per_second\x18\x04 \x01(\x05R\x18maxHttpRequestsPerSecond\"\xf1\x01\n" +
+	"user_agent\x18\x03 \x01(\tH\x01R\tuserAgent\x88\x01\x01\x1a\xee\x02\n" +
+	"\vPerformance\x12,\n" +
+	"\x0fmax_concurrency\x18\x01 \x01(\x05H\x00R\x0emaxConcurrency\x88\x01\x01\x12B\n" +
+	"\x1btimeout_per_request_seconds\x18\x02 \x01(\x05H\x01R\x18timeoutPerRequestSeconds\x88\x01\x01\x128\n" +
+	"\x16max_packets_per_second\x18\x03 \x01(\x05H\x02R\x13maxPacketsPerSecond\x88\x01\x01\x12C\n" +
+	"\x1cmax_http_requests_per_second\x18\x04 \x01(\x05H\x03R\x18maxHttpRequestsPerSecond\x88\x01\x01B\x12\n" +
+	"\x10_max_concurrencyB\x1e\n" +
+	"\x1c_timeout_per_request_secondsB\x19\n" +
+	"\x17_max_packets_per_secondB\x1f\n" +
+	"\x1d_max_http_requests_per_secondB\x0e\n" +
+	"\f_performanceB\r\n" +
+	"\v_user_agent\"\xf1\x01\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
@@ -612,6 +711,8 @@ func file_config_proto_init() {
 	if File_config_proto != nil {
 		return
 	}
+	file_config_proto_msgTypes[1].OneofWrappers = []any{}
+	file_config_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

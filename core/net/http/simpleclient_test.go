@@ -25,6 +25,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestNewSimpleClient(t *testing.T) {
@@ -47,7 +48,7 @@ func TestNewSimpleClient(t *testing.T) {
 			cfg: config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
-						MaxHttpRequestsPerSecond: 10,
+						MaxHttpRequestsPerSecond: proto.Int32(10),
 					}.Build(),
 				}.Build(),
 			}.Build()),
@@ -60,7 +61,7 @@ func TestNewSimpleClient(t *testing.T) {
 			cfg: config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
-						MaxHttpRequestsPerSecond: 0,
+						MaxHttpRequestsPerSecond: proto.Int32(0),
 					}.Build(),
 				}.Build(),
 			}.Build()),
@@ -102,7 +103,7 @@ func TestDoWithoutRateLimit(t *testing.T) {
 	cfg := config.FromProto(cpb.Config_builder{
 		Globalcfg: cpb.GlobalConfig_builder{
 			Performance: cpb.GlobalConfig_Performance_builder{
-				MaxHttpRequestsPerSecond: 0,
+				MaxHttpRequestsPerSecond: proto.Int32(0),
 			}.Build(),
 		}.Build(),
 	}.Build())
@@ -131,7 +132,7 @@ func TestDo_ContextCancelled(t *testing.T) {
 	cfg := config.FromProto(cpb.Config_builder{
 		Globalcfg: cpb.GlobalConfig_builder{
 			Performance: cpb.GlobalConfig_Performance_builder{
-				MaxHttpRequestsPerSecond: 1,
+				MaxHttpRequestsPerSecond: proto.Int32(1),
 			}.Build(),
 		}.Build(),
 	}.Build())

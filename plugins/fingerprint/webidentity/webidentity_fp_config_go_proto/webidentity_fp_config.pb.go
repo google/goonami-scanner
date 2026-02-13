@@ -37,10 +37,12 @@ const (
 
 type WebIdentityFpConfig struct {
 	state                               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_SignaturesDirectory      string                 `protobuf:"bytes,1,opt,name=signatures_directory,json=signaturesDirectory,proto3"`
-	xxx_hidden_WriteHtmlToFile          bool                   `protobuf:"varint,2,opt,name=write_html_to_file,json=writeHtmlToFile,proto3"`
-	xxx_hidden_MaximumFileSizeBytes     int64                  `protobuf:"varint,3,opt,name=maximum_file_size_bytes,json=maximumFileSizeBytes,proto3"`
-	xxx_hidden_MaximumStorageSpaceBytes int64                  `protobuf:"varint,4,opt,name=maximum_storage_space_bytes,json=maximumStorageSpaceBytes,proto3"`
+	xxx_hidden_SignaturesDirectory      *string                `protobuf:"bytes,1,opt,name=signatures_directory,json=signaturesDirectory,proto3,oneof"`
+	xxx_hidden_WriteHtmlToFile          bool                   `protobuf:"varint,2,opt,name=write_html_to_file,json=writeHtmlToFile,proto3,oneof"`
+	xxx_hidden_MaximumFileSizeBytes     int64                  `protobuf:"varint,3,opt,name=maximum_file_size_bytes,json=maximumFileSizeBytes,proto3,oneof"`
+	xxx_hidden_MaximumStorageSpaceBytes int64                  `protobuf:"varint,4,opt,name=maximum_storage_space_bytes,json=maximumStorageSpaceBytes,proto3,oneof"`
+	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
+	XXX_presence                        [1]uint32
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
 }
@@ -72,7 +74,10 @@ func (x *WebIdentityFpConfig) ProtoReflect() protoreflect.Message {
 
 func (x *WebIdentityFpConfig) GetSignaturesDirectory() string {
 	if x != nil {
-		return x.xxx_hidden_SignaturesDirectory
+		if x.xxx_hidden_SignaturesDirectory != nil {
+			return *x.xxx_hidden_SignaturesDirectory
+		}
+		return ""
 	}
 	return ""
 }
@@ -99,43 +104,110 @@ func (x *WebIdentityFpConfig) GetMaximumStorageSpaceBytes() int64 {
 }
 
 func (x *WebIdentityFpConfig) SetSignaturesDirectory(v string) {
-	x.xxx_hidden_SignaturesDirectory = v
+	x.xxx_hidden_SignaturesDirectory = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
 }
 
 func (x *WebIdentityFpConfig) SetWriteHtmlToFile(v bool) {
 	x.xxx_hidden_WriteHtmlToFile = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
 }
 
 func (x *WebIdentityFpConfig) SetMaximumFileSizeBytes(v int64) {
 	x.xxx_hidden_MaximumFileSizeBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
 }
 
 func (x *WebIdentityFpConfig) SetMaximumStorageSpaceBytes(v int64) {
 	x.xxx_hidden_MaximumStorageSpaceBytes = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+}
+
+func (x *WebIdentityFpConfig) HasSignaturesDirectory() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *WebIdentityFpConfig) HasWriteHtmlToFile() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 1)
+}
+
+func (x *WebIdentityFpConfig) HasMaximumFileSizeBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
+}
+
+func (x *WebIdentityFpConfig) HasMaximumStorageSpaceBytes() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *WebIdentityFpConfig) ClearSignaturesDirectory() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_SignaturesDirectory = nil
+}
+
+func (x *WebIdentityFpConfig) ClearWriteHtmlToFile() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 1)
+	x.xxx_hidden_WriteHtmlToFile = false
+}
+
+func (x *WebIdentityFpConfig) ClearMaximumFileSizeBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
+	x.xxx_hidden_MaximumFileSizeBytes = 0
+}
+
+func (x *WebIdentityFpConfig) ClearMaximumStorageSpaceBytes() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_MaximumStorageSpaceBytes = 0
 }
 
 type WebIdentityFpConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	// Directory where the signatures definition are stored.
-	SignaturesDirectory string
+	SignaturesDirectory *string
 	// Whether to write the HTML response to a file as we crawl the web service.
-	WriteHtmlToFile bool
+	// Default: false
+	WriteHtmlToFile *bool
 	// If storing the HTML response, this is the maximum size of one file.
-	MaximumFileSizeBytes int64
+	// Default: 1048576 (1MB)
+	MaximumFileSizeBytes *int64
 	// If storing the HTML response, this is the maximum amount of storage space
 	// to use.
-	MaximumStorageSpaceBytes int64
+	// Default: 104857600 (100MB)
+	MaximumStorageSpaceBytes *int64
 }
 
 func (b0 WebIdentityFpConfig_builder) Build() *WebIdentityFpConfig {
 	m0 := &WebIdentityFpConfig{}
 	b, x := &b0, m0
 	_, _ = b, x
-	x.xxx_hidden_SignaturesDirectory = b.SignaturesDirectory
-	x.xxx_hidden_WriteHtmlToFile = b.WriteHtmlToFile
-	x.xxx_hidden_MaximumFileSizeBytes = b.MaximumFileSizeBytes
-	x.xxx_hidden_MaximumStorageSpaceBytes = b.MaximumStorageSpaceBytes
+	if b.SignaturesDirectory != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		x.xxx_hidden_SignaturesDirectory = b.SignaturesDirectory
+	}
+	if b.WriteHtmlToFile != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		x.xxx_hidden_WriteHtmlToFile = *b.WriteHtmlToFile
+	}
+	if b.MaximumFileSizeBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		x.xxx_hidden_MaximumFileSizeBytes = *b.MaximumFileSizeBytes
+	}
+	if b.MaximumStorageSpaceBytes != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_MaximumStorageSpaceBytes = *b.MaximumStorageSpaceBytes
+	}
 	return m0
 }
 
@@ -143,12 +215,16 @@ var File_webidentity_fp_config_proto protoreflect.FileDescriptor
 
 const file_webidentity_fp_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1bwebidentity_fp_config.proto\x12$goonami.proto.configs.fingerprinters\"\xeb\x01\n" +
-	"\x13WebIdentityFpConfig\x121\n" +
-	"\x14signatures_directory\x18\x01 \x01(\tR\x13signaturesDirectory\x12+\n" +
-	"\x12write_html_to_file\x18\x02 \x01(\bR\x0fwriteHtmlToFile\x125\n" +
-	"\x17maximum_file_size_bytes\x18\x03 \x01(\x03R\x14maximumFileSizeBytes\x12=\n" +
-	"\x1bmaximum_storage_space_bytes\x18\x04 \x01(\x03R\x18maximumStorageSpaceBytesB\xb4\x01\n" +
+	"\x1bwebidentity_fp_config.proto\x12$goonami.proto.configs.fingerprinters\"\xeb\x02\n" +
+	"\x13WebIdentityFpConfig\x126\n" +
+	"\x14signatures_directory\x18\x01 \x01(\tH\x00R\x13signaturesDirectory\x88\x01\x01\x120\n" +
+	"\x12write_html_to_file\x18\x02 \x01(\bH\x01R\x0fwriteHtmlToFile\x88\x01\x01\x12:\n" +
+	"\x17maximum_file_size_bytes\x18\x03 \x01(\x03H\x02R\x14maximumFileSizeBytes\x88\x01\x01\x12B\n" +
+	"\x1bmaximum_storage_space_bytes\x18\x04 \x01(\x03H\x03R\x18maximumStorageSpaceBytes\x88\x01\x01B\x17\n" +
+	"\x15_signatures_directoryB\x15\n" +
+	"\x13_write_html_to_fileB\x1a\n" +
+	"\x18_maximum_file_size_bytesB\x1e\n" +
+	"\x1c_maximum_storage_space_bytesB\xb4\x01\n" +
 	"/com.google.goonami.proto.configs.fingerprintersB\x1dWebIdentityFpConfigOuterClassP\x01Z`github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_protob\x06proto3"
 
 var file_webidentity_fp_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
@@ -168,6 +244,7 @@ func file_webidentity_fp_config_proto_init() {
 	if File_webidentity_fp_config_proto != nil {
 		return
 	}
+	file_webidentity_fp_config_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

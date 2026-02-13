@@ -37,14 +37,6 @@ import (
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
-var defaultConfig = config.FromProto(cpb.Config_builder{
-	Globalcfg: cpb.GlobalConfig_builder{
-		Performance: cpb.GlobalConfig_Performance_builder{
-			MaxConcurrency: 1,
-		}.Build(),
-	}.Build(),
-}.Build())
-
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -102,7 +94,7 @@ func TestRegisterPortScanner(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -147,7 +139,7 @@ func TestRegisterFingerprinter(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -203,7 +195,7 @@ func TestRegisterDetector(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -282,7 +274,7 @@ func TestPortScanStep(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -387,7 +379,7 @@ func TestFingerprintStep(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -496,7 +488,7 @@ func TestDetectStep(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}
@@ -614,7 +606,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(defaultConfig)
+			r, err := New(config.Default())
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}

@@ -51,9 +51,9 @@ clients: {
   }
 
   llm: {
-    timeout_per_request_sec: 240  # 4 minutes
+    timeout_per_request_seconds: 240  # 4 minutes
     max_attempts: 3
-    retry_delay_sec: 10
+    retry_delay_seconds: 10
 
     tools: {
       http_client_config: {

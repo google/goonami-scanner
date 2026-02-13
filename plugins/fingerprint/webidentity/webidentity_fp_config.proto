@@ -26,15 +26,18 @@ option java_package = "com.google.goonami.proto.configs.fingerprinters";
 
 message WebIdentityFpConfig {
   // Directory where the signatures definition are stored.
-  string signatures_directory = 1;
+  optional string signatures_directory = 1;
 
   // Whether to write the HTML response to a file as we crawl the web service.
-  bool write_html_to_file = 2;
+  // Default: false
+  optional bool write_html_to_file = 2;
 
   // If storing the HTML response, this is the maximum size of one file.
-  int64 maximum_file_size_bytes= 3;
+  // Default: 1048576 (1MB)
+  optional int64 maximum_file_size_bytes= 3;
 
   // If storing the HTML response, this is the maximum amount of storage space
   // to use.
-  int64 maximum_storage_space_bytes = 4;
+  // Default: 104857600 (100MB)
+  optional int64 maximum_storage_space_bytes = 4;
 }

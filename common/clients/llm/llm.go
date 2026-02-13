@@ -79,7 +79,7 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 //   - It provides a retry mechanism with a fixed backoff.
 //   - It integrates the ability to check the validity of the response through a callback.
 func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
-	retryDelay := time.Duration(c.config.GetRetryDelaySec()) * time.Second
+	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
 	maxAttempts := int(c.config.GetMaxAttempts())
 
 	for i := 0; i < maxAttempts; i++ {
@@ -136,7 +136,7 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 		return "", err
 	}
 
-	timeout := time.Duration(c.config.GetTimeoutPerRequestSec()) * time.Second
+	timeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

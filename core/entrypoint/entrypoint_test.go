@@ -27,7 +27,6 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -43,16 +42,8 @@ func (m *fakeHTTPClient) Post(url string, contentType string, body io.Reader) (*
 }
 func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return nil, nil }
 
-var defaultConfig = cpb.Config_builder{
-	Globalcfg: cpb.GlobalConfig_builder{
-		Performance: cpb.GlobalConfig_Performance_builder{
-			MaxConcurrency: 1,
-		}.Build(),
-	}.Build(),
-}.Build()
-
 func TestNewWhenSideEffects(t *testing.T) {
-	cfg := config.FromProto(defaultConfig)
+	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close()
 
@@ -74,7 +65,7 @@ func TestNewWhenSideEffects(t *testing.T) {
 }
 
 func TestNewWhenDefaultRunner(t *testing.T) {
-	cfg := config.FromProto(defaultConfig)
+	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close()
 
@@ -94,7 +85,7 @@ func TestNewWhenDefaultRunner(t *testing.T) {
 }
 
 func TestNewWhenPluginRegistration(t *testing.T) {
-	cfg := config.FromProto(defaultConfig)
+	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close()
 	genericErr := errors.New("generic error")
@@ -242,7 +233,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := config.FromProto(defaultConfig)
+			cfg := config.Default()
 			cfg.CreateDirectories(t.TempDir())
 			defer cfg.Close()
 
@@ -278,7 +269,7 @@ func TestRun(t *testing.T) {
 }
 
 func TestArtifacts(t *testing.T) {
-	cfg := config.FromProto(defaultConfig)
+	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close()
 

@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	cpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
@@ -62,20 +63,39 @@ func newTestServer(pages map[string]*testPage) *httptest.Server {
 
 func TestDefaultClientConfig(t *testing.T) {
 	want := cpb.HttpCrawlerClientConfig_builder{
-		MaxConcurrency:   3,
-		MaxPageSizeBytes: 1 * 1024 * 1024,
-		MaxDepth:         1,
-		MaxRequests:      100,
+		MaxConcurrency:   proto.Int32(1),
+		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024),
+		MaxDepth:         proto.Int32(1),
+		MaxRequests:      proto.Int32(100),
 		Exclusions: []string{
 			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
 			".*kill.*", ".*quit.*", ".*remove.*",
 		},
-		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 	}.Build()
 	got := DefaultClientConfig()
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("DefaultClientConfig() returned diff (-want +got):\n%s", diff)
 	}
+}
+
+func testConfig() *config.Config {
+	return config.FromProto(
+		cfgpb.Config_builder{
+			Globalcfg: cfgpb.GlobalConfig_builder{
+				Performance: cfgpb.GlobalConfig_Performance_builder{
+					TimeoutPerRequestSeconds: proto.Int32(2),
+				}.Build(),
+			}.Build(),
+			Clients: cfgpb.ClientsConfig_builder{
+				HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+					MaxConcurrency: proto.Int32(1),
+					MaxDepth:       proto.Int32(10),
+					MaxRequests:    proto.Int32(10),
+				}.Build(),
+			}.Build(),
+		}.Build(),
+	)
 }
 
 func TestCrawl(t *testing.T) {
@@ -117,49 +137,15 @@ func TestCrawl(t *testing.T) {
 		wantCrawled []string
 	}{
 		{
-			name: "when_callback_is_nil_returns_error",
-			config: config.FromProto(
-				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-						}.Build(),
-					}.Build(),
-				}.Build(),
-			),
+			name:      "when_callback_is_nil_returns_error",
+			config:    testConfig(),
 			startURLs: []string{srv.URL},
 			callback:  nil,
 			wantErr:   ErrNoCallback,
 		},
 		{
-			name: "when_start_url_is_malformed_returns_error",
-			config: config.FromProto(
-				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-						}.Build(),
-					}.Build(),
-				}.Build(),
-			),
+			name:      "when_start_url_is_malformed_returns_error",
+			config:    testConfig(),
 			startURLs: []string{"://localhost"},
 			callback:  cb,
 			wantErr:   errAny,
@@ -168,19 +154,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_callback_errors_it_propagates_error",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-							ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+							ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -194,19 +170,10 @@ func TestCrawl(t *testing.T) {
 			name: "when_recursion_is_disabled_it_crawls_only_start_urls",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         0,
-							MaxRequests:      10,
-							ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND,
+							MaxDepth:    proto.Int32(0),
+							ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -220,18 +187,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_page_size_exceeds_max_it_is_dropped",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 10,
-							MaxDepth:         1,
-							MaxRequests:      10,
+							MaxPageSizeBytes: proto.Int32(10),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -247,18 +205,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_max_depth_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
+							MaxDepth: proto.Int32(1),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -278,18 +227,11 @@ func TestCrawl(t *testing.T) {
 			name: "when_max_requests_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         10,
-							MaxRequests:      2,
+							MaxConcurrency: proto.Int32(1),
+							MaxRequests:    proto.Int32(2),
+							MaxDepth:       proto.Int32(10),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -308,19 +250,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_url_matches_exclusion_it_is_not_crawled",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-							Exclusions:       []string{".*excluded.*"},
+							Exclusions: []string{".*excluded.*"},
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -334,18 +266,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_pages_are_linked_multiple_times_they_are_visited_only_once",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         10,
-							MaxRequests:      10,
+							MaxDepth: proto.Int32(10),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -367,18 +290,9 @@ func TestCrawl(t *testing.T) {
 			name: "when_links_contain_invalid_urls_errors_are_ignored",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
 					Clients: cfgpb.ClientsConfig_builder{
 						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         10,
-							MaxRequests:      10,
+							MaxDepth: proto.Int32(10),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -391,50 +305,16 @@ func TestCrawl(t *testing.T) {
 			},
 		},
 		{
-			name: "when_links_are_out_of_scope_they_are_not_crawled",
-			config: config.FromProto(
-				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-						}.Build(),
-					}.Build(),
-				}.Build(),
-			),
+			name:        "when_links_are_out_of_scope_they_are_not_crawled",
+			config:      testConfig(),
 			startURLs:   []string{srv.URL + "/d2"},
 			callback:    cb,
 			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
 			wantCrawled: []string{srv.URL + "/d2"},
 		},
 		{
-			name: "when_response_is_empty_it_is_ignored",
-			config: config.FromProto(
-				cfgpb.Config_builder{
-					Globalcfg: cfgpb.GlobalConfig_builder{
-						Performance: cfgpb.GlobalConfig_Performance_builder{
-							MaxConcurrency:           1,
-							TimeoutPerRequestSeconds: 2,
-						}.Build(),
-					}.Build(),
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency:   1,
-							MaxPageSizeBytes: 1024,
-							MaxDepth:         1,
-							MaxRequests:      10,
-						}.Build(),
-					}.Build(),
-				}.Build(),
-			),
+			name:        "when_response_is_empty_it_is_ignored",
+			config:      testConfig(),
 			startURLs:   []string{srv.URL + "/empty"},
 			callback:    cb,
 			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
