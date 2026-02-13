@@ -19,6 +19,7 @@ package iswebservice
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -143,6 +144,60 @@ func TestFingerprint(t *testing.T) {
 				t.Errorf("Fingerprint(%v) returned an unexpected diff (-want +got):\n%s", tc.service, diff)
 			}
 		})
+	}
+}
+
+func TestFingerprint_ErrorCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		service *nspb.NetworkService
+		wantErr bool
+	}{
+		{
+			name: "when_network_endpoint_is_invalid_returns_error",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: nepb.NetworkEndpoint_builder{
+					Type: nepb.NetworkEndpoint_TYPE_UNSPECIFIED,
+				}.Build(),
+			}.Build(),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(&cpb.Config{})
+			m, _ := New(cfg)
+
+			_, err := m.Fingerprint(context.Background(), tc.service)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Fingerprint() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestFingerprint_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	cfg := config.FromProto(&cpb.Config{})
+	m, _ := New(cfg)
+
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: nepb.NetworkEndpoint_builder{
+			Type: nepb.NetworkEndpoint_IP_PORT,
+			IpAddress: nepb.IpAddress_builder{
+				Address:       "127.0.0.1",
+				AddressFamily: nepb.AddressFamily_IPV4,
+			}.Build(),
+			Port: nepb.Port_builder{PortNumber: 80}.Build(),
+		}.Build(),
+	}.Build()
+
+	_, err := m.Fingerprint(ctx, service)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, context.Canceled)
 	}
 }
 

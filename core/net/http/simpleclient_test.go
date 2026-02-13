@@ -17,6 +17,7 @@
 package http
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -123,5 +124,30 @@ func TestDoWithoutRateLimit(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Do() status = %v, want %v", resp.StatusCode, http.StatusOK)
+	}
+}
+
+func TestDo_ContextCancelled(t *testing.T) {
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: 1,
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	c, err := NewSimpleClient(cfg)
+	if err != nil {
+		t.Fatalf("NewSimpleClient() failed: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	req, _ := http.NewRequestWithContext(ctx, "GET", "http://localhost", nil)
+	_, err = c.Do(req)
+
+	if err == nil {
+		t.Errorf("Do() returned no error, want error")
 	}
 }

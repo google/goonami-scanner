@@ -22,6 +22,8 @@ import (
 	"path"
 	"testing"
 	"time"
+
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 const (
@@ -257,5 +259,45 @@ func TestTimeoutPerRequest(t *testing.T) {
 
 	if got, want := cfg.TimeoutPerRequest(), 30*time.Second; got != want {
 		t.Errorf("TimeoutPerRequest() = %v, want %v", got, want)
+	}
+}
+
+func TestFromProto(t *testing.T) {
+	want := cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			UserAgent: "test-agent",
+		}.Build(),
+	}.Build()
+	cfg := FromProto(want)
+
+	if cfg.proto != want {
+		t.Errorf("FromProto() did not set proto correctly")
+	}
+}
+
+func TestGlobalConfig(t *testing.T) {
+	want := cpb.GlobalConfig_builder{UserAgent: "test-agent"}.Build()
+	cfg := FromProto(cpb.Config_builder{Globalcfg: want}.Build())
+
+	if got := cfg.GlobalConfig(); got != want {
+		t.Errorf("GlobalConfig() = %v, want %v", got, want)
+	}
+}
+
+func TestClientsConfig(t *testing.T) {
+	want := cpb.ClientsConfig_builder{}.Build()
+	cfg := FromProto(cpb.Config_builder{Clients: want}.Build())
+
+	if got := cfg.ClientsConfig(); got != want {
+		t.Errorf("ClientsConfig() = %v, want %v", got, want)
+	}
+}
+
+func TestPluginsConfig(t *testing.T) {
+	want := cpb.PluginsConfig_builder{}.Build()
+	cfg := FromProto(cpb.Config_builder{Plugins: want}.Build())
+
+	if got := cfg.PluginsConfig(); got != want {
+		t.Errorf("PluginsConfig() = %v, want %v", got, want)
 	}
 }

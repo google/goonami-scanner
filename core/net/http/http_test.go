@@ -22,6 +22,9 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/google/goonami-scanner/core/config"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 func TestReadBody(t *testing.T) {
@@ -81,4 +84,58 @@ func TestReadBody(t *testing.T) {
 			}
 		})
 	}
+}
+
+type errorReader struct{}
+
+func (errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("read error")
+}
+
+func TestReadBody_Error(t *testing.T) {
+	resp := &http.Response{
+		Body: io.NopCloser(errorReader{}),
+	}
+
+	_, err := ReadBody(resp, 10)
+	if err == nil {
+		t.Errorf("ReadBody() returned no error, want error")
+	}
+}
+
+func TestDefaultClient_Panic(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("DefaultClient() did not panic")
+		}
+	}()
+
+	defaultClient = nil
+	DefaultClient()
+}
+
+func TestSetDefaultClient(t *testing.T) {
+	client := &fakeClient{}
+	SetDefaultClient(client)
+
+	if DefaultClient() != client {
+		t.Errorf("SetDefaultClient() did not set the client")
+	}
+}
+
+func TestInitializeDefaults(t *testing.T) {
+	cfg := config.FromProto(&cpb.Config{})
+	if err := InitializeDefaults(cfg); err != nil {
+		t.Fatalf("InitializeDefaults() returned error: %v", err)
+	}
+
+	if DefaultClient() == nil {
+		t.Errorf("InitializeDefaults() did not set the default client")
+	}
+}
+
+type fakeClient struct{}
+
+func (f *fakeClient) Do(req *http.Request) (*http.Response, error) {
+	return nil, nil
 }

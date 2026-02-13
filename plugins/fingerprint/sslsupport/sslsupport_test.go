@@ -20,6 +20,7 @@ package sslsupport
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log"
 	"net"
 	"strconv"
@@ -188,6 +189,30 @@ func TestFingerprint_Validation(t *testing.T) {
 				t.Errorf("Fingerprint() returned diff (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestFingerprint_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	cfg := config.FromProto(&cpb.Config{})
+	mod, _ := New(cfg)
+
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: nepb.NetworkEndpoint_builder{
+			Type: nepb.NetworkEndpoint_IP_PORT,
+			IpAddress: nepb.IpAddress_builder{
+				Address:       "127.0.0.1",
+				AddressFamily: nepb.AddressFamily_IPV4,
+			}.Build(),
+			Port: nepb.Port_builder{PortNumber: 443}.Build(),
+		}.Build(),
+	}.Build()
+
+	_, err := mod.Fingerprint(ctx, service)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, context.Canceled)
 	}
 }
 

@@ -55,34 +55,42 @@ var fingerprinters = []module.InitFingerprinterFn{
 }
 
 var (
-	configFlag     = flag.String("config", "", "path to the configuration file")
-	debugLevelFlag = flag.Int("debug", 0, "enable debug logging")
-	outputDirFlag  = flag.String("output_dir", "", "directory to write the results and artifacts to")
-	targetFlag     = flag.String("target", "", "target to scan")
+	// ConfigFlag controls the path to the configuration file of the scanner.
+	ConfigFlag = flag.String("config", "", "path to the configuration file")
+	// DebugLevelFlag controls the level of debug logs to show.
+	DebugLevelFlag = flag.Int("debug", 0, "enable debug logging")
+	// OutputDirFlag controls the directory to write the results and artifacts to.
+	OutputDirFlag = flag.String("output_dir", "", "directory to write the results and artifacts to")
+	// TargetFlag controls the target to scan.
+	TargetFlag = flag.String("target", "", "target to scan")
 )
 
 func main() {
 	flag.Parse()
 
-	if err := validateFlags(); err != nil {
-		log.Errorf("invalid flags: %v", err)
+	if err := run(context.Background()); err != nil {
+		log.Errorf("%v", err)
 		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
+	if err := validateFlags(); err != nil {
+		return fmt.Errorf("invalid flags: %w", err)
 	}
 
 	log.Infof("initializing the scanner's config")
-	cfg, err := config.FromFile(*configFlag)
+	cfg, err := config.FromFile(*ConfigFlag)
 	if err != nil {
-		log.Errorf("failed to load the config: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load the config: %w", err)
 	}
 
-	if err := cfg.CreateDirectories(*outputDirFlag); err != nil {
-		log.Errorf("failed to create the scanner's directories: %v", err)
-		os.Exit(1)
+	if err := cfg.CreateDirectories(*OutputDirFlag); err != nil {
+		return fmt.Errorf("failed to create the scanner's directories: %w", err)
 	}
 	defer cfg.Close()
 
-	logger := &log.DefaultLogger{VerboseLevel: log.DebugLevel(*debugLevelFlag)}
+	logger := &log.DefaultLogger{VerboseLevel: log.DebugLevel(*DebugLevelFlag)}
 
 	log.Infof("initializing the scanner's entrypoint")
 	options := &entrypoint.Options{
@@ -92,45 +100,42 @@ func main() {
 		Fingerprinters: fingerprinters,
 	}
 
-	entrypoint, err := entrypoint.New(options)
+	e, err := entrypoint.New(options)
 	if err != nil {
-		log.Errorf("failed to create the entrypoint: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create the entrypoint: %w", err)
 	}
 
 	log.Infof("running the scanner")
-	ctx := context.Background()
-	results, err := entrypoint.Run(ctx, *targetFlag)
+	results, err := e.Run(ctx, *TargetFlag)
 	if err != nil {
-		log.Errorf("failed to run the scanner: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to run the scanner: %w", err)
 	}
 
 	// note: we dissociate the scan results from the other artifacts.
 	resultsPath := path.Join(cfg.WorkingDirectory(), "results.textproto")
 	log.Infof("writing results to %q", resultsPath)
 	if err := writeResults(resultsPath, results); err != nil {
-		log.Errorf("failed to write results to %q: %v", resultsPath, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to write results to %q: %w", resultsPath, err)
 	}
 
 	log.Infof("results written to %q", resultsPath)
+	return nil
 }
 
 func validateFlags() error {
-	if *targetFlag == "" {
+	if *TargetFlag == "" {
 		return fmt.Errorf("a --target is required")
 	}
 
-	if *outputDirFlag == "" {
+	if *OutputDirFlag == "" {
 		return fmt.Errorf("an --output_dir is required")
 	}
 
-	if *configFlag == "" {
+	if *ConfigFlag == "" {
 		return fmt.Errorf("a --config is required")
 	}
 
-	if *debugLevelFlag < 0 || *debugLevelFlag > 3 {
+	if *DebugLevelFlag < 0 || *DebugLevelFlag > 3 {
 		return fmt.Errorf("--debug must be between 0 (no debug) and 3 (all debug logs)")
 	}
 

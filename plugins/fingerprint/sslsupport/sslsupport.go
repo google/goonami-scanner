@@ -74,6 +74,10 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	// Note: If SSL connection fails, we consider that the service does not support SSL.
 	tlsConn, err := m.connect(ctx, "tcp", authority)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+
 		return result, nil
 	}
 	defer tlsConn.Close()
@@ -94,7 +98,7 @@ func (m *Module) connect(ctx context.Context, protocol string, addr string) (*tl
 		Config: &tls.Config{InsecureSkipVerify: true}, // NOLINT
 	}
 
-	conn, err := dialer.Dial(protocol, addr)
+	conn, err := dialer.DialContext(ctx, protocol, addr)
 	if err != nil {
 		return nil, err
 	}

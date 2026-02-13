@@ -189,6 +189,37 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 	}
 }
 
+func TestNew_ErrorCases(t *testing.T) {
+	tests := []struct {
+		name    string
+		options *Options
+	}{
+		{
+			name: "when_config_is_nil_simplerunner_init_fails_returns_error",
+			options: &Options{
+				Config:      nil,
+				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+			},
+		},
+		{
+			name: "when_config_is_nil_http_defaults_init_fails_returns_error",
+			options: &Options{
+				Config:      nil,
+				Runner:      fakerunner.New(),
+				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := New(tc.options); err == nil {
+				t.Errorf("New(%v) returned no error, want error", tc.options)
+			}
+		})
+	}
+}
+
 func TestRun(t *testing.T) {
 	tests := []struct {
 		name      string
