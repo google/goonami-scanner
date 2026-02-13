@@ -84,7 +84,18 @@ var (
 	OutputDirFlag = flag.String("output_dir", "", "directory to write the results and artifacts to")
 	// TargetFlag controls the target to scan.
 	TargetFlag = flag.String("target", "", "target to scan")
+	// OverridesFlag allows overriding specific options from the configuration file.
+	OverridesFlag = stringSlice("o", "override configuration options (format: key=value)")
 )
+
+func stringSlice(name, usage string) *[]string {
+	var p []string
+	flag.Func(name, usage, func(s string) error {
+		p = append(p, s)
+		return nil
+	})
+	return &p
+}
 
 func main() {
 	flag.Parse()
@@ -105,6 +116,10 @@ func run(ctx context.Context) error {
 	cfg, err := config.FromFile(*ConfigFlag)
 	if err != nil {
 		return fmt.Errorf("failed to load the config: %w", err)
+	}
+
+	if err := cfg.ApplyOverrides(ctx, *OverridesFlag); err != nil {
+		return fmt.Errorf("failed to apply configuration overrides: %w", err)
 	}
 
 	if err := cfg.CreateDirectories(*OutputDirFlag); err != nil {
