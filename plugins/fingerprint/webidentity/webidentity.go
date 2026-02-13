@@ -321,6 +321,7 @@ func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, 
 		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
 	}
 
+	log.DebugContextf(ctx, log.DebugLevelRequest, "signatures directory is: %q", sigDirectory)
 	dirs, err := os.ReadDir(sigDirectory)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
@@ -341,7 +342,7 @@ func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, 
 			return fmt.Errorf("%w %q: %v", ErrSignaturesRead, filePath, err)
 		}
 
-		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures from %q", filePath)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures: %q", dir.Name())
 		fingerprintsProto := &fpb.Fingerprints{}
 		if err := proto.Unmarshal(fingerprints, fingerprintsProto); err != nil {
 			return fmt.Errorf("%w %q: %v", ErrSignaturesUnmarshal, filePath, err)
