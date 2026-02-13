@@ -18,9 +18,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
@@ -82,22 +84,26 @@ func TestRun_ErrorCases(t *testing.T) {
 		config    string
 		setup     func()
 		teardown  func()
+		wantErr   error
 	}{
 		{
-			name:   "when_flags_are_invalid_returns_error",
-			target: "", // invalid
+			name:    "when_flags_are_invalid_returns_error",
+			target:  "", // invalid
+			wantErr: ErrTargetRequired,
 		},
 		{
 			name:      "when_config_file_not_found_returns_error",
 			target:    "1.1.1.1",
 			outputDir: tempDir,
 			config:    "non/existent/config",
+			wantErr:   config.ErrConfigRead,
 		},
 		{
 			name:      "when_create_directories_fails_returns_error",
 			target:    "1.1.1.1",
 			outputDir: blockedOutputDir,
 			config:    configPath,
+			wantErr:   config.ErrCreateDir,
 		},
 		{
 			name:      "when_entrypoint_new_fails_returns_error",
@@ -106,14 +112,19 @@ func TestRun_ErrorCases(t *testing.T) {
 			config:    configPath,
 			setup: func() {
 				oldPS := portScanner
+				oldFPs := fingerprinters
 				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return nil, fmt.Errorf("init error")
 				}
+				fingerprinters = nil
 				_oldPS = oldPS
+				_oldFPs = oldFPs
 			},
 			teardown: func() {
 				portScanner = _oldPS
+				fingerprinters = _oldFPs
 			},
+			wantErr: errors.New("init error"),
 		},
 		{
 			name:      "when_entrypoint_run_fails_returns_error",
@@ -122,16 +133,21 @@ func TestRun_ErrorCases(t *testing.T) {
 			config:    configPath,
 			setup: func() {
 				oldPS := portScanner
+				oldFPs := fingerprinters
 				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return fakemodule.NewFakePortScanner("ps1", func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 						return nil, fmt.Errorf("run error")
 					}), nil
 				}
+				fingerprinters = nil
 				_oldPS = oldPS
+				_oldFPs = oldFPs
 			},
 			teardown: func() {
 				portScanner = _oldPS
+				fingerprinters = _oldFPs
 			},
+			wantErr: errors.New("run error"),
 		},
 	}
 
@@ -149,14 +165,24 @@ func TestRun_ErrorCases(t *testing.T) {
 				defer tc.teardown()
 			}
 
-			if err := run(context.Background()); err == nil {
+			err := run(context.Background())
+			if err == nil {
 				t.Errorf("run() for %s returned no error, want error", tc.name)
+				return
+			}
+
+			if tc.wantErr != nil {
+				// For generic errors in main_test.go, we might need string matching if they are not structured
+				if !errors.Is(err, tc.wantErr) && !strings.Contains(err.Error(), tc.wantErr.Error()) {
+					t.Errorf("run() error = %v, wantErr %v", err, tc.wantErr)
+				}
 			}
 		})
 	}
 }
 
 var _oldPS module.InitPortScannerFn
+var _oldFPs []module.InitFingerprinterFn
 
 func TestValidateFlags(t *testing.T) {
 	tests := []struct {
@@ -165,7 +191,7 @@ func TestValidateFlags(t *testing.T) {
 		outputDir  string
 		config     string
 		debugLevel int
-		wantErr    bool
+		wantErr    error
 	}{
 		{
 			name:       "when_all_flags_are_valid_returns_no_error",
@@ -173,7 +199,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "/tmp",
 			config:     "config.textproto",
 			debugLevel: 1,
-			wantErr:    false,
+			wantErr:    nil,
 		},
 		{
 			name:       "when_target_is_missing_returns_error",
@@ -181,7 +207,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "/tmp",
 			config:     "config.textproto",
 			debugLevel: 1,
-			wantErr:    true,
+			wantErr:    ErrTargetRequired,
 		},
 		{
 			name:       "when_output_dir_is_missing_returns_error",
@@ -189,7 +215,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "",
 			config:     "config.textproto",
 			debugLevel: 1,
-			wantErr:    true,
+			wantErr:    ErrOutputDirRequired,
 		},
 		{
 			name:       "when_config_is_missing_returns_error",
@@ -197,7 +223,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "/tmp",
 			config:     "",
 			debugLevel: 1,
-			wantErr:    true,
+			wantErr:    ErrConfigRequired,
 		},
 		{
 			name:       "when_debug_level_is_negative_returns_error",
@@ -205,7 +231,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "/tmp",
 			config:     "config.textproto",
 			debugLevel: -1,
-			wantErr:    true,
+			wantErr:    ErrInvalidDebugLevel,
 		},
 		{
 			name:       "when_debug_level_is_too_high_returns_error",
@@ -213,7 +239,7 @@ func TestValidateFlags(t *testing.T) {
 			outputDir:  "/tmp",
 			config:     "config.textproto",
 			debugLevel: 4,
-			wantErr:    true,
+			wantErr:    ErrInvalidDebugLevel,
 		},
 	}
 
@@ -226,7 +252,7 @@ func TestValidateFlags(t *testing.T) {
 			*DebugLevelFlag = tc.debugLevel
 
 			err := validateFlags()
-			if (err != nil) != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("validateFlags() error = %v, wantErr %v", err, tc.wantErr)
 			}
 		})

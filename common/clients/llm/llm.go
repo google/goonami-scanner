@@ -20,6 +20,7 @@ package llm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
@@ -44,6 +45,18 @@ var (
 	// ErrMaxAttemptsReached is returned when the maximum number of attempts to run the agent is
 	// reached.
 	ErrMaxAttemptsReached = errors.New("maximum number of attempts reached")
+
+	// ErrAgentRun is returned when the LLM agent fails to run.
+	ErrAgentRun = errors.New("LLM agent run failed")
+
+	// ErrAgentVerification is returned when the LLM agent's response verification fails.
+	ErrAgentVerification = errors.New("LLM agent response verification failed")
+
+	// ErrSessionService is returned when there is an error with the session service.
+	ErrSessionService = errors.New("session service error")
+
+	// ErrRunnerCreation is returned when the agent runner cannot be created.
+	ErrRunnerCreation = errors.New("failed to create agent runner")
 
 	// For most of Goonami's use cases, the in-memory session service is sufficient.
 	defaultSessionService session.Service = session.InMemoryService()
@@ -95,11 +108,12 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 
 		resp, err := c.runOnce(ctx, content)
 		if err != nil {
-			if len(err.Error()) > 200 {
-				err = errors.New("(truncated) " + err.Error()[:200])
+			errLog := err
+			if len(errLog.Error()) > 200 {
+				errLog = errors.New("(truncated) " + errLog.Error()[:200])
 			}
 
-			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, err)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, errLog)
 			continue
 		}
 
@@ -123,7 +137,11 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 
 	r, err := runner.New(runnerConfig)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrRunnerCreation, err)
+	}
+
+	if c.sessionService == nil {
+		return "", ErrSessionService
 	}
 
 	sessionID := uuid.New()
@@ -132,9 +150,9 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 		UserID:    c.userID,
 		AppName:   c.appName,
 	}
-	_, err = defaultSessionService.Create(ctx, sessionReq)
+	_, err = c.sessionService.Create(ctx, sessionReq)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrSessionService, err)
 	}
 
 	timeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
@@ -147,7 +165,7 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 	var response string
 	for event, err := range events {
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("%w: %v", ErrAgentRun, err)
 		}
 
 		if err := ctx.Err(); err != nil {

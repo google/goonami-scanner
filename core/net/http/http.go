@@ -28,6 +28,9 @@ import (
 var (
 	// ErrPageTooBig is returned when the response body is larger than the maximum size.
 	ErrPageTooBig = errors.New("page is too big")
+
+	// ErrConfigNil is returned when the configuration is nil.
+	ErrConfigNil = errors.New("config is nil")
 )
 
 // Client is the interface for HTTP clients.

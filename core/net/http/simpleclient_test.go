@@ -18,6 +18,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -34,14 +35,14 @@ func TestNewSimpleClient(t *testing.T) {
 		cfg       *config.Config
 		wantLimit rate.Limit
 		wantBurst int
-		wantErr   bool
+		wantErr   error
 	}{
 		{
 			name:      "when_config_is_nil_returns_error",
 			cfg:       nil,
 			wantLimit: 0,
 			wantBurst: 0,
-			wantErr:   true,
+			wantErr:   ErrConfigNil,
 		},
 		{
 			name: "when_max_requests_per_second_is_ten_returns_limiter_with_ten_qps",
@@ -54,7 +55,7 @@ func TestNewSimpleClient(t *testing.T) {
 			}.Build()),
 			wantLimit: 10,
 			wantBurst: 10,
-			wantErr:   false,
+			wantErr:   nil,
 		},
 		{
 			name: "when_max_requests_per_second_is_zero_returns_unlimited_limiter",
@@ -67,19 +68,19 @@ func TestNewSimpleClient(t *testing.T) {
 			}.Build()),
 			wantLimit: rate.Inf,
 			wantBurst: 0,
-			wantErr:   false,
+			wantErr:   nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewSimpleClient(tt.cfg)
-			if (err != nil) != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("NewSimpleClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if tt.wantErr {
+			if tt.wantErr != nil {
 				return
 			}
 

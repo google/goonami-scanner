@@ -18,11 +18,18 @@
 package scope
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
 	"path"
 	"strings"
 
 	cpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
+)
+
+var (
+	// ErrParseURL is returned when an URL fails to parse.
+	ErrParseURL = errors.New("failed to parse URL")
 )
 
 // Decision represents the decision of a scope match.
@@ -60,7 +67,7 @@ func FromProto(scope *cpb.HttpCrawlerClientConfig_Scope) *Scope {
 func FromURL(targeturl string) (*Scope, error) {
 	u, err := url.Parse(targeturl)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
 
 	hostname := u.Hostname()
@@ -114,7 +121,7 @@ func (cs *Scope) Matches(targetURL string) (bool, error) {
 func (cs *Scope) Decision(targetURL string) (Decision, error) {
 	u, err := url.Parse(targetURL)
 	if err != nil {
-		return DecisionUnknown, err
+		return DecisionUnknown, fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
 
 	hostname := u.Hostname()

@@ -17,9 +17,11 @@
 package netservice
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
@@ -89,7 +91,7 @@ func TestBuildWebRoot(t *testing.T) {
 		name    string
 		service *nspb.NetworkService
 		want    string
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_no_tls_is_supported_returns_http_uri",
@@ -100,7 +102,7 @@ func TestBuildWebRoot(t *testing.T) {
 				}.Build(),
 			}.Build(),
 			want:    "http://localhost.lan:80",
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name: "when_tls_is_supported_returns_https_uri",
@@ -112,7 +114,7 @@ func TestBuildWebRoot(t *testing.T) {
 				SupportedSslVersions: []string{"TLSv1.2"},
 			}.Build(),
 			want:    "https://localhost.lan:443",
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name: "when_endpoint_is_missing_address_returns_error",
@@ -122,14 +124,17 @@ func TestBuildWebRoot(t *testing.T) {
 				}.Build(),
 			}.Build(),
 			want:    "",
-			wantErr: true,
+			wantErr: netendpoint.ErrEndpointMissingAddress,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := BuildWebRoot(tc.service)
-			if tc.wantErr != (err != nil) {
+			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("BuildWebRoot(%v) got err %v, wantErr: %v", tc.service, err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
 			}
 			if got != tc.want {
 				t.Errorf("BuildWebRoot(%v) = %v, want: %v", tc.service, got, tc.want)

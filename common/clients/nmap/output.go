@@ -18,6 +18,7 @@ package nmap
 
 import (
 	"encoding/xml"
+	"fmt"
 )
 
 // OutputXML is the root element of nmap's XML output.
@@ -240,7 +241,7 @@ func ParseXMLOutput(data []byte) (*OutputXML, error) {
 	nmapRun := &OutputXML{}
 
 	if err := xml.Unmarshal(data, nmapRun); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrNmapXMLUnmarshal, err)
 	}
 
 	return nmapRun, nil

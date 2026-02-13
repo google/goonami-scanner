@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -39,6 +40,26 @@ import (
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+)
+
+var (
+	// ErrTargetRequired is returned when the target flag is missing.
+	ErrTargetRequired = errors.New("a --target is required")
+
+	// ErrOutputDirRequired is returned when the output_dir flag is missing.
+	ErrOutputDirRequired = errors.New("an --output_dir is required")
+
+	// ErrConfigRequired is returned when the config flag is missing.
+	ErrConfigRequired = errors.New("a --config is required")
+
+	// ErrInvalidDebugLevel is returned when the debug flag is invalid.
+	ErrInvalidDebugLevel = errors.New("--debug must be between 0 (no debug) and 3 (all debug logs)")
+
+	// ErrMarshalResults is returned when the scan results cannot be marshaled.
+	ErrMarshalResults = errors.New("failed to marshal scan results")
+
+	// ErrWriteResults is returned when the scan results cannot be written to a file.
+	ErrWriteResults = errors.New("failed to write scan results to file")
 )
 
 // The port scanner to use for the scan.
@@ -125,19 +146,19 @@ func run(ctx context.Context) error {
 
 func validateFlags() error {
 	if *TargetFlag == "" {
-		return fmt.Errorf("a --target is required")
+		return ErrTargetRequired
 	}
 
 	if *OutputDirFlag == "" {
-		return fmt.Errorf("an --output_dir is required")
+		return ErrOutputDirRequired
 	}
 
 	if *ConfigFlag == "" {
-		return fmt.Errorf("a --config is required")
+		return ErrConfigRequired
 	}
 
 	if *DebugLevelFlag < 0 || *DebugLevelFlag > 3 {
-		return fmt.Errorf("--debug must be between 0 (no debug) and 3 (all debug logs)")
+		return ErrInvalidDebugLevel
 	}
 
 	return nil
@@ -147,8 +168,11 @@ func writeResults(resultsPath string, results *srpb.ScanResults) error {
 	options := prototext.MarshalOptions{Multiline: true}
 	textproto, err := options.Marshal(results)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %v", ErrMarshalResults, err)
 	}
 
-	return os.WriteFile(resultsPath, textproto, 0644)
+	if err := os.WriteFile(resultsPath, textproto, 0644); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteResults, err)
+	}
+	return nil
 }

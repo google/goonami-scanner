@@ -20,10 +20,10 @@ package httpcrawler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler/parser"
@@ -40,6 +40,12 @@ import (
 var (
 	// ErrNoCallback is returned when the crawler is called without a callback function.
 	ErrNoCallback = errors.New("a valid callback function is required")
+
+	// ErrCrawlRequest is returned when a crawl request fails.
+	ErrCrawlRequest = errors.New("crawl request failed")
+
+	// ErrReadResponseBody is returned when reading the response body fails.
+	ErrReadResponseBody = errors.New("failed to read response body")
 )
 
 // PageCallback is a function that is called on every page crawled. The response's body MUST NOT be
@@ -166,7 +172,7 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 
 	req, err := http.NewRequestWithContext(ctx, "GET", page.URL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %v", ErrCrawlRequest, err)
 	}
 
 	if !c.checkAndIncreaseRequestCount() {
@@ -178,12 +184,12 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
 		// Do not consider deadline errors as fatal.
-		if strings.Contains(err.Error(), "context deadline exceeded") {
+		if errors.Is(err, context.DeadlineExceeded) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (deadline exceeded): %q", page.URL)
 			return nil
 		}
 
-		return err
+		return fmt.Errorf("%w: %v", ErrCrawlRequest, err)
 	}
 
 	maxsize := int(c.config.GetMaxPageSizeBytes())
@@ -194,7 +200,7 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 			return nil
 		}
 
-		if strings.Contains(err.Error(), "context deadline exceeded") {
+		if errors.Is(err, context.DeadlineExceeded) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (deadline exceeded): %q", page.URL)
 			return nil
 		}
@@ -204,7 +210,7 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 			return nil
 		}
 
-		return err
+		return fmt.Errorf("%w: %v", ErrReadResponseBody, err)
 	}
 	resp.Body.Close()
 

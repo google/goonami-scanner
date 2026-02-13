@@ -17,7 +17,6 @@
 package http
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -34,7 +33,7 @@ type SimpleClient struct {
 // NewSimpleClient creates a new SimpleClient.
 func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("config is nil")
+		return nil, ErrConfigNil
 	}
 
 	qps := cfg.GlobalConfig().GetPerformance().GetMaxHttpRequestsPerSecond()

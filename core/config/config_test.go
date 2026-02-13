@@ -37,29 +37,29 @@ func TestFromFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "when_config_is_valid_returns_no_error",
 			path:    validConfig,
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name:    "when_config_is_invalid_returns_error",
 			path:    invalidConfig,
-			wantErr: true,
+			wantErr: ErrConfigUnmarshal,
 		},
 		{
 			name:    "when_file_not_found_returns_error",
 			path:    "not/existing/path",
-			wantErr: true,
+			wantErr: ErrConfigRead,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := FromFile(tt.path)
-			if (err != nil) != tt.wantErr {
+			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("FromFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -72,7 +72,7 @@ func TestCreateDirectories(t *testing.T) {
 		// setup is a function run before CreateDirectories() is called. It returns the working
 		// directory that should be passed to CreateDirectories().
 		setup   func(t *testing.T) string
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_workdir_is_valid_creates_all_directories",
@@ -80,7 +80,7 @@ func TestCreateDirectories(t *testing.T) {
 				t.Helper()
 				return t.TempDir()
 			},
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name: "when_workdir_is_empty_returns_error",
@@ -88,7 +88,7 @@ func TestCreateDirectories(t *testing.T) {
 				t.Helper()
 				return ""
 			},
-			wantErr: true,
+			wantErr: ErrWorkDirEmpty,
 		},
 		{
 			name: "when_tempdir_creation_fails_because_file_exists_returns_error",
@@ -100,7 +100,7 @@ func TestCreateDirectories(t *testing.T) {
 				}
 				return dir
 			},
-			wantErr: true,
+			wantErr: ErrCreateDir,
 		},
 		{
 			name: "when_workdir_does_not_exist_returns_error",
@@ -108,7 +108,7 @@ func TestCreateDirectories(t *testing.T) {
 				t.Helper()
 				return path.Join("path", "to", "a", "non-existing", "directory")
 			},
-			wantErr: true,
+			wantErr: ErrWorkDirAccess,
 		},
 		{
 			name: "when_artifactsdir_creation_fails_because_file_exists_returns_error",
@@ -120,7 +120,7 @@ func TestCreateDirectories(t *testing.T) {
 				}
 				return dir
 			},
-			wantErr: true,
+			wantErr: ErrCreateDir,
 		},
 	}
 
@@ -133,11 +133,11 @@ func TestCreateDirectories(t *testing.T) {
 
 			workDir := tt.setup(t)
 
-			if err = cfg.CreateDirectories(workDir); (err != nil) != tt.wantErr {
+			if err = cfg.CreateDirectories(workDir); !errors.Is(err, tt.wantErr) {
 				t.Errorf("CreateDirectories() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if tt.wantErr {
+			if tt.wantErr != nil {
 				return
 			}
 

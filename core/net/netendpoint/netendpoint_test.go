@@ -17,6 +17,7 @@
 package netendpoint
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -78,21 +79,23 @@ func TestToURIAuthority(t *testing.T) {
 		name    string
 		input   *npb.NetworkEndpoint
 		want    string
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_ipv4_ip_only_returns_ip",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 			}.Build(),
-			want: "127.0.0.1",
+			want:    "127.0.0.1",
+			wantErr: nil,
 		},
 		{
 			name: "when_ipv6_ip_only_returns_bracketed_ip",
 			input: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
 			}.Build(),
-			want: "[3ffe::1]",
+			want:    "[3ffe::1]",
+			wantErr: nil,
 		},
 		{
 			name: "when_ipv4_ip_and_port_returns_ip_port",
@@ -100,7 +103,8 @@ func TestToURIAuthority(t *testing.T) {
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 				Port:      npb.Port_builder{PortNumber: 80}.Build(),
 			}.Build(),
-			want: "127.0.0.1:80",
+			want:    "127.0.0.1:80",
+			wantErr: nil,
 		},
 		{
 			name: "when_ipv6_ip_and_port_returns_bracketed_ip_port",
@@ -108,14 +112,16 @@ func TestToURIAuthority(t *testing.T) {
 				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
 				Port:      npb.Port_builder{PortNumber: 80}.Build(),
 			}.Build(),
-			want: "[3ffe::1]:80",
+			want:    "[3ffe::1]:80",
+			wantErr: nil,
 		},
 		{
 			name: "when_hostname_only_returns_hostname",
 			input: npb.NetworkEndpoint_builder{
 				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
 			}.Build(),
-			want: "example.com",
+			want:    "example.com",
+			wantErr: nil,
 		},
 		{
 			name: "when_hostname_and_port_returns_hostname_port",
@@ -123,7 +129,8 @@ func TestToURIAuthority(t *testing.T) {
 				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
 				Port:     npb.Port_builder{PortNumber: 80}.Build(),
 			}.Build(),
-			want: "example.com:80",
+			want:    "example.com:80",
+			wantErr: nil,
 		},
 		{
 			name: "when_ip_and_hostname_returns_prioritized_hostname",
@@ -131,7 +138,8 @@ func TestToURIAuthority(t *testing.T) {
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
 				Hostname:  npb.Hostname_builder{Name: "host.com"}.Build(),
 			}.Build(),
-			want: "host.com",
+			want:    "host.com",
+			wantErr: nil,
 		},
 		{
 			name: "when_ip_hostname_and_port_returns_prioritized_hostname_port",
@@ -140,26 +148,24 @@ func TestToURIAuthority(t *testing.T) {
 				Hostname:  npb.Hostname_builder{Name: "example.com"}.Build(),
 				Port:      npb.Port_builder{PortNumber: 443}.Build(),
 			}.Build(),
-			want: "example.com:443",
+			want:    "example.com:443",
+			wantErr: nil,
 		},
 		{
 			name:    "when_no_ip_and_no_hostname_returns_error",
 			input:   npb.NetworkEndpoint_builder{}.Build(),
-			wantErr: true,
+			wantErr: ErrEndpointMissingAddress,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ToURIAuthority(tc.input)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("ToURIAuthority(%v) succeeded, want error", tc.input)
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("ToURIAuthority(%v) returned unexpected error: %v, want: %v", tc.input, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("ToURIAuthority(%v) returned an unexpected error: %v", tc.input, err)
+			if tc.wantErr != nil {
+				return
 			}
 			if got != tc.want {
 				t.Errorf("ToURIAuthority(%v) = %q, want: %q", tc.input, got, tc.want)

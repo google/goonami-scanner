@@ -32,9 +32,38 @@ import (
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
-// ErrUninitialized is returned when a method is called before the configuration is initialized.
-// This happens if `CreateDirectories` was never called.
-var ErrUninitialized = errors.New("configuration was never initialized with CreateDirectories()")
+var (
+	// ErrUninitialized is returned when a method is called before the configuration is initialized.
+	// This happens if `CreateDirectories` was never called.
+	ErrUninitialized = errors.New("configuration was never initialized with CreateDirectories()")
+
+	// ErrWorkDirEmpty is returned when the working directory is empty.
+	ErrWorkDirEmpty = errors.New("working directory is empty")
+
+	// ErrWorkDirAccess is returned when there is an error while accessing the working directory.
+	ErrWorkDirAccess = errors.New("error while accessing working directory")
+
+	// ErrCreateDir is returned when there is an error while creating a directory.
+	ErrCreateDir = errors.New("error while creating directory")
+
+	// ErrConfigRead is returned when there is an error while reading the configuration file.
+	ErrConfigRead = errors.New("error while reading configuration file")
+
+	// ErrConfigUnmarshal is returned when there is an error while unmarshaling the configuration.
+	ErrConfigUnmarshal = errors.New("error while unmarshaling configuration")
+
+	// ErrInvalidOverrideFormat is returned when the override format is invalid.
+	ErrInvalidOverrideFormat = errors.New("invalid override format")
+
+	// ErrFieldNotFound is returned when a configuration field is not found.
+	ErrFieldNotFound = errors.New("configuration field not found")
+
+	// ErrFieldNotMessage is returned when a configuration field is not a message.
+	ErrFieldNotMessage = errors.New("configuration field is not a message")
+
+	// ErrUnsupportedFieldKind is returned when a configuration field kind is not supported.
+	ErrUnsupportedFieldKind = errors.New("unsupported configuration field kind")
+)
 
 // Config is the configuration used by Goonami. It holds configuration for clients, plugins and
 // options that are global to the scanner. It also keeps track of a set of directories used by the
@@ -77,13 +106,13 @@ func DefaultProto() *cpb.Config {
 func FromFile(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrConfigRead, err)
 	}
 
 	cfgpb := DefaultProto()
 	provided := &cpb.Config{}
 	if err := prototext.Unmarshal(data, provided); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrConfigUnmarshal, err)
 	}
 	proto.Merge(cfgpb, provided)
 
@@ -114,22 +143,22 @@ func Default() *Config {
 // and its plugins.
 func (c *Config) CreateDirectories(workdir string) error {
 	if workdir == "" {
-		return fmt.Errorf("working directory is empty")
+		return ErrWorkDirEmpty
 	}
 
 	if _, err := os.Stat(workdir); err != nil {
-		return fmt.Errorf("error while accessing working directory %q: %w", workdir, err)
+		return fmt.Errorf("%w %q: %v", ErrWorkDirAccess, workdir, err)
 	}
 
 	c.workDir = workdir
 	c.tempDir = path.Join(c.workDir, "tempfiles")
 	if err := os.MkdirAll(c.tempDir, 0700); err != nil {
-		return err
+		return fmt.Errorf("%w %q: %v", ErrCreateDir, c.tempDir, err)
 	}
 
 	c.artifactsDir = path.Join(c.workDir, "artifacts")
 	if err := os.MkdirAll(c.artifactsDir, 0700); err != nil {
-		return err
+		return fmt.Errorf("%w %q: %v", ErrCreateDir, c.artifactsDir, err)
 	}
 
 	return nil

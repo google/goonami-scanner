@@ -18,6 +18,7 @@ package nmap
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -89,19 +90,21 @@ func TestCommandLine(t *testing.T) {
 		userAgent  string
 		target     string
 		want       []string
-		wantErr    bool
+		wantErr    error
 	}{
 		{
 			name:       "when_using_default_config_ipv4_returns_correct_args",
 			configFile: "default.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_using_default_config_ipv6_returns_correct_args",
 			configFile: "default.textproto",
 			target:     "::1",
 			want:       []string{"-oX", "", "-sT", "-T3", "-6", "-p-", "-Pn", "::1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_using_default_config_with_ports_returns_correct_args",
@@ -109,24 +112,28 @@ func TestCommandLine(t *testing.T) {
 			ports:      []uint32{80, 443},
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p80,443", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_using_udp_scan_config_returns_correct_args",
 			configFile: "udp.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sU", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_intensity_is_one_returns_correct_args",
 			configFile: "intensity_1.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T1", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_intensity_is_invalid_returns_default_args",
 			configFile: "intensity_invalid.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 
 		{
@@ -134,42 +141,49 @@ func TestCommandLine(t *testing.T) {
 			configFile: "intensity_zero.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_host_discovery_is_enabled_returns_correct_args",
 			configFile: "host_discovery_true.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_version_detection_is_enabled_returns_correct_args",
 			configFile: "version_detection_true.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "-sV", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_version_intensity_is_invalid_returns_default_version_args",
 			configFile: "version_intensity_invalid.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "-sV", "--version-intensity", "5", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_version_intensity_is_zero_returns_omitted_intensity_args",
 			configFile: "version_intensity_zero.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "-sV", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_http_methods_is_enabled_returns_correct_args",
 			configFile: "http_methods_true.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "--script", "http-methods", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_ssl_is_enabled_returns_correct_args",
 			configFile: "ssl_true.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "--script", "ssl-cert", "--script", "ssl-enum-ciphers", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_user_agent_is_provided_returns_correct_args",
@@ -177,6 +191,7 @@ func TestCommandLine(t *testing.T) {
 			userAgent:  "test-agent",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "--script-args", "http.useragent=test-agent", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_rate_limit_is_provided_returns_correct_args",
@@ -184,12 +199,13 @@ func TestCommandLine(t *testing.T) {
 			rateLimit:  10,
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "--max-rate", "10", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
 		},
 		{
 			name:       "when_scan_technique_is_unknown_returns_error",
 			configFile: "unknown_scan_technique.textproto",
 			target:     "127.0.0.1",
-			wantErr:    true,
+			wantErr:    ErrInvalidTechnique,
 		},
 	}
 
@@ -217,10 +233,10 @@ func TestCommandLine(t *testing.T) {
 			client := New(cfg)
 
 			got, err := client.CommandLine(context.Background(), tc.target)
-			if (err != nil) != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("CommandLine(%q) returned error: %v, wantErr: %v", tc.target, err, tc.wantErr)
 			}
-			if tc.wantErr {
+			if tc.wantErr != nil {
 				return
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {

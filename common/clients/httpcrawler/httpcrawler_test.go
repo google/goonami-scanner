@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/goonami-scanner/common/clients/httpcrawler/scope"
 	"github.com/google/goonami-scanner/core/config"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -100,7 +101,6 @@ func testConfig() *config.Config {
 
 func TestCrawl(t *testing.T) {
 	errTest := errors.New("test error")
-	errAny := errors.New("any error")
 	pages := map[string]*testPage{
 		"/":              {links: []string{"/d1", "/d2", "/excluded/page", "/d3"}},
 		"/d1":            {links: []string{"/d1/1"}},
@@ -148,7 +148,7 @@ func TestCrawl(t *testing.T) {
 			config:    testConfig(),
 			startURLs: []string{"://localhost"},
 			callback:  cb,
-			wantErr:   errAny,
+			wantErr:   scope.ErrParseURL,
 		},
 		{
 			name: "when_callback_errors_it_propagates_error",
@@ -332,13 +332,11 @@ func TestCrawl(t *testing.T) {
 
 			ctx := context.Background()
 			stats, err := sc.Crawl(ctx, tc.callback, tc.startURLs)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Crawl() returned error %v, want %v", err, tc.wantErr)
+			}
+
 			if tc.wantErr != nil {
-				if err == nil {
-					t.Fatalf("Crawl() returned nil error, want non-nil")
-				}
-				if tc.wantErr != errAny && !errors.Is(err, tc.wantErr) {
-					t.Fatalf("Crawl() returned error %v, want %v", err, tc.wantErr)
-				}
 				return
 			}
 

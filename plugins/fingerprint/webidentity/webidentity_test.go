@@ -104,7 +104,7 @@ func TestNew(t *testing.T) {
 					}.Build(),
 				}.Build())
 			},
-			wantErr: os.ErrNotExist,
+			wantErr: ErrSignaturesRead,
 		},
 		{
 			name: "when_signatures_are_invalid_returns_error",
@@ -120,7 +120,7 @@ func TestNew(t *testing.T) {
 					}.Build(),
 				}.Build())
 			},
-			wantErr: proto.Error,
+			wantErr: ErrSignaturesUnmarshal,
 		},
 	}
 

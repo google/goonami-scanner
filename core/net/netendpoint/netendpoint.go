@@ -26,6 +26,12 @@ import (
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 )
 
+var (
+	// ErrEndpointMissingAddress is returned when the network endpoint is missing both hostname and
+	// IP address.
+	ErrEndpointMissingAddress = errors.New("endpoint has neither a hostname nor an IP address")
+)
+
 // FromString creates a NetworkEndpoint from a string. Note that this function does not support
 // inputs that contain a port. It assumes the endpoint is a hostname if it fails to be parsed as an
 // IP address.
@@ -76,7 +82,7 @@ func ToURIAuthority(endpoint *npb.NetworkEndpoint) (string, error) {
 	}
 
 	if !endpoint.HasIpAddress() {
-		return "", errors.New("endpoint has neither a hostname nor an IP address")
+		return "", ErrEndpointMissingAddress
 	}
 
 	address := endpoint.GetIpAddress().GetAddress()

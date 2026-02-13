@@ -20,6 +20,7 @@ package webidentity
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,6 +50,15 @@ var (
 	// ErrNoFingerprintsDirectory indicates that the configuration does not specify the path to the
 	// directory containing the signatures.
 	ErrNoFingerprintsDirectory = errors.New("invalid configuration: the webidentity plugin REQUIRES the path to the directory containing the signatures, none found")
+
+	// ErrSignaturesRead is returned when there is an error while reading a signature file.
+	ErrSignaturesRead = errors.New("error while reading signature file")
+
+	// ErrSignaturesUnmarshal is returned when there is an error while unmarshaling a signature.
+	ErrSignaturesUnmarshal = errors.New("error while unmarshaling signature")
+
+	// ErrArtifactsWrite is returned when there is an error while writing an artifact file.
+	ErrArtifactsWrite = errors.New("error while writing artifact file")
 )
 
 // DefaultConfig returns the default configuration for the webidentity plugin.
@@ -195,7 +205,7 @@ func (m *Module) writeToArtifacts(ctx context.Context, info *httpcrawler.PageInf
 
 	if err := os.WriteFile(path, content, 0644); err != nil {
 		m.storage.Release(contentSize)
-		return 0, err
+		return 0, fmt.Errorf("%w: %v", ErrArtifactsWrite, err)
 	}
 
 	return contentSize, nil
@@ -308,12 +318,12 @@ func getSignaturesDirectory(config *wfpb.WebIdentityFpConfig) (string, error) {
 func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, registry *hash.Registry) error {
 	sigDirectory, err := getSignaturesDirectory(config)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
 	}
 
 	dirs, err := os.ReadDir(sigDirectory)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
 	}
 
 	for _, dir := range dirs {
@@ -328,13 +338,13 @@ func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, 
 		filePath := filepath.Join(sigDirectory, dir.Name())
 		fingerprints, err := os.ReadFile(filePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("%w %q: %v", ErrSignaturesRead, filePath, err)
 		}
 
 		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures from %q", filePath)
 		fingerprintsProto := &fpb.Fingerprints{}
 		if err := proto.Unmarshal(fingerprints, fingerprintsProto); err != nil {
-			return err
+			return fmt.Errorf("%w %q: %v", ErrSignaturesUnmarshal, filePath, err)
 		}
 
 		if err := registry.Load(fingerprintsProto); err != nil {

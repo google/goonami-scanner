@@ -19,6 +19,7 @@ package nmap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +33,23 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	nccpb "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
+)
+
+var (
+	// ErrInvalidTechnique is returned when the port scan technique is invalid.
+	ErrInvalidTechnique = errors.New("invalid port scan technique")
+
+	// ErrNmapExecution is returned when nmap fails to execute.
+	ErrNmapExecution = errors.New("nmap execution failed")
+
+	// ErrNmapOutputRead is returned when there is an error while reading nmap output.
+	ErrNmapOutputRead = errors.New("error while reading nmap output")
+
+	// ErrNmapXMLUnmarshal is returned when there is an error while unmarshalling nmap XML output.
+	ErrNmapXMLUnmarshal = errors.New("error while unmarshalling nmap XML output")
+
+	// ErrNmapTempFile is returned when there is an error with the nmap temporary file.
+	ErrNmapTempFile = errors.New("error with nmap temporary file")
 )
 
 // DefaultConfig for the nmap client.
@@ -89,7 +107,7 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 
 	outputFile, err := c.createOutputFile(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrNmapTempFile, err)
 	}
 	defer os.Remove(outputFile)
 
@@ -107,12 +125,12 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 	log.DebugContextf(ctx, log.DebugLevelSession, "running %q with args: %v", binaryPath, args)
 	cmd := exec.CommandContext(scanCtx, binaryPath, args...)
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrNmapExecution, err)
 	}
 
 	output, err := os.ReadFile(outputFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrNmapOutputRead, err)
 	}
 
 	return ParseXMLOutput(output)
@@ -121,12 +139,12 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 func (c *SimpleClient) createOutputFile(ctx context.Context) (string, error) {
 	tmpFile, err := os.CreateTemp("", "nmap-*.xml")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrNmapTempFile, err)
 	}
 
 	if err := tmpFile.Close(); err != nil {
 		os.Remove(tmpFile.Name())
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrNmapTempFile, err)
 	}
 
 	return tmpFile.Name(), nil
@@ -154,7 +172,7 @@ func (c *SimpleClient) optTechnique() (string, error) {
 	case nccpb.NmapClientConfig_UDP:
 		return "-sU", nil
 	default:
-		return "", fmt.Errorf("invalid port scan technique: %q", c.config.GetScanTechnique().String())
+		return "", fmt.Errorf("%w: %q", ErrInvalidTechnique, c.config.GetScanTechnique().String())
 	}
 }
 
