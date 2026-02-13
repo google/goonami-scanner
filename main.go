@@ -67,9 +67,10 @@ var (
 
 func main() {
 	flag.Parse()
+	ctx := log.ContextForModule(context.Background(), "main")
 
-	if err := run(context.Background()); err != nil {
-		log.Errorf("%v", err)
+	if err := run(ctx); err != nil {
+		log.ErrorContextf(ctx, "%v", err)
 		os.Exit(1)
 	}
 }
@@ -79,7 +80,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
-	log.Infof("initializing the scanner's config")
+	log.InfoContextf(ctx, "initializing the scanner's config")
 	cfg, err := config.FromFile(*ConfigFlag)
 	if err != nil {
 		return fmt.Errorf("failed to load the config: %w", err)
@@ -88,11 +89,11 @@ func run(ctx context.Context) error {
 	if err := cfg.CreateDirectories(*OutputDirFlag); err != nil {
 		return fmt.Errorf("failed to create the scanner's directories: %w", err)
 	}
-	defer cfg.Close()
+	defer cfg.Close(ctx)
 
 	logger := &log.DefaultLogger{VerboseLevel: log.DebugLevel(*DebugLevelFlag)}
 
-	log.Infof("initializing the scanner's entrypoint")
+	log.InfoContextf(ctx, "initializing the scanner's entrypoint")
 	options := &entrypoint.Options{
 		Config:         cfg,
 		Logger:         logger,
@@ -100,12 +101,12 @@ func run(ctx context.Context) error {
 		Fingerprinters: fingerprinters,
 	}
 
-	e, err := entrypoint.New(options)
+	e, err := entrypoint.New(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create the entrypoint: %w", err)
 	}
 
-	log.Infof("running the scanner")
+	log.InfoContextf(ctx, "running the scanner")
 	results, err := e.Run(ctx, *TargetFlag)
 	if err != nil {
 		return fmt.Errorf("failed to run the scanner: %w", err)
@@ -113,12 +114,12 @@ func run(ctx context.Context) error {
 
 	// note: we dissociate the scan results from the other artifacts.
 	resultsPath := path.Join(cfg.WorkingDirectory(), "results.textproto")
-	log.Infof("writing results to %q", resultsPath)
+	log.InfoContextf(ctx, "writing results to %q", resultsPath)
 	if err := writeResults(resultsPath, results); err != nil {
 		return fmt.Errorf("failed to write results to %q: %w", resultsPath, err)
 	}
 
-	log.Infof("results written to %q", resultsPath)
+	log.InfoContextf(ctx, "results written to %q", resultsPath)
 	return nil
 }
 

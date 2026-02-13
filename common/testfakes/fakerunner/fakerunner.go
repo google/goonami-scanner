@@ -29,15 +29,15 @@ type OverrideRunFn func(ctx context.Context, target string) (*srpb.ScanResults, 
 
 // OverrideRegisterPortScannerFn is the type of function that overrides the RegisterPortScanner()
 // of the fake runner.
-type OverrideRegisterPortScannerFn func(ps module.PortScanner) error
+type OverrideRegisterPortScannerFn func(ctx context.Context, ps module.PortScanner) error
 
 // OverrideRegisterFingerprinterFn is the type of function that overrides the
 // RegisterFingerprinter() of the fake runner.
-type OverrideRegisterFingerprinterFn func(fp module.Fingerprinter) error
+type OverrideRegisterFingerprinterFn func(ctx context.Context, fp module.Fingerprinter) error
 
 // OverrideRegisterDetectorFn is the type of function that overrides the RegisterDetector() of the
 // fake runner.
-type OverrideRegisterDetectorFn func(d module.VulnDetector) error
+type OverrideRegisterDetectorFn func(ctx context.Context, d module.VulnDetector) error
 
 // FakeRunner is a fake implementation of the Goonami runner. It provides more introspection
 // capabilities than the real runner.
@@ -63,9 +63,9 @@ func (r *FakeRunner) OverrideRegisterPortScanner(fn OverrideRegisterPortScannerF
 }
 
 // RegisterPortScanner registers a port scanner with the fake runner.
-func (r *FakeRunner) RegisterPortScanner(ps module.PortScanner) error {
+func (r *FakeRunner) RegisterPortScanner(ctx context.Context, ps module.PortScanner) error {
 	if r.overrideRegisterPort != nil {
-		return r.overrideRegisterPort(ps)
+		return r.overrideRegisterPort(ctx, ps)
 	}
 
 	r.portScanner = ps
@@ -83,9 +83,9 @@ func (r *FakeRunner) OverrideRegisterFingerprinter(fn OverrideRegisterFingerprin
 }
 
 // RegisterFingerprinter registers a fingerprinter with the fake runner.
-func (r *FakeRunner) RegisterFingerprinter(fp module.Fingerprinter) error {
+func (r *FakeRunner) RegisterFingerprinter(ctx context.Context, fp module.Fingerprinter) error {
 	if r.overrideRegisterFingerprinter != nil {
-		return r.overrideRegisterFingerprinter(fp)
+		return r.overrideRegisterFingerprinter(ctx, fp)
 	}
 
 	r.fingerprinters = append(r.fingerprinters, fp)
@@ -103,9 +103,9 @@ func (r *FakeRunner) OverrideRegisterDetector(fn OverrideRegisterDetectorFn) {
 }
 
 // RegisterDetector registers a detector with the fake runner.
-func (r *FakeRunner) RegisterDetector(d module.VulnDetector) error {
+func (r *FakeRunner) RegisterDetector(ctx context.Context, d module.VulnDetector) error {
 	if r.overrideRegisterDetector != nil {
-		return r.overrideRegisterDetector(d)
+		return r.overrideRegisterDetector(ctx, d)
 	}
 
 	r.detectors = append(r.detectors, d)

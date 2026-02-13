@@ -106,7 +106,7 @@ func TestRun_ErrorCases(t *testing.T) {
 			config:    configPath,
 			setup: func() {
 				oldPS := portScanner
-				portScanner = func(*config.Config) (module.PortScanner, error) {
+				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return nil, fmt.Errorf("init error")
 				}
 				_oldPS = oldPS
@@ -122,7 +122,7 @@ func TestRun_ErrorCases(t *testing.T) {
 			config:    configPath,
 			setup: func() {
 				oldPS := portScanner
-				portScanner = func(*config.Config) (module.PortScanner, error) {
+				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return fakemodule.NewFakePortScanner("ps1", func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 						return nil, fmt.Errorf("run error")
 					}), nil

@@ -43,7 +43,7 @@ type Module struct {
 }
 
 // New returns a new instance of the module.
-func New(config *config.Config) (module.Fingerprinter, error) {
+func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		config:     config,
@@ -77,7 +77,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	}
 	defer resp.Body.Close()
 
-	log.Debugf(log.DebugLevelService, "[fp/iswebservice] port:%d is a web service", service.GetNetworkEndpoint().GetPort().GetPortNumber())
+	log.DebugContextf(ctx, log.DebugLevelService, "web service found")
 	if !slices.Contains(service.GetSupportedHttpMethods(), "GET") {
 		supported := append(service.GetSupportedHttpMethods(), "GET")
 		service.SetSupportedHttpMethods(supported)

@@ -126,7 +126,7 @@ func TestNew(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mod, err := New(tc.configFunc())
+			mod, err := New(context.Background(), tc.configFunc())
 			if err != nil {
 				if tc.wantErr == nil || !errors.Is(err, tc.wantErr) {
 					t.Fatalf("New() returned unexpected error: got: %v, want: %v", err, tc.wantErr)
@@ -442,7 +442,7 @@ func TestFingerprint(t *testing.T) {
 				t.Fatalf("Failed to initialize http library defaults: %v", err)
 			}
 
-			mod, err := newWithRegistry(modConfig, cfg, registry)
+			mod, err := newWithRegistry(context.Background(), modConfig, cfg, registry)
 			if err != nil {
 				t.Fatalf("Failed to create module: %v", err)
 			}
@@ -567,7 +567,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 				t.Fatalf("Failed to initialize http library defaults: %v", err)
 			}
 
-			mod, err := newWithRegistry(tc.config, cfg, registry)
+			mod, err := newWithRegistry(context.Background(), tc.config, cfg, registry)
 			if err != nil {
 				t.Fatalf("Failed to create module: %v", err)
 			}

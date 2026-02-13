@@ -34,4 +34,4 @@ type PortScanner interface {
 }
 
 // InitPortScannerFn is the function signature for initializing a port scanner module.
-type InitPortScannerFn func(*config.Config) (PortScanner, error)
+type InitPortScannerFn func(context.Context, *config.Config) (PortScanner, error)

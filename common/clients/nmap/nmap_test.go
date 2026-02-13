@@ -17,6 +17,7 @@
 package nmap
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -215,7 +216,7 @@ func TestCommandLine(t *testing.T) {
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)
 
-			got, err := client.CommandLine(tc.target)
+			got, err := client.CommandLine(context.Background(), tc.target)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("CommandLine(%q) returned error: %v, wantErr: %v", tc.target, err, tc.wantErr)
 			}

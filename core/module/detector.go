@@ -34,4 +34,4 @@ type VulnDetector interface {
 }
 
 // InitVulnDetectorFn is the function signature for initializing a detector module.
-type InitVulnDetectorFn func(*config.Config) (VulnDetector, error)
+type InitVulnDetectorFn func(context.Context, *config.Config) (VulnDetector, error)

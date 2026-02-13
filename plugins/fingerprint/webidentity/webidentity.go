@@ -72,7 +72,7 @@ type Module struct {
 }
 
 // New returns a new instance of the module.
-func New(config *config.Config) (module.Fingerprinter, error) {
+func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	modConfig := DefaultConfig()
 
 	if config.PluginsConfig().HasWebidentity() {
@@ -83,23 +83,25 @@ func New(config *config.Config) (module.Fingerprinter, error) {
 		return nil, ErrNoFingerprintsDirectory
 	}
 
+	ctx = log.ContextForModule(ctx, moduleName)
+
 	registry := hash.NewRegistry()
-	if err := loadAllFingerprints(modConfig, registry); err != nil {
+	if err := loadAllFingerprints(ctx, modConfig, registry); err != nil {
 		return nil, err
 	}
-	log.Debugf(log.DebugLevelSession, "[fp/webidentity] Loaded %d signatures", registry.Count())
+	log.DebugContextf(ctx, log.DebugLevelSession, "Loaded %d signatures", registry.Count())
 
-	return newWithRegistry(modConfig, config, registry)
+	return newWithRegistry(ctx, modConfig, config, registry)
 }
 
 // newWithRegistry performs the initialization of the module once the checks have been performed
 // and the registry loaded. This function is used in tests to load custom registries.
-func newWithRegistry(modConfig *wfpb.WebIdentityFpConfig, config *config.Config, registry *hash.Registry) (module.Fingerprinter, error) {
+func newWithRegistry(ctx context.Context, modConfig *wfpb.WebIdentityFpConfig, config *config.Config, registry *hash.Registry) (module.Fingerprinter, error) {
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		coreConfig: config,
 		config:     modConfig,
-		crawler:    httpcrawler.NewSimpleCrawler(config),
+		crawler:    httpcrawler.NewSimpleCrawler(ctx, config),
 		storage:    storage.New(modConfig.GetWriteHtmlToFile(), modConfig.GetMaximumStorageSpaceBytes()),
 		registry:   registry,
 	}, nil
@@ -121,7 +123,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 		return nil, err
 	}
 
-	return m.matching(run, service)
+	return m.matching(ctx, run, service)
 }
 
 func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkService) error {
@@ -132,8 +134,8 @@ func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkS
 	webroot = webroot + "/"
 
 	var bytesWritten int64
-	callback := func(info *httpcrawler.PageInfo, resp *http.Response, content []byte) error {
-		bytes, err := m.processPage(run, info, resp, content)
+	callback := func(ctx context.Context, info *httpcrawler.PageInfo, resp *http.Response, content []byte) error {
+		bytes, err := m.processPage(ctx, run, info, resp, content)
 		if err == nil { // success
 			bytesWritten += bytes
 		}
@@ -141,19 +143,18 @@ func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkS
 		return err
 	}
 
-	port := service.GetNetworkEndpoint().GetPort().GetPortNumber()
-	log.Debugf(log.DebugLevelService, "[fp/webidentity] port:%d starting crawling", port)
+	log.DebugContextf(ctx, log.DebugLevelService, "starting crawling")
 	stats, err := m.crawler.Crawl(ctx, callback, []string{webroot})
 	if err != nil {
 		return err
 	}
 
-	log.Debugf(log.DebugLevelService, "[fp/webidentity] port:%d crawled %d pages (%d bytes written)", port, stats.TotalPagesCrawled, bytesWritten)
+	log.DebugContextf(ctx, log.DebugLevelService, "crawled %d pages (%d bytes written)", stats.TotalPagesCrawled, bytesWritten)
 	return nil
 }
 
 // processPage processes a single page. This function is called on every page during the crawl.
-func (m *Module) processPage(run *runInfo, info *httpcrawler.PageInfo, resp *http.Response, content []byte) (int64, error) {
+func (m *Module) processPage(ctx context.Context, run *runInfo, info *httpcrawler.PageInfo, resp *http.Response, content []byte) (int64, error) {
 	hash, err := hash.FromResponse(resp, content)
 	if err != nil {
 		return 0, err
@@ -162,33 +163,33 @@ func (m *Module) processPage(run *runInfo, info *httpcrawler.PageInfo, resp *htt
 
 	run.AddVisited(info, resp, []byte(hexHash))
 	if identity := m.registry.Find(hexHash, info.URL); identity != nil {
-		run.AddMatch(identity)
+		run.AddMatch(ctx, identity)
 	}
 
 	if !m.config.GetWriteHtmlToFile() {
 		return 0, nil
 	}
 
-	return m.writeToArtifacts(info, hexHash, content)
+	return m.writeToArtifacts(ctx, info, hexHash, content)
 }
 
-func (m *Module) writeToArtifacts(info *httpcrawler.PageInfo, hexHash string, content []byte) (int64, error) {
+func (m *Module) writeToArtifacts(ctx context.Context, info *httpcrawler.PageInfo, hexHash string, content []byte) (int64, error) {
 	// Given that the filename is the hash of the content, we know that an existing file necessarily
 	// has the same content: so we can skip the write.
 	path := filepath.Join(m.coreConfig.ArtifactsDirectory(), hexHash)
 	if _, err := os.Stat(path); err == nil {
-		log.Debugf(log.DebugLevelRequest, "[fp/webidentity] not writing (already exists) for: %q (%s)", info.URL, hexHash)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "not writing (already exists) for: %q (%s)", info.URL, hexHash)
 		return 0, nil
 	}
 
 	contentSize := int64(len(content))
 	if contentSize > m.config.GetMaximumFileSizeBytes() {
-		log.Debugf(log.DebugLevelRequest, "[fp/webidentity] not writing (file too big) for: %q (%s)", info.URL, hexHash)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "not writing (file too big) for: %q (%s)", info.URL, hexHash)
 		return 0, nil
 	}
 
 	if !m.storage.Reserve(contentSize) {
-		log.Debugf(log.DebugLevelRequest, "[fp/webidentity] not writing (storage full) for: %q (%s)", info.URL, hexHash)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "not writing (storage full) for: %q (%s)", info.URL, hexHash)
 		return 0, nil
 	}
 
@@ -200,7 +201,7 @@ func (m *Module) writeToArtifacts(info *httpcrawler.PageInfo, hexHash string, co
 	return contentSize, nil
 }
 
-func (m *Module) matching(run *runInfo, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 	crawlResults := run.CrawlResults()
 	matches := run.Matches()
 	if len(matches) == 0 {
@@ -211,7 +212,7 @@ func (m *Module) matching(run *runInfo, service *nspb.NetworkService) ([]*nspb.N
 	var networkServices []*nspb.NetworkService
 	for _, identities := range matches {
 		for _, identity := range identities {
-			networkServices = append(networkServices, identityToNewService(service, crawlResults, identity))
+			networkServices = append(networkServices, identityToNewService(ctx, service, crawlResults, identity))
 		}
 	}
 
@@ -261,7 +262,7 @@ func serviceFromUnidentifiedCrawls(service *nspb.NetworkService, knownRoots []st
 
 // Make a copy of the provided service with information obtained from the identity. It also adds the
 // relevant crawl results to the service.
-func identityToNewService(service *nspb.NetworkService, crawls []*wcpb.CrawlResult, identity *hash.Identity) *nspb.NetworkService {
+func identityToNewService(ctx context.Context, service *nspb.NetworkService, crawls []*wcpb.CrawlResult, identity *hash.Identity) *nspb.NetworkService {
 	newService := proto.Clone(service).(*nspb.NetworkService)
 	software := identity.Software
 
@@ -289,7 +290,7 @@ func identityToNewService(service *nspb.NetworkService, crawls []*wcpb.CrawlResu
 	wsc.SetVersionSet(spb.VersionSet_builder{Versions: versions}.Build())
 
 	if len(identity.PotentialRoots) != 1 {
-		log.Warnf("[fp/webidentity] port:%d software:%q has %d roots. This is likely an issue. Please report to Goonami developers.", service.GetNetworkEndpoint().GetPort().GetPortNumber(), software, len(identity.PotentialRoots))
+		log.WarnContextf(ctx, "software:%q has %d roots. This is likely an issue. Please report to Goonami developpers.", software, len(identity.PotentialRoots))
 	} else {
 		wsc.SetApplicationRoot(identity.PotentialRoots[0])
 	}
@@ -304,7 +305,7 @@ func getSignaturesDirectory(config *wfpb.WebIdentityFpConfig) (string, error) {
 }
 
 // Load all signatures from the directory defined in the configuration.
-func loadAllFingerprints(config *wfpb.WebIdentityFpConfig, registry *hash.Registry) error {
+func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, registry *hash.Registry) error {
 	sigDirectory, err := getSignaturesDirectory(config)
 	if err != nil {
 		return err
@@ -330,7 +331,7 @@ func loadAllFingerprints(config *wfpb.WebIdentityFpConfig, registry *hash.Regist
 			return err
 		}
 
-		log.Debugf(log.DebugLevelRequest, "[fp/webidentity] loading signatures from %q", filePath)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures from %q", filePath)
 		fingerprintsProto := &fpb.Fingerprints{}
 		if err := proto.Unmarshal(fingerprints, fingerprintsProto); err != nil {
 			return err

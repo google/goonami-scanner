@@ -38,4 +38,4 @@ type Fingerprinter interface {
 }
 
 // InitFingerprinterFn is the function signature for initializing a fingerprinter module.
-type InitFingerprinterFn func(*config.Config) (Fingerprinter, error)
+type InitFingerprinterFn func(context.Context, *config.Config) (Fingerprinter, error)

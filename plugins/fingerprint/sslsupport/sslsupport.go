@@ -47,7 +47,7 @@ type Module struct {
 }
 
 // New returns a new instance of the module.
-func New(config *config.Config) (module.Fingerprinter, error) {
+func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		config:     config,
@@ -82,7 +82,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	}
 	defer tlsConn.Close()
 
-	log.Debugf(log.DebugLevelService, "[fp/sslsupport] port:%d supports SSL connections", service.GetNetworkEndpoint().GetPort().GetPortNumber())
+	log.DebugContextf(ctx, log.DebugLevelService, "service supports SSL")
 	version := tls.VersionName(tlsConn.ConnectionState().Version)
 	tlsversions := append(service.GetSupportedSslVersions(), version)
 	service.SetSupportedSslVersions(tlsversions)

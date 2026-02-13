@@ -117,11 +117,11 @@ func TestCrawl(t *testing.T) {
 	// note: we reset the state at the beginning of each test, but we need it to be globally available
 	// for the callback function.
 	var crawled []string
-	cb := func(i *PageInfo, _ *http.Response, _ []byte) error {
+	cb := func(_ context.Context, i *PageInfo, _ *http.Response, _ []byte) error {
 		crawled = append(crawled, i.URL)
 		return nil
 	}
-	errCb := func(i *PageInfo, _ *http.Response, _ []byte) error {
+	errCb := func(_ context.Context, i *PageInfo, _ *http.Response, _ []byte) error {
 		crawled = append(crawled, i.URL)
 		return errTest
 	}
@@ -328,7 +328,7 @@ func TestCrawl(t *testing.T) {
 			if err := goohttp.InitializeDefaults(tc.config); err != nil {
 				t.Fatalf("failed to initialize http library defaults: %v", err)
 			}
-			sc := NewSimpleCrawler(tc.config)
+			sc := NewSimpleCrawler(context.Background(), tc.config)
 
 			ctx := context.Background()
 			stats, err := sc.Crawl(ctx, tc.callback, tc.startURLs)

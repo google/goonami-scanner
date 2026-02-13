@@ -73,7 +73,8 @@ func New(config *config.Config) (*SimpleRunner, error) {
 }
 
 // RegisterPortScanner registers the port scanner (only one port scanner can be registered).
-func (r *SimpleRunner) RegisterPortScanner(module module.PortScanner) error {
+func (r *SimpleRunner) RegisterPortScanner(ctx context.Context, module module.PortScanner) error {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	if r.portScanner != nil {
 		return ErrPortScannerAlreadyRegistered
 	}
@@ -82,29 +83,31 @@ func (r *SimpleRunner) RegisterPortScanner(module module.PortScanner) error {
 		return ErrRegistrationNil
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] registering port scanner: %s", module.Name())
+	log.DebugContextf(ctx, log.DebugLevelSession, "registering port scanner: %s", module.Name())
 	r.portScanner = module
 	return nil
 }
 
 // RegisterFingerprinter registers an additional fingerprinter.
-func (r *SimpleRunner) RegisterFingerprinter(module module.Fingerprinter) error {
+func (r *SimpleRunner) RegisterFingerprinter(ctx context.Context, module module.Fingerprinter) error {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	if module == nil {
 		return ErrRegistrationNil
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] registering new fingerprinter: %s", module.Name())
+	log.DebugContextf(ctx, log.DebugLevelSession, "registering new fingerprinter: %s", module.Name())
 	r.fingerprinters = append(r.fingerprinters, module)
 	return nil
 }
 
 // RegisterDetector registers an additional vulnerability detector.
-func (r *SimpleRunner) RegisterDetector(module module.VulnDetector) error {
+func (r *SimpleRunner) RegisterDetector(ctx context.Context, module module.VulnDetector) error {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	if module == nil {
 		return ErrRegistrationNil
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] registering new detector: %s", module.Name())
+	log.DebugContextf(ctx, log.DebugLevelSession, "registering new detector: %s", module.Name())
 	r.detectors = append(r.detectors, module)
 	return nil
 }
@@ -120,8 +123,9 @@ func (r *SimpleRunner) PortScanStep(ctx context.Context, target string) (*rpb.Po
 
 // FingerprintStep runs fingerprinting (in place) from the port scanning report.
 func (r *SimpleRunner) FingerprintStep(ctx context.Context, portscan *rpb.PortScanningReport) (*rpb.FingerprintingReport, error) {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	if len(r.fingerprinters) == 0 {
-		log.Warnf("[runner] skipping fingerprinting: no fingerprinters found")
+		log.WarnContextf(ctx, "skipping fingerprinting: no fingerprinters found")
 		return rpb.FingerprintingReport_builder{
 			NetworkServices: portscan.GetNetworkServices(),
 		}.Build(), nil
@@ -131,8 +135,9 @@ func (r *SimpleRunner) FingerprintStep(ctx context.Context, portscan *rpb.PortSc
 }
 
 func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.FingerprintingReport) ([]*dpb.DetectionReport, error) {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	if len(r.detectors) == 0 {
-		log.Warnf("[runner] skipping detection: no detectors found")
+		log.WarnContextf(ctx, "skipping detection: no detectors found")
 		return nil, nil
 	}
 
@@ -141,18 +146,19 @@ func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.Fingerprint
 
 // Run runs the Goonami modules in the order of port scan, fingerprinting and then detection.
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
+	ctx = log.ContextForModule(ctx, "core/runner")
 	portscan, err := r.PortScanStep(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] port scan complete: Found %d open services", len(portscan.GetNetworkServices()))
+	log.DebugContextf(ctx, log.DebugLevelSession, "port scan complete: Found %d open services", len(portscan.GetNetworkServices()))
 	fpreport, err := r.FingerprintStep(ctx, portscan)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf(log.DebugLevelSession, "[runner] fingerprinting phase complete")
+	log.DebugContextf(ctx, log.DebugLevelSession, "fingerprinting phase complete")
 	detections, err := r.DetectStep(ctx, fpreport)
 	if err != nil {
 		return nil, err
@@ -168,7 +174,7 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 		}.Build(),
 	}.Build()
 
-	log.Debugf(log.DebugLevelSession, "[runner] scan complete")
+	log.DebugContextf(ctx, log.DebugLevelSession, "scan complete")
 	return results, nil
 }
 
@@ -230,6 +236,7 @@ func runConcurrent[E any](ctx context.Context, concurrency int, services []*nspb
 // coming directly from the port scan. But each fingerprinter can technically "split" that network
 // service into several ones.
 func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	port := int(svc.GetNetworkEndpoint().GetPort().GetPortNumber())
 	var services []*nspb.NetworkService = []*nspb.NetworkService{svc}
 	for _, fp := range r.fingerprinters {
 		var accumulator []*nspb.NetworkService
@@ -239,9 +246,10 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 				return nil, ctx.Err()
 			}
 
+			ctx = log.ContextForModuleAndService(ctx, fp.Name(), port)
 			res, err := fp.Fingerprint(ctx, sv)
 			if err != nil {
-				log.Errorf("[runner] port:%d fatal fingerprinting error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), fp.Name(), err)
+				log.ErrorContextf(ctx, "fatal fingerprinting error: %s", err)
 				return nil, err
 			}
 
@@ -255,6 +263,7 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 }
 
 func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkService) ([]*dpb.DetectionReport, error) {
+	port := int(svc.GetNetworkEndpoint().GetPort().GetPortNumber())
 	var reports []*dpb.DetectionReport
 
 	for _, dt := range r.detectors {
@@ -262,9 +271,10 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 			return nil, ctx.Err()
 		}
 
+		ctx = log.ContextForModuleAndService(ctx, dt.Name(), port)
 		res, err := dt.Detect(ctx, svc)
 		if err != nil {
-			log.Errorf("[runner] port:%d fatal detection error for %q: %s", svc.GetNetworkEndpoint().GetPort().GetPortNumber(), dt.Name(), err)
+			log.ErrorContextf(ctx, "fatal detection error: %s", err)
 			return nil, err
 		}
 

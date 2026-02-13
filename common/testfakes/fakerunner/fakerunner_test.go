@@ -47,7 +47,7 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_success_it_uses_override_logic",
-			overrideFn: func(ps module.PortScanner) error {
+			overrideFn: func(ctx context.Context, ps module.PortScanner) error {
 				return nil
 			},
 			ps:     fakemodule.NewFakePortScanner("ps1", nil),
@@ -55,7 +55,7 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_error_it_propagates_error",
-			overrideFn: func(ps module.PortScanner) error {
+			overrideFn: func(ctx context.Context, ps module.PortScanner) error {
 				return errors.New("override error")
 			},
 			ps:      fakemodule.NewFakePortScanner("ps1", nil),
@@ -69,7 +69,7 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 			r := New()
 			r.OverrideRegisterPortScanner(tc.overrideFn)
 
-			err := r.RegisterPortScanner(tc.ps)
+			err := r.RegisterPortScanner(context.Background(), tc.ps)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("RegisterPortScanner(%v) returned error %v, wantErr=%t", tc.ps, err, tc.wantErr)
 			}
@@ -100,7 +100,7 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_success_it_uses_override_logic",
-			overrideFn: func(fp module.Fingerprinter) error {
+			overrideFn: func(ctx context.Context, fp module.Fingerprinter) error {
 				return nil
 			},
 			fp:     fakemodule.NewFakeFingerprinter("fp1", nil),
@@ -108,7 +108,7 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_error_it_propagates_error",
-			overrideFn: func(fp module.Fingerprinter) error {
+			overrideFn: func(ctx context.Context, fp module.Fingerprinter) error {
 				return errors.New("override error")
 			},
 			fp:      fakemodule.NewFakeFingerprinter("fp1", nil),
@@ -121,7 +121,7 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 			r := New()
 			r.OverrideRegisterFingerprinter(tc.overrideFn)
 
-			err := r.RegisterFingerprinter(tc.fp)
+			err := r.RegisterFingerprinter(context.Background(), tc.fp)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("RegisterFingerprinter(%v) returned error %v, wantErr=%t", tc.fp, err, tc.wantErr)
 			}
@@ -152,7 +152,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_success_it_uses_override_logic",
-			overrideFn: func(d module.VulnDetector) error {
+			overrideFn: func(ctx context.Context, d module.VulnDetector) error {
 				return nil
 			},
 			d:     fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
@@ -160,7 +160,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 		},
 		{
 			name: "when_override_returns_error_it_propagates_error",
-			overrideFn: func(d module.VulnDetector) error {
+			overrideFn: func(ctx context.Context, d module.VulnDetector) error {
 				return errors.New("override error")
 			},
 			d:       fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
@@ -173,7 +173,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			r := New()
 			r.OverrideRegisterDetector(tc.overrideFn)
 
-			err := r.RegisterDetector(tc.d)
+			err := r.RegisterDetector(context.Background(), tc.d)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("RegisterDetector(%v) returned error %v, wantErr=%t", tc.d, err, tc.wantErr)
 			}

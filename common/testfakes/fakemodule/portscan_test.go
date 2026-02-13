@@ -162,7 +162,7 @@ func TestInitFakePortScanner(t *testing.T) {
 				t.Fatalf("InitFakePortScanner() returned nil")
 			}
 
-			m, err := initFn(nil)
+			m, err := initFn(context.Background(), nil)
 			if tc.wantErr {
 				if err == nil {
 					t.Errorf("InitFakePortScanner() init function returned nil error, want non-nil")

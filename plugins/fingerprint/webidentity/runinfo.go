@@ -17,6 +17,7 @@
 package webidentity
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -34,13 +35,13 @@ type runInfo struct {
 	crawlResults map[string]*wcpb.CrawlResult
 }
 
-func (m *runInfo) AddMatch(identity *hash.Identity) {
+func (m *runInfo) AddMatch(ctx context.Context, identity *hash.Identity) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
 	software := identity.Software
 	if _, ok := m.matches[software]; !ok {
-		log.Debugf(log.DebugLevelService, "[fp/webidentity] found a known web application: %q", software)
+		log.DebugContextf(ctx, log.DebugLevelService, "found a known web application: %q", software)
 		m.matches[software] = []*hash.Identity{identity}
 		return
 	}

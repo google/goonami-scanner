@@ -17,6 +17,7 @@
 package httpcrawler
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -34,14 +35,14 @@ func TestCrawlRun_Callback(t *testing.T) {
 	}{
 		{
 			name: "when_callback_is_successful_returns_no_error",
-			callback: func(info *PageInfo, _ *http.Response, _ []byte) error {
+			callback: func(ctx context.Context, info *PageInfo, _ *http.Response, _ []byte) error {
 				return nil
 			},
 			wantErr: nil,
 		},
 		{
 			name: "when_callback_fails_it_propagates_error",
-			callback: func(info *PageInfo, _ *http.Response, _ []byte) error {
+			callback: func(ctx context.Context, info *PageInfo, _ *http.Response, _ []byte) error {
 				return errCallback
 			},
 			wantErr: errCallback,
@@ -52,7 +53,7 @@ func TestCrawlRun_Callback(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &crawlRun{callback: tc.callback}
 			pi := &PageInfo{}
-			err := r.Callback(pi, nil, nil)
+			err := r.Callback(context.Background(), pi, nil, nil)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Callback() error: got %v, want %v", err, tc.wantErr)
 			}

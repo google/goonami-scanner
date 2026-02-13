@@ -155,7 +155,7 @@ func TestInitFakeVulnDetector(t *testing.T) {
 				t.Fatalf("InitFakeVulnDetector() returned nil, want init function")
 			}
 
-			detector, err := initFn(nil)
+			detector, err := initFn(context.Background(), nil)
 			if tc.wantErr {
 				if err == nil {
 					t.Errorf("InitFakeVulnDetector() init function returned nil error, want non-nil")

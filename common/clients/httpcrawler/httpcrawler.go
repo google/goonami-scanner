@@ -44,7 +44,7 @@ var (
 
 // PageCallback is a function that is called on every page crawled. The response's body MUST NOT be
 // used at all. Use the content parameter instead.
-type PageCallback func(info *PageInfo, resp *http.Response, content []byte) error
+type PageCallback func(ctx context.Context, info *PageInfo, resp *http.Response, content []byte) error
 
 // Crawler is the interface for a web crawler.
 type Crawler interface {
@@ -87,14 +87,15 @@ type CrawlStats struct {
 }
 
 // NewSimpleCrawler creates a new SimpleCrawler.
-func NewSimpleCrawler(config *config.Config) *SimpleCrawler {
+func NewSimpleCrawler(ctx context.Context, config *config.Config) *SimpleCrawler {
+	ctx = log.ContextForModule(ctx, "client/httpcrawler")
 	clientConfig := DefaultClientConfig()
 	if config.ClientsConfig().HasHttpCrawler() {
 		proto.Merge(clientConfig, config.ClientsConfig().GetHttpCrawler())
 	}
 
 	if clientConfig.GetMaxPageSizeBytes() == 0 {
-		log.Warnf("[client/httpcrawler] max page size is 0, everything will be dropped")
+		log.WarnContextf(ctx, "max page size is 0, everything will be dropped")
 	}
 
 	var pathExclusionsRegexp []*regexp.Regexp
@@ -126,9 +127,10 @@ func (c *SimpleCrawler) Crawl(ctx context.Context, callback PageCallback, urls [
 		return nil, err
 	}
 
+	ctx = log.ContextForModule(ctx, "client/httpcrawler")
 	run.scopes = scopes
 	for _, url := range urls {
-		if err := c.queueForCrawl(url, 0, run); err != nil {
+		if err := c.queueForCrawl(ctx, url, 0, run); err != nil {
 			return nil, err
 		}
 	}
@@ -168,16 +170,16 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 	}
 
 	if !c.checkAndIncreaseRequestCount() {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (max requests): %s", page.URL)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (max requests): %s", page.URL)
 		return nil
 	}
 
-	log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] visiting: %q", page.URL)
+	log.DebugContextf(ctx, log.DebugLevelRequest, "visiting: %q", page.URL)
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
 		// Do not consider deadline errors as fatal.
 		if strings.Contains(err.Error(), "context deadline exceeded") {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (deadline exceeded): %q", page.URL)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (deadline exceeded): %q", page.URL)
 			return nil
 		}
 
@@ -188,17 +190,17 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 	content, err := goohttp.ReadBody(resp, maxsize)
 	if err != nil {
 		if err == goohttp.ErrPageTooBig {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (page too big): %q", page.URL)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (page too big): %q", page.URL)
 			return nil
 		}
 
 		if strings.Contains(err.Error(), "context deadline exceeded") {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (deadline exceeded): %q", page.URL)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (deadline exceeded): %q", page.URL)
 			return nil
 		}
 
 		if err == io.EOF {
-			log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (empty page): %q", page.URL)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (empty page): %q", page.URL)
 			return nil
 		}
 
@@ -210,23 +212,23 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return nil
 	}
 
-	return c.processResponse(run, page, resp, content)
+	return c.processResponse(ctx, run, page, resp, content)
 }
 
-func (c *SimpleCrawler) processResponse(run *crawlRun, page *PageInfo, resp *http.Response, content []byte) error {
-	if err := run.Callback(page, resp, content); err != nil {
+func (c *SimpleCrawler) processResponse(ctx context.Context, run *crawlRun, page *PageInfo, resp *http.Response, content []byte) error {
+	if err := run.Callback(ctx, page, resp, content); err != nil {
 		return err
 	}
 
 	links, err := parser.ExtractLinksFromHTML(page.URL, content)
 	if err != nil {
-		log.Warnf("[client/httpcrawler] failed to parse links from %q: %v", page.URL, err)
+		log.WarnContextf(ctx, "failed to parse links from %q: %v", page.URL, err)
 		return nil
 	}
 
 	newdepth := page.Depth + 1
 	for _, link := range links {
-		if err := c.queueForCrawl(link, newdepth, run); err != nil {
+		if err := c.queueForCrawl(ctx, link, newdepth, run); err != nil {
 			return err
 		}
 	}
@@ -235,14 +237,14 @@ func (c *SimpleCrawler) processResponse(run *crawlRun, page *PageInfo, resp *htt
 }
 
 // queueForCrawl performs the necessary checks and queue a page for later crawling.
-func (c *SimpleCrawler) queueForCrawl(url string, depth int32, run *crawlRun) error {
+func (c *SimpleCrawler) queueForCrawl(ctx context.Context, url string, depth int32, run *crawlRun) error {
 	if depth > c.config.GetMaxDepth() {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (max depth): %q", url)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (max depth): %q", url)
 		return nil
 	}
 
 	if c.isExcluded(url) {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (excluded): %q", url)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (excluded): %q", url)
 		return nil
 	}
 
@@ -252,12 +254,12 @@ func (c *SimpleCrawler) queueForCrawl(url string, depth int32, run *crawlRun) er
 	}
 
 	if !inScope {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (scope): %q", url)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (scope): %q", url)
 		return nil
 	}
 
 	if run.AlreadyVisited(url) {
-		log.Debugf(log.DebugLevelRequest, "[client/httpcrawler] skipping (already visited): %q", url)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (already visited): %q", url)
 		return nil
 	}
 	run.AddToVisited(url)

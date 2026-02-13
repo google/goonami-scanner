@@ -78,7 +78,7 @@ func (m *FakeFingerprinter) Fingerprint(ctx context.Context, svc *nspb.NetworkSe
 // InitFakeFingerprinter return an init function for the FakeFingerprinter. If err is provided, the
 // init function will immediately return it.
 func InitFakeFingerprinter(name string, err error, override FakeFingerprintFn) module.InitFingerprinterFn {
-	return func(c *config.Config) (module.Fingerprinter, error) {
+	return func(ctx context.Context, c *config.Config) (module.Fingerprinter, error) {
 		if err != nil {
 			return nil, err
 		}

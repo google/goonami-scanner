@@ -72,8 +72,9 @@ func New(cfg *config.Config) *SimpleClient {
 }
 
 // CommandLine used to run nmap.
-func (c *SimpleClient) CommandLine(target string) ([]string, error) {
-	return c.buildOpts(target, "")
+func (c *SimpleClient) CommandLine(ctx context.Context, target string) ([]string, error) {
+	ctx = log.ContextForModule(ctx, "client/nmap")
+	return c.buildOpts(ctx, target, "")
 }
 
 // Run nmap and returns the parsed XML output.
@@ -92,7 +93,8 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 	}
 	defer os.Remove(outputFile)
 
-	args, err := c.buildOpts(target, outputFile)
+	ctx = log.ContextForModule(ctx, "client/nmap")
+	args, err := c.buildOpts(ctx, target, outputFile)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +104,7 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 		binaryPath = "nmap"
 	}
 
-	log.Debugf(log.DebugLevelSession, "[client/nmap] running %q with args: %v", binaryPath, args)
+	log.DebugContextf(ctx, log.DebugLevelSession, "running %q with args: %v", binaryPath, args)
 	cmd := exec.CommandContext(scanCtx, binaryPath, args...)
 	if err := cmd.Run(); err != nil {
 		return nil, err
@@ -164,7 +166,7 @@ func (c *SimpleClient) optHostDiscovery() string {
 	return ""
 }
 
-func (c *SimpleClient) optVersionDetection() []string {
+func (c *SimpleClient) optVersionDetection(ctx context.Context) []string {
 	if !c.config.GetEnableVersionDetection() {
 		return nil
 	}
@@ -176,7 +178,7 @@ func (c *SimpleClient) optVersionDetection() []string {
 	}
 
 	if c.config.GetVersionIntensity() > 9 {
-		log.Warnf("version intensity %d is invalid, defaulting to 5", c.config.GetVersionIntensity())
+		log.WarnContextf(ctx, "version intensity %d is invalid, defaulting to 5", c.config.GetVersionIntensity())
 		c.config.SetVersionIntensity(5)
 	}
 
@@ -214,7 +216,7 @@ func (c *SimpleClient) optIPVersion(target string) string {
 	return ""
 }
 
-func (c *SimpleClient) optPerformance() []string {
+func (c *SimpleClient) optPerformance(ctx context.Context) []string {
 	var args []string
 
 	qps := c.coreConfig.GlobalConfig().GetPerformance().GetMaxPacketsPerSecond()
@@ -225,7 +227,7 @@ func (c *SimpleClient) optPerformance() []string {
 
 	intensity := c.config.GetScanIntensity()
 	if intensity <= 0 || intensity > 5 {
-		log.Warnf("invalid scan intensity: %d, defaulting to 3", c.config.GetScanIntensity())
+		log.WarnContextf(ctx, "invalid scan intensity: %d, defaulting to 3", c.config.GetScanIntensity())
 		intensity = 3
 	}
 
@@ -233,7 +235,7 @@ func (c *SimpleClient) optPerformance() []string {
 	return args
 }
 
-func (c *SimpleClient) buildOpts(target string, outputFile string) ([]string, error) {
+func (c *SimpleClient) buildOpts(ctx context.Context, target string, outputFile string) ([]string, error) {
 	mode, err := c.optTechnique()
 	if err != nil {
 		return nil, err
@@ -241,11 +243,11 @@ func (c *SimpleClient) buildOpts(target string, outputFile string) ([]string, er
 
 	output := []string{"-oX", outputFile}
 	output = append(output, mode)
-	output = append(output, c.optPerformance()...)
+	output = append(output, c.optPerformance(ctx)...)
 	output = append(output, c.optIPVersion(target))
 	output = append(output, c.optPorts())
 	output = append(output, c.optHostDiscovery())
-	output = append(output, c.optVersionDetection()...)
+	output = append(output, c.optVersionDetection(ctx)...)
 	output = append(output, c.optScripts()...)
 	output = append(output, target)
 	return output, nil

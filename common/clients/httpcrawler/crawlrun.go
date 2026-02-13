@@ -17,6 +17,7 @@
 package httpcrawler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -36,8 +37,8 @@ type crawlRun struct {
 }
 
 // Callback simply calls the callback function that was registered for this run.
-func (r *crawlRun) Callback(info *PageInfo, resp *http.Response, content []byte) error {
-	return r.callback(info, resp, content)
+func (r *crawlRun) Callback(ctx context.Context, info *PageInfo, resp *http.Response, content []byte) error {
+	return r.callback(ctx, info, resp, content)
 }
 
 // QueuePage adds a new page to the queue for crawling.

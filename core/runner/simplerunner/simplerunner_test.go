@@ -101,7 +101,7 @@ func TestRegisterPortScanner(t *testing.T) {
 
 			r.portScanner = tc.existingScanner
 
-			if err := r.RegisterPortScanner(tc.module); !errors.Is(err, tc.wantErr) {
+			if err := r.RegisterPortScanner(context.Background(), tc.module); !errors.Is(err, tc.wantErr) {
 				t.Fatalf("RegisterPortScanner() returned error %v, want error %v", err, tc.wantErr)
 			}
 
@@ -145,7 +145,7 @@ func TestRegisterFingerprinter(t *testing.T) {
 			}
 
 			for _, m := range tc.modules {
-				err = r.RegisterFingerprinter(m)
+				err = r.RegisterFingerprinter(context.Background(), m)
 				if err != nil {
 					break
 				}
@@ -201,7 +201,7 @@ func TestRegisterDetector(t *testing.T) {
 			}
 
 			for _, m := range tc.modules {
-				err = r.RegisterDetector(m)
+				err = r.RegisterDetector(context.Background(), m)
 				if err != nil {
 					break
 				}

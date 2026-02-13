@@ -72,7 +72,7 @@ func (m *FakePortScanner) Scan(ctx context.Context, target string) (*rpb.PortSca
 // InitFakePortScanner return an init function for the FakePortScanner. If err is provided, the
 // init function will immediately return it.
 func InitFakePortScanner(name string, err error, override FakePortScanFn) module.InitPortScannerFn {
-	return func(c *config.Config) (module.PortScanner, error) {
+	return func(ctx context.Context, c *config.Config) (module.PortScanner, error) {
 		if err != nil {
 			return nil, err
 		}

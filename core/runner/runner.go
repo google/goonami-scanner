@@ -27,9 +27,9 @@ import (
 
 // Runner is an orchestrator that defines how to run Goonami modules.
 type Runner interface {
-	RegisterPortScanner(module.PortScanner) error
-	RegisterFingerprinter(module.Fingerprinter) error
-	RegisterDetector(module.VulnDetector) error
+	RegisterPortScanner(context.Context, module.PortScanner) error
+	RegisterFingerprinter(context.Context, module.Fingerprinter) error
+	RegisterDetector(context.Context, module.VulnDetector) error
 
 	Run(context.Context, string) (*srpb.ScanResults, error)
 }

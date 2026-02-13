@@ -100,7 +100,7 @@ func TestFingerprint_Connection(t *testing.T) {
 				}.Build(),
 			}.Build()
 			cfg := config.FromProto(cfgpb)
-			mod, err := New(cfg)
+			mod, err := New(context.Background(), cfg)
 			if err != nil {
 				t.Fatalf("New failed: %v", err)
 			}
@@ -165,7 +165,7 @@ func TestFingerprint_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.FromProto(cpb.Config_builder{}.Build())
-			mod, err := New(cfg)
+			mod, err := New(context.Background(), cfg)
 			if err != nil {
 				t.Fatalf("New failed: %v", err)
 			}
@@ -197,7 +197,7 @@ func TestFingerprint_ContextCancelled(t *testing.T) {
 	cancel()
 
 	cfg := config.FromProto(&cpb.Config{})
-	mod, _ := New(cfg)
+	mod, _ := New(context.Background(), cfg)
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: nepb.NetworkEndpoint_builder{

@@ -36,7 +36,7 @@ import (
 
 func TestNew(t *testing.T) {
 	config := &config.Config{}
-	got, err := New(config)
+	got, err := New(context.Background(), config)
 	if err != nil {
 		t.Fatalf("New(%v) failed: %v", config, err)
 	}

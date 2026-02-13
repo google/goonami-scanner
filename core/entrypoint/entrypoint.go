@@ -65,10 +65,11 @@ type Entrypoint struct {
 // New creates a new Entrypoint.
 // Note: Creation of an entrypoint can have side-effects. The general Goonami core provides a
 // configurable singleton logger and HTTP client through the use of globals.
-func New(options *Options) (*Entrypoint, error) {
+func New(ctx context.Context, options *Options) (*Entrypoint, error) {
+	ctx = log.ContextForModule(ctx, "entrypoint")
 	if options.Logger != nil {
 		log.SetLogger(options.Logger)
-		log.Infof("[entrypoint] the logger was modified")
+		log.InfoContextf(ctx, "the logger was modified")
 	}
 
 	var r runner.Runner
@@ -83,38 +84,38 @@ func New(options *Options) (*Entrypoint, error) {
 
 	if options.HTTPClient != nil {
 		goohttp.SetDefaultClient(options.HTTPClient)
-		log.Infof("[entrypoint] the HTTP client was modified")
+		log.InfoContextf(ctx, "the HTTP client was modified")
 	} else {
 		if err = goohttp.InitializeDefaults(options.Config); err != nil {
 			return nil, err
 		}
 	}
 
-	module, err := options.PortScanner(options.Config)
+	module, err := options.PortScanner(ctx, options.Config)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("[entrypoint] registering port scanner: %s", module.Name())
-	r.RegisterPortScanner(module)
+	log.InfoContextf(ctx, "registering port scanner: %s", module.Name())
+	r.RegisterPortScanner(ctx, module)
 
-	log.Infof("[entrypoint] registering %d fingerprinters", len(options.Fingerprinters))
+	log.InfoContextf(ctx, "registering %d fingerprinters", len(options.Fingerprinters))
 	for _, fingerprinterInit := range options.Fingerprinters {
-		module, err := fingerprinterInit(options.Config)
+		module, err := fingerprinterInit(ctx, options.Config)
 		if err != nil {
 			return nil, err
 		}
 
-		r.RegisterFingerprinter(module)
+		r.RegisterFingerprinter(ctx, module)
 	}
 
-	log.Infof("[entrypoint] registering %d vulnerability detectors", len(options.Detectors))
+	log.InfoContextf(ctx, "registering %d vulnerability detectors", len(options.Detectors))
 	for _, detectorInit := range options.Detectors {
-		module, err := detectorInit(options.Config)
+		module, err := detectorInit(ctx, options.Config)
 		if err != nil {
 			return nil, err
 		}
 
-		r.RegisterDetector(module)
+		r.RegisterDetector(ctx, module)
 	}
 
 	return &Entrypoint{
@@ -125,7 +126,8 @@ func New(options *Options) (*Entrypoint, error) {
 
 // Run runs the Goonami scanner.
 func (e *Entrypoint) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
-	log.Infof("[entrypoint] running scan for target %q", target)
+	ctx = log.ContextForModule(ctx, "entrypoint")
+	log.InfoContextf(ctx, "running scan for target %q", target)
 	return e.runner.Run(ctx, target)
 }
 

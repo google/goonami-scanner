@@ -78,7 +78,7 @@ func NewFakeVulnDetector(name string, override FakeDetectFn) *FakeVulnDetector {
 // InitFakeVulnDetector return an init function for the FakeVulnDetector. If err is provided, the
 // init function will immediately return it.
 func InitFakeVulnDetector(name string, err error, override FakeDetectFn) module.InitVulnDetectorFn {
-	return func(c *config.Config) (module.VulnDetector, error) {
+	return func(ctx context.Context, c *config.Config) (module.VulnDetector, error) {
 		if err != nil {
 			return nil, err
 		}

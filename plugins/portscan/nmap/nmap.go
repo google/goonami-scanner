@@ -62,7 +62,7 @@ type Module struct {
 }
 
 // New creates a new nmap module.
-func New(config *config.Config) (module.PortScanner, error) {
+func New(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		config:     config,
@@ -111,7 +111,7 @@ func processResults(ctx context.Context, results *nmap.OutputXML) (*rpb.PortScan
 			continue
 		}
 
-		service, err := parseService(endpoint, &port)
+		service, err := parseService(ctx, endpoint, &port)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func parseNetworkEndpoint(host *nmap.Host) (*npb.NetworkEndpoint, error) {
 	return endpointBuilder.Build(), nil
 }
 
-func parseService(endpoint *npb.NetworkEndpoint, port *nmap.Port) (*nspb.NetworkService, error) {
+func parseService(ctx context.Context, endpoint *npb.NetworkEndpoint, port *nmap.Port) (*nspb.NetworkService, error) {
 	portEndpoint := &npb.NetworkEndpoint_builder{
 		IpAddress: endpoint.GetIpAddress(),
 		Hostname:  endpoint.GetHostname(),
@@ -198,7 +198,7 @@ func parseService(endpoint *npb.NetworkEndpoint, port *nmap.Port) (*nspb.Network
 	case "sctp":
 		service.TransportProtocol = npb.TransportProtocol_SCTP
 	default:
-		log.Warnf("skipping unknown protocol in nmap output: %s", port.Protocol)
+		log.WarnContextf(ctx, "skipping unknown protocol in nmap output: %s", port.Protocol)
 		return nil, nil
 	}
 
@@ -227,7 +227,7 @@ func parseService(endpoint *npb.NetworkEndpoint, port *nmap.Port) (*nspb.Network
 	}
 
 	for _, script := range port.Scripts {
-		if err := parseScripts(&script, service); err != nil {
+		if err := parseScripts(ctx, &script, service); err != nil {
 			return nil, err
 		}
 	}
@@ -235,7 +235,7 @@ func parseService(endpoint *npb.NetworkEndpoint, port *nmap.Port) (*nspb.Network
 	return service.Build(), nil
 }
 
-func parseScripts(script *nmap.Script, service *nspb.NetworkService_builder) error {
+func parseScripts(ctx context.Context, script *nmap.Script, service *nspb.NetworkService_builder) error {
 	switch script.ID {
 	case "http-methods":
 		return parseScriptHTTPMethods(script, service)
@@ -245,7 +245,7 @@ func parseScripts(script *nmap.Script, service *nspb.NetworkService_builder) err
 	case "http-server-headers", "ssl-cert", "fingerprint-strings":
 		return nil
 	default:
-		log.Warnf("ignoring unsupported script: %s", script.ID)
+		log.WarnContextf(ctx, "ignoring unsupported script: %s", script.ID)
 		return nil
 	}
 }

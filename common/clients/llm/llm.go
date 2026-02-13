@@ -79,6 +79,7 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 //   - It provides a retry mechanism with a fixed backoff.
 //   - It integrates the ability to check the validity of the response through a callback.
 func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
+	ctx = log.ContextForModule(ctx, "clients/llm")
 	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
 	maxAttempts := int(c.config.GetMaxAttempts())
 
@@ -88,7 +89,7 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 		}
 
 		if i > 0 {
-			log.Debugf(log.DebugLevelRequest, "[clients/llm] waiting %v before next attempt", retryDelay)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "waiting %v before next attempt", retryDelay)
 			time.Sleep(retryDelay)
 		}
 
@@ -98,12 +99,12 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 				err = errors.New("(truncated) " + err.Error()[:200])
 			}
 
-			log.Debugf(log.DebugLevelRequest, "[clients/llm] (attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, err)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, err)
 			continue
 		}
 
 		if err := verifier(ctx, resp); err != nil {
-			log.Debugf(log.DebugLevelRequest, "[clients/llm] (attempt %d of %d) agent's response verification failed: %v", i+1, maxAttempts, err)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) agent's response verification failed: %v", i+1, maxAttempts, err)
 			continue
 		}
 

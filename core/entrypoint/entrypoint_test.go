@@ -45,7 +45,7 @@ func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return 
 func TestNewWhenSideEffects(t *testing.T) {
 	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close()
+	defer cfg.Close(context.Background())
 
 	client := &fakeHTTPClient{}
 	opts := &Options{
@@ -54,7 +54,7 @@ func TestNewWhenSideEffects(t *testing.T) {
 		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
 	}
 
-	_, err := New(opts)
+	_, err := New(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
 	}
@@ -67,14 +67,14 @@ func TestNewWhenSideEffects(t *testing.T) {
 func TestNewWhenDefaultRunner(t *testing.T) {
 	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close()
+	defer cfg.Close(context.Background())
 
 	opts := &Options{
 		Config:      cfg,
 		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
 	}
 
-	e, err := New(opts)
+	e, err := New(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
 	}
@@ -87,7 +87,7 @@ func TestNewWhenDefaultRunner(t *testing.T) {
 func TestNewWhenPluginRegistration(t *testing.T) {
 	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close()
+	defer cfg.Close(context.Background())
 	genericErr := errors.New("generic error")
 
 	tests := []struct {
@@ -150,7 +150,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			opts := tc.options
-			_, err := New(opts)
+			_, err := New(context.Background(), opts)
 
 			if tc.wantErr {
 				if err == nil {
@@ -204,7 +204,7 @@ func TestNew_ErrorCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := New(tc.options); err == nil {
+			if _, err := New(context.Background(), tc.options); err == nil {
 				t.Errorf("New(%v) returned no error, want error", tc.options)
 			}
 		})
@@ -235,7 +235,7 @@ func TestRun(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Default()
 			cfg.CreateDirectories(t.TempDir())
-			defer cfg.Close()
+			defer cfg.Close(context.Background())
 
 			runner := fakerunner.New()
 			runner.OverrideRun(func(ctx context.Context, target string) (s *srpb.ScanResults, err error) {
@@ -247,7 +247,7 @@ func TestRun(t *testing.T) {
 				Runner:      runner,
 				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
 			}
-			e, err := New(opts)
+			e, err := New(context.Background(), opts)
 			if err != nil {
 				t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
 			}
@@ -271,7 +271,7 @@ func TestRun(t *testing.T) {
 func TestArtifacts(t *testing.T) {
 	cfg := config.Default()
 	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close()
+	defer cfg.Close(context.Background())
 
 	artifactsDir := cfg.ArtifactsDirectory()
 	opts := &Options{
@@ -279,7 +279,7 @@ func TestArtifacts(t *testing.T) {
 		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
 	}
 
-	e, err := New(opts)
+	e, err := New(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
 	}

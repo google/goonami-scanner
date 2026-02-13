@@ -18,6 +18,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -135,9 +136,10 @@ func (c *Config) CreateDirectories(workdir string) error {
 }
 
 // Close ensures proper clean-up is performed.
-func (c *Config) Close() error {
+func (c *Config) Close(ctx context.Context) error {
+	ctx = log.ContextForModule(ctx, "core/config")
 	if c.tempDir == "" {
-		log.Warn("Clean-up could not be performed. Configuration was never Initialized.")
+		log.WarnContext(ctx, "Clean-up could not be performed. Configuration was never Initialized.")
 		return ErrUninitialized
 	}
 

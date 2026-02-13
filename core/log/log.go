@@ -18,19 +18,23 @@
 // By default, it uses the default Go logger, but it can be replaced with user-defined loggers.
 package log
 
-import "log"
+import (
+	"context"
+	"fmt"
+	"log"
+)
 
 // Logger is Goonami's logging interface.
 type Logger interface {
 	// Logs in different log levels, either formatted or unformatted.
-	Errorf(format string, args ...any)
-	Error(args ...any)
-	Warnf(format string, args ...any)
-	Warn(args ...any)
-	Infof(format string, args ...any)
-	Info(args ...any)
-	Debugf(level DebugLevel, format string, args ...any)
-	Debug(level DebugLevel, args ...any)
+	ErrorContextf(ctx context.Context, format string, args ...any)
+	ErrorContext(ctx context.Context, args ...any)
+	WarnContextf(ctx context.Context, format string, args ...any)
+	WarnContext(ctx context.Context, args ...any)
+	InfoContextf(ctx context.Context, format string, args ...any)
+	InfoContext(ctx context.Context, args ...any)
+	DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any)
+	DebugContext(ctx context.Context, level DebugLevel, args ...any)
 }
 
 // DebugLevel represents the level of a debug log (the higher the number, the more verbose).
@@ -49,53 +53,76 @@ const (
 	DebugLevelRequest = 3
 )
 
+type contextKey int
+
+const (
+	moduleKey contextKey = iota
+	serviceKey
+)
+
+// ContextForModule returns a new context with the module name attached.
+func ContextForModule(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, moduleKey, name)
+}
+
+// ContextForService returns a new context with the service information (port) attached.
+func ContextForService(ctx context.Context, port int) context.Context {
+	return context.WithValue(ctx, serviceKey, port)
+}
+
+// ContextForModuleAndService returns a new context with both the module name and the service
+// information (port) attached.
+func ContextForModuleAndService(ctx context.Context, name string, port int) context.Context {
+	return ContextForModule(ContextForService(ctx, port), name)
+}
+
 var logger Logger = &DefaultLogger{}
 
 // SetLogger overwrites the default logger with a user specified one.
 func SetLogger(l Logger) { logger = l }
 
-// Errorf is the static formatted error logging function.
-func Errorf(format string, args ...any) {
-	logger.Errorf(format, args...)
+// ErrorContextf is the static formatted error logging function.
+func ErrorContextf(ctx context.Context, format string, args ...any) {
+	logger.ErrorContextf(ctx, format, args...)
 }
 
-// Warnf is the static formatted warning logging function.
-func Warnf(format string, args ...any) {
-	logger.Warnf(format, args...)
+// WarnContextf is the static formatted warning logging function.
+func WarnContextf(ctx context.Context, format string, args ...any) {
+	logger.WarnContextf(ctx, format, args...)
 }
 
-// Infof is the static formatted info logging function.
-func Infof(format string, args ...any) {
-	logger.Infof(format, args...)
+// InfoContextf is the static formatted info logging function.
+func InfoContextf(ctx context.Context, format string, args ...any) {
+	logger.InfoContextf(ctx, format, args...)
 }
 
-// Debugf is the static formatted debug logging function.
-func Debugf(level DebugLevel, format string, args ...any) {
-	logger.Debugf(level, format, args...)
+// DebugContextf is the static formatted debug logging function.
+func DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any) {
+	logger.DebugContextf(ctx, level, format, args...)
 }
 
-// Error is the static error logging function.
-func Error(args ...any) {
-	logger.Error(args...)
+// ErrorContext is the static error logging function.
+func ErrorContext(ctx context.Context, args ...any) {
+	logger.ErrorContext(ctx, args...)
 }
 
-// Warn is the static warning logging function.
-func Warn(args ...any) {
-	logger.Warn(args...)
+// WarnContext is the static warning logging function.
+func WarnContext(ctx context.Context, args ...any) {
+	logger.WarnContext(ctx, args...)
 }
 
-// Info is the static info logging function.
-func Info(args ...any) {
-	logger.Info(args...)
+// InfoContext is the static info logging function.
+func InfoContext(ctx context.Context, args ...any) {
+	logger.InfoContext(ctx, args...)
 }
 
-// Debug is the static debug logging function.
+// DebugContext is the static debug logging function.
 // Note that there is no perfect rule to select the right debug level, but the rule of thumb is:
 //   - level 1: logs that will be displayed once per session (e.g. "the scanner is initialized")
 //   - level 2: logs that will be displayed once per service (e.g. "port 8080 supports SSL")
 //   - level 3: logs that will be displayed multiple times per service (e.g. "crawling page A of service on port 8080")
-func Debug(level DebugLevel, args ...any) {
-	logger.Debug(level, args...)
+func DebugContext(ctx context.Context, level DebugLevel, args ...any) {
+	logger.DebugContext(ctx, level, args...)
 }
 
 // DefaultLogger is the Logger implementation used by default.
@@ -104,46 +131,57 @@ type DefaultLogger struct {
 	VerboseLevel DebugLevel // Whether debug logs should be shown.
 }
 
-// Errorf is the formatted error logging function.
-func (DefaultLogger) Errorf(format string, args ...any) {
-	log.Printf(format, args...)
+func (l *DefaultLogger) log(ctx context.Context, level string, msg string) {
+	prefix := fmt.Sprintf("%-4s ", level)
+	if port, ok := ctx.Value(serviceKey).(int); ok {
+		prefix += fmt.Sprintf("[ %5d ] ", port)
+	}
+	if module, ok := ctx.Value(moduleKey).(string); ok {
+		prefix += "[ " + module + " ] "
+	}
+	log.Print(prefix + msg)
 }
 
-// Warnf is the formatted warning logging function.
-func (DefaultLogger) Warnf(format string, args ...any) {
-	log.Printf(format, args...)
+// ErrorContextf is the formatted error logging function.
+func (l *DefaultLogger) ErrorContextf(ctx context.Context, format string, args ...any) {
+	l.log(ctx, "ERR", fmt.Sprintf(format, args...))
 }
 
-// Infof is the formatted info logging function.
-func (DefaultLogger) Infof(format string, args ...any) {
-	log.Printf(format, args...)
+// WarnContextf is the formatted warning logging function.
+func (l *DefaultLogger) WarnContextf(ctx context.Context, format string, args ...any) {
+	l.log(ctx, "WARN", fmt.Sprintf(format, args...))
 }
 
-// Debugf is the formatted debug logging function.
-func (l *DefaultLogger) Debugf(level DebugLevel, format string, args ...any) {
+// InfoContextf is the formatted info logging function.
+func (l *DefaultLogger) InfoContextf(ctx context.Context, format string, args ...any) {
+	l.log(ctx, "INFO", fmt.Sprintf(format, args...))
+}
+
+// DebugContextf is the formatted debug logging function.
+func (l *DefaultLogger) DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any) {
 	if l.VerboseLevel >= level {
-		log.Printf(format, args...)
+		l.log(ctx, fmt.Sprintf("DBG%d", level), fmt.Sprintf(format, args...))
 	}
 }
 
-// Error is the error logging function.
-func (DefaultLogger) Error(args ...any) {
-	log.Println(args...)
+// ErrorContext is the error logging function.
+func (l *DefaultLogger) ErrorContext(ctx context.Context, args ...any) {
+	l.log(ctx, "ERR", fmt.Sprint(args...))
 }
 
-// Warn is the warning logging function.
-func (DefaultLogger) Warn(args ...any) {
-	log.Println(args...)
+// WarnContext is the warning logging function.
+func (l *DefaultLogger) WarnContext(ctx context.Context, args ...any) {
+	l.log(ctx, "WARN", fmt.Sprint(args...))
 }
 
-// Info is the info logging function.
-func (DefaultLogger) Info(args ...any) {
-	log.Println(args...)
+// InfoContext is the info logging function.
+func (l *DefaultLogger) InfoContext(ctx context.Context, args ...any) {
+	l.log(ctx, "INFO", fmt.Sprint(args...))
 }
 
-// Debug is the debug logging function.
-func (l *DefaultLogger) Debug(level DebugLevel, args ...any) {
+// DebugContext is the debug logging function.
+func (l *DefaultLogger) DebugContext(ctx context.Context, level DebugLevel, args ...any) {
 	if l.VerboseLevel >= level {
-		log.Println(args...)
+		l.log(ctx, fmt.Sprintf("DBG%d", level), fmt.Sprint(args...))
 	}
 }

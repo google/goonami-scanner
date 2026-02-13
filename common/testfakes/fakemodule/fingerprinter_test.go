@@ -143,7 +143,7 @@ func TestInitFakeFingerprinter(t *testing.T) {
 				t.Fatalf("InitFakeFingerprinter() returned nil")
 			}
 
-			fingerprinter, err := initFn(nil)
+			fingerprinter, err := initFn(context.Background(), nil)
 			if tc.wantErr {
 				if err == nil {
 					t.Errorf("InitFakeFingerprinter() init function returned nil error, want non-nil")
