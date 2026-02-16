@@ -278,6 +278,10 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 			return nil, err
 		}
 
+		if len(res.GetDetectionReports()) > 0 {
+			log.VulnContextf(ctx, "module %s has reported at least one vulnerability", dt.Name())
+		}
+
 		reports = append(reports, res.GetDetectionReports()...)
 	}
 
