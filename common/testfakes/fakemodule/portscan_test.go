@@ -138,20 +138,21 @@ func TestFakePortScannerScan(t *testing.T) {
 }
 
 func TestInitFakePortScanner(t *testing.T) {
+	errInit := errors.New("init error")
 	testCases := []struct {
 		name    string
 		initErr error
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name:    "when_init_has_error_it_returns_error",
-			initErr: errors.New("init error"),
-			wantErr: true,
+			initErr: errInit,
+			wantErr: errInit,
 		},
 	}
 
@@ -163,14 +164,11 @@ func TestInitFakePortScanner(t *testing.T) {
 			}
 
 			m, err := initFn(context.Background(), nil)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("InitFakePortScanner() init function returned nil error, want non-nil")
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("InitFakePortScanner() error = %v, want %v", err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("InitFakePortScanner() returned error %v", err)
+			if tc.wantErr != nil {
+				return
 			}
 
 			fake, ok := m.(*FakePortScanner)

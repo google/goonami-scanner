@@ -30,6 +30,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 
 	"github.com/google/go-cmp/cmp"
 	nepb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -152,7 +153,7 @@ func TestFingerprint_ErrorCases(t *testing.T) {
 	tests := []struct {
 		name    string
 		service *nspb.NetworkService
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_network_endpoint_is_invalid_returns_error",
@@ -161,7 +162,7 @@ func TestFingerprint_ErrorCases(t *testing.T) {
 					Type: nepb.NetworkEndpoint_TYPE_UNSPECIFIED,
 				}.Build(),
 			}.Build(),
-			wantErr: true,
+			wantErr: netendpoint.ErrEndpointMissingAddress,
 		},
 	}
 
@@ -171,8 +172,8 @@ func TestFingerprint_ErrorCases(t *testing.T) {
 			m, _ := New(context.Background(), cfg)
 
 			_, err := m.Fingerprint(context.Background(), tc.service)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("Fingerprint() error = %v, wantErr %v", err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Fingerprint() error = %v, want %v", err, tc.wantErr)
 			}
 		})
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -144,7 +145,7 @@ func TestFingerprint_Validation(t *testing.T) {
 		name    string
 		service *nspb.NetworkService
 		want    *nspb.NetworkService
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "when_fingerprint_is_already_done_returns_no_changes",
@@ -158,7 +159,7 @@ func TestFingerprint_Validation(t *testing.T) {
 					Type: nepb.NetworkEndpoint_TYPE_UNSPECIFIED,
 				}.Build(),
 			}.Build(),
-			wantErr: true,
+			wantErr: netendpoint.ErrEndpointMissingAddress,
 		},
 	}
 
@@ -171,12 +172,12 @@ func TestFingerprint_Validation(t *testing.T) {
 			}
 
 			gotServices, err := mod.Fingerprint(context.Background(), tt.service)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Fingerprint() error = %v, wantErr %v", err, tt.wantErr)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Fingerprint() error = %v, want %v", err, tt.wantErr)
 				return
 			}
 
-			if tt.wantErr {
+			if tt.wantErr != nil {
 				return
 			}
 

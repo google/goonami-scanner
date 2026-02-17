@@ -119,20 +119,21 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 }
 
 func TestInitFakeFingerprinter(t *testing.T) {
+	errInit := errors.New("init error")
 	testCases := []struct {
 		name    string
 		initErr error
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name:    "when_init_has_error_it_returns_error",
-			initErr: errors.New("init error"),
-			wantErr: true,
+			initErr: errInit,
+			wantErr: errInit,
 		},
 	}
 
@@ -144,14 +145,11 @@ func TestInitFakeFingerprinter(t *testing.T) {
 			}
 
 			fingerprinter, err := initFn(context.Background(), nil)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("InitFakeFingerprinter() init function returned nil error, want non-nil")
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("InitFakeFingerprinter() error = %v, want %v", err, tc.wantErr)
 			}
-			if err != nil {
-				t.Errorf("InitFakeFingerprinter() returned error %v, want nil", err)
+			if tc.wantErr != nil {
+				return
 			}
 
 			fake, ok := fingerprinter.(*FakeFingerprinter)

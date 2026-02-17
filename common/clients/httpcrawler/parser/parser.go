@@ -20,6 +20,7 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -30,6 +31,13 @@ import (
 )
 
 var (
+	// ErrParseURL is returned when the URL fails to parse.
+	ErrParseURL = errors.New("failed to parse URL")
+	// ErrUnsupportedURLType is returned when the URL is a javascript or mailto URL.
+	ErrUnsupportedURLType = errors.New("unsupported javascript/mailto URL type")
+	// ErrUnsupportedScheme is returned when the URL scheme is not supported.
+	ErrUnsupportedScheme = errors.New("unsupported scheme")
+
 	knownLinkAttributes = []string{
 		// HTML 4 link attributes.
 		"action",
@@ -102,17 +110,17 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 
 func parseURL(base string, redirect string) (string, error) {
 	if strings.HasPrefix(redirect, "javascript:") || strings.HasPrefix(redirect, "mailto:") {
-		return "", fmt.Errorf("unsupported javascript/mailto URL type")
+		return "", ErrUnsupportedURLType
 	}
 
 	redirurl, err := url.Parse(redirect)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
 
 	if redirurl.Scheme != "" {
 		if redirurl.Scheme != "http" && redirurl.Scheme != "https" {
-			return "", fmt.Errorf("unsupported scheme: %q", redirurl.Scheme)
+			return "", fmt.Errorf("%w: %q", ErrUnsupportedScheme, redirurl.Scheme)
 		}
 	}
 
@@ -122,7 +130,7 @@ func parseURL(base string, redirect string) (string, error) {
 
 	rooturl, err := url.Parse(base)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
 
 	if len(redirurl.Path) == 0 {

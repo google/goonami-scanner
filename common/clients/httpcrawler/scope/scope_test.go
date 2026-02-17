@@ -17,6 +17,7 @@
 package scope
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -70,7 +71,7 @@ func TestFromURL(t *testing.T) {
 		name    string
 		url     string
 		want    *Scope
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_url_is_valid_returns_scope",
@@ -90,21 +91,19 @@ func TestFromURL(t *testing.T) {
 		{
 			name:    "when_url_is_invalid_returns_error",
 			url:     "://foo.com",
-			wantErr: true,
+			wantErr: ErrParseURL,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := FromURL(tc.url)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("FromURL(%q) got nil error, want error", tc.url)
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("FromURL(%q) error = %v, want %v", tc.url, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("FromURL(%q) got error %v, want nil", tc.url, err)
+
+			if tc.wantErr != nil {
+				return
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("FromURL(%q) returned diff (-want +got):\n%s", tc.url, diff)
@@ -119,7 +118,7 @@ func TestLoad(t *testing.T) {
 		cfg     *hcpb.HttpCrawlerClientConfig
 		urls    []string
 		want    []*Scope
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_policy_is_config_only_it_ignores_seed_urls",
@@ -178,21 +177,19 @@ func TestLoad(t *testing.T) {
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 			}.Build(),
 			urls:    []string{"://bar.com"},
-			wantErr: true,
+			wantErr: ErrParseURL,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			scopes, err := Load(tc.cfg, tc.urls)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("Load() got nil error, want error")
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Load() error = %v, want %v", err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("Load() got error %v, want nil", err)
+
+			if tc.wantErr != nil {
+				return
 			}
 			if diff := cmp.Diff(tc.want, scopes); diff != "" {
 				t.Errorf("Load() scopes diff (-want +got):\n%s", diff)
@@ -207,7 +204,7 @@ func TestScope_Decision(t *testing.T) {
 		scope     *Scope
 		targetURL string
 		want      Decision
-		wantErr   bool
+		wantErr   error
 	}{
 		{
 			name:      "when_target_matches_domain_it_is_in_scope",
@@ -243,21 +240,19 @@ func TestScope_Decision(t *testing.T) {
 		{
 			name:      "when_target_url_is_invalid_returns_error",
 			targetURL: "://foo.com",
-			wantErr:   true,
+			wantErr:   ErrParseURL,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := tc.scope.Decision(tc.targetURL)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("Decision(%q) got nil error, want error", tc.targetURL)
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Decision(%q) got: %v, want: %v", tc.targetURL, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("Decision(%q) got error %v, want nil", tc.targetURL, err)
+
+			if tc.wantErr != nil {
+				return
 			}
 			if got != tc.want {
 				t.Errorf("Decision(%q) = %d, want %d", tc.targetURL, got, tc.want)
@@ -272,7 +267,7 @@ func TestScope_Matches(t *testing.T) {
 		scope     *Scope
 		targetURL string
 		want      bool
-		wantErr   bool
+		wantErr   error
 	}{
 		{
 			name:      "when_target_is_in_scope_returns_true",
@@ -289,21 +284,19 @@ func TestScope_Matches(t *testing.T) {
 		{
 			name:      "when_target_url_is_invalid_returns_error",
 			targetURL: "://foo.com",
-			wantErr:   true,
+			wantErr:   ErrParseURL,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := tc.scope.Matches(tc.targetURL)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("Matches(%q) got nil error, want error", tc.targetURL)
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Matches(%q) error = %v, want %v", tc.targetURL, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("Matches(%q) got error %v, want nil", tc.targetURL, err)
+
+			if tc.wantErr != nil {
+				return
 			}
 			if got != tc.want {
 				t.Errorf("Matches(%q) = %v, want %v", tc.targetURL, got, tc.want)
@@ -355,7 +348,7 @@ func TestMatchAnyScope(t *testing.T) {
 		scopes  []*Scope
 		url     string
 		want    bool
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_url_matches_first_scope_returns_true",
@@ -390,21 +383,19 @@ func TestMatchAnyScope(t *testing.T) {
 				&Scope{Domain: "foo.com", Path: "/"},
 			},
 			url:     "://foo.com",
-			wantErr: true,
+			wantErr: ErrParseURL,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := MatchAnyScope(tc.url, tc.scopes)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("MatchAnyScope(%q) got nil error, want error", tc.url)
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("MatchAnyScope(%q) error = %v, want %v", tc.url, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("MatchAnyScope(%q) got error %v, want nil", tc.url, err)
+
+			if tc.wantErr != nil {
+				return
 			}
 			if got != tc.want {
 				t.Errorf("MatchAnyScope(%q) = %v, want %v", tc.url, got, tc.want)

@@ -19,6 +19,7 @@ package fakenmap
 import (
 	"context"
 	"errors"
+	"os"
 	"path"
 	"testing"
 
@@ -29,31 +30,34 @@ func TestFromFile(t *testing.T) {
 	testCases := []struct {
 		name    string
 		path    string
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name:    "when_file_is_valid_xml_returns_no_error",
 			path:    "closedTelnet.xml",
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name:    "when_file_is_invalid_xml_returns_error",
 			path:    "invalid.xml",
-			wantErr: true,
+			wantErr: nmap.ErrNmapXMLUnmarshal,
 		},
 		{
 			name:    "when_file_does_not_exist_returns_error",
 			path:    "path/to/nonexistent.xml",
-			wantErr: true,
+			wantErr: os.ErrNotExist,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := FromFile(path.Join("testdata", tc.path))
-
-			if (err != nil) != tc.wantErr {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("FromFile() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 		})
 	}
@@ -61,7 +65,6 @@ func TestFromFile(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	testOutput := &nmap.OutputXML{Args: "test"}
-	testErr := errors.New("test error")
 
 	testCases := []struct {
 		name       string
@@ -76,12 +79,12 @@ func TestRun(t *testing.T) {
 		{
 			name:       "when_error_is_provided_without_output_returns_error",
 			wantOutput: nil,
-			wantErr:    testErr,
+			wantErr:    nmap.ErrNmapXMLUnmarshal,
 		},
 		{
 			name:       "when_both_output_and_error_are_provided_returns_both",
 			wantOutput: testOutput,
-			wantErr:    testErr,
+			wantErr:    nmap.ErrNmapXMLUnmarshal,
 		},
 	}
 
@@ -89,12 +92,16 @@ func TestRun(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := New(tc.wantOutput, tc.wantErr)
 			gotOutput, gotErr := c.Run(context.Background(), "unused")
+			if !errors.Is(gotErr, tc.wantErr) {
+				t.Errorf("Run() error = %v, wantErr %v", gotErr, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
+			}
 
 			if gotOutput != tc.wantOutput {
 				t.Errorf("Run() output = %v, wantOutput %v", gotOutput, tc.wantOutput)
-			}
-			if gotErr != tc.wantErr {
-				t.Errorf("Run() error = %v, wantErr %v", gotErr, tc.wantErr)
 			}
 		})
 	}

@@ -93,7 +93,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 	tests := []struct {
 		name    string
 		options *Options
-		wantErr bool
+		wantErr error
 	}{
 		{
 			name: "when_modules_are_successfully_initialized_they_are_registered",
@@ -108,7 +108,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 					fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings),
 				},
 			},
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name: "when_port_scanner_init_fails_returns_error",
@@ -116,7 +116,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 				Config:      cfg,
 				PortScanner: fakemodule.InitFakePortScanner("ps1", genericErr, fakemodule.FakePortScanFnDoNothing),
 			},
-			wantErr: true,
+			wantErr: genericErr,
 		},
 		{
 			name: "when_fingerprinter_init_fails_returns_error",
@@ -128,7 +128,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 					fakemodule.InitFakeFingerprinter("fp2", nil, fakemodule.FakeFingerprintFnDoNothing),
 				},
 			},
-			wantErr: true,
+			wantErr: genericErr,
 		},
 		{
 			name: "when_detector_init_fails_returns_error",
@@ -143,7 +143,7 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 					fakemodule.InitFakeVulnDetector("d2", nil, fakemodule.FakeDetectFnNoFindings),
 				},
 			},
-			wantErr: true,
+			wantErr: genericErr,
 		},
 	}
 
@@ -152,11 +152,10 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 			opts := tc.options
 			_, err := New(context.Background(), opts)
 
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("New(%v) returned no error, want error", opts)
-				}
-
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("New(%v) error = %v, wantErr %v", opts, err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
 				return
 			}
 

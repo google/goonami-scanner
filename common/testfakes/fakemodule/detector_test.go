@@ -129,21 +129,22 @@ func TestFakeVulnDetectorDetect(t *testing.T) {
 }
 
 func TestInitFakeVulnDetector(t *testing.T) {
+	errInit := errors.New("init error")
 	testCases := []struct {
 		name     string
 		initErr  error
 		override FakeDetectFn
-		wantErr  bool
+		wantErr  error
 	}{
 		{
 			name:    "when_init_has_no_error_it_returns_fake",
 			initErr: nil,
-			wantErr: false,
+			wantErr: nil,
 		},
 		{
 			name:    "when_init_has_error_it_returns_error",
-			initErr: errors.New("init error"),
-			wantErr: true,
+			initErr: errInit,
+			wantErr: errInit,
 		},
 	}
 
@@ -156,16 +157,11 @@ func TestInitFakeVulnDetector(t *testing.T) {
 			}
 
 			detector, err := initFn(context.Background(), nil)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("InitFakeVulnDetector() init function returned nil error, want non-nil")
-				}
-
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("InitFakeVulnDetector() init function returned error %v, want %v", err, tc.wantErr)
 			}
-
-			if err != nil {
-				t.Fatalf("InitFakeVulnDetector() init function returned error %v, want nil", err)
+			if tc.wantErr != nil {
+				return
 			}
 
 			fake, ok := detector.(*FakeVulnDetector)

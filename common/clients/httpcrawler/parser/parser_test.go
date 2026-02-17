@@ -17,6 +17,7 @@
 package parser
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,12 +28,12 @@ import (
 
 func TestExtractFromHTML(t *testing.T) {
 	tests := []struct {
-		name      string
-		rootURL   string
-		body      []byte
-		testFile  string
-		want      []string
-		wantError bool
+		name     string
+		rootURL  string
+		body     []byte
+		testFile string
+		want     []string
+		wantErr  error
 	}{
 		{
 			name:     "when_all_link_attributes_are_present_returns_all_links",
@@ -58,25 +59,25 @@ func TestExtractFromHTML(t *testing.T) {
 				"http://a.com/d/srcdoc.html",
 				"http://a.com/d/ping/1",
 			},
-			wantError: false,
+			wantErr: nil,
 		},
 		{
-			name:      "when_page_contains_malformed_url_returns_error",
-			rootURL:   "http://a.com/d/index.html",
-			testFile:  "page_with_malformed_url.html",
-			wantError: true,
+			name:     "when_page_contains_malformed_url_returns_error",
+			rootURL:  "http://a.com/d/index.html",
+			testFile: "page_with_malformed_url.html",
+			wantErr:  ErrParseURL,
 		},
 		{
-			name:      "when_content_is_empty_returns_no_links",
-			rootURL:   "http://a.com/d/index.html",
-			body:      nil,
-			wantError: false,
+			name:    "when_content_is_empty_returns_no_links",
+			rootURL: "http://a.com/d/index.html",
+			body:    nil,
+			wantErr: nil,
 		},
 		{
-			name:      "when_root_url_is_invalid_returns_error",
-			rootURL:   "http://%40invalid.com/",
-			testFile:  "all_link_attrs.html",
-			wantError: true,
+			name:     "when_root_url_is_invalid_returns_error",
+			rootURL:  "http://%40invalid.com/",
+			testFile: "all_link_attrs.html",
+			wantErr:  ErrParseURL,
 		},
 	}
 
@@ -93,14 +94,12 @@ func TestExtractFromHTML(t *testing.T) {
 			}
 
 			got, err := ExtractLinksFromHTML(tc.rootURL, body)
-			if tc.wantError {
-				if err == nil {
-					t.Errorf("extractFromHTML() returned no error, want error")
-				}
-				return
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("ExtractLinksFromHTML(%q) error = %v, want %v", tc.rootURL, err, tc.wantErr)
 			}
-			if err != nil {
-				t.Fatalf("extractFromHTML() returned an unexpected error: %v", err)
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			sort.Strings(got)
@@ -115,11 +114,11 @@ func TestExtractFromHTML(t *testing.T) {
 
 func TestParseURL(t *testing.T) {
 	tests := []struct {
-		name      string
-		rootURL   string
-		nodeURL   string
-		want      string
-		wantError bool
+		name    string
+		rootURL string
+		nodeURL string
+		want    string
+		wantErr error
 	}{
 		{
 			name:    "when_node_is_relative_path_from_root_returns_absolute_url",
@@ -224,32 +223,33 @@ func TestParseURL(t *testing.T) {
 			want:    "https://domain.com/something",
 		},
 		{
-			name:      "when_node_has_different_protocol_returns_error",
-			rootURL:   "http://domain.com/",
-			nodeURL:   "ftp://domain.com/a",
-			wantError: true,
+			name:    "when_node_has_different_protocol_returns_error",
+			rootURL: "http://domain.com/",
+			nodeURL: "ftp://domain.com/a",
+			wantErr: ErrUnsupportedScheme,
 		},
 		{
-			name:      "when_node_is_javascript_returns_error",
-			rootURL:   "http://domain.com/",
-			nodeURL:   "javascript:alert('Evil XSS')",
-			wantError: true,
+			name:    "when_node_is_javascript_returns_error",
+			rootURL: "http://domain.com/",
+			nodeURL: "javascript:alert('Evil XSS')",
+			wantErr: ErrUnsupportedURLType,
 		},
 		{
-			name:      "when_node_is_mailto_returns_error",
-			rootURL:   "http://domain.com/",
-			nodeURL:   "mailto:someone@domain.com",
-			wantError: true,
+			name:    "when_node_is_mailto_returns_error",
+			rootURL: "http://domain.com/",
+			nodeURL: "mailto:someone@domain.com",
+			wantErr: ErrUnsupportedURLType,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := parseURL(tc.rootURL, tc.nodeURL)
-			if tc.wantError {
-				if err == nil {
-					t.Errorf("parseURL(%q, %q) returned no error, want error", tc.rootURL, tc.nodeURL)
-				}
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("parseURL(%q, %q) returned error %v, want %v", tc.rootURL, tc.nodeURL, err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
 				return
 			}
 

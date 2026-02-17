@@ -33,11 +33,12 @@ func TestNew(t *testing.T) {
 }
 
 func TestFakeRunner_RegisterPortScanner(t *testing.T) {
+	errOverride := errors.New("override error")
 	tests := []struct {
 		name       string
 		overrideFn OverrideRegisterPortScannerFn
 		ps         module.PortScanner
-		wantErr    bool
+		wantErr    error
 		wantPs     bool
 	}{
 		{
@@ -56,10 +57,10 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 		{
 			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ctx context.Context, ps module.PortScanner) error {
-				return errors.New("override error")
+				return errOverride
 			},
 			ps:      fakemodule.NewFakePortScanner("ps1", nil),
-			wantErr: true,
+			wantErr: errOverride,
 			wantPs:  false,
 		},
 	}
@@ -70,8 +71,12 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 			r.OverrideRegisterPortScanner(tc.overrideFn)
 
 			err := r.RegisterPortScanner(context.Background(), tc.ps)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("RegisterPortScanner(%v) returned error %v, wantErr=%t", tc.ps, err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("RegisterPortScanner(%v) returned error %v, wantErr=%v", tc.ps, err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			if tc.wantPs && r.PortScanner() != tc.ps {
@@ -86,11 +91,12 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 }
 
 func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
+	errOverride := errors.New("override error")
 	tests := []struct {
 		name       string
 		overrideFn OverrideRegisterFingerprinterFn
 		fp         module.Fingerprinter
-		wantErr    bool
+		wantErr    error
 		wantFp     bool
 	}{
 		{
@@ -109,10 +115,10 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 		{
 			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ctx context.Context, fp module.Fingerprinter) error {
-				return errors.New("override error")
+				return errOverride
 			},
 			fp:      fakemodule.NewFakeFingerprinter("fp1", nil),
-			wantErr: true,
+			wantErr: errOverride,
 			wantFp:  false,
 		},
 	}
@@ -122,8 +128,12 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 			r.OverrideRegisterFingerprinter(tc.overrideFn)
 
 			err := r.RegisterFingerprinter(context.Background(), tc.fp)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("RegisterFingerprinter(%v) returned error %v, wantErr=%t", tc.fp, err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("RegisterFingerprinter(%v) returned error %v, wantErr=%v", tc.fp, err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			if tc.wantFp && len(r.Fingerprinters()) != 1 {
@@ -138,11 +148,12 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 }
 
 func TestFakeRunner_RegisterDetector(t *testing.T) {
+	errOverride := errors.New("override error")
 	tests := []struct {
 		name       string
 		overrideFn OverrideRegisterDetectorFn
 		d          module.VulnDetector
-		wantErr    bool
+		wantErr    error
 		wantD      bool
 	}{
 		{
@@ -161,10 +172,10 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 		{
 			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ctx context.Context, d module.VulnDetector) error {
-				return errors.New("override error")
+				return errOverride
 			},
 			d:       fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
-			wantErr: true,
+			wantErr: errOverride,
 			wantD:   false,
 		},
 	}
@@ -174,8 +185,12 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			r.OverrideRegisterDetector(tc.overrideFn)
 
 			err := r.RegisterDetector(context.Background(), tc.d)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("RegisterDetector(%v) returned error %v, wantErr=%t", tc.d, err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("RegisterDetector(%v) returned error %v, wantErr=%v", tc.d, err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			if tc.wantD && len(r.Detectors()) != 1 {
@@ -190,11 +205,12 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 }
 
 func TestFakeRunner_Run(t *testing.T) {
+	errOverride := errors.New("override error")
 	tests := []struct {
 		name       string
 		overrideFn OverrideRunFn
 		wantRes    bool
-		wantErr    bool
+		wantErr    error
 	}{
 		{
 			name: "when_no_override_is_provided_it_returns_nil",
@@ -209,9 +225,9 @@ func TestFakeRunner_Run(t *testing.T) {
 		{
 			name: "when_override_returns_error_it_propagates_error",
 			overrideFn: func(ctx context.Context, target string) (*srpb.ScanResults, error) {
-				return nil, errors.New("override error")
+				return nil, errOverride
 			},
-			wantErr: true,
+			wantErr: errOverride,
 		},
 	}
 	for _, tc := range tests {
@@ -220,8 +236,12 @@ func TestFakeRunner_Run(t *testing.T) {
 			r.OverrideRun(tc.overrideFn)
 
 			res, err := r.Run(context.Background(), "target")
-			if (err != nil) != tc.wantErr {
-				t.Errorf("Run() returned error %v, wantErr=%t", err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Run() returned error %v, wantErr=%v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			if tc.wantRes && res == nil {
