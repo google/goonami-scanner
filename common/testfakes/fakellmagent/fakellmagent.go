@@ -29,9 +29,8 @@ import (
 // FakeAgent is a fake implementation of agent.Agent for testing.
 type FakeAgent struct {
 	agent.Agent
-	events    []*session.Event
-	errors    []error
-	callCount int
+	events []*session.Event
+	errors []error
 }
 
 // New creates a new fake agent.
