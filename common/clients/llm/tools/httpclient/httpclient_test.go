@@ -61,35 +61,60 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
 		config  *config.Config
-		wantErr bool
+		wantErr error
+		verify  func(t *testing.T, got *Tool)
 	}{
 		{
-			name: "when_has_client_config_returns_configured_tool",
+			name: "when_has_client_config_returns_tool_with_merged_config",
 			config: config.FromProto(cpb.Config_builder{
 				Clients: cpb.ClientsConfig_builder{
 					Llm: llmcpb.LlmClientConfig_builder{
 						Tools: llmcpb.ToolConfig_builder{
 							HttpClientConfig: llmcpb.HttpClientConfig_builder{
-								AllowedMethods: []string{"GET"},
+								MaxRequestsPerService: proto.Int32(100),
 							}.Build(),
 						}.Build(),
 					}.Build(),
 				}.Build(),
 			}.Build()),
-			wantErr: false,
+			wantErr: nil,
+			verify: func(t *testing.T, got *Tool) {
+				if got.config.GetMaxRequestsPerService() != 100 {
+					t.Errorf("MaxRequestsPerService = %d, want 100", got.config.GetMaxRequestsPerService())
+				}
+				if diff := cmp.Diff([]string{"GET", "POST"}, got.config.GetAllowedMethods()); diff != "" {
+					t.Errorf("AllowedMethods mismatch (-want +got):\n%s", diff)
+				}
+			},
 		},
 		{
-			name:    "when_no_client_config_returns_default_tool",
+			name:    "when_no_client_config_returns_tool_with_default_config",
 			config:  config.FromProto(cpb.Config_builder{}.Build()),
-			wantErr: false,
+			wantErr: nil,
+			verify: func(t *testing.T, got *Tool) {
+				if got.config.GetMaxRequestsPerService() != 50 {
+					t.Errorf("MaxRequestsPerService = %d, want 50", got.config.GetMaxRequestsPerService())
+				}
+			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := New(tc.config, &nspb.NetworkService{})
-			if (err != nil) != tc.wantErr {
-				t.Errorf("New() error = %v, wantErr %v", err, tc.wantErr)
+			tl, err := New(tc.config, &nspb.NetworkService{})
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("New() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+			if tl == nil {
+				t.Fatal("New() returned nil tool")
+			}
+
+			got := newTool(tc.config, &nspb.NetworkService{})
+			if tc.verify != nil {
+				tc.verify(t, got)
 			}
 		})
 	}

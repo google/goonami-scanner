@@ -93,27 +93,9 @@ func DefaultConfig() *hccpb.HttpClientConfig {
 	}.Build()
 }
 
-// New returns a new instance of the httpclient tool.
+// New returns a new instance of the httpclient tool as a tool.Tool from the ADK.
 func New(config *config.Config, service *nspb.NetworkService) (tool.Tool, error) {
-	cfg := config.ClientsConfig().GetLlm()
-	var toolcfg *hccpb.HttpClientConfig
-	if !cfg.GetTools().HasHttpClientConfig() {
-		toolcfg = DefaultConfig()
-	} else {
-		toolcfg = cfg.GetTools().GetHttpClientConfig()
-	}
-
-	var badPaths []*regexp.Regexp
-	for _, path := range toolcfg.GetForbiddenPaths() {
-		badPaths = append(badPaths, regexp.MustCompile(path))
-	}
-
-	t := &Tool{
-		config:     toolcfg,
-		coreConfig: config,
-		service:    service,
-		badPaths:   badPaths,
-	}
+	t := newTool(config, service)
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "httpclient",
@@ -121,6 +103,25 @@ func New(config *config.Config, service *nspb.NetworkService) (tool.Tool, error)
 		},
 		t.Do,
 	)
+}
+
+func newTool(config *config.Config, service *nspb.NetworkService) *Tool {
+	cfg := DefaultConfig()
+	if config.ClientsConfig().GetLlm().GetTools().HasHttpClientConfig() {
+		proto.Merge(cfg, config.ClientsConfig().GetLlm().GetTools().GetHttpClientConfig())
+	}
+
+	var badPaths []*regexp.Regexp
+	for _, path := range cfg.GetForbiddenPaths() {
+		badPaths = append(badPaths, regexp.MustCompile(path))
+	}
+
+	return &Tool{
+		config:     cfg,
+		coreConfig: config,
+		service:    service,
+		badPaths:   badPaths,
+	}
 }
 
 func (h *Tool) increaseRequestCount() {

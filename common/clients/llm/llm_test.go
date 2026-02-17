@@ -33,16 +33,16 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	// Provide a partial config: only one field is set.
 	llmConfig := lccpb.LlmClientConfig_builder{
-		TimeoutPerRequestSeconds: proto.Int32(1),
-		RetryDelaySeconds:        proto.Int32(1),
-		MaxAttempts:              proto.Int32(1),
+		MaxAttempts: proto.Int32(5),
 	}.Build()
 	cfg := config.FromProto(cpb.Config_builder{
 		Clients: cpb.ClientsConfig_builder{
 			Llm: llmConfig,
 		}.Build(),
 	}.Build())
+
 	ag := fakellmagent.New(nil, nil)
 	client, err := New(cfg, ag)
 	if err != nil {
@@ -51,11 +51,25 @@ func TestNew(t *testing.T) {
 	if client == nil {
 		t.Fatalf("New() returned a nil client")
 	}
+
+	// Verify that the config was merged correctly with defaults.
+	wantConfig := DefaultConfig()
+	proto.Merge(wantConfig, llmConfig)
+
+	if !proto.Equal(client.config, wantConfig) {
+		t.Errorf("New() did not merge config correctly: got %v, want %v", client.config, wantConfig)
+	}
+
+	// Double check specific fields to be explicitly sure.
+	if client.config.GetMaxAttempts() != 5 {
+		t.Errorf("client.config.MaxAttempts = %d, want 5", client.config.GetMaxAttempts())
+	}
+	if client.config.GetTimeoutPerRequestSeconds() != DefaultConfig().GetTimeoutPerRequestSeconds() {
+		t.Errorf("client.config.TimeoutPerRequestSeconds = %d, want default %d", client.config.GetTimeoutPerRequestSeconds(), DefaultConfig().GetTimeoutPerRequestSeconds())
+	}
+
 	if client.ag != ag {
 		t.Errorf("New() did not set agent correctly: got %v, want %v", client.ag, ag)
-	}
-	if !proto.Equal(client.config, llmConfig) {
-		t.Errorf("New() did not set config correctly: got %v, want %v", client.config, llmConfig)
 	}
 	if client.appName != DefaultAppName {
 		t.Errorf("New() did not set appName correctly: got %v, want %v", client.appName, DefaultAppName)

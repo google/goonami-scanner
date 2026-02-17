@@ -31,6 +31,7 @@ import (
 	"google.golang.org/adk/runner"
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -72,11 +73,25 @@ type Client struct {
 	sessionService session.Service
 }
 
+// DefaultConfig returns the default configuration for the LLM client.
+func DefaultConfig() *lccpb.LlmClientConfig {
+	return lccpb.LlmClientConfig_builder{
+		MaxAttempts:              proto.Int32(3),
+		TimeoutPerRequestSeconds: proto.Int32(240),
+		RetryDelaySeconds:        proto.Int32(10),
+	}.Build()
+}
+
 // New creates a new LLM client.
 func New(config *config.Config, ag agent.Agent) (*Client, error) {
+	clientConfig := DefaultConfig()
+	if config.ClientsConfig().HasLlm() {
+		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
+	}
+
 	return &Client{
 		ag:             ag,
-		config:         config.ClientsConfig().GetLlm(),
+		config:         clientConfig,
 		coreConfig:     config,
 		appName:        DefaultAppName,
 		userID:         DefaultUserID,
