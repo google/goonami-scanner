@@ -33,10 +33,14 @@ import (
 var (
 	// ErrParseURL is returned when the URL fails to parse.
 	ErrParseURL = errors.New("failed to parse URL")
-	// ErrUnsupportedURLType is returned when the URL is a javascript or mailto URL.
-	ErrUnsupportedURLType = errors.New("unsupported javascript/mailto URL type")
 	// ErrUnsupportedScheme is returned when the URL scheme is not supported.
 	ErrUnsupportedScheme = errors.New("unsupported scheme")
+
+	unsupportedPrefixes = []string{
+		"data:",
+		"javascript:",
+		"mailto:",
+	}
 
 	knownLinkAttributes = []string{
 		// HTML 4 link attributes.
@@ -109,8 +113,10 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 }
 
 func parseURL(base string, redirect string) (string, error) {
-	if strings.HasPrefix(redirect, "javascript:") || strings.HasPrefix(redirect, "mailto:") {
-		return "", ErrUnsupportedURLType
+	for _, prefix := range unsupportedPrefixes {
+		if strings.HasPrefix(redirect, prefix) {
+			return "", nil
+		}
 	}
 
 	redirurl, err := url.Parse(redirect)

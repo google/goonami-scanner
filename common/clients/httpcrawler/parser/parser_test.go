@@ -229,16 +229,25 @@ func TestParseURL(t *testing.T) {
 			wantErr: ErrUnsupportedScheme,
 		},
 		{
-			name:    "when_node_is_javascript_returns_error",
+			name:    "when_node_is_javascript_returns_nothing",
 			rootURL: "http://domain.com/",
-			nodeURL: "javascript:alert('Evil XSS')",
-			wantErr: ErrUnsupportedURLType,
+			nodeURL: "javascript:alert('hello')",
+			wantErr: nil,
+			want:    "",
 		},
 		{
-			name:    "when_node_is_mailto_returns_error",
+			name:    "when_node_is_mailto_returns_nothing",
 			rootURL: "http://domain.com/",
 			nodeURL: "mailto:someone@domain.com",
-			wantErr: ErrUnsupportedURLType,
+			wantErr: nil,
+			want:    "",
+		},
+		{
+			name:    "when_node_is_data_url_returns_nothing",
+			rootURL: "http://domain.com/",
+			nodeURL: "data:text/plain;base64,SGVsbG8sIFdvcmxkIQ==",
+			wantErr: nil,
+			want:    "",
 		},
 	}
 
