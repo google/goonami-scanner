@@ -33,6 +33,8 @@ type Logger interface {
 	WarnContext(ctx context.Context, args ...any)
 	InfoContextf(ctx context.Context, format string, args ...any)
 	InfoContext(ctx context.Context, args ...any)
+	VulnContextf(ctx context.Context, format string, args ...any)
+	VulnContext(ctx context.Context, args ...any)
 	DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any)
 	DebugContext(ctx context.Context, level DebugLevel, args ...any)
 }
@@ -96,6 +98,11 @@ func InfoContextf(ctx context.Context, format string, args ...any) {
 	logger.InfoContextf(ctx, format, args...)
 }
 
+// VulnContextf is the static formatted vulnerability logging function.
+func VulnContextf(ctx context.Context, format string, args ...any) {
+	logger.VulnContextf(ctx, format, args...)
+}
+
 // DebugContextf is the static formatted debug logging function.
 func DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any) {
 	logger.DebugContextf(ctx, level, format, args...)
@@ -114,6 +121,11 @@ func WarnContext(ctx context.Context, args ...any) {
 // InfoContext is the static info logging function.
 func InfoContext(ctx context.Context, args ...any) {
 	logger.InfoContext(ctx, args...)
+}
+
+// VulnContext is the static vulnerability logging function.
+func VulnContext(ctx context.Context, args ...any) {
+	logger.VulnContext(ctx, args...)
 }
 
 // DebugContext is the static debug logging function.
@@ -164,6 +176,13 @@ func (l *DefaultLogger) InfoContextf(ctx context.Context, format string, args ..
 	l.log(ctx, level, fmt.Sprintf(format, args...))
 }
 
+// VulnContextf is the formatted vulnerability logging function.
+func (l *DefaultLogger) VulnContextf(ctx context.Context, format string, args ...any) {
+	level := colorize(fmt.Sprintf("%-4s", "VULN"), ansiBoldGreen, l.UseColors)
+	msg := colorize(fmt.Sprintf(format, args...), ansiBoldGreen, l.UseColors)
+	l.log(ctx, level, msg)
+}
+
 // DebugContextf is the formatted debug logging function.
 func (l *DefaultLogger) DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any) {
 	if l.VerboseLevel >= level {
@@ -189,6 +208,13 @@ func (l *DefaultLogger) WarnContext(ctx context.Context, args ...any) {
 func (l *DefaultLogger) InfoContext(ctx context.Context, args ...any) {
 	level := colorize(fmt.Sprintf("%-4s", "INFO"), ansiBoldBlue, l.UseColors)
 	l.log(ctx, level, fmt.Sprint(args...))
+}
+
+// VulnContext is the vulnerability logging function.
+func (l *DefaultLogger) VulnContext(ctx context.Context, args ...any) {
+	level := colorize(fmt.Sprintf("%-4s", "VULN"), ansiBoldGreen, l.UseColors)
+	msg := colorize(fmt.Sprint(args...), ansiBoldGreen, l.UseColors)
+	l.log(ctx, level, msg)
 }
 
 // DebugContext is the debug logging function.

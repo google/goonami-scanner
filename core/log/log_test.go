@@ -138,6 +138,7 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 		ctx        context.Context
 		msg        string
 		wantPrefix string
+		isVuln     bool
 	}{
 		{
 			name:       "when_no_metadata_no_prefix",
@@ -163,17 +164,28 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 			msg:        "test",
 			wantPrefix: "INFO [   443 ] [ my-module ] test",
 		},
+		{
+			name:       "when_vuln_level_vuln_prefix",
+			ctx:        context.Background(),
+			msg:        "test",
+			wantPrefix: "VULN test",
+			isVuln:     true,
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buf.Reset()
 			l := &DefaultLogger{}
-			l.InfoContextf(tc.ctx, "%s", tc.msg)
+			if tc.isVuln {
+				l.VulnContextf(tc.ctx, "%s", tc.msg)
+			} else {
+				l.InfoContextf(tc.ctx, "%s", tc.msg)
+			}
 
 			got := buf.String()
 			if !bytes.Contains([]byte(got), []byte(tc.wantPrefix)) {
-				t.Errorf("Infof() = %q, want it to contain %q", got, tc.wantPrefix)
+				t.Errorf("Log output = %q, want it to contain %q", got, tc.wantPrefix)
 			}
 		})
 	}
@@ -199,5 +211,22 @@ func TestDefaultLoggerColors(t *testing.T) {
 	// Brackets should NOT be colored.
 	if !bytes.Contains([]byte(got), []byte("[ \033[0;36mmy-module\033[0m ]")) {
 		t.Errorf("Log output does not contain expected module color with uncolored brackets: %q", got)
+	}
+}
+
+func TestDefaultLoggerVulnColors(t *testing.T) {
+	ctx := context.Background()
+	buf.Reset()
+	l := &DefaultLogger{UseColors: true}
+	l.VulnContext(ctx, "vuln message")
+
+	got := buf.String()
+	// VULN level is Bold Green: \033[1;32m
+	if !bytes.Contains([]byte(got), []byte("\033[1;32mVULN\033[0m")) {
+		t.Errorf("Log output does not contain expected VULN color: %q", got)
+	}
+	// Message "vuln message" is Bold Green: \033[1;32m
+	if !bytes.Contains([]byte(got), []byte("\033[1;32mvuln message\033[0m")) {
+		t.Errorf("Log output does not contain expected colored message: %q", got)
 	}
 }
