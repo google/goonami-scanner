@@ -18,6 +18,7 @@ package nmap
 
 import (
 	"context"
+	"encoding/xml"
 	"errors"
 	"os"
 	"path/filepath"
@@ -33,6 +34,11 @@ import (
 )
 
 const testdataDir = "testdata"
+
+func getMockNmapPath(t *testing.T, mockFile string) string {
+	t.Helper()
+	return filepath.Join(testdataDir, "mocks", mockFile)
+}
 
 func loadNmapConfig(t *testing.T, configFile string) *nccpb.NmapClientConfig {
 	t.Helper()
@@ -241,6 +247,86 @@ func TestCommandLine(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("CommandLine(%q) returned unexpected diff (-want +got):\n%s", tc.target, diff)
+			}
+		})
+	}
+}
+
+func TestRun(t *testing.T) {
+	testCases := []struct {
+		name     string
+		mockFile string
+		timeout  int32
+		want     *OutputXML
+		wantErr  error
+	}{
+		{
+			name:     "when_nmap_returns_valid_xml_returns_parsed_output",
+			mockFile: "success.sh",
+			want: &OutputXML{
+				XMLName: xml.Name{Local: "nmaprun"},
+				Args:    "nmap -p 80 127.0.0.1",
+				Hosts: []Host{
+					{Status: Status{State: "up", Reason: "syn-ack"}},
+				},
+			},
+			wantErr: nil,
+		},
+		{
+			name:     "when_nmap_fails_returns_error",
+			mockFile: "failure.sh",
+			wantErr:  ErrNmapExecution,
+		},
+		{
+			name:     "when_nmap_returns_invalid_xml_returns_error",
+			mockFile: "invalid_xml.sh",
+			wantErr:  ErrNmapXMLUnmarshal,
+		},
+		{
+			name:     "when_nmap_times_out_returns_error",
+			mockFile: "timeout.sh",
+			timeout:  1,
+			wantErr:  ErrNmapExecution,
+		},
+		{
+			name:     "when_output_file_is_missing_returns_error",
+			mockFile: "missing_output.sh",
+			wantErr:  ErrNmapOutputRead,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockNmap := getMockNmapPath(t, tc.mockFile)
+
+			nmapCfgBuilder := nccpb.NmapClientConfig_builder{
+				BinaryPath:    proto.String(mockNmap),
+				ScanTechnique: nccpb.NmapClientConfig_CONNECT.Enum(),
+				ScanIntensity: proto.Uint32(3),
+			}
+			if tc.timeout != 0 {
+				nmapCfgBuilder.TimeoutSeconds = proto.Int32(tc.timeout)
+			} else {
+				nmapCfgBuilder.TimeoutSeconds = proto.Int32(300)
+			}
+
+			cfgpb := cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					Nmap: nmapCfgBuilder.Build(),
+				}.Build(),
+			}.Build()
+			cfg := config.FromProto(cfgpb)
+			client := New(cfg)
+
+			got, err := client.Run(context.Background(), "127.0.0.1")
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("Run() returned unexpected diff (-want +got):\n%s", diff)
 			}
 		})
 	}

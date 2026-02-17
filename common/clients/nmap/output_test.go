@@ -18,6 +18,7 @@ package nmap
 
 import (
 	"encoding/xml"
+	"errors"
 	"os"
 	"testing"
 
@@ -26,9 +27,10 @@ import (
 
 func TestParseXMLOutput(t *testing.T) {
 	testCases := []struct {
-		name string
-		file string
-		want *OutputXML
+		name    string
+		file    string
+		want    *OutputXML
+		wantErr error
 	}{
 		{
 			name: "when_parsing_xml_with_closed_ports_returns_parsed_output",
@@ -703,6 +705,11 @@ func TestParseXMLOutput(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "when_invalid_xml_returns_error",
+			file:    "testdata/nmapxml/invalid.xml",
+			wantErr: ErrNmapXMLUnmarshal,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -713,8 +720,12 @@ func TestParseXMLOutput(t *testing.T) {
 			}
 
 			got, err := ParseXMLOutput(data)
-			if err != nil {
-				t.Fatalf("ParseXMLOutput(%q) returned an unexpected error: %v", tc.file, err)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("ParseXMLOutput() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			if diff := cmp.Diff(tc.want, got); diff != "" {
