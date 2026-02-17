@@ -152,18 +152,15 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 	h.increaseRequestCount()
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q error: %s", port, toolreq.Method, uri, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	content, err := goohttp.ReadBody(resp, int(h.config.GetMaxAnswerSizeBytes()))
 	if err != nil {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q error: %s", port, toolreq.Method, uri, err)
 		return nil, err
 	}
 
-	log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q status:%d content-length:%d req-data-length:%d", port, toolreq.Method, uri, resp.StatusCode, len(content), len(toolreq.Data))
 	return &Response{
 		StatusCode: int32(resp.StatusCode),
 		Content:    string(content),
