@@ -180,9 +180,10 @@ func TestFingerprint(t *testing.T) {
 					WebServiceContext: nspb.WebServiceContext_builder{
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode: 200,
-								Content:      []byte("994ada221335e522d21c6051ee8c5231"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
+								ResponseCode:     200,
+								Content:          []byte("994ada221335e522d21c6051ee8c5231"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -213,9 +214,10 @@ func TestFingerprint(t *testing.T) {
 						VersionSet:      &spb.VersionSet{},
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode: 200,
-								Content:      []byte("cd30f2d1a6ba78af7430b2105716051b"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
+								ResponseCode:     200,
+								Content:          []byte("cd30f2d1a6ba78af7430b2105716051b"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -262,9 +264,10 @@ func TestFingerprint(t *testing.T) {
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode: 200,
-								Content:      []byte("3786b9d769425320f43d7c7d8b559d63"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
+								ResponseCode:     200,
+								Content:          []byte("3786b9d769425320f43d7c7d8b559d63"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -322,15 +325,17 @@ func TestFingerprint(t *testing.T) {
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode: 200,
-								Content:      []byte("6acc630ba438d3c47709f3e4a03d0433"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
+								ResponseCode:     200,
+								Content:          []byte("6acc630ba438d3c47709f3e4a03d0433"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/version"}.Build(),
-								ResponseCode: 200,
-								CrawlDepth:   1,
-								Content:      []byte("5eadef45e713f861e6d6b32b998dde07"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/version"}.Build(),
+								ResponseCode:     200,
+								CrawlDepth:       1,
+								Content:          []byte("5eadef45e713f861e6d6b32b998dde07"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -375,9 +380,10 @@ func TestFingerprint(t *testing.T) {
 					WebServiceContext: nspb.WebServiceContext_builder{
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode: 200,
-								Content:      []byte("758be908ac4fb77a41268ef57aac71d4"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
+								ResponseCode:     200,
+								Content:          []byte("758be908ac4fb77a41268ef57aac71d4"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -393,10 +399,11 @@ func TestFingerprint(t *testing.T) {
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/v1/version"}.Build(),
-								ResponseCode: 200,
-								CrawlDepth:   1,
-								Content:      []byte("2d12331d1c80f5bfa00f6712ea547aca"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/v1/version"}.Build(),
+								ResponseCode:     200,
+								CrawlDepth:       1,
+								Content:          []byte("2d12331d1c80f5bfa00f6712ea547aca"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),
@@ -412,10 +419,11 @@ func TestFingerprint(t *testing.T) {
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
 							wcpb.CrawlResult_builder{
-								CrawlTarget:  wcpb.CrawlTarget_builder{Url: "{uri}/v2/version"}.Build(),
-								ResponseCode: 200,
-								CrawlDepth:   1,
-								Content:      []byte("5eadef45e713f861e6d6b32b998dde07"),
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/v2/version"}.Build(),
+								ResponseCode:     200,
+								CrawlDepth:       1,
+								Content:          []byte("5eadef45e713f861e6d6b32b998dde07"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
 					}.Build(),

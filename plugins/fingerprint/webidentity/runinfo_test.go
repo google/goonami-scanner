@@ -147,16 +147,18 @@ func TestRunInfo_AddVisited_and_CrawlResults(t *testing.T) {
 
 	want := []*wcpb.CrawlResult{
 		wcpb.CrawlResult_builder{
-			CrawlTarget:  wcpb.CrawlTarget_builder{Url: "http://localhost/1"}.Build(),
-			CrawlDepth:   1,
-			ResponseCode: 200,
-			Content:      content1,
+			CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://localhost/1"}.Build(),
+			CrawlDepth:       1,
+			ResponseCode:     200,
+			Content:          content1,
+			CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 		}.Build(),
 		wcpb.CrawlResult_builder{
-			CrawlTarget:  wcpb.CrawlTarget_builder{Url: "http://localhost/2"}.Build(),
-			CrawlDepth:   1,
-			ResponseCode: 404,
-			Content:      content2,
+			CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://localhost/2"}.Build(),
+			CrawlDepth:       1,
+			ResponseCode:     404,
+			Content:          content2,
+			CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 		}.Build(),
 	}
 

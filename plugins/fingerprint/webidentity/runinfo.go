@@ -70,9 +70,10 @@ func (m *runInfo) AddVisited(info *httpcrawler.PageInfo, resp *http.Response, co
 		CrawlTarget: wcpb.CrawlTarget_builder{
 			Url: info.URL,
 		}.Build(),
-		CrawlDepth:   info.Depth,
-		ResponseCode: int32(resp.StatusCode),
-		Content:      content,
+		CrawlDepth:       info.Depth,
+		ResponseCode:     int32(resp.StatusCode),
+		Content:          content,
+		CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 	}.Build()
 }
 
