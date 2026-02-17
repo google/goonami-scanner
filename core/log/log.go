@@ -22,6 +22,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 // Logger is Goonami's logging interface.
@@ -68,14 +70,15 @@ func ContextForModule(ctx context.Context, name string) context.Context {
 }
 
 // ContextForService returns a new context with the service information (port) attached.
-func ContextForService(ctx context.Context, port int) context.Context {
+func ContextForService(ctx context.Context, service *nspb.NetworkService) context.Context {
+	port := int(service.GetNetworkEndpoint().GetPort().GetPortNumber())
 	return context.WithValue(ctx, serviceKey, port)
 }
 
 // ContextForModuleAndService returns a new context with both the module name and the service
 // information (port) attached.
-func ContextForModuleAndService(ctx context.Context, name string, port int) context.Context {
-	return ContextForModule(ContextForService(ctx, port), name)
+func ContextForModuleAndService(ctx context.Context, name string, service *nspb.NetworkService) context.Context {
+	return ContextForModule(ContextForService(ctx, service), name)
 }
 
 var logger Logger = &DefaultLogger{}

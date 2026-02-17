@@ -22,6 +22,9 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 var buf bytes.Buffer
@@ -133,6 +136,22 @@ func TestDefaultLoggerDebug(t *testing.T) {
 }
 
 func TestDefaultLoggerPrefix(t *testing.T) {
+	svc80 := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Port: npb.Port_builder{
+				PortNumber: 80,
+			}.Build(),
+		}.Build(),
+	}.Build()
+
+	svc443 := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Port: npb.Port_builder{
+				PortNumber: 443,
+			}.Build(),
+		}.Build(),
+	}.Build()
+
 	testCases := []struct {
 		name       string
 		ctx        context.Context
@@ -154,13 +173,13 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 		},
 		{
 			name:       "when_service_metadata_service_prefix",
-			ctx:        ContextForService(context.Background(), 80),
+			ctx:        ContextForService(context.Background(), svc80),
 			msg:        "test",
 			wantPrefix: "INFO [    80 ] test",
 		},
 		{
 			name:       "when_both_metadata_both_prefix",
-			ctx:        ContextForModuleAndService(context.Background(), "my-module", 443),
+			ctx:        ContextForModuleAndService(context.Background(), "my-module", svc443),
 			msg:        "test",
 			wantPrefix: "INFO [   443 ] [ my-module ] test",
 		},
@@ -192,7 +211,14 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 }
 
 func TestDefaultLoggerColors(t *testing.T) {
-	ctx := ContextForModuleAndService(context.Background(), "my-module", 443)
+	svc443 := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Port: npb.Port_builder{
+				PortNumber: 443,
+			}.Build(),
+		}.Build(),
+	}.Build()
+	ctx := ContextForModuleAndService(context.Background(), "my-module", svc443)
 	buf.Reset()
 	l := &DefaultLogger{UseColors: true}
 	l.InfoContext(ctx, "test message")

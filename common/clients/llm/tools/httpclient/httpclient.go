@@ -138,9 +138,8 @@ func (h *Tool) numberOfRequests() int {
 
 // Do performs an HTTP request against the service.
 func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
-	port := int(h.service.GetNetworkEndpoint().GetPort().GetPortNumber())
 	uri := toolreq.URI
-	ctx := log.ContextForModuleAndService(context.Background(), "clients/llm/httpclient", port)
+	ctx := log.ContextForModuleAndService(context.Background(), "clients/llm/httpclient", h.service)
 	ctx, cancel := context.WithTimeout(ctx, h.coreConfig.TimeoutPerRequest())
 	defer cancel()
 
@@ -168,7 +167,6 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 }
 
 func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string) (*http.Request, error) {
-	port := h.service.GetNetworkEndpoint().GetPort().GetPortNumber()
 	uri := toolreq.URI
 
 	if !strings.HasPrefix(uri, "/") || strings.Contains(uri, "://") || strings.Contains(uri, ":") {
@@ -176,18 +174,18 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 	}
 
 	if !slices.Contains(h.config.GetAllowedMethods(), toolreq.Method) {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "%s invalid method for %q", port, toolreq.Method, uri)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "invalid method for %q: %q", toolreq.Method, uri)
 		return nil, ErrInvalidMethod
 	}
 
 	if h.numberOfRequests() >= int(h.config.GetMaxRequestsPerService()) {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "%s too many requests for %q", port, toolreq.Method, uri)
+		log.DebugContextf(ctx, log.DebugLevelRequest, "too many requests for %q: %q", toolreq.Method, uri)
 		return nil, ErrTooManyRequests
 	}
 
 	for _, path := range h.badPaths {
 		if path.MatchString(uri) {
-			log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q denied by regexp", port, toolreq.Method, uri)
+			log.DebugContextf(ctx, log.DebugLevelRequest, "%q denied by regexp: %q", toolreq.Method, uri)
 			return nil, ErrContentDenied
 		}
 	}

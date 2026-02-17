@@ -236,7 +236,6 @@ func runConcurrent[E any](ctx context.Context, concurrency int, services []*nspb
 // coming directly from the port scan. But each fingerprinter can technically "split" that network
 // service into several ones.
 func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
-	port := int(svc.GetNetworkEndpoint().GetPort().GetPortNumber())
 	var services []*nspb.NetworkService = []*nspb.NetworkService{svc}
 	for _, fp := range r.fingerprinters {
 		var accumulator []*nspb.NetworkService
@@ -246,7 +245,7 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 				return nil, ctx.Err()
 			}
 
-			ctx = log.ContextForModuleAndService(ctx, fp.Name(), port)
+			ctx = log.ContextForModuleAndService(ctx, fp.Name(), sv)
 			res, err := fp.Fingerprint(ctx, sv)
 			if err != nil {
 				log.ErrorContextf(ctx, "fatal fingerprinting error: %s", err)
@@ -263,7 +262,6 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 }
 
 func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkService) ([]*dpb.DetectionReport, error) {
-	port := int(svc.GetNetworkEndpoint().GetPort().GetPortNumber())
 	var reports []*dpb.DetectionReport
 
 	for _, dt := range r.detectors {
@@ -271,7 +269,7 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 			return nil, ctx.Err()
 		}
 
-		ctx = log.ContextForModuleAndService(ctx, dt.Name(), port)
+		ctx = log.ContextForModuleAndService(ctx, dt.Name(), svc)
 		res, err := dt.Detect(ctx, svc)
 		if err != nil {
 			log.ErrorContextf(ctx, "fatal detection error: %s", err)
