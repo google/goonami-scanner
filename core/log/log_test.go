@@ -178,3 +178,26 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestDefaultLoggerColors(t *testing.T) {
+	ctx := ContextForModuleAndService(context.Background(), "my-module", 443)
+	buf.Reset()
+	l := &DefaultLogger{UseColors: true}
+	l.InfoContext(ctx, "test message")
+
+	got := buf.String()
+	// INFO is Bold Blue: \033[1;34m
+	if !bytes.Contains([]byte(got), []byte("\033[1;34mINFO\033[0m")) {
+		t.Errorf("Log output does not contain expected INFO color: %q", got)
+	}
+	// Port 443 is Green: \033[0;32m
+	// Brackets should NOT be colored.
+	if !bytes.Contains([]byte(got), []byte("[ \033[0;32m  443\033[0m ]")) {
+		t.Errorf("Log output does not contain expected port color with uncolored brackets: %q", got)
+	}
+	// Module "my-module" is Cyan: \033[0;36m
+	// Brackets should NOT be colored.
+	if !bytes.Contains([]byte(got), []byte("[ \033[0;36mmy-module\033[0m ]")) {
+		t.Errorf("Log output does not contain expected module color with uncolored brackets: %q", got)
+	}
+}

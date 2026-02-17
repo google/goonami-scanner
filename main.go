@@ -84,6 +84,8 @@ var (
 	OutputDirFlag = flag.String("output_dir", "", "directory to write the results and artifacts to")
 	// TargetFlag controls the target to scan.
 	TargetFlag = flag.String("target", "", "target to scan")
+	// ColorFlag controls whether to use colors in the output.
+	ColorFlag = flag.Bool("color", true, "use colors in the output")
 	// OverridesFlag allows overriding specific options from the configuration file.
 	OverridesFlag = stringSlice("o", "override configuration options (format: key=value)")
 )
@@ -127,7 +129,10 @@ func run(ctx context.Context) error {
 	}
 	defer cfg.Close(ctx)
 
-	logger := &log.DefaultLogger{VerboseLevel: log.DebugLevel(*DebugLevelFlag)}
+	logger := &log.DefaultLogger{
+		VerboseLevel: log.DebugLevel(*DebugLevelFlag),
+		UseColors:    *ColorFlag,
+	}
 
 	log.InfoContextf(ctx, "initializing the scanner's entrypoint")
 	options := &entrypoint.Options{

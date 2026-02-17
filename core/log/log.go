@@ -129,59 +129,72 @@ func DebugContext(ctx context.Context, level DebugLevel, args ...any) {
 // It just logs to stderr using the default Go logger.
 type DefaultLogger struct {
 	VerboseLevel DebugLevel // Whether debug logs should be shown.
+	UseColors    bool       // Whether colors should be used in the logs.
 }
 
 func (l *DefaultLogger) log(ctx context.Context, level string, msg string) {
-	prefix := fmt.Sprintf("%-4s ", level)
+	prefix := level + " "
+
 	if port, ok := ctx.Value(serviceKey).(int); ok {
-		prefix += fmt.Sprintf("[ %5d ] ", port)
+		portVal := colorize(fmt.Sprintf("%5d", port), ansiGreen, l.UseColors)
+		prefix += "[ " + portVal + " ] "
 	}
 	if module, ok := ctx.Value(moduleKey).(string); ok {
-		prefix += "[ " + module + " ] "
+		moduleVal := colorize(module, ansiCyan, l.UseColors)
+		prefix += "[ " + moduleVal + " ] "
 	}
 	log.Print(prefix + msg)
 }
 
 // ErrorContextf is the formatted error logging function.
 func (l *DefaultLogger) ErrorContextf(ctx context.Context, format string, args ...any) {
-	l.log(ctx, "ERR", fmt.Sprintf(format, args...))
+	level := colorize(fmt.Sprintf("%-4s", "ERR"), ansiBoldRed, l.UseColors)
+	l.log(ctx, level, fmt.Sprintf(format, args...))
 }
 
 // WarnContextf is the formatted warning logging function.
 func (l *DefaultLogger) WarnContextf(ctx context.Context, format string, args ...any) {
-	l.log(ctx, "WARN", fmt.Sprintf(format, args...))
+	level := colorize(fmt.Sprintf("%-4s", "WARN"), ansiBoldYellow, l.UseColors)
+	l.log(ctx, level, fmt.Sprintf(format, args...))
 }
 
 // InfoContextf is the formatted info logging function.
 func (l *DefaultLogger) InfoContextf(ctx context.Context, format string, args ...any) {
-	l.log(ctx, "INFO", fmt.Sprintf(format, args...))
+	level := colorize(fmt.Sprintf("%-4s", "INFO"), ansiBoldBlue, l.UseColors)
+	l.log(ctx, level, fmt.Sprintf(format, args...))
 }
 
 // DebugContextf is the formatted debug logging function.
 func (l *DefaultLogger) DebugContextf(ctx context.Context, level DebugLevel, format string, args ...any) {
 	if l.VerboseLevel >= level {
-		l.log(ctx, fmt.Sprintf("DBG%d", level), fmt.Sprintf(format, args...))
+		level := fmt.Sprintf("DBG%d", level)
+		levelStr := colorize(fmt.Sprintf("%-4s", level), ansiBoldGray, l.UseColors)
+		l.log(ctx, levelStr, fmt.Sprintf(format, args...))
 	}
 }
 
 // ErrorContext is the error logging function.
 func (l *DefaultLogger) ErrorContext(ctx context.Context, args ...any) {
-	l.log(ctx, "ERR", fmt.Sprint(args...))
+	level := colorize(fmt.Sprintf("%-4s", "ERR"), ansiBoldRed, l.UseColors)
+	l.log(ctx, level, fmt.Sprint(args...))
 }
 
 // WarnContext is the warning logging function.
 func (l *DefaultLogger) WarnContext(ctx context.Context, args ...any) {
-	l.log(ctx, "WARN", fmt.Sprint(args...))
+	level := colorize(fmt.Sprintf("%-4s", "WARN"), ansiBoldYellow, l.UseColors)
+	l.log(ctx, level, fmt.Sprint(args...))
 }
 
 // InfoContext is the info logging function.
 func (l *DefaultLogger) InfoContext(ctx context.Context, args ...any) {
-	l.log(ctx, "INFO", fmt.Sprint(args...))
+	level := colorize(fmt.Sprintf("%-4s", "INFO"), ansiBoldBlue, l.UseColors)
+	l.log(ctx, level, fmt.Sprint(args...))
 }
 
 // DebugContext is the debug logging function.
 func (l *DefaultLogger) DebugContext(ctx context.Context, level DebugLevel, args ...any) {
 	if l.VerboseLevel >= level {
-		l.log(ctx, fmt.Sprintf("DBG%d", level), fmt.Sprint(args...))
+		levelStr := colorize(fmt.Sprintf("%-4s", fmt.Sprintf("DBG%d", level)), ansiBoldGray, l.UseColors)
+		l.log(ctx, levelStr, fmt.Sprint(args...))
 	}
 }
