@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:latest AS builder
 
 # Install required OS-level dependencies.
 RUN apt-get update \
@@ -12,11 +12,7 @@ RUN mkdir -p /goonami/src /goonami/bin
 COPY . /goonami/src/
 RUN chown -R 1000:1000 /goonami
 
-# Note: By default, Goonami uses nmap with connect mode and does not require
-# root permissions. If you change the configuration, you might have to also
-# change this Dockerfile.
-#
-# Drop permissions and set working directory.
+# We drop our privileges to build the binary.
 USER 1000
 WORKDIR /goonami/src
 
@@ -30,6 +26,18 @@ RUN go build -o /goonami/bin/goonami main.go
 RUN cp /goonami/src/config.textproto /goonami/config.textproto
 RUN ln -s /goonami/src/plugins/fingerprint/webidentity/fingerprints /goonami/fingerprints \
   && sed -i 's%"plugins/fingerprint/webidentity/fingerprints"%"/goonami/fingerprints"%g' /goonami/config.textproto
+
+FROM ubuntu:latest AS release
+
+COPY --from=builder /goonami /goonami
+RUN chown -R 1000:1000 /goonami
+
+# Note: By default, Goonami uses nmap with connect mode and does not require
+# root permissions. If you change the configuration, you might have to also
+# change this Dockerfile.
+#
+# Drop permissions and set working directory.
+USER 1000
 
 # Add goonami to the PATH
 ENV PATH="${PATH}:/goonami/bin"
