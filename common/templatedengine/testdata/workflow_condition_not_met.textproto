@@ -1,0 +1,14 @@
+actions {
+  name: "action1"
+  http_request {
+    method: GET
+    uri: "/OK"
+    response {
+      http_status: 200
+    }
+  }
+}
+workflows {
+  condition: REQUIRES_CALLBACK_SERVER
+  actions: "action1"
+}

@@ -1,0 +1,11 @@
+actions {
+  name: "sleep"
+  utility {
+    sleep {
+      duration_ms: 1
+    }
+  }
+}
+workflows {
+  actions: "sleep"
+}

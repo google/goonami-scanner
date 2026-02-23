@@ -1,0 +1,7 @@
+actions {
+  name: "callback"
+  callback_server {}
+}
+workflows {
+  actions: "callback"
+}

@@ -1,0 +1,24 @@
+actions {
+  name: "main"
+  http_request {
+    method: GET
+    uri: "/OK"
+    response {
+      http_status: 200
+    }
+  }
+  cleanup_actions: "cleanup"
+}
+actions {
+  name: "cleanup"
+  http_request {
+    method: GET
+    uri: "/CLEANUP"
+    response {
+      http_status: 200
+    }
+  }
+}
+workflows {
+  actions: "main"
+}

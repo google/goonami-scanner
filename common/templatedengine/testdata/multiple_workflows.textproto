@@ -1,0 +1,26 @@
+actions {
+  name: "fail"
+  http_request {
+    method: GET
+    uri: "/NOTFOUND"
+    response {
+      http_status: 200
+    }
+  }
+}
+actions {
+  name: "success"
+  http_request {
+    method: GET
+    uri: "/OK"
+    response {
+      http_status: 200
+    }
+  }
+}
+workflows {
+  actions: "fail"
+}
+workflows {
+  actions: "success"
+}

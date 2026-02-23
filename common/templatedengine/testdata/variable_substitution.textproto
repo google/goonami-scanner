@@ -1,0 +1,17 @@
+actions {
+  name: "action1"
+  http_request {
+    method: GET
+    uri: "/{{ var }}"
+    response {
+      http_status: 200
+    }
+  }
+}
+workflows {
+  variables {
+    name: "var"
+    value: "OK"
+  }
+  actions: "action1"
+}

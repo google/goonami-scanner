@@ -1,0 +1,13 @@
+actions {
+  name: "action1"
+  http_request {
+    method: GET
+    uri: "/NOTFOUND"
+    response {
+      http_status: 200
+    }
+  }
+}
+workflows {
+  actions: "action1"
+}

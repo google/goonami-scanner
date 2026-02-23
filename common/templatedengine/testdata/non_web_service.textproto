@@ -1,0 +1,10 @@
+actions {
+  name: "action1"
+  http_request {
+    method: GET
+    uri: "/"
+  }
+}
+workflows {
+  actions: "action1"
+}
