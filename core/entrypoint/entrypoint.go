@@ -20,6 +20,7 @@ package entrypoint
 import (
 	"context"
 
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
@@ -116,6 +117,15 @@ func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 		}
 
 		r.RegisterDetector(ctx, module)
+	}
+
+	log.InfoContextf(ctx, "initializing callback server client")
+	if err := callbackserver.Initialize(ctx, options.Config); err != nil {
+		return nil, err
+	}
+
+	if !callbackserver.DefaultClient().IsCallbackServerEnabled() {
+		log.WarnContextf(ctx, "callback server client is not configured, detection relying on it will not work")
 	}
 
 	return &Entrypoint{

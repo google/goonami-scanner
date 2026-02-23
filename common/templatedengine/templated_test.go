@@ -30,6 +30,7 @@ import (
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -144,6 +145,11 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 				cfgProto.SetClients(clicfg)
 			}
 			cfg := config.FromProto(cfgProto)
+
+			if err := callbackserver.Initialize(t.Context(), cfg); err != nil {
+				t.Fatalf("Failed to initialize HTTP client: %v", err)
+			}
+
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
 				t.Fatalf("Failed to initialize HTTP client: %v", err)
 			}

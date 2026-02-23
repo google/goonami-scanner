@@ -124,7 +124,7 @@ func TestNew(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.FromProto(tc.config)
-			_, err := New(context.Background(), cfg)
+			_, err := new(context.Background(), cfg)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("New() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -322,7 +322,7 @@ func TestClient_Interaction(t *testing.T) {
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
 				t.Fatalf("failed to initialize default HTTP client: %v", err)
 			}
-			client, err := New(context.Background(), cfg)
+			client, err := new(context.Background(), cfg)
 			if err != nil {
 				t.Fatalf("failed to create callback server client: %v", err)
 			}

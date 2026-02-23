@@ -44,20 +44,36 @@ var (
 	ErrInvalidConfig = errors.New("invalid callback server configuration")
 )
 
+var defaultClient *Client = nil
+
 // Client is a client for the Tsunami Callback Server.
 type Client struct {
 	config     *cscpb.CallbackServerClientConfig
 	coreConfig *config.Config
 }
 
-// New creates a new Client.
-func New(ctx context.Context, config *config.Config) (*Client, error) {
+// Initialize the default callback server client.
+func Initialize(ctx context.Context, config *config.Config) error {
+	var err error
+	defaultClient, err = new(ctx, config)
+	return err
+}
+
+// DefaultClient returns the default callback server client.
+func DefaultClient() *Client {
+	if defaultClient == nil {
+		panic("fatal error: callack server client was never initialized")
+	}
+
+	return defaultClient
+}
+
+// new creates a new Client.
+func new(ctx context.Context, config *config.Config) (*Client, error) {
 	ctx = log.ContextForModule(ctx, "client/callbackserver")
 	clientConfig := &cscpb.CallbackServerClientConfig{}
 	if config.ClientsConfig().HasCallbackServer() {
 		proto.Merge(clientConfig, config.ClientsConfig().GetCallbackServer())
-	} else {
-		log.WarnContextf(ctx, "no callback server config: callbacks will be disabled")
 	}
 
 	if clientConfig.HasCallbackPort() {

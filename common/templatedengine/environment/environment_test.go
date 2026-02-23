@@ -21,11 +21,12 @@ import (
 	"regexp"
 	"testing"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"google.golang.org/protobuf/proto"
 
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
@@ -43,8 +44,12 @@ func TestEnvironment_InitializeFor(t *testing.T) {
 		SupportedHttpMethods: []string{"GET"},
 	}.Build()
 
+	ctx := t.Context()
+	if err := callbackserver.Initialize(ctx, config.Default()); err != nil {
+		t.Fatalf("Failed to initialize callback server client: %v", err)
+	}
 	env := New(config.Default())
-	env.InitializeFor(context.Background(), service)
+	env.InitializeFor(ctx, service)
 
 	tests := []struct {
 		key      string
@@ -145,8 +150,13 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 				}.Build(),
 			}.Build())
 
+			ctx := t.Context()
+			if err := callbackserver.Initialize(ctx, cfg); err != nil {
+				t.Fatalf("Failed to initialize callback server client: %v", err)
+			}
+
 			env := New(cfg)
-			err := env.InitializeFor(context.Background(), service)
+			err := env.InitializeFor(ctx, service)
 			if err != nil {
 				t.Fatalf("InitializeFor() failed: %v", err)
 			}

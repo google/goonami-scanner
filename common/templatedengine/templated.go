@@ -99,8 +99,7 @@ func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkSer
 func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflow *tpb.PluginWorkflow) bool {
 	switch workflow.GetCondition() {
 	case tpb.PluginWorkflow_REQUIRES_CALLBACK_SERVER:
-		cbclient, err := callbackserver.New(ctx, d.cfg)
-		return err == nil && cbclient.IsCallbackServerEnabled()
+		return callbackserver.DefaultClient().IsCallbackServerEnabled()
 	default:
 		return true
 	}

@@ -38,11 +38,7 @@ func NewCallbackServerActionRunner(cfg *config.Config) *CallbackServerActionRunn
 
 // Run executes a callback server action.
 func (r *CallbackServerActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
-	client, err := callbackserver.New(ctx, r.cfg)
-	if err != nil {
-		return false
-	}
-
+	client := callbackserver.DefaultClient()
 	if !client.IsCallbackServerEnabled() {
 		return false
 	}
