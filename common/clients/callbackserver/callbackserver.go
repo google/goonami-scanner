@@ -106,7 +106,18 @@ func (c *Client) GetCallbackURI(secret string) (string, error) {
 	return fmt.Sprintf("%s.%s:%d", cbid, address, port), nil
 }
 
-// HasInteraction checks whether the callback server has recorded any interaction for the given secret.
+// CallbackPort of the server. Expects caller to have called IsCallbackServerEnabled first.
+func (c *Client) CallbackPort() int32 {
+	return c.config.GetCallbackPort()
+}
+
+// CallbackAddress of the server. Expects caller to have called IsCallbackServerEnabled first.
+func (c *Client) CallbackAddress() string {
+	return c.config.GetCallbackAddress()
+}
+
+// HasInteraction checks whether the callback server has recorded any interaction for the given
+// secret. Expects caller to have called IsCallbackServerEnabled first.
 func (c *Client) HasInteraction(ctx context.Context, secret string) (bool, error) {
 	if !c.IsCallbackServerEnabled() {
 		return false, ErrInvalidConfig
