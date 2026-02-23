@@ -51,7 +51,7 @@ type Client struct {
 }
 
 // New creates a new Client.
-func New(ctx context.Context, config *config.Config) *Client {
+func New(ctx context.Context, config *config.Config) (*Client, error) {
 	ctx = log.ContextForModule(ctx, "client/callbackserver")
 	clientConfig := &cscpb.CallbackServerClientConfig{}
 	if config.ClientsConfig().HasCallbackServer() {
@@ -60,23 +60,30 @@ func New(ctx context.Context, config *config.Config) *Client {
 		log.WarnContextf(ctx, "no callback server config: callbacks will be disabled")
 	}
 
+	if clientConfig.HasCallbackPort() {
+		if clientConfig.GetCallbackPort() <= 0 || clientConfig.GetCallbackPort() > 65535 {
+			log.ErrorContextf(ctx, "invalid callback server port: %d", clientConfig.GetCallbackPort())
+			return nil, ErrInvalidConfig
+		}
+	}
+
 	return &Client{
 		config:     clientConfig,
 		coreConfig: config,
-	}
+	}, nil
 }
 
 // IsCallbackServerEnabled returns true if the callback server is enabled.
 func (c *Client) IsCallbackServerEnabled() bool {
-	if !(c.config.GetCallbackPort() > 0 && c.config.GetCallbackPort() < 65536) {
+	if !c.config.HasCallbackPort() {
 		return false
 	}
 
-	if c.config.GetCallbackAddress() == "" {
+	if !c.config.HasCallbackAddress() {
 		return false
 	}
 
-	if c.config.GetPollingBaseUrl() == "" {
+	if !c.config.HasPollingBaseUrl() {
 		return false
 	}
 

@@ -62,6 +62,76 @@ func TestGenerateCBID(t *testing.T) {
 	}
 }
 
+func TestNew(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  *cfgpb.Config
+		wantErr error
+	}{
+		{
+			name: "when_config_has_no_callback_server_it_is_created_anyway",
+			config: cfgpb.Config_builder{
+				Clients: cfgpb.ClientsConfig_builder{}.Build(),
+			}.Build(),
+			wantErr: nil,
+		},
+		{
+			name: "when_config_has_valid_callback_server_it_succeeds",
+			config: cfgpb.Config_builder{
+				Clients: cfgpb.ClientsConfig_builder{
+					CallbackServer: cscpb.CallbackServerClientConfig_builder{
+						CallbackPort: proto.Int32(8080),
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantErr: nil,
+		},
+		{
+			name: "when_port_is_too_low_it_returns_error",
+			config: cfgpb.Config_builder{
+				Clients: cfgpb.ClientsConfig_builder{
+					CallbackServer: cscpb.CallbackServerClientConfig_builder{
+						CallbackPort: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_port_is_negative_it_returns_error",
+			config: cfgpb.Config_builder{
+				Clients: cfgpb.ClientsConfig_builder{
+					CallbackServer: cscpb.CallbackServerClientConfig_builder{
+						CallbackPort: proto.Int32(-1),
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_port_is_too_high_it_returns_error",
+			config: cfgpb.Config_builder{
+				Clients: cfgpb.ClientsConfig_builder{
+					CallbackServer: cscpb.CallbackServerClientConfig_builder{
+						CallbackPort: proto.Int32(65536),
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(tc.config)
+			_, err := New(context.Background(), cfg)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("New() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestClient_IsCallbackServerEnabled(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -87,15 +157,6 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 			config: cscpb.CallbackServerClientConfig_builder{
 				CallbackPort:   proto.Int32(80),
 				PollingBaseUrl: proto.String("http://localhost.lan"),
-			}.Build(),
-			want: false,
-		},
-		{
-			name: "when_port_is_invalid_returns_false",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("1.2.3.4"),
-				CallbackPort:    proto.Int32(0),
-				PollingBaseUrl:  proto.String("http://localhost.lan"),
 			}.Build(),
 			want: false,
 		},
@@ -227,11 +288,9 @@ func TestClient_Interaction(t *testing.T) {
 			serverResponse: ``,
 			status:         http.StatusOK,
 			secret:         "test_secret",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String(""),
-			}.Build(),
-			want:    false,
-			wantErr: ErrInvalidConfig,
+			config:         cscpb.CallbackServerClientConfig_builder{}.Build(),
+			want:           false,
+			wantErr:        ErrInvalidConfig,
 		},
 	}
 
@@ -263,7 +322,10 @@ func TestClient_Interaction(t *testing.T) {
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
 				t.Fatalf("failed to initialize default HTTP client: %v", err)
 			}
-			client := New(context.Background(), cfg)
+			client, err := New(context.Background(), cfg)
+			if err != nil {
+				t.Fatalf("failed to create callback server client: %v", err)
+			}
 
 			got, err := client.HasInteraction(context.Background(), tc.secret)
 			if !errors.Is(err, tc.wantErr) {
