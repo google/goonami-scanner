@@ -1,0 +1,15 @@
+http_request {
+  method: GET
+  uri: "/HEADER_EXPECT"
+  response {
+    http_status: 200
+    expect_all {
+      conditions {
+        header {
+          name: "X-Status"
+        }
+        contains: "Ready"
+      }
+    }
+  }
+}

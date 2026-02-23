@@ -1,0 +1,16 @@
+http_request {
+  method: GET
+  uri: "/OK"
+  response {
+    http_status: 200
+    extract_all {
+      patterns {
+        variable_name: "header_var"
+        from_header {
+          name: "X-Test"
+        }
+        regexp: "V(alue)"
+      }
+    }
+  }
+}

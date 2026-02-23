@@ -1,0 +1,14 @@
+http_request {
+  method: GET
+  uri: "/OK"
+  response {
+    http_status: 200
+    extract_all {
+      patterns {
+        variable_name: "extracted"
+        from_body {}
+        regexp: "body (content)"
+      }
+    }
+  }
+}

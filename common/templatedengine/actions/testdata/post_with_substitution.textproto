@@ -1,0 +1,12 @@
+http_request {
+  method: POST
+  uri: "/{{ path }}"
+  headers {
+    name: "X-Custom"
+    value: "{{ header_val }}"
+  }
+  data: "expected {{ target }}"
+  response {
+    http_status: 200
+  }
+}

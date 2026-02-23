@@ -1,0 +1,12 @@
+http_request {
+  method: GET
+  uri: "/EXPECT_ANY"
+  response {
+    http_status: 200
+    expect_all {
+      conditions {
+        contains: "found"
+      }
+    }
+  }
+}

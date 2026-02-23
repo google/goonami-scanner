@@ -1,0 +1,8 @@
+http_request {
+  method: GET
+  uri: "/MULTI_KO"
+  uri: "/MULTI_OK"
+  response {
+    http_status: 200
+  }
+}

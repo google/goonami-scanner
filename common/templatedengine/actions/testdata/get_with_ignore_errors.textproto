@@ -1,0 +1,10 @@
+http_request {
+  method: GET
+  uri: "/"
+  client_options {
+    ignore_http_client_errors: true
+  }
+  response {
+    http_status: 200
+  }
+}

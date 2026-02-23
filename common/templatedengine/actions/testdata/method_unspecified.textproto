@@ -1,0 +1,4 @@
+http_request {
+  method: METHOD_UNSPECIFIED
+  uri: "/OK"
+}

@@ -1,0 +1,19 @@
+http_request {
+  method: GET
+  uri: "/EXTRACT_ANY"
+  response {
+    http_status: 200
+    extract_any {
+      patterns {
+        variable_name: "v1"
+        from_body {}
+        regexp: "missing=(.*)"
+      }
+      patterns {
+        variable_name: "v2"
+        from_body {}
+        regexp: "key=(.*)"
+      }
+    }
+  }
+}

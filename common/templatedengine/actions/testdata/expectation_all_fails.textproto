@@ -1,0 +1,13 @@
+http_request {
+  method: GET
+  uri: "/OK"
+  response {
+    http_status: 200
+    expect_all {
+      conditions {
+        body {}
+        contains: "not in body"
+      }
+    }
+  }
+}

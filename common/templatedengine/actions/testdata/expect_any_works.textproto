@@ -1,0 +1,17 @@
+http_request {
+  method: GET
+  uri: "/EXPECT_ANY"
+  response {
+    http_status: 200
+    expect_any {
+      conditions {
+        body {}
+        contains: "not there"
+      }
+      conditions {
+        body {}
+        contains: "found second"
+      }
+    }
+  }
+}
