@@ -30,10 +30,12 @@ import (
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestTemplatedDetector_Detect(t *testing.T) {
@@ -52,10 +54,13 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 	u, _ := url.Parse(ts.URL)
 	port, _ := strconv.Atoi(u.Port())
 
-	cfg := config.FromProto(&cpb.Config{})
-	if err := goohttp.InitializeDefaults(cfg); err != nil {
-		t.Fatalf("Failed to initialize HTTP client: %v", err)
-	}
+	cbs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"hasHttpInteraction": true}`)
+	}))
+	defer cbs.Close()
+	cbsURL, _ := url.Parse(cbs.URL)
+	cbsPort, _ := strconv.Atoi(cbsURL.Port())
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
@@ -69,6 +74,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 		name          string
 		protoFile     string
 		wantDetection bool
+		enableCBS     bool
 	}{
 		{
 			name:          "when_workflow_succeeds_returns_findings",
@@ -99,6 +105,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			name:          "when_workflow_condition_not_met_skips_it",
 			protoFile:     "testdata/workflow_condition_not_met.textproto",
 			wantDetection: false,
+			enableCBS:     false,
 		},
 		{
 			name:          "when_multiple_workflows_returns_status_of_first_compatible",
@@ -116,16 +123,33 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			wantDetection: true,
 		},
 		{
-			name:          "when_callback_server_action_fails_currently",
+			name:          "when_callback_server_action_succeeds",
 			protoFile:     "testdata/callback_server_action.textproto",
-			wantDetection: false,
+			wantDetection: true,
+			enableCBS:     true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			cfgProto := config.DefaultProto()
+			if tc.enableCBS {
+				clicfg := cpb.ClientsConfig_builder{
+					CallbackServer: cscpb.CallbackServerClientConfig_builder{
+						CallbackAddress: proto.String(cbsURL.Hostname()),
+						CallbackPort:    proto.Int32(int32(cbsPort)),
+						PollingBaseUrl:  proto.String(cbs.URL),
+					}.Build(),
+				}.Build()
+				cfgProto.SetClients(clicfg)
+			}
+			cfg := config.FromProto(cfgProto)
+			if err := goohttp.InitializeDefaults(cfg); err != nil {
+				t.Fatalf("Failed to initialize HTTP client: %v", err)
+			}
+
 			proto := loadProto(t, tc.protoFile)
-			detector, err := New(context.Background(), proto, goohttp.DefaultClient())
+			detector, err := New(context.Background(), cfg, proto, goohttp.DefaultClient())
 			if err != nil {
 				t.Fatalf("Failed to create detector: %v", err)
 			}
@@ -161,13 +185,14 @@ func TestLoadPlugins(t *testing.T) {
 		loadProto(t, "testdata/empty_plugin.textproto"),
 	}
 
-	initFns := LoadPlugins(plugins)
+	cfg := config.Default()
+	initFns := LoadPlugins(cfg, plugins)
 	if len(initFns) != len(plugins) {
 		t.Errorf("LoadPlugins() returned %d functions, want %d", len(initFns), len(plugins))
 	}
 
 	for i, fn := range initFns {
-		_, err := fn(context.Background(), &config.Config{})
+		_, err := fn(context.Background(), cfg)
 		if err != nil {
 			t.Errorf("initFns[%d]() failed: %v", i, err)
 			continue
@@ -186,7 +211,8 @@ func TestTemplatedDetector_Detect_NonWebService(t *testing.T) {
 
 	proto := loadProto(t, "testdata/non_web_service.textproto")
 
-	detector, _ := New(context.Background(), proto, goohttp.DefaultClient())
+	cfg := config.Default()
+	detector, _ := New(context.Background(), cfg, proto, goohttp.DefaultClient())
 	reports, err := detector.Detect(context.Background(), service)
 	if err != nil {
 		t.Fatalf("Detect failed: %v", err)

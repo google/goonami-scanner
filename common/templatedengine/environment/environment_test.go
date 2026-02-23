@@ -21,6 +21,11 @@ import (
 	"regexp"
 	"testing"
 
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	"github.com/google/goonami-scanner/core/config"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	"google.golang.org/protobuf/proto"
+
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
@@ -38,7 +43,7 @@ func TestEnvironment_InitializeFor(t *testing.T) {
 		SupportedHttpMethods: []string{"GET"},
 	}.Build()
 
-	env := New()
+	env := New(config.Default())
 	env.InitializeFor(context.Background(), service)
 
 	tests := []struct {
@@ -69,8 +74,112 @@ func TestEnvironment_InitializeFor(t *testing.T) {
 	}
 }
 
+func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+			Port:     npb.Port_builder{PortNumber: 80}.Build(),
+			IpAddress: npb.IpAddress_builder{
+				Address: "1.2.3.4",
+			}.Build(),
+		}.Build(),
+		TransportProtocol:    npb.TransportProtocol_TCP,
+		SupportedHttpMethods: []string{"GET"},
+	}.Build()
+
+	tests := []struct {
+		name         string
+		cbsConfig    *cscpb.CallbackServerClientConfig
+		wantVars     map[string]string
+		wantPatterns map[string]*regexp.Regexp
+	}{
+		{
+			name: "when_callback_server_is_enabled_with_ip_sets_variables",
+			cbsConfig: cscpb.CallbackServerClientConfig_builder{
+				CallbackAddress: proto.String("10.0.0.1"),
+				CallbackPort:    proto.Int32(8080),
+				PollingBaseUrl:  proto.String("http://polling.com"),
+			}.Build(),
+			wantVars: map[string]string{
+				"T_CBS_ADDRESS": "10.0.0.1",
+				"T_CBS_PORT":    "8080",
+			},
+			wantPatterns: map[string]*regexp.Regexp{
+				"T_CBS_SECRET": regexp.MustCompile(`^[a-f0-9]{256}$`),                        // 128 bytes hex encoded
+				"T_CBS_URI":    regexp.MustCompile(`^http://10\.0\.0\.1:8080/[a-f0-9]{56}$`), // SHA3-224 is 56 hex chars
+			},
+		},
+		{
+			name: "when_callback_server_is_enabled_with_domain_sets_variables",
+			cbsConfig: cscpb.CallbackServerClientConfig_builder{
+				CallbackAddress: proto.String("callback.com"),
+				CallbackPort:    proto.Int32(80),
+				PollingBaseUrl:  proto.String("http://polling.com"),
+			}.Build(),
+			wantVars: map[string]string{
+				"T_CBS_ADDRESS": "callback.com",
+				"T_CBS_PORT":    "80",
+			},
+			wantPatterns: map[string]*regexp.Regexp{
+				"T_CBS_SECRET": regexp.MustCompile(`^[a-f0-9]{256}$`),
+				"T_CBS_URI":    regexp.MustCompile(`^[a-f0-9]{56}\.callback\.com:80$`),
+			},
+		},
+		{
+			name:      "when_callback_server_is_disabled_does_not_set_variables",
+			cbsConfig: &cscpb.CallbackServerClientConfig{},
+			wantVars: map[string]string{
+				"T_CBS_ADDRESS": "",
+				"T_CBS_PORT":    "",
+				"T_CBS_SECRET":  "",
+				"T_CBS_URI":     "",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					CallbackServer: tc.cbsConfig,
+				}.Build(),
+			}.Build())
+
+			env := New(cfg)
+			err := env.InitializeFor(context.Background(), service)
+			if err != nil {
+				t.Fatalf("InitializeFor() failed: %v", err)
+			}
+
+			for k, v := range tc.wantVars {
+				got, ok := env.Get(k)
+				if v == "" {
+					if ok {
+						t.Errorf("env.Get(%q) = %q, true, want _, false", k, got)
+					}
+				} else {
+					if !ok || got != v {
+						t.Errorf("env.Get(%q) = %q, %v, want %q, true", k, got, ok, v)
+					}
+				}
+			}
+
+			for k, p := range tc.wantPatterns {
+				got, ok := env.Get(k)
+				if !ok {
+					t.Errorf("env.Get(%q) = _, false, want _, true", k)
+					continue
+				}
+				if !p.MatchString(got) {
+					t.Errorf("env.Get(%q) = %q, doesn't match pattern %v", k, got, p)
+				}
+			}
+		})
+	}
+}
+
 func TestEnvironment_Substitute(t *testing.T) {
-	env := New()
+	env := New(config.Default())
 	env.Set("var1", "val1")
 	env.Set("var2", "val2")
 
@@ -164,7 +273,7 @@ func TestEnvironment_Extract(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			env := New()
+			env := New(config.Default())
 			gotOk := env.Extract(context.Background(), tc.content, tc.varname, tc.pattern)
 			if gotOk != tc.wantOk {
 				t.Errorf("Extract() = %v, want %v", gotOk, tc.wantOk)
@@ -187,7 +296,7 @@ func TestEnvironment_Extract(t *testing.T) {
 }
 
 func TestEnvironment_SetGet(t *testing.T) {
-	env := New()
+	env := New(config.Default())
 	env.Set("key", "value")
 	val, ok := env.Get("key")
 	if !ok || val != "value" {

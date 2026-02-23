@@ -23,6 +23,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
@@ -39,6 +40,7 @@ import (
 
 // TemplatedDetector is a vulnerability detector that runs templated plugins.
 type TemplatedDetector struct {
+	cfg          *config.Config
 	proto        *tpb.TemplatedPlugin
 	knownActions map[string]*tpb.PluginAction
 	httpClient   goohttp.Client
@@ -49,7 +51,7 @@ type TemplatedDetector struct {
 }
 
 // New creates a new TemplatedDetector for a specific plugin.
-func New(ctx context.Context, proto *tpb.TemplatedPlugin, httpClient goohttp.Client) (*TemplatedDetector, error) {
+func New(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, httpClient goohttp.Client) (*TemplatedDetector, error) {
 	actionsCache := make(map[string]*tpb.PluginAction)
 	for _, action := range proto.GetActions() {
 		actionsCache[action.GetName()] = action
@@ -59,13 +61,14 @@ func New(ctx context.Context, proto *tpb.TemplatedPlugin, httpClient goohttp.Cli
 		proto:        proto,
 		knownActions: actionsCache,
 		httpClient:   httpClient,
+		cfg:          cfg,
 	}, nil
 }
 
 // NewForTesting creates a new TemplatedDetector for testing, forcing it to use the specified
 // environment.
-func NewForTesting(ctx context.Context, proto *tpb.TemplatedPlugin, httpClient goohttp.Client, env *environment.Environment) (*TemplatedDetector, error) {
-	d, err := New(ctx, proto, httpClient)
+func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, httpClient goohttp.Client, env *environment.Environment) (*TemplatedDetector, error) {
+	d, err := New(ctx, cfg, proto, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +85,7 @@ func (d *TemplatedDetector) Name() string {
 // Detect performs the vulnerability detection.
 func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
 	for _, workflow := range d.proto.GetWorkflows() {
-		if !d.workflowMeetsConditions(workflow) {
+		if !d.workflowMeetsConditions(ctx, workflow) {
 			continue
 		}
 
@@ -93,11 +96,11 @@ func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkSer
 	return &dpb.DetectionReportList{}, nil
 }
 
-func (d *TemplatedDetector) workflowMeetsConditions(workflow *tpb.PluginWorkflow) bool {
+func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflow *tpb.PluginWorkflow) bool {
 	switch workflow.GetCondition() {
 	case tpb.PluginWorkflow_REQUIRES_CALLBACK_SERVER:
-		// TODO: b/483970797 - Check if callback server is enabled when implemented.
-		return false
+		cbclient, err := callbackserver.New(ctx, d.cfg)
+		return err == nil && cbclient.IsCallbackServerEnabled()
 	default:
 		return true
 	}
@@ -111,7 +114,7 @@ func (d *TemplatedDetector) getRunnerForAction(action *tpb.PluginAction) actions
 		return &actions.UtilityActionRunner{}
 	}
 	if action.GetCallbackServer() != nil {
-		return &actions.CallbackServerActionRunner{}
+		return actions.NewCallbackServerActionRunner(d.cfg)
 	}
 	return nil
 }
@@ -131,8 +134,10 @@ func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.Ne
 }
 
 func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow) (*dpb.DetectionReportList, error) {
-	env := environment.New()
-	env.InitializeFor(ctx, service)
+	env := environment.New(d.cfg)
+	if err := env.InitializeFor(ctx, service); err != nil {
+		return nil, err
+	}
 
 	// Override for testing.
 	if d.envForTesting != nil {
@@ -204,7 +209,7 @@ type Registry struct {
 }
 
 // LoadPlugins loads all plugins from a given list of templated plugins.
-func LoadPlugins(plugins []*tpb.TemplatedPlugin) []module.InitVulnDetectorFn {
+func LoadPlugins(cfg *config.Config, plugins []*tpb.TemplatedPlugin) []module.InitVulnDetectorFn {
 	var seenPlugins []string
 	var detectors []module.InitVulnDetectorFn
 	for _, p := range plugins {
@@ -216,7 +221,7 @@ func LoadPlugins(plugins []*tpb.TemplatedPlugin) []module.InitVulnDetectorFn {
 
 		seenPlugins = append(seenPlugins, pluginProto.GetInfo().GetName())
 		detectors = append(detectors, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
-			return New(ctx, pluginProto, goohttp.DefaultClient())
+			return New(ctx, cfg, pluginProto, goohttp.DefaultClient())
 		})
 	}
 	return detectors

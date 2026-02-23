@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
@@ -35,6 +37,7 @@ import (
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
@@ -47,7 +50,7 @@ func TestDetectors(t *testing.T) {
 	l := &log.DefaultLogger{VerboseLevel: log.DebugLevelRequest}
 	log.SetLogger(l)
 
-	cfg := config.FromProto(&cpb.Config{})
+	cfg := config.Default()
 	if err := goohttp.InitializeDefaults(cfg); err != nil {
 		t.Fatalf("Failed to initialize HTTP client: %v", err)
 	}
@@ -129,21 +132,24 @@ func loadPluginsAndTests(t *testing.T) (map[string]*tpb.TemplatedPlugin, map[str
 
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
-	env := environment.New()
-
+	cfgProto := config.DefaultProto()
 	tcsmock := callbackServerMock(t, tc)
 	defer tcsmock.Close()
 
 	if tc.GetMockCallbackServer().GetEnabled() {
-		cbsFullAddr := strings.TrimPrefix(tcsmock.URL, "http://")
-		cbsAddr := strings.Split(cbsFullAddr, ":")[0]
-		cbsPort := strings.Split(cbsFullAddr, ":")[1]
-		env.Set("T_CBS_URI", tcsmock.URL)
-		env.Set("T_CBS_ADDRESS", cbsAddr)
-		env.Set("T_CBS_PORT", cbsPort)
-		env.Set("T_CBS_SECRET", "tsunami-cbs-secret")
+		port := tcsmock.Listener.Addr().(*net.TCPAddr).Port
+		clicfg := cpb.ClientsConfig_builder{
+			CallbackServer: cscpb.CallbackServerClientConfig_builder{
+				CallbackAddress: proto.String("127.0.0.1"),
+				CallbackPort:    proto.Int32(int32(port)),
+				PollingBaseUrl:  proto.String(tcsmock.URL),
+			}.Build(),
+		}.Build()
+		cfgProto.SetClients(clicfg)
 	}
 
+	cfg := config.FromProto(cfgProto)
+	env := environment.New(cfg)
 	httpmock := httpMockServer(t, tc, env)
 	defer httpmock.Close()
 
@@ -151,7 +157,7 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	service := serviceForMockHTTPServer(t, httpmock)
 	env.InitializeFor(ctx, service)
 
-	detector, err := templatedengine.NewForTesting(ctx, plugin, httpClient, env)
+	detector, err := templatedengine.NewForTesting(ctx, cfg, plugin, httpClient, env)
 	if err != nil {
 		t.Fatalf("Failed to create detector: %v", err)
 	}

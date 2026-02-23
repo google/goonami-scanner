@@ -142,7 +142,7 @@ func run(ctx context.Context) error {
 	}
 
 	log.InfoContextf(ctx, "loading templated detectors")
-	templatedLoader := templated.NewLoader()
+	templatedLoader := templated.NewLoader(cfg)
 	templatedDetectors, err := templatedLoader.AllPlugins(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load templated detectors: %w", err)

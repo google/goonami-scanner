@@ -19,16 +19,47 @@ package actions
 import (
 	"context"
 
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+	"github.com/google/goonami-scanner/core/config"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 // CallbackServerActionRunner runs callback server actions.
-type CallbackServerActionRunner struct{}
+type CallbackServerActionRunner struct {
+	cfg *config.Config
+}
+
+// NewCallbackServerActionRunner creates a new CallbackServerActionRunner.
+func NewCallbackServerActionRunner(cfg *config.Config) *CallbackServerActionRunner {
+	return &CallbackServerActionRunner{cfg: cfg}
+}
 
 // Run executes a callback server action.
 func (r *CallbackServerActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
-	// TODO: b/483970797 - Implement when callback server is available.
-	return false
+	client, err := callbackserver.New(ctx, r.cfg)
+	if err != nil {
+		return false
+	}
+
+	if !client.IsCallbackServerEnabled() {
+		return false
+	}
+
+	if action.GetCallbackServer().GetActionType() != tpb.CallbackServerAction_CHECK {
+		return false
+	}
+
+	secret, ok := env.Get("T_CBS_SECRET")
+	if !ok {
+		return false
+	}
+
+	hasInteraction, err := client.HasInteraction(ctx, secret)
+	if err != nil {
+		return false
+	}
+
+	return hasInteraction
 }

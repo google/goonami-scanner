@@ -1,6 +1,8 @@
 actions {
   name: "callback"
-  callback_server {}
+  callback_server {
+    action_type: CHECK
+  }
 }
 workflows {
   actions: "callback"

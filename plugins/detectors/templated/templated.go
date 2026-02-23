@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/google/goonami-scanner/common/templatedengine"
+	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -37,11 +38,13 @@ import (
 var pluginFilesFS embed.FS
 
 // Loader loads templated detectors.
-type Loader struct{}
+type Loader struct {
+	cfg *config.Config
+}
 
 // NewLoader creates a new Loader.
-func NewLoader() *Loader {
-	return &Loader{}
+func NewLoader(cfg *config.Config) *Loader {
+	return &Loader{cfg: cfg}
 }
 
 // AllPlugins loads all templated detectors found in the embedded directory.
@@ -51,6 +54,10 @@ func (l *Loader) AllPlugins(ctx context.Context) ([]module.InitVulnDetectorFn, e
 	err := fs.WalkDir(pluginFilesFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
 		}
 
 		if d.IsDir() || filepath.Ext(path) != ".textproto" || strings.HasSuffix(path, "_test.textproto") {
@@ -70,7 +77,7 @@ func (l *Loader) AllPlugins(ctx context.Context) ([]module.InitVulnDetectorFn, e
 		return nil, fmt.Errorf("failed to walk embedded plugins: %w", err)
 	}
 
-	return templatedengine.LoadPlugins(plugins), nil
+	return templatedengine.LoadPlugins(l.cfg, plugins), nil
 }
 
 func loadPlugin(ctx context.Context, path string) (*tpb.TemplatedPlugin, error) {

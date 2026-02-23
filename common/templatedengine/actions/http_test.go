@@ -29,7 +29,6 @@ import (
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
@@ -79,7 +78,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 	u, _ := url.Parse(ts.URL)
 	port, _ := strconv.Atoi(u.Port())
 
-	cfg := config.FromProto(&cpb.Config{})
+	cfg := config.Default()
 	goohttp.InitializeDefaults(cfg)
 
 	service := nspb.NetworkService_builder{
@@ -157,7 +156,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 			name:       "when_post_with_substitution_works",
 			actionFile: "testdata/post_with_substitution.textproto",
 			env: func() *environment.Environment {
-				e := environment.New()
+				e := environment.New(cfg)
 				e.Set("path", "POST")
 				e.Set("header_val", "custom value")
 				e.Set("target", "body")
@@ -201,7 +200,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			action := loadAction(t, tc.actionFile)
-			env := environment.New()
+			env := environment.New(cfg)
 			if tc.env != nil {
 				env = tc.env()
 			}
@@ -243,31 +242,23 @@ func TestHTTPActionRunner_Run_Errors(t *testing.T) {
 		}.Build(),
 		SupportedHttpMethods: []string{"GET"},
 	}.Build()
+	cfg := config.Default()
 
-	tests := []struct {
-		name       string
-		actionFile string
-	}{
-		{
-			name:       "when_client_do_fails_returns_false",
-			actionFile: "testdata/simple_get.textproto",
-		},
-		{
-			name:       "when_client_do_fails_but_ignored_returns_true",
-			actionFile: "testdata/get_with_ignore_errors.textproto",
-		},
-	}
+	t.Run("when_client_do_fails_returns_false", func(t *testing.T) {
+		runner := NewHTTPActionRunner(&errorClient{})
+		action := loadAction(t, "testdata/simple_get.textproto")
+		if runner.Run(context.Background(), service, action, environment.New(cfg)) {
+			t.Error("Run() = true, want false on client error")
+		}
+	})
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			runner := NewHTTPActionRunner(&errorClient{})
-			action := loadAction(t, tc.actionFile)
-
-			if runner.Run(context.Background(), service, action, environment.New()) {
-				t.Error("Run() = true, want false on client error")
-			}
-		})
-	}
+	t.Run("when_client_do_fails_but_ignored_returns_true", func(t *testing.T) {
+		runner := NewHTTPActionRunner(&errorClient{})
+		action := loadAction(t, "testdata/get_with_ignore_errors.textproto")
+		if runner.Run(context.Background(), service, action, environment.New(cfg)) {
+			t.Error("Run() = true, want false on ignored client error")
+		}
+	})
 }
 
 type errorClient struct{}

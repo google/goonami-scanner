@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+	"github.com/google/goonami-scanner/core/config"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
 
@@ -54,7 +55,7 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			runner := &UtilityActionRunner{}
-			env := environment.New()
+			env := environment.New(config.Default())
 			start := time.Now()
 			gotOk := runner.Run(context.Background(), nil, tc.action, env)
 			elapsed := time.Since(start)

@@ -19,11 +19,16 @@ package environment
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/goonami-scanner/common/clients/callbackserver"
+	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/net/netservice"
 
@@ -34,25 +39,28 @@ var variablePattern = regexp.MustCompile(`\{\{ ([a-zA-Z0-9_]+) \}\}`)
 
 // Environment stores variables that are used by the templated detector.
 type Environment struct {
+	cfg  *config.Config
 	vars map[string]string
 }
 
 // New creates a new environment.
-func New() *Environment {
+func New(cfg *config.Config) *Environment {
 	return &Environment{
+		cfg:  cfg,
 		vars: make(map[string]string),
 	}
 }
 
 // InitializeFor initializes the environment for a specific network service.
-func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkService) {
+func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkService) error {
 	e.Set("T_UTL_CURRENT_TIMESTAMP_MS", fmt.Sprintf("%d", time.Now().UnixMilli()))
 
 	webRoot, err := netservice.BuildWebRoot(service)
-	if err == nil {
-		e.Set("T_NS_BASEURL", webRoot)
+	if err != nil {
+		return err
 	}
 
+	e.Set("T_NS_BASEURL", webRoot)
 	e.Set("T_NS_PROTOCOL", strings.TrimSpace(service.GetTransportProtocol().String()))
 
 	endpoint := service.GetNetworkEndpoint()
@@ -60,11 +68,42 @@ func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkSe
 	e.Set("T_NS_PORT", fmt.Sprintf("%d", endpoint.GetPort().GetPortNumber()))
 	e.Set("T_NS_IP", strings.TrimSpace(endpoint.GetIpAddress().GetAddress()))
 
-	// TODO: b/483970797 - Add callback server variables when implemented in Goonami.
+	if err := e.callbackServerInitialization(ctx); err != nil {
+		return err
+	}
 
 	for k, v := range e.vars {
 		log.DebugContextf(ctx, log.DebugLevelRequest, "environment: %s = %s", k, v)
 	}
+
+	return nil
+}
+
+func (e *Environment) callbackServerInitialization(ctx context.Context) error {
+	client, err := callbackserver.New(ctx, e.cfg)
+	if err != nil {
+		return err
+	}
+
+	if !client.IsCallbackServerEnabled() {
+		return nil
+	}
+
+	secret, err := generateSecret(128)
+	if err != nil {
+		return err
+	}
+
+	uri, err := client.GetCallbackURI(secret)
+	if err != nil {
+		return err
+	}
+
+	e.Set("T_CBS_URI", uri)
+	e.Set("T_CBS_SECRET", secret)
+	e.Set("T_CBS_PORT", strconv.Itoa(int(client.CallbackPort())))
+	e.Set("T_CBS_ADDRESS", client.CallbackAddress())
+	return nil
 }
 
 // Set sets a variable in the environment.
@@ -107,4 +146,16 @@ func (e *Environment) Extract(ctx context.Context, content, varname, pattern str
 
 	e.vars[varname] = matches[1]
 	return true
+}
+
+// generateSecret of a given size. Note that the output is hex encoded, so from a string perspective
+// it is double the size.
+func generateSecret(size int) (string, error) {
+	b := make([]byte, size)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(b), nil
 }
