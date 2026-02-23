@@ -42,6 +42,10 @@ type TemplatedDetector struct {
 	proto        *tpb.TemplatedPlugin
 	knownActions map[string]*tpb.PluginAction
 	httpClient   goohttp.Client
+
+	// envForTesting forces the detector to use the specified shared environment. This is only used
+	// for testing.
+	envForTesting *environment.Environment
 }
 
 // New creates a new TemplatedDetector for a specific plugin.
@@ -56,6 +60,18 @@ func New(ctx context.Context, proto *tpb.TemplatedPlugin, httpClient goohttp.Cli
 		knownActions: actionsCache,
 		httpClient:   httpClient,
 	}, nil
+}
+
+// NewForTesting creates a new TemplatedDetector for testing, forcing it to use the specified
+// environment.
+func NewForTesting(ctx context.Context, proto *tpb.TemplatedPlugin, httpClient goohttp.Client, env *environment.Environment) (*TemplatedDetector, error) {
+	d, err := New(ctx, proto, httpClient)
+	if err != nil {
+		return nil, err
+	}
+
+	d.envForTesting = env
+	return d, nil
 }
 
 // Name returns the name of the detector.
@@ -117,6 +133,11 @@ func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.Ne
 func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow) (*dpb.DetectionReportList, error) {
 	env := environment.New()
 	env.InitializeFor(ctx, service)
+
+	// Override for testing.
+	if d.envForTesting != nil {
+		env = d.envForTesting
+	}
 
 	for _, variable := range workflow.GetVariables() {
 		val := env.Substitute(ctx, variable.GetValue())
