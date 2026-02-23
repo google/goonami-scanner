@@ -17,7 +17,6 @@
 package environment
 
 import (
-	"context"
 	"regexp"
 	"testing"
 
@@ -232,7 +231,7 @@ func TestEnvironment_Substitute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := env.Substitute(context.Background(), tc.template)
+			got := env.Substitute(t.Context(), tc.template)
 			if got != tc.want {
 				t.Errorf("Substitute(%q) = %q, want %q", tc.template, got, tc.want)
 			}
@@ -284,7 +283,7 @@ func TestEnvironment_Extract(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			env := New(config.Default())
-			gotOk := env.Extract(context.Background(), tc.content, tc.varname, tc.pattern)
+			gotOk := env.Extract(t.Context(), tc.content, tc.varname, tc.pattern)
 			if gotOk != tc.wantOk {
 				t.Errorf("Extract() = %v, want %v", gotOk, tc.wantOk)
 			}

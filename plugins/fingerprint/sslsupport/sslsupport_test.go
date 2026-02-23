@@ -101,7 +101,7 @@ func TestFingerprint_Connection(t *testing.T) {
 				}.Build(),
 			}.Build()
 			cfg := config.FromProto(cfgpb)
-			mod, err := New(context.Background(), cfg)
+			mod, err := New(t.Context(), cfg)
 			if err != nil {
 				t.Fatalf("New failed: %v", err)
 			}
@@ -112,7 +112,7 @@ func TestFingerprint_Connection(t *testing.T) {
 				log.Fatalf("[watcher] test killed: maybe timeout handling is broken?")
 			}()
 
-			gotServices, err := mod.Fingerprint(context.Background(), service)
+			gotServices, err := mod.Fingerprint(t.Context(), service)
 			if err != nil {
 				t.Errorf("Fingerprint() error = %v, want nil", err)
 				return
@@ -166,12 +166,12 @@ func TestFingerprint_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.FromProto(cpb.Config_builder{}.Build())
-			mod, err := New(context.Background(), cfg)
+			mod, err := New(t.Context(), cfg)
 			if err != nil {
 				t.Fatalf("New failed: %v", err)
 			}
 
-			gotServices, err := mod.Fingerprint(context.Background(), tt.service)
+			gotServices, err := mod.Fingerprint(t.Context(), tt.service)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Fingerprint() error = %v, want %v", err, tt.wantErr)
 				return
@@ -194,11 +194,11 @@ func TestFingerprint_Validation(t *testing.T) {
 }
 
 func TestFingerprint_ContextCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	cfg := config.FromProto(&cpb.Config{})
-	mod, _ := New(context.Background(), cfg)
+	mod, _ := New(t.Context(), cfg)
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: nepb.NetworkEndpoint_builder{

@@ -17,7 +17,6 @@
 package nmap
 
 import (
-	"context"
 	"encoding/xml"
 	"errors"
 	"os"
@@ -238,7 +237,7 @@ func TestCommandLine(t *testing.T) {
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)
 
-			got, err := client.CommandLine(context.Background(), tc.target)
+			got, err := client.CommandLine(t.Context(), tc.target)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("CommandLine(%q) returned error: %v, wantErr: %v", tc.target, err, tc.wantErr)
 			}
@@ -318,7 +317,7 @@ func TestRun(t *testing.T) {
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)
 
-			got, err := client.Run(context.Background(), "127.0.0.1")
+			got, err := client.Run(t.Context(), "127.0.0.1")
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}

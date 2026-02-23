@@ -18,7 +18,6 @@ package webidentity
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -126,7 +125,7 @@ func TestNew(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			mod, err := New(context.Background(), tc.configFunc())
+			mod, err := New(t.Context(), tc.configFunc())
 			if err != nil {
 				if tc.wantErr == nil || !errors.Is(err, tc.wantErr) {
 					t.Fatalf("New() returned unexpected error: got: %v, want: %v", err, tc.wantErr)
@@ -450,12 +449,12 @@ func TestFingerprint(t *testing.T) {
 				t.Fatalf("Failed to initialize http library defaults: %v", err)
 			}
 
-			mod, err := newWithRegistry(context.Background(), modConfig, cfg, registry)
+			mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
 			if err != nil {
 				t.Fatalf("Failed to create module: %v", err)
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			gotServices, err := mod.Fingerprint(ctx, service)
 			if err != nil {
 				if tc.wantErr == nil || err != tc.wantErr {
@@ -575,12 +574,12 @@ func TestFingerprintWithWrites(t *testing.T) {
 				t.Fatalf("Failed to initialize http library defaults: %v", err)
 			}
 
-			mod, err := newWithRegistry(context.Background(), tc.config, cfg, registry)
+			mod, err := newWithRegistry(t.Context(), tc.config, cfg, registry)
 			if err != nil {
 				t.Fatalf("Failed to create module: %v", err)
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			_, err = mod.Fingerprint(ctx, service)
 			if err != nil {
 				t.Fatalf("Fingerprint() returned unexpected error: got: %v", err)

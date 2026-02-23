@@ -17,7 +17,6 @@
 package actions
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -206,7 +205,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 			}
 
 			runner := NewHTTPActionRunner(goohttp.DefaultClient())
-			gotOk := runner.Run(context.Background(), service, action, env)
+			gotOk := runner.Run(t.Context(), service, action, env)
 			if gotOk != tc.wantOk {
 				t.Errorf("Run() = %v, want %v", gotOk, tc.wantOk)
 			}
@@ -244,21 +243,29 @@ func TestHTTPActionRunner_Run_Errors(t *testing.T) {
 	}.Build()
 	cfg := config.Default()
 
-	t.Run("when_client_do_fails_returns_false", func(t *testing.T) {
-		runner := NewHTTPActionRunner(&errorClient{})
-		action := loadAction(t, "testdata/simple_get.textproto")
-		if runner.Run(context.Background(), service, action, environment.New(cfg)) {
-			t.Error("Run() = true, want false on client error")
-		}
-	})
+	tests := []struct {
+		name       string
+		actionFile string
+	}{
+		{
+			name:       "when_client_do_fails_returns_false",
+			actionFile: "testdata/simple_get.textproto",
+		},
+		{
+			name:       "when_client_do_fails_but_ignored_returns_true",
+			actionFile: "testdata/get_with_ignore_errors.textproto",
+		},
+	}
 
-	t.Run("when_client_do_fails_but_ignored_returns_true", func(t *testing.T) {
-		runner := NewHTTPActionRunner(&errorClient{})
-		action := loadAction(t, "testdata/get_with_ignore_errors.textproto")
-		if runner.Run(context.Background(), service, action, environment.New(cfg)) {
-			t.Error("Run() = true, want false on ignored client error")
-		}
-	})
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := NewHTTPActionRunner(&errorClient{})
+			action := loadAction(t, tc.actionFile)
+			if runner.Run(t.Context(), service, action, environment.New(cfg)) {
+				t.Error("Run() = true, want false on client error")
+			}
+		})
+	}
 }
 
 type errorClient struct{}

@@ -17,7 +17,6 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path"
@@ -186,7 +185,7 @@ func TestClose(t *testing.T) {
 			}
 
 			tempDir := cfg.TempDirectory()
-			if err = cfg.Close(context.Background()); !errors.Is(err, tt.wantErr) {
+			if err = cfg.Close(t.Context()); !errors.Is(err, tt.wantErr) {
 				t.Fatalf("Close() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 
@@ -208,7 +207,7 @@ func TestWorkingDirectoryIsCorrect(t *testing.T) {
 	if err := cfg.CreateDirectories(workDir); err != nil {
 		t.Fatalf("Failed to create directories: %v", err)
 	}
-	defer cfg.Close(context.Background())
+	defer cfg.Close(t.Context())
 
 	if got := cfg.WorkingDirectory(); got != workDir {
 		t.Errorf("WorkingDirectory() = %v, want %v", got, workDir)
@@ -224,7 +223,7 @@ func TestTempDirectoryIsCorrect(t *testing.T) {
 	if err := cfg.CreateDirectories(workDir); err != nil {
 		t.Fatalf("Failed to create directories: %v", err)
 	}
-	defer cfg.Close(context.Background())
+	defer cfg.Close(t.Context())
 
 	want := path.Join(workDir, "tempfiles")
 	if got := cfg.TempDirectory(); got != want {
@@ -241,7 +240,7 @@ func TestArtifactsDirectoryIsCorrect(t *testing.T) {
 	if err := cfg.CreateDirectories(workDir); err != nil {
 		t.Fatalf("Failed to create directories: %v", err)
 	}
-	defer cfg.Close(context.Background())
+	defer cfg.Close(t.Context())
 
 	want := path.Join(workDir, "artifacts")
 	if got := cfg.ArtifactsDirectory(); got != want {
@@ -257,7 +256,7 @@ func TestTimeoutPerRequest(t *testing.T) {
 	if err := cfg.CreateDirectories(t.TempDir()); err != nil {
 		t.Fatalf("Failed to create directories: %v", err)
 	}
-	defer cfg.Close(context.Background())
+	defer cfg.Close(t.Context())
 
 	if got, want := cfg.TimeoutPerRequest(), 30*time.Second; got != want {
 		t.Errorf("TimeoutPerRequest() = %v, want %v", got, want)

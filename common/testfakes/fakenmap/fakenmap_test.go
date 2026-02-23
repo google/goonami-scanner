@@ -17,7 +17,6 @@
 package fakenmap
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path"
@@ -91,7 +90,7 @@ func TestRun(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := New(tc.wantOutput, tc.wantErr)
-			gotOutput, gotErr := c.Run(context.Background(), "unused")
+			gotOutput, gotErr := c.Run(t.Context(), "unused")
 			if !errors.Is(gotErr, tc.wantErr) {
 				t.Errorf("Run() error = %v, wantErr %v", gotErr, tc.wantErr)
 			}

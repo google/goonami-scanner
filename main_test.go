@@ -58,7 +58,7 @@ func TestRun(t *testing.T) {
 	*TargetFlag = "1.1.1.1"
 	*DebugLevelFlag = 0
 
-	if err := run(context.Background()); err != nil {
+	if err := run(t.Context()); err != nil {
 		t.Errorf("run() returned error: %v", err)
 	}
 
@@ -165,7 +165,7 @@ func TestRun_ErrorCases(t *testing.T) {
 				defer tc.teardown()
 			}
 
-			err := run(context.Background())
+			err := run(t.Context())
 			if err == nil {
 				t.Errorf("run() for %s returned no error, want error", tc.name)
 				return

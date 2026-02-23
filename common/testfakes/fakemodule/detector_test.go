@@ -29,13 +29,13 @@ import (
 )
 
 func TestFakeDetectFnNoFindings(t *testing.T) {
-	if _, err := FakeDetectFnNoFindings(context.Background(), nil); err != nil {
+	if _, err := FakeDetectFnNoFindings(t.Context(), nil); err != nil {
 		t.Errorf("FakeDetectFnNoFindings() = %v, want nil", err)
 	}
 }
 
 func TestFakeDetectFnErrors(t *testing.T) {
-	if _, err := FakeDetectFnErrors(context.Background(), nil); err != ErrFakeDetectGeneric {
+	if _, err := FakeDetectFnErrors(t.Context(), nil); err != ErrFakeDetectGeneric {
 		t.Errorf("FakeDetectFnErrors() = %v, want %v", err, ErrFakeDetectGeneric)
 	}
 }
@@ -57,7 +57,7 @@ func TestFakeVulnDetectorCountCalls(t *testing.T) {
 		t.Errorf("CountCalls() = %d, want 0", fake.CountCalls())
 	}
 
-	fake.Detect(context.Background(), nil)
+	fake.Detect(t.Context(), nil)
 	if fake.CountCalls() != 1 {
 		t.Errorf("CountCalls() = %d, want 1", fake.CountCalls())
 	}
@@ -108,7 +108,7 @@ func TestFakeVulnDetectorDetect(t *testing.T) {
 			svc := nspb.NetworkService_builder{
 				ServiceName: "original",
 			}.Build()
-			got, err := fake.Detect(context.Background(), svc)
+			got, err := fake.Detect(t.Context(), svc)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Detect() error = %v, want %v", err, tc.wantErr)
 			}
@@ -156,7 +156,7 @@ func TestInitFakeVulnDetector(t *testing.T) {
 				t.Fatalf("InitFakeVulnDetector() returned nil, want init function")
 			}
 
-			detector, err := initFn(context.Background(), nil)
+			detector, err := initFn(t.Context(), nil)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("InitFakeVulnDetector() init function returned error %v, want %v", err, tc.wantErr)
 			}

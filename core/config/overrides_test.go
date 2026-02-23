@@ -17,7 +17,6 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -193,7 +192,7 @@ func TestApplyOverrides(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := Default()
-			err := cfg.ApplyOverrides(context.Background(), tt.overrides)
+			err := cfg.ApplyOverrides(t.Context(), tt.overrides)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ApplyOverrides() error = %v, wantErr %v", err, tt.wantErr)
 			}

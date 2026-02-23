@@ -27,13 +27,13 @@ import (
 )
 
 func TestFakeFingerprintFnDoNothing(t *testing.T) {
-	if _, err := FakeFingerprintFnDoNothing(context.Background(), nil); err != nil {
+	if _, err := FakeFingerprintFnDoNothing(t.Context(), nil); err != nil {
 		t.Errorf("FakeFingerprintFnDoNothing() = %v, want nil", err)
 	}
 }
 
 func TestFakeFingerprintFnErrors(t *testing.T) {
-	if _, err := FakeFingerprintFnErrors(context.Background(), nil); err != ErrFakeFingerprintGeneric {
+	if _, err := FakeFingerprintFnErrors(t.Context(), nil); err != ErrFakeFingerprintGeneric {
 		t.Errorf("FakeFingerprintFnErrors() = %v, want %v", err, ErrFakeFingerprintGeneric)
 	}
 }
@@ -55,7 +55,7 @@ func TestFakeFingerprinterCountCalls(t *testing.T) {
 		t.Errorf("CountCalls() = %d, want 0", fake.CountCalls())
 	}
 
-	fake.Fingerprint(context.Background(), nil)
+	fake.Fingerprint(t.Context(), nil)
 	if fake.CountCalls() != 1 {
 		t.Errorf("CountCalls() = %d, want 1", fake.CountCalls())
 	}
@@ -93,7 +93,7 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 			svc := nspb.NetworkService_builder{
 				ServiceName: "original",
 			}.Build()
-			gotServices, err := fake.Fingerprint(context.Background(), svc)
+			gotServices, err := fake.Fingerprint(t.Context(), svc)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Fingerprint() error = %v, want %v", err, tc.wantErr)
 			}
@@ -144,7 +144,7 @@ func TestInitFakeFingerprinter(t *testing.T) {
 				t.Fatalf("InitFakeFingerprinter() returned nil")
 			}
 
-			fingerprinter, err := initFn(context.Background(), nil)
+			fingerprinter, err := initFn(t.Context(), nil)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("InitFakeFingerprinter() error = %v, want %v", err, tc.wantErr)
 			}

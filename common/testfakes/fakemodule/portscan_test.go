@@ -29,14 +29,14 @@ import (
 )
 
 func TestFakePortScanFnDoNothing(t *testing.T) {
-	report, err := FakePortScanFnDoNothing(context.Background(), "irrelevant")
+	report, err := FakePortScanFnDoNothing(t.Context(), "irrelevant")
 	if report != nil || err != nil {
 		t.Errorf("FakePortScanFnDoNothing() = %v, %v, want nil, nil", report, err)
 	}
 }
 
 func TestFakePortScanFnErrors(t *testing.T) {
-	report, err := FakePortScanFnErrors(context.Background(), "irrelevant")
+	report, err := FakePortScanFnErrors(t.Context(), "irrelevant")
 	if report != nil || err != ErrFakePortScanGeneric {
 		t.Errorf("FakePortScanFnErrors() = %v, %v, want nil, %v", report, err, ErrFakePortScanGeneric)
 	}
@@ -58,7 +58,7 @@ func TestFakePortScannerCountCalls(t *testing.T) {
 	if fake.CountCalls() != 0 {
 		t.Errorf("CountCalls() = %d, want 0", fake.CountCalls())
 	}
-	fake.Scan(context.Background(), "irrelevant")
+	fake.Scan(t.Context(), "irrelevant")
 	if fake.CountCalls() != 1 {
 		t.Errorf("CountCalls() = %d, want 1", fake.CountCalls())
 	}
@@ -117,7 +117,7 @@ func TestFakePortScannerScan(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			fake := NewFakePortScanner("test", tc.scanFn)
-			report, err := fake.Scan(context.Background(), "irrelevant")
+			report, err := fake.Scan(t.Context(), "irrelevant")
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Scan() error = %v, want %v", err, tc.wantErr)
 			}
@@ -163,7 +163,7 @@ func TestInitFakePortScanner(t *testing.T) {
 				t.Fatalf("InitFakePortScanner() returned nil")
 			}
 
-			m, err := initFn(context.Background(), nil)
+			m, err := initFn(t.Context(), nil)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("InitFakePortScanner() error = %v, want %v", err, tc.wantErr)
 			}

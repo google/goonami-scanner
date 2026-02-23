@@ -103,7 +103,7 @@ func TestFingerprint(t *testing.T) {
 				t.Fatalf("Failed to initialize HTTP client: %v", err)
 			}
 
-			m, err := New(context.Background(), cfg)
+			m, err := New(t.Context(), cfg)
 			if err != nil {
 				t.Fatalf("New(%v) returned an unexpected error: %v", cfg, err)
 			}
@@ -132,7 +132,7 @@ func TestFingerprint(t *testing.T) {
 			tc.service.NetworkEndpoint = endpoint
 			service := tc.service.Build()
 
-			gotServices, err := m.Fingerprint(context.Background(), service)
+			gotServices, err := m.Fingerprint(t.Context(), service)
 			if err != nil {
 				t.Fatalf("Fingerprint(%v) returned an unexpected error: %v", service, err)
 			}
@@ -169,9 +169,9 @@ func TestFingerprint_ErrorCases(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.FromProto(&cpb.Config{})
-			m, _ := New(context.Background(), cfg)
+			m, _ := New(t.Context(), cfg)
 
-			_, err := m.Fingerprint(context.Background(), tc.service)
+			_, err := m.Fingerprint(t.Context(), tc.service)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Fingerprint() error = %v, want %v", err, tc.wantErr)
 			}
@@ -180,11 +180,11 @@ func TestFingerprint_ErrorCases(t *testing.T) {
 }
 
 func TestFingerprint_ContextCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	cfg := config.FromProto(&cpb.Config{})
-	m, _ := New(context.Background(), cfg)
+	m, _ := New(t.Context(), cfg)
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: nepb.NetworkEndpoint_builder{

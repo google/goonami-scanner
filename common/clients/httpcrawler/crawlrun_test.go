@@ -53,7 +53,7 @@ func TestCrawlRun_Callback(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &crawlRun{callback: tc.callback}
 			pi := &PageInfo{}
-			err := r.Callback(context.Background(), pi, nil, nil)
+			err := r.Callback(t.Context(), pi, nil, nil)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Callback() error: got %v, want %v", err, tc.wantErr)
 			}

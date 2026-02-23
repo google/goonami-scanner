@@ -101,7 +101,7 @@ func TestRegisterPortScanner(t *testing.T) {
 
 			r.portScanner = tc.existingScanner
 
-			if err := r.RegisterPortScanner(context.Background(), tc.module); !errors.Is(err, tc.wantErr) {
+			if err := r.RegisterPortScanner(t.Context(), tc.module); !errors.Is(err, tc.wantErr) {
 				t.Fatalf("RegisterPortScanner() returned error %v, want error %v", err, tc.wantErr)
 			}
 
@@ -145,7 +145,7 @@ func TestRegisterFingerprinter(t *testing.T) {
 			}
 
 			for _, m := range tc.modules {
-				err = r.RegisterFingerprinter(context.Background(), m)
+				err = r.RegisterFingerprinter(t.Context(), m)
 				if err != nil {
 					break
 				}
@@ -201,7 +201,7 @@ func TestRegisterDetector(t *testing.T) {
 			}
 
 			for _, m := range tc.modules {
-				err = r.RegisterDetector(context.Background(), m)
+				err = r.RegisterDetector(t.Context(), m)
 				if err != nil {
 					break
 				}
@@ -280,7 +280,7 @@ func TestPortScanStep(t *testing.T) {
 			}
 
 			r.portScanner = tc.portScanner
-			got, err := r.PortScanStep(context.Background(), tc.target)
+			got, err := r.PortScanStep(t.Context(), tc.target)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("PortScanStep() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -385,7 +385,7 @@ func TestFingerprintStep(t *testing.T) {
 			}
 
 			r.fingerprinters = tc.fingerprinters
-			got, err := r.FingerprintStep(context.Background(), portScanReport)
+			got, err := r.FingerprintStep(t.Context(), portScanReport)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("FingerprintStep() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -494,7 +494,7 @@ func TestDetectStep(t *testing.T) {
 			}
 
 			r.detectors = tc.detectors
-			got, err := r.DetectStep(context.Background(), fingerprintReport)
+			got, err := r.DetectStep(t.Context(), fingerprintReport)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("DetectStep() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -614,7 +614,7 @@ func TestRun(t *testing.T) {
 			r.portScanner = tc.portScanner
 			r.fingerprinters = tc.fingerprinters
 			r.detectors = tc.detectors
-			got, err := r.Run(context.Background(), "irrelevant")
+			got, err := r.Run(t.Context(), "irrelevant")
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}

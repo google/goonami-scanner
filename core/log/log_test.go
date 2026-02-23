@@ -69,7 +69,7 @@ func TestDefaultLoggerDebugf(t *testing.T) {
 			buf.Reset()
 			l := &DefaultLogger{VerboseLevel: tc.wantToSee}
 			const msg = "test message"
-			l.DebugContextf(context.Background(), tc.logAtLevel, msg)
+			l.DebugContextf(t.Context(), tc.logAtLevel, msg)
 
 			if !tc.wantOutput {
 				if buf.Len() > 0 {
@@ -118,7 +118,7 @@ func TestDefaultLoggerDebug(t *testing.T) {
 			buf.Reset()
 			l := &DefaultLogger{VerboseLevel: tc.wantToSee}
 			msg := "test message"
-			l.DebugContext(context.Background(), tc.logAtLevel, msg)
+			l.DebugContext(t.Context(), tc.logAtLevel, msg)
 
 			if !tc.wantOutput {
 				if buf.Len() > 0 {
@@ -161,31 +161,31 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 	}{
 		{
 			name:       "when_no_metadata_no_prefix",
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			msg:        "test",
 			wantPrefix: "INFO test",
 		},
 		{
 			name:       "when_module_metadata_module_prefix",
-			ctx:        ContextForModule(context.Background(), "my-module"),
+			ctx:        ContextForModule(t.Context(), "my-module"),
 			msg:        "test",
 			wantPrefix: "INFO [ my-module ] test",
 		},
 		{
 			name:       "when_service_metadata_service_prefix",
-			ctx:        ContextForService(context.Background(), svc80),
+			ctx:        ContextForService(t.Context(), svc80),
 			msg:        "test",
 			wantPrefix: "INFO [    80 ] test",
 		},
 		{
 			name:       "when_both_metadata_both_prefix",
-			ctx:        ContextForModuleAndService(context.Background(), "my-module", svc443),
+			ctx:        ContextForModuleAndService(t.Context(), "my-module", svc443),
 			msg:        "test",
 			wantPrefix: "INFO [   443 ] [ my-module ] test",
 		},
 		{
 			name:       "when_vuln_level_vuln_prefix",
-			ctx:        context.Background(),
+			ctx:        t.Context(),
 			msg:        "test",
 			wantPrefix: "VULN test",
 			isVuln:     true,
@@ -218,7 +218,7 @@ func TestDefaultLoggerColors(t *testing.T) {
 			}.Build(),
 		}.Build(),
 	}.Build()
-	ctx := ContextForModuleAndService(context.Background(), "my-module", svc443)
+	ctx := ContextForModuleAndService(t.Context(), "my-module", svc443)
 	buf.Reset()
 	l := &DefaultLogger{UseColors: true}
 	l.InfoContext(ctx, "test message")
@@ -241,7 +241,7 @@ func TestDefaultLoggerColors(t *testing.T) {
 }
 
 func TestDefaultLoggerVulnColors(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	buf.Reset()
 	l := &DefaultLogger{UseColors: true}
 	l.VulnContext(ctx, "vuln message")

@@ -70,7 +70,7 @@ func TestFakeRunner_RegisterPortScanner(t *testing.T) {
 			r := New()
 			r.OverrideRegisterPortScanner(tc.overrideFn)
 
-			err := r.RegisterPortScanner(context.Background(), tc.ps)
+			err := r.RegisterPortScanner(t.Context(), tc.ps)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("RegisterPortScanner(%v) returned error %v, wantErr=%v", tc.ps, err, tc.wantErr)
 			}
@@ -127,7 +127,7 @@ func TestFakeRunner_RegisterFingerprinter(t *testing.T) {
 			r := New()
 			r.OverrideRegisterFingerprinter(tc.overrideFn)
 
-			err := r.RegisterFingerprinter(context.Background(), tc.fp)
+			err := r.RegisterFingerprinter(t.Context(), tc.fp)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("RegisterFingerprinter(%v) returned error %v, wantErr=%v", tc.fp, err, tc.wantErr)
 			}
@@ -184,7 +184,7 @@ func TestFakeRunner_RegisterDetector(t *testing.T) {
 			r := New()
 			r.OverrideRegisterDetector(tc.overrideFn)
 
-			err := r.RegisterDetector(context.Background(), tc.d)
+			err := r.RegisterDetector(t.Context(), tc.d)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("RegisterDetector(%v) returned error %v, wantErr=%v", tc.d, err, tc.wantErr)
 			}
@@ -235,7 +235,7 @@ func TestFakeRunner_Run(t *testing.T) {
 			r := New()
 			r.OverrideRun(tc.overrideFn)
 
-			res, err := r.Run(context.Background(), "target")
+			res, err := r.Run(t.Context(), "target")
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Run() returned error %v, wantErr=%v", err, tc.wantErr)
 			}

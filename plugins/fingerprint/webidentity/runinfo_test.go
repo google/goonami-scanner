@@ -17,7 +17,6 @@
 package webidentity
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -125,7 +124,7 @@ func TestRunInfo_AddMatch(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ri := runInfo{matches: tc.existing(), crawlResults: make(map[string]*wcpb.CrawlResult)}
-			ri.AddMatch(context.Background(), tc.new)
+			ri.AddMatch(t.Context(), tc.new)
 			if diff := cmp.Diff(tc.want, ri.matches, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("AddMatch(...) resulted in unexpected matches diff (-want +got):\n%s", diff)
 			}
@@ -173,8 +172,8 @@ func TestRunInfo_Matches(t *testing.T) {
 	ri := createRunInfo()
 	id1 := &hash.Identity{Software: "foo", PotentialRoots: []string{"/"}, Versions: []string{"1.0"}}
 	id2 := &hash.Identity{Software: "bar", PotentialRoots: []string{"/bar"}, Versions: []string{"2.0"}}
-	ri.AddMatch(context.Background(), id1)
-	ri.AddMatch(context.Background(), id2)
+	ri.AddMatch(t.Context(), id1)
+	ri.AddMatch(t.Context(), id2)
 
 	want := map[string][]*hash.Identity{
 		"foo": []*hash.Identity{id1},

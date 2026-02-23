@@ -328,9 +328,8 @@ func TestCrawl(t *testing.T) {
 			if err := goohttp.InitializeDefaults(tc.config); err != nil {
 				t.Fatalf("failed to initialize http library defaults: %v", err)
 			}
-			sc := NewSimpleCrawler(context.Background(), tc.config)
-
-			ctx := context.Background()
+			ctx := t.Context()
+			sc := NewSimpleCrawler(ctx, tc.config)
 			stats, err := sc.Crawl(ctx, tc.callback, tc.startURLs)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Crawl() returned error %v, want %v", err, tc.wantErr)

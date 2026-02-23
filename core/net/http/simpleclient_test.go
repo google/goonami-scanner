@@ -143,7 +143,7 @@ func TestDo_ContextCancelled(t *testing.T) {
 		t.Fatalf("NewSimpleClient() failed: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	req, _ := http.NewRequestWithContext(ctx, "GET", "http://localhost", nil)

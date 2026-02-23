@@ -17,7 +17,6 @@
 package actions
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -57,7 +56,7 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 			runner := &UtilityActionRunner{}
 			env := environment.New(config.Default())
 			start := time.Now()
-			gotOk := runner.Run(context.Background(), nil, tc.action, env)
+			gotOk := runner.Run(t.Context(), nil, tc.action, env)
 			elapsed := time.Since(start)
 
 			if gotOk != tc.wantOk {

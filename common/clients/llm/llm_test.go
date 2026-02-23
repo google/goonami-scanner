@@ -194,7 +194,7 @@ func TestRun(t *testing.T) {
 				tc.tamper(c)
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			if tc.cancelContext {
 				var cancel context.CancelFunc
 				ctx, cancel = context.WithCancel(ctx)
@@ -242,7 +242,7 @@ func TestRun_SessionCreateError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	_, err = c.Run(context.Background(), &genai.Content{}, func(ctx context.Context, result string) error { return nil })
+	_, err = c.Run(t.Context(), &genai.Content{}, func(ctx context.Context, result string) error { return nil })
 	if !errors.Is(err, ErrMaxAttemptsReached) {
 		t.Errorf("Run() error = %v, wantErr %v", err, ErrMaxAttemptsReached)
 	}

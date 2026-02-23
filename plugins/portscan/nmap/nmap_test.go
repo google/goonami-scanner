@@ -17,7 +17,6 @@
 package nmap
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -36,7 +35,7 @@ import (
 
 func TestNew(t *testing.T) {
 	config := &config.Config{}
-	got, err := New(context.Background(), config)
+	got, err := New(t.Context(), config)
 	if err != nil {
 		t.Fatalf("New(%v) failed: %v", config, err)
 	}
@@ -379,7 +378,7 @@ func TestScan(t *testing.T) {
 				client:     client,
 			}
 
-			got, err := m.Scan(context.Background(), "target")
+			got, err := m.Scan(t.Context(), "target")
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Scan() error, got: %v, want: %v", err, tc.wantErr)
 			}

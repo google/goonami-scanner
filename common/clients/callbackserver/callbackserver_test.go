@@ -17,7 +17,6 @@
 package callbackserver
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -124,7 +123,7 @@ func TestNew(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.FromProto(tc.config)
-			_, err := new(context.Background(), cfg)
+			_, err := new(t.Context(), cfg)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("New() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -322,12 +321,13 @@ func TestClient_Interaction(t *testing.T) {
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
 				t.Fatalf("failed to initialize default HTTP client: %v", err)
 			}
-			client, err := new(context.Background(), cfg)
+			ctx := t.Context()
+			client, err := new(ctx, cfg)
 			if err != nil {
 				t.Fatalf("failed to create callback server client: %v", err)
 			}
 
-			got, err := client.HasInteraction(context.Background(), tc.secret)
+			got, err := client.HasInteraction(ctx, tc.secret)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("HasInteraction() error = %v, wantErr %v", err, tc.wantErr)
 				return

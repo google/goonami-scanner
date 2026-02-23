@@ -17,7 +17,6 @@
 package templatedengine
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -155,12 +154,12 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			}
 
 			proto := loadProto(t, tc.protoFile)
-			detector, err := New(context.Background(), cfg, proto, goohttp.DefaultClient())
+			detector, err := New(t.Context(), cfg, proto, goohttp.DefaultClient())
 			if err != nil {
 				t.Fatalf("Failed to create detector: %v", err)
 			}
 
-			reports, err := detector.Detect(context.Background(), service)
+			reports, err := detector.Detect(t.Context(), service)
 			if err != nil {
 				t.Fatalf("Detect failed: %v", err)
 			}
@@ -198,7 +197,7 @@ func TestLoadPlugins(t *testing.T) {
 	}
 
 	for i, fn := range initFns {
-		_, err := fn(context.Background(), cfg)
+		_, err := fn(t.Context(), cfg)
 		if err != nil {
 			t.Errorf("initFns[%d]() failed: %v", i, err)
 			continue
@@ -218,8 +217,8 @@ func TestTemplatedDetector_Detect_NonWebService(t *testing.T) {
 	proto := loadProto(t, "testdata/non_web_service.textproto")
 
 	cfg := config.Default()
-	detector, _ := New(context.Background(), cfg, proto, goohttp.DefaultClient())
-	reports, err := detector.Detect(context.Background(), service)
+	detector, _ := New(t.Context(), cfg, proto, goohttp.DefaultClient())
+	reports, err := detector.Detect(t.Context(), service)
 	if err != nil {
 		t.Fatalf("Detect failed: %v", err)
 	}
