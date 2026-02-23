@@ -23,11 +23,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	"github.com/google/goonami-scanner/core/config"
-	cfgpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/proto"
+
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	cfgpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 func TestGenerateCBID(t *testing.T) {

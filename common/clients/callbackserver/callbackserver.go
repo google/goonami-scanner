@@ -25,8 +25,6 @@ import (
 	"net/http"
 	"strings"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
-	ppb "github.com/google/goonami-scanner/common/clients/callbackserver/polling_go_proto"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
@@ -34,6 +32,9 @@ import (
 	"golang.org/x/crypto/sha3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	ppb "github.com/google/goonami-scanner/common/clients/callbackserver/polling_go_proto"
 )
 
 var (

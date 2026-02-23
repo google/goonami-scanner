@@ -22,10 +22,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestFakeDetectFnNoFindings(t *testing.T) {

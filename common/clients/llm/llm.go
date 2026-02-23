@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"time"
 
-	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/pborman/uuid"
@@ -32,6 +31,8 @@ import (
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/proto"
+
+	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 )
 
 const (

@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
-
 	"golang.org/x/time/rate"
 )
 

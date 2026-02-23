@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )

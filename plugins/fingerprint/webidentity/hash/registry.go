@@ -20,8 +20,9 @@ import (
 	"slices"
 	"strings"
 
-	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	"github.com/twmb/murmur3"
+
+	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 )
 
 // Registry is a registry of known hashes and their associated identities.

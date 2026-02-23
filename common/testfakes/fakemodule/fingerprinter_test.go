@@ -22,8 +22,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 func TestFakeFingerprintFnDoNothing(t *testing.T) {

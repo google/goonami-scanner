@@ -29,13 +29,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	llmcpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	"google.golang.org/protobuf/proto"
+
+	llmcpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestDefaultConfig(t *testing.T) {

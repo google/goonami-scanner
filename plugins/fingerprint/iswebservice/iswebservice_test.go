@@ -27,16 +27,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
-
-	"github.com/google/go-cmp/cmp"
-	nepb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
-	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	nepb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 func TestFingerprint(t *testing.T) {

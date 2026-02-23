@@ -22,10 +22,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestFakePortScanFnDoNothing(t *testing.T) {

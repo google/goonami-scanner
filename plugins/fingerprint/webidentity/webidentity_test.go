@@ -31,17 +31,18 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
-	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
+
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	wfpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	spb "github.com/google/tsunami-security-scanner/proto/go/software_go_proto"
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNew(t *testing.T) {

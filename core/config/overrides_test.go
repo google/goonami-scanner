@@ -21,11 +21,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	ncpb "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	wfcpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestApplyOverrides(t *testing.T) {

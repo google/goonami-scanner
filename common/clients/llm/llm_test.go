@@ -23,13 +23,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"google.golang.org/adk/session"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/proto"
+
+	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 func TestNew(t *testing.T) {

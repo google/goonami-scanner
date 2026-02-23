@@ -25,6 +25,7 @@ import (
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
+
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 )
 

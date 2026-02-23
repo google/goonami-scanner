@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"github.com/google/goonami-scanner/core/module"
+
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 

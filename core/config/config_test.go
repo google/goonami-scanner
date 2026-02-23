@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"google.golang.org/protobuf/proto"
+
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 const (

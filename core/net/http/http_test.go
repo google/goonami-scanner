@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
+
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 

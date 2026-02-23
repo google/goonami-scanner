@@ -29,8 +29,9 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
-	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
 type fakeHTTPClient struct{}

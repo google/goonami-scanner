@@ -25,17 +25,17 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
-
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
+	"github.com/google/goonami-scanner/core/config"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
+
 	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
-	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestTemplatedDetector_Detect(t *testing.T) {

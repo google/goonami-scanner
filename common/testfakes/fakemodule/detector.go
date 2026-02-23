@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
+
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )

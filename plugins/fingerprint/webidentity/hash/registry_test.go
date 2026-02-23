@@ -20,8 +20,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	"github.com/twmb/murmur3"
+
+	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 )
 
 func TestNewRegistry(t *testing.T) {

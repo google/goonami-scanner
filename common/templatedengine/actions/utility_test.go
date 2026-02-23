@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
+
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
 

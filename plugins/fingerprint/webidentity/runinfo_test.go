@@ -24,8 +24,9 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
-	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 	"google.golang.org/protobuf/testing/protocmp"
+
+	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 )
 
 func createRunInfo() *runInfo {

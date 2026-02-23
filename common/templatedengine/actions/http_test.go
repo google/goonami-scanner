@@ -29,11 +29,11 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
-	"google.golang.org/protobuf/encoding/prototext"
 )
 
 func TestHTTPActionRunner_Run(t *testing.T) {

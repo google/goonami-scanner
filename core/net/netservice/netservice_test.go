@@ -22,10 +22,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestHasTLS(t *testing.T) {

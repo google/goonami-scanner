@@ -26,11 +26,12 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakenmap"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
+	"google.golang.org/protobuf/testing/protocmp"
+
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	spb "github.com/google/tsunami-security-scanner/proto/go/software_go_proto"
-	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNew(t *testing.T) {

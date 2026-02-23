@@ -24,9 +24,10 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
+
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 func TestNewSimpleClient(t *testing.T) {
