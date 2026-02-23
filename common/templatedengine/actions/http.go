@@ -110,7 +110,7 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 
 	if expectedStatus := httpAction.GetResponse().GetHttpStatus(); expectedStatus != 0 {
 		if int64(resp.StatusCode) != expectedStatus {
-			log.DebugContextf(ctx, log.DebugLevelRequest, "workflow failed: expected status code %d, got %d", expectedStatus, resp.StatusCode)
+			log.DebugContextf(ctx, log.DebugLevelService, "workflow failed: expected status code %d, got %d", expectedStatus, resp.StatusCode)
 			return false
 		}
 	}
@@ -131,7 +131,7 @@ func (r *HTTPActionRunner) checkExpectations(ctx context.Context, resp *http.Res
 	if expectAll := response.GetExpectAll(); expectAll != nil {
 		for _, cond := range expectAll.GetConditions() {
 			if !r.checkExpectation(ctx, resp, body, cond, env) {
-				log.DebugContextf(ctx, log.DebugLevelRequest, "expectation failed: %v", cond)
+				log.DebugContextf(ctx, log.DebugLevelService, "expectation failed: %v", cond)
 				return false
 			}
 		}
@@ -144,7 +144,7 @@ func (r *HTTPActionRunner) checkExpectations(ctx context.Context, resp *http.Res
 				return true
 			}
 		}
-		log.DebugContextf(ctx, log.DebugLevelRequest, "all expectations failed")
+		log.DebugContextf(ctx, log.DebugLevelService, "all expectations failed")
 		return false
 	}
 	return true
@@ -167,7 +167,7 @@ func (r *HTTPActionRunner) performExtractions(ctx context.Context, resp *http.Re
 	if extractAll := response.GetExtractAll(); extractAll != nil {
 		for _, ext := range extractAll.GetPatterns() {
 			if !r.performExtraction(ctx, resp, body, ext, env) {
-				log.DebugContextf(ctx, log.DebugLevelRequest, "extraction failed: %v", ext)
+				log.DebugContextf(ctx, log.DebugLevelService, "extraction failed: %v", ext)
 				return false
 			}
 		}
@@ -179,7 +179,7 @@ func (r *HTTPActionRunner) performExtractions(ctx context.Context, resp *http.Re
 				return true
 			}
 		}
-		log.DebugContextf(ctx, log.DebugLevelRequest, "all extractions failed")
+		log.DebugContextf(ctx, log.DebugLevelService, "all extractions failed")
 		return false
 	}
 	return true

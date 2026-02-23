@@ -117,7 +117,7 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 		}
 
 		if i > 0 {
-			log.DebugContextf(ctx, log.DebugLevelRequest, "waiting %v before next attempt", retryDelay)
+			log.DebugContextf(ctx, log.DebugLevelService, "waiting %v before next attempt", retryDelay)
 			time.Sleep(retryDelay)
 		}
 
@@ -128,12 +128,12 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 				errLog = errors.New("(truncated) " + errLog.Error()[:200])
 			}
 
-			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, errLog)
+			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, errLog)
 			continue
 		}
 
 		if err := verifier(ctx, resp); err != nil {
-			log.DebugContextf(ctx, log.DebugLevelRequest, "(attempt %d of %d) agent's response verification failed: %v", i+1, maxAttempts, err)
+			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) agent's response verification failed: %v", i+1, maxAttempts, err)
 			continue
 		}
 

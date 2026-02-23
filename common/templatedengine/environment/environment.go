@@ -140,7 +140,7 @@ func (e *Environment) Extract(ctx context.Context, content, varname, pattern str
 
 	matches := re.FindStringSubmatch(content)
 	if len(matches) < 2 {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "failed to extract variable '%s' from content using pattern '%s'", varname, pattern)
+		log.DebugContextf(ctx, log.DebugLevelService, "failed to extract variable '%s' from content using pattern '%s'", varname, pattern)
 		return false
 	}
 
