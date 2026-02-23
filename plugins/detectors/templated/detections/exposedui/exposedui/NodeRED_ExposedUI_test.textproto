@@ -1,0 +1,39 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "NodeRED_ExposedUI"
+}
+
+# TODO: b/445109504 - In the current state of things, it is not possible to
+# unit test the valid condition of that plugin extensively. The templated unit
+# testing system needs to allow for different answers for the same URI.
+
+tests: {
+  name: "whenNotNodeRedNotFound_returnsNoVuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/flows"
+        status: 404
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotNodeRedInvalidResponse_returnsNoVuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/flows"
+        status: 202
+        body_content: "{\"error\": \"invalid response\"}"
+      }
+    ]
+  }
+}
