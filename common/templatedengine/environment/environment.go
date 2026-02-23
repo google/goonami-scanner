@@ -53,20 +53,20 @@ func New(cfg *config.Config) *Environment {
 
 // InitializeFor initializes the environment for a specific network service.
 func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkService) error {
-	e.Set("T_UTL_CURRENT_TIMESTAMP_MS", fmt.Sprintf("%d", time.Now().UnixMilli()))
+	e.Set(VarUtilTimestamp, fmt.Sprintf("%d", time.Now().UnixMilli()))
 
 	webRoot, err := netservice.BuildWebRoot(service)
 	if err != nil {
 		return err
 	}
 
-	e.Set("T_NS_BASEURL", webRoot)
-	e.Set("T_NS_PROTOCOL", strings.TrimSpace(service.GetTransportProtocol().String()))
+	e.Set(VarNetServiceBaseURL, webRoot)
+	e.Set(VarNetServiceProtocol, strings.TrimSpace(service.GetTransportProtocol().String()))
 
 	endpoint := service.GetNetworkEndpoint()
-	e.Set("T_NS_HOSTNAME", strings.TrimSpace(endpoint.GetHostname().GetName()))
-	e.Set("T_NS_PORT", fmt.Sprintf("%d", endpoint.GetPort().GetPortNumber()))
-	e.Set("T_NS_IP", strings.TrimSpace(endpoint.GetIpAddress().GetAddress()))
+	e.Set(VarNetServiceHostname, strings.TrimSpace(endpoint.GetHostname().GetName()))
+	e.Set(VarNetServicePort, fmt.Sprintf("%d", endpoint.GetPort().GetPortNumber()))
+	e.Set(VarNetServiceIP, strings.TrimSpace(endpoint.GetIpAddress().GetAddress()))
 
 	if err := e.callbackServerInitialization(ctx); err != nil {
 		return err
@@ -99,10 +99,10 @@ func (e *Environment) callbackServerInitialization(ctx context.Context) error {
 		return err
 	}
 
-	e.Set("T_CBS_URI", uri)
-	e.Set("T_CBS_SECRET", secret)
-	e.Set("T_CBS_PORT", strconv.Itoa(int(client.CallbackPort())))
-	e.Set("T_CBS_ADDRESS", client.CallbackAddress())
+	e.Set(VarCallbackURI, uri)
+	e.Set(VarCallbackSecret, secret)
+	e.Set(VarCallbackPort, strconv.Itoa(int(client.CallbackPort())))
+	e.Set(VarCallbackAddress, client.CallbackAddress())
 	return nil
 }
 

@@ -51,7 +51,7 @@ func (r *CallbackServerActionRunner) Run(ctx context.Context, service *nspb.Netw
 		return false
 	}
 
-	secret, ok := env.Get("T_CBS_SECRET")
+	secret, ok := env.Get(environment.VarCallbackSecret)
 	if !ok {
 		return false
 	}

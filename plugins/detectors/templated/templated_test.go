@@ -201,11 +201,11 @@ func httpMockServer(t *testing.T, tc *ttpb.TemplatedPluginTests_Test, env *envir
 			mockURL := env.Substitute(ctx, mockResp.GetUri())
 			// mockURL is the path, i.e. /index.php?foo=bar, so it should start with a "/". But if it is
 			// one of the magic strings, it should not have a leading "/".
-			if mockURL[0] != '/' && !strings.HasPrefix(mockURL, "TSUNAMI_MAGIC_") {
+			if mockURL[0] != '/' && !strings.HasPrefix(mockURL, environment.VarTestingMagicPrefix) {
 				mockURL = "/" + mockURL
 			}
 
-			if mockURL != "TSUNAMI_MAGIC_ANY_URI" && r.URL.String() != mockURL && r.URL.Path != mockURL {
+			if mockURL != environment.VarTestingMagicAnyURI && r.URL.String() != mockURL && r.URL.Path != mockURL {
 				continue
 			}
 

@@ -51,12 +51,12 @@ func TestEnvironment_InitializeFor(t *testing.T) {
 		wantVal  string
 		wantExpr *regexp.Regexp
 	}{
-		{key: "T_NS_HOSTNAME", wantVal: "example.com"},
-		{key: "T_NS_PORT", wantVal: "80"},
-		{key: "T_NS_IP", wantVal: "1.2.3.4"},
-		{key: "T_NS_PROTOCOL", wantVal: "TCP"},
-		{key: "T_NS_BASEURL", wantVal: "http://example.com:80"},
-		{key: "T_UTL_CURRENT_TIMESTAMP_MS", wantExpr: regexp.MustCompile(`^\d+$`)},
+		{key: VarNetServiceHostname, wantVal: "example.com"},
+		{key: VarNetServicePort, wantVal: "80"},
+		{key: VarNetServiceIP, wantVal: "1.2.3.4"},
+		{key: VarNetServiceProtocol, wantVal: "TCP"},
+		{key: VarNetServiceBaseURL, wantVal: "http://example.com:80"},
+		{key: VarUtilTimestamp, wantExpr: regexp.MustCompile(`^\d+$`)},
 	}
 
 	for _, tc := range tests {
@@ -101,12 +101,12 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 				PollingBaseUrl:  proto.String("http://polling.com"),
 			}.Build(),
 			wantVars: map[string]string{
-				"T_CBS_ADDRESS": "10.0.0.1",
-				"T_CBS_PORT":    "8080",
+				VarCallbackAddress: "10.0.0.1",
+				VarCallbackPort:    "8080",
 			},
 			wantPatterns: map[string]*regexp.Regexp{
-				"T_CBS_SECRET": regexp.MustCompile(`^[a-f0-9]{256}$`),                        // 128 bytes hex encoded
-				"T_CBS_URI":    regexp.MustCompile(`^http://10\.0\.0\.1:8080/[a-f0-9]{56}$`), // SHA3-224 is 56 hex chars
+				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{256}$`),                        // 128 bytes hex encoded
+				VarCallbackURI:    regexp.MustCompile(`^http://10\.0\.0\.1:8080/[a-f0-9]{56}$`), // SHA3-224 is 56 hex chars
 			},
 		},
 		{
@@ -117,22 +117,22 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 				PollingBaseUrl:  proto.String("http://polling.com"),
 			}.Build(),
 			wantVars: map[string]string{
-				"T_CBS_ADDRESS": "callback.com",
-				"T_CBS_PORT":    "80",
+				VarCallbackAddress: "callback.com",
+				VarCallbackPort:    "80",
 			},
 			wantPatterns: map[string]*regexp.Regexp{
-				"T_CBS_SECRET": regexp.MustCompile(`^[a-f0-9]{256}$`),
-				"T_CBS_URI":    regexp.MustCompile(`^[a-f0-9]{56}\.callback\.com:80$`),
+				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{256}$`),
+				VarCallbackURI:    regexp.MustCompile(`^[a-f0-9]{56}\.callback\.com:80$`),
 			},
 		},
 		{
 			name:      "when_callback_server_is_disabled_does_not_set_variables",
 			cbsConfig: &cscpb.CallbackServerClientConfig{},
 			wantVars: map[string]string{
-				"T_CBS_ADDRESS": "",
-				"T_CBS_PORT":    "",
-				"T_CBS_SECRET":  "",
-				"T_CBS_URI":     "",
+				VarCallbackAddress: "",
+				VarCallbackPort:    "",
+				VarCallbackSecret:  "",
+				VarCallbackURI:     "",
 			},
 		},
 	}
