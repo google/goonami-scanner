@@ -39,6 +39,9 @@ import (
 	"github.com/google/goonami-scanner/plugins/fingerprint/sslsupport"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
 
+	// detectors
+	"github.com/google/goonami-scanner/plugins/detectors/templated"
+
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
@@ -74,6 +77,10 @@ var fingerprinters = []module.InitFingerprinterFn{
 	// it should be the last plugin in the list.
 	webidentity.New,
 }
+
+// The list of detectors to use for the scan.
+// Note that templated detectors are added dynamically.
+var detectors = []module.InitVulnDetectorFn{}
 
 var (
 	// ConfigFlag controls the path to the configuration file of the scanner.
@@ -134,12 +141,21 @@ func run(ctx context.Context) error {
 		UseColors:    *ColorFlag,
 	}
 
+	log.InfoContextf(ctx, "loading templated detectors")
+	templatedLoader := templated.NewLoader()
+	templatedDetectors, err := templatedLoader.AllPlugins(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load templated detectors: %w", err)
+	}
+	detectors = append(detectors, templatedDetectors...)
+
 	log.InfoContextf(ctx, "initializing the scanner's entrypoint")
 	options := &entrypoint.Options{
 		Config:         cfg,
 		Logger:         logger,
 		PortScanner:    portScanner,
 		Fingerprinters: fingerprinters,
+		Detectors:      detectors,
 	}
 
 	e, err := entrypoint.New(ctx, options)
