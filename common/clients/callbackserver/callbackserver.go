@@ -19,17 +19,16 @@ package callbackserver
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/iputils"
-	"golang.org/x/crypto/sha3"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -113,7 +112,7 @@ func (c *Client) GetCallbackURI(secret string) (string, error) {
 		return "", ErrInvalidConfig
 	}
 
-	cbid, err := GenerateCBID(secret)
+	id, err := cbid.Generate(secret)
 	if err != nil {
 		return "", err
 	}
@@ -123,11 +122,11 @@ func (c *Client) GetCallbackURI(secret string) (string, error) {
 
 	// For IPs, we use the HTTP format.
 	if iputils.IsIP(address) {
-		return fmt.Sprintf("http://%s:%d/%s", address, port, cbid), nil
+		return fmt.Sprintf("http://%s:%d/%s", address, port, id), nil
 	}
 
 	// For domains, we use it as a subdomain.
-	return fmt.Sprintf("%s.%s:%d", cbid, address, port), nil
+	return fmt.Sprintf("%s.%s:%d", id, address, port), nil
 }
 
 // CallbackPort of the server. Expects caller to have called IsCallbackServerEnabled first.
@@ -191,14 +190,4 @@ func (c *Client) poll(ctx context.Context, secret string) (*ppb.PollingResult, e
 	}
 
 	return result, nil
-}
-
-// GenerateCBID generates a CBID from a secret string using SHA3-224.
-func GenerateCBID(secret string) (string, error) {
-	d := sha3.New224()
-	if _, err := d.Write([]byte(secret)); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(d.Sum(nil)), nil
 }

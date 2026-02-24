@@ -31,37 +31,6 @@ import (
 	cfgpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
-func TestGenerateCBID(t *testing.T) {
-	tests := []struct {
-		name   string
-		secret string
-		want   string
-	}{
-		{
-			name:   "when_secret_is_empty_returns_hash_of_empty_string",
-			secret: "",
-			want:   "6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7",
-		},
-		{
-			name:   "when_secret_is_provided_returns_sha3_224_hash",
-			secret: "a3d9ed89deadbeef",
-			want:   "04041e8898e739ca33a250923e24f59ca41a8373f8cf6a45a1275f3b",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := GenerateCBID(tc.secret)
-			if err != nil {
-				t.Fatalf("GenerateCBID(%q) unexpected error: %v", tc.secret, err)
-			}
-			if got != tc.want {
-				t.Errorf("GenerateCBID(%q) = %q, want %q", tc.secret, got, tc.want)
-			}
-		})
-	}
-}
-
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
