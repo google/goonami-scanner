@@ -37,8 +37,18 @@ func (r *UtilityActionRunner) Run(ctx context.Context, service *nspb.NetworkServ
 	}
 
 	if sleep := utility.GetSleep(); sleep != nil {
-		time.Sleep(time.Duration(sleep.GetDurationMs()) * time.Millisecond)
+		return sleepAction(ctx, sleep, env)
+	}
+
+	return false
+}
+
+func sleepAction(ctx context.Context, sleep *tpb.SleepUtilityAction, env *environment.Environment) bool {
+	disabled, ok := env.Get(environment.VarTestingDisableSleep)
+	if ok && disabled == "true" {
 		return true
 	}
-	return false
+
+	time.Sleep(time.Duration(sleep.GetDurationMs()) * time.Millisecond)
+	return true
 }

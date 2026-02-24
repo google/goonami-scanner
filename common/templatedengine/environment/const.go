@@ -57,4 +57,8 @@ const (
 	// VarTestingMagicEchoServer (Testing) is a magic that forces the engine to repeat the request as
 	// the HTTP response.
 	VarTestingMagicEchoServer = "TSUNAMI_MAGIC_ECHO_SERVER"
+
+	// VarTestingDisableSleep (Testing) is an environment variable that can be used to disable the
+	// sleep utility action.
+	VarTestingDisableSleep = "T_TST_DISABLE_SLEEP"
 )

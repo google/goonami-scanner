@@ -155,6 +155,7 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	}
 
 	env := environment.New(cfg)
+	env.Set(environment.VarTestingDisableSleep, "true")
 	httpmock := httpMockServer(t, tc, env)
 	defer httpmock.Close()
 

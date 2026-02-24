@@ -28,10 +28,11 @@ import (
 
 func TestUtilityActionRunner_Run(t *testing.T) {
 	tests := []struct {
-		name    string
-		action  *tpb.PluginAction
-		wantOk  bool
-		minTime time.Duration
+		name         string
+		action       *tpb.PluginAction
+		wantOk       bool
+		minTime      time.Duration
+		disableSleep bool
 	}{
 		{
 			name: "when_sleep_action_sleeps",
@@ -42,6 +43,16 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 			}.Build(),
 			wantOk:  true,
 			minTime: 10 * time.Millisecond,
+		},
+		{
+			name: "when_sleep_action_is_disabled_it_does_not_sleep",
+			action: tpb.PluginAction_builder{
+				Utility: tpb.UtilityAction_builder{
+					Sleep: tpb.SleepUtilityAction_builder{DurationMs: 10000}.Build(),
+				}.Build(),
+			}.Build(),
+			wantOk:       true,
+			disableSleep: true,
 		},
 		{
 			name: "when_not_utility_action_returns_false",
@@ -56,6 +67,11 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			runner := &UtilityActionRunner{}
 			env := environment.New(config.Default())
+
+			if tc.disableSleep {
+				env.Set(environment.VarTestingDisableSleep, "true")
+			}
+
 			start := time.Now()
 			gotOk := runner.Run(t.Context(), nil, tc.action, env)
 			elapsed := time.Since(start)
@@ -65,6 +81,9 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 			}
 			if tc.minTime > 0 && elapsed < tc.minTime {
 				t.Errorf("Run() took %v, want at least %v", elapsed, tc.minTime)
+			}
+			if tc.disableSleep && elapsed >= 1*time.Second {
+				t.Errorf("Run() took %v, but sleep should be disabled", elapsed)
 			}
 		})
 	}
