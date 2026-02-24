@@ -167,7 +167,7 @@ func TestClient_GetCallbackURI(t *testing.T) {
 			wantErr: ErrInvalidConfig,
 		},
 		{
-			name: "when_address_is_ip_returns_path_format",
+			name: "when_address_is_ip_returns_http_format",
 			config: cscpb.CallbackServerClientConfig_builder{
 				CallbackAddress: proto.String("1.2.3.4"),
 				CallbackPort:    proto.Int32(8080),
@@ -178,14 +178,14 @@ func TestClient_GetCallbackURI(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "when_address_is_domain_returns_subdomain_format",
+			name: "when_address_is_domain_returns_http_format",
 			config: cscpb.CallbackServerClientConfig_builder{
 				CallbackAddress: proto.String("callback.com"),
 				CallbackPort:    proto.Int32(80),
 				PollingBaseUrl:  proto.String("http://localhost.lan"),
 			}.Build(),
 			secret:  "test",
-			want:    "3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b.callback.com:80",
+			want:    "http://callback.com:80/3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b",
 			wantErr: nil,
 		},
 	}

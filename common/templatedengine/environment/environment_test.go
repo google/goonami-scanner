@@ -126,7 +126,7 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 			},
 			wantPatterns: map[string]*regexp.Regexp{
 				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{256}$`),
-				VarCallbackURI:    regexp.MustCompile(`^[a-f0-9]{56}\.callback\.com:80$`),
+				VarCallbackURI:    regexp.MustCompile(`^http://callback\.com:80/[a-f0-9]{56}$`),
 			},
 		},
 		{

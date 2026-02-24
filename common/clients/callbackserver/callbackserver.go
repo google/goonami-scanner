@@ -25,10 +25,10 @@ import (
 	"strings"
 
 	"github.com/google/goonami-scanner/common/callbackserver/cbid"
+	"github.com/google/goonami-scanner/common/callbackserver/netutils"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
-	"github.com/google/goonami-scanner/core/net/iputils"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
@@ -39,6 +39,9 @@ import (
 var (
 	// ErrPollingRequest is returned when the polling request fails.
 	ErrPollingRequest = errors.New("polling request failed")
+
+	// ErrDomainCallbackWithIP is returned when the callback server address is an IP address.
+	ErrDomainCallbackWithIP = errors.New("domain callback with IP address is not supported, please use a hostname")
 
 	// ErrInvalidConfig is returned when the callback server configuration is invalid.
 	ErrInvalidConfig = errors.New("invalid callback server configuration")
@@ -118,15 +121,8 @@ func (c *Client) GetCallbackURI(secret string) (string, error) {
 	}
 
 	address := c.config.GetCallbackAddress()
-	port := c.config.GetCallbackPort()
-
-	// For IPs, we use the HTTP format.
-	if iputils.IsIP(address) {
-		return fmt.Sprintf("http://%s:%d/%s", address, port, id), nil
-	}
-
-	// For domains, we use it as a subdomain.
-	return fmt.Sprintf("%s.%s:%d", id, address, port), nil
+	port := int(c.config.GetCallbackPort())
+	return netutils.CallbackURL(address, port, id), nil
 }
 
 // CallbackPort of the server. Expects caller to have called IsCallbackServerEnabled first.
