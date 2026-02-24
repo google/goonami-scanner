@@ -46,9 +46,9 @@ func NewInMemoryInteractionStore(ctx context.Context, ttl time.Duration, cleanup
 	return s
 }
 
-// Add adds an interaction into the storage backend. Note that if an interaction of the same type
+// Register an interaction into the storage backend. Note that if an interaction of the same type
 // already exists, we just refresh its record time.
-func (s *InMemoryInteractionStore) Add(cbid string, interactionType InteractionType) error {
+func (s *InMemoryInteractionStore) Register(cbid string, interactionType InteractionType) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

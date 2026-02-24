@@ -25,16 +25,16 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-func TestAddAndGetInteractions(t *testing.T) {
+func TestRegisterAndGetInteractions(t *testing.T) {
 	s := NewInMemoryInteractionStore(t.Context(), 1*time.Hour, 1*time.Hour)
 	cbid := "test_cbid"
 
-	if err := s.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
-	if err := s.Add(cbid, DNSInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, DNSInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
 	got := s.Get(cbid)
@@ -55,16 +55,16 @@ func TestAddAndGetInteractions(t *testing.T) {
 	}
 }
 
-func TestAddDuplicateInteractionType(t *testing.T) {
+func TestRegisterDuplicateInteractionType(t *testing.T) {
 	s := NewInMemoryInteractionStore(t.Context(), 1*time.Hour, 1*time.Hour)
 	cbid := "test_cbid"
 
-	if err := s.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
-	if err := s.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
 	got := s.Get(cbid)
@@ -73,12 +73,12 @@ func TestAddDuplicateInteractionType(t *testing.T) {
 	}
 }
 
-func TestAddUnknownInteractionType(t *testing.T) {
+func TestRegisterUnknownInteractionType(t *testing.T) {
 	s := NewInMemoryInteractionStore(t.Context(), 1*time.Hour, 1*time.Hour)
 
-	err := s.Add("test_cbid", UnknownInteraction)
+	err := s.Register("test_cbid", UnknownInteraction)
 	if !errors.Is(err, ErrUnknownInteractionType) {
-		t.Errorf("Add() returned error: %v, want %v", err, ErrUnknownInteractionType)
+		t.Errorf("Register() returned error: %v, want %v", err, ErrUnknownInteractionType)
 	}
 }
 
@@ -93,8 +93,8 @@ func TestGetNonExistentCbid(t *testing.T) {
 func TestDeleteInteractions(t *testing.T) {
 	s := NewInMemoryInteractionStore(t.Context(), 1*time.Hour, 1*time.Hour)
 	cbid := "delete_me"
-	if err := s.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
 	s.Delete(cbid)
@@ -108,8 +108,8 @@ func TestCleanupBeforeTTLDoesNotDelete(t *testing.T) {
 	s := NewInMemoryInteractionStore(t.Context(), 1*time.Hour, 5*time.Millisecond)
 	cbid := "no_expire"
 
-	if err := s.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := s.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
 	got := s.Get(cbid)
@@ -130,8 +130,8 @@ func TestInteractionsExpireAfterTTL(t *testing.T) {
 	store := NewInMemoryInteractionStore(t.Context(), 5*time.Millisecond, 5*time.Millisecond)
 
 	cbid := "expire_me"
-	if err := store.Add(cbid, HTTPInteraction); err != nil {
-		t.Fatalf("Add() returned error: %v", err)
+	if err := store.Register(cbid, HTTPInteraction); err != nil {
+		t.Fatalf("Register() returned error: %v", err)
 	}
 
 	// Verify it's there
