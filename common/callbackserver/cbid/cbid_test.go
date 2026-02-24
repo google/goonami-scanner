@@ -17,6 +17,7 @@
 package cbid
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -42,6 +43,32 @@ func TestGenerate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got, _ := Generate(tt.secret); got != tt.want {
 				t.Errorf("Generate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		cbid    string
+		wantErr error
+	}{
+		{
+			name: "when_valid_cbid_returns_nil",
+			cbid: "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+		},
+		{
+			name:    "when_invalid_cbid_returns_error",
+			cbid:    "invalid_cbid",
+			wantErr: ErrInvalidCBID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := Validate(tt.cbid); !errors.Is(err, tt.wantErr) {
+				t.Errorf("Validate() error = %v, want %v", err, tt.wantErr)
 			}
 		})
 	}

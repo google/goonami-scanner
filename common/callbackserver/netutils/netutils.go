@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 	"github.com/google/goonami-scanner/core/net/iputils"
 )
 
@@ -39,6 +40,7 @@ var (
 
 // CallbackURL returns the URL for the callback server for an HTTP callback.
 func CallbackURL(host string, port int, cbid string) string {
+	// TODO: b/487253053 - Add support for HTTPS.
 	return fmt.Sprintf("http://%s:%d/%s", host, port, cbid)
 }
 
@@ -68,6 +70,10 @@ func IdentifierFromURL(httpURL string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrInvalidURL, httpURL)
 	}
 
+	if err := cbid.Validate(path); err != nil {
+		return "", err
+	}
+
 	return path, nil
 }
 
@@ -83,5 +89,10 @@ func IdentifierFromDomain(domain string) (string, error) {
 		return "", ErrInvalidDomain
 	}
 
-	return parts[0], nil
+	id := parts[0]
+	if err := cbid.Validate(id); err != nil {
+		return "", err
+	}
+
+	return id, nil
 }

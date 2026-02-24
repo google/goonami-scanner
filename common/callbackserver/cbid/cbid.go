@@ -19,8 +19,18 @@ package cbid
 
 import (
 	"encoding/hex"
+	"errors"
+	"regexp"
 
 	"golang.org/x/crypto/sha3"
+)
+
+var (
+	// cbidPattern is a regular expression that matches a valid CBID.
+	cbidPattern = regexp.MustCompile(`^[a-f0-9]{56}$`)
+
+	// ErrInvalidCBID is returned when a CBID is invalid.
+	ErrInvalidCBID = errors.New("invalid CBID")
 )
 
 // Generate generates a CBID from a secret string using SHA3-224.
@@ -32,4 +42,13 @@ func Generate(secret string) (string, error) {
 	}
 
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// Validate checks if the given string is a valid CBID.
+func Validate(cbid string) error {
+	if !cbidPattern.MatchString(cbid) {
+		return ErrInvalidCBID
+	}
+
+	return nil
 }

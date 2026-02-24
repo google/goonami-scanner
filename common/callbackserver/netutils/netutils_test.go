@@ -19,6 +19,8 @@ package netutils
 import (
 	"errors"
 	"testing"
+
+	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 )
 
 func TestCallbackURL(t *testing.T) {
@@ -103,13 +105,13 @@ func TestIdentifierFromURL(t *testing.T) {
 	}{
 		{
 			name:    "when_valid_url_returns_cbid",
-			httpURL: "http://localhost:8080/abc",
-			want:    "abc",
+			httpURL: "http://localhost:8080/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+			want:    "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
 		},
 		{
 			name:    "when_valid_path_only_returns_cbid",
-			httpURL: "/abc",
-			want:    "abc",
+			httpURL: "/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+			want:    "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
 		},
 		{
 			name:    "when_empty_path_returns_error",
@@ -118,13 +120,18 @@ func TestIdentifierFromURL(t *testing.T) {
 		},
 		{
 			name:    "when_multiple_path_segments_returns_error",
-			httpURL: "http://localhost:8080/abc/def",
+			httpURL: "http://localhost:8080/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486/def",
 			wantErr: ErrInvalidURL,
 		},
 		{
 			name:    "when_invalid_url_returns_error",
-			httpURL: "http://[::1%lo0]:8080/abc",
+			httpURL: "http://[::1%lo0]:8080/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
 			wantErr: ErrFailedToParseURL,
+		},
+		{
+			name:    "when_invalid_cbid_returns_error",
+			httpURL: "http://localhost:8080/cbid",
+			wantErr: cbid.ErrInvalidCBID,
 		},
 	}
 
@@ -155,13 +162,13 @@ func TestIdentifierFromDomain(t *testing.T) {
 	}{
 		{
 			name:   "when_valid_domain_returns_cbid",
-			domain: "abc.example.com",
-			want:   "abc",
+			domain: "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486.example.com",
+			want:   "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
 		},
 		{
 			name:   "when_valid_domain_with_two_parts_returns_cbid",
-			domain: "abc.com",
-			want:   "abc",
+			domain: "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486.com",
+			want:   "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
 		},
 		{
 			name:    "when_no_dot_returns_error",
@@ -177,6 +184,11 @@ func TestIdentifierFromDomain(t *testing.T) {
 			name:    "when_ip_address_returns_error",
 			domain:  "127.0.0.1",
 			wantErr: ErrInvalidDomain,
+		},
+		{
+			name:    "when_invalid_cbid_returns_error",
+			domain:  "abc.example.com",
+			wantErr: cbid.ErrInvalidCBID,
 		},
 	}
 
