@@ -33,6 +33,7 @@ type PollingHandler struct {
 }
 
 func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := log.ContextForModule(r.Context(), "callbackserver/polling")
 	secret := r.URL.Query().Get("secret")
 	if secret == "" {
 		http.Error(w, "required parameter 'secret' not found.", http.StatusBadRequest)
@@ -41,7 +42,7 @@ func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	cbidStr, err := cbid.Generate(secret)
 	if err != nil {
-		log.ErrorContextf(r.Context(), "failed to generate CBID for secret '%s': %v", secret, err)
+		log.ErrorContextf(ctx, "failed to generate CBID for secret %q: %v", secret, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -49,12 +50,12 @@ func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	interactions := h.Store.Get(cbidStr)
 
 	if len(interactions) == 0 {
-		log.DebugContextf(r.Context(), log.DebugLevelService, "interaction with secret '%s' NOT found and polled by IP %s", secret, r.RemoteAddr)
+		log.DebugContextf(ctx, log.DebugLevelSession, "interaction with secret %q NOT found and polled by IP %q", secret, r.RemoteAddr)
 		http.Error(w, "interaction with secret not found", http.StatusNotFound)
 		return
 	}
 
-	log.InfoContextf(r.Context(), "interaction with secret '%s' found and polled by IP %s", secret, r.RemoteAddr)
+	log.DebugContextf(ctx, log.DebugLevelSession, "interaction with secret %q found and polled by IP %q", secret, r.RemoteAddr)
 	result := ppb.PollingResult_builder{}
 
 	for _, interaction := range interactions {
@@ -69,7 +70,7 @@ func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	resp, err := protojson.Marshal(result.Build())
 	if err != nil {
-		log.ErrorContextf(r.Context(), "failed to marshal JSON: %v", err)
+		log.ErrorContextf(ctx, "failed to marshal JSON: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
