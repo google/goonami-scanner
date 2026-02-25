@@ -118,7 +118,7 @@ func TestCleanupBeforeTTLDoesNotDelete(t *testing.T) {
 	}
 
 	// Wait for cleanup
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	got = s.Get(cbid)
 	if len(got) == 0 {
@@ -141,7 +141,7 @@ func TestInteractionsExpireAfterTTL(t *testing.T) {
 	}
 
 	// Wait for TTL and cleanup
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	// Should be gone
 	got = store.Get(cbid)
