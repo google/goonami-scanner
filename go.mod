@@ -8,7 +8,7 @@ require (
   bitbucket.org/creachadair/stringset v0.0.14
   github.com/google/go-cmp v0.7.0
   github.com/google/tsunami-security-scanner v0.2.0
-  github.com/google/tsunami-security-scanner-plugins v0.0.0-20260218193739-435ddfaf4628
+  github.com/google/tsunami-security-scanner-plugins v0.0.0-20260223091022-3983a2d15959
   github.com/pborman/uuid v1.2.1
   github.com/twmb/murmur3 v1.1.8
   golang.org/x/crypto v0.48.0
