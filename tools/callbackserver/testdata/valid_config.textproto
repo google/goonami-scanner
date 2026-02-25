@@ -1,0 +1,10 @@
+record_config {
+  address: "127.0.0.1"
+  port: 8080
+}
+poll_config {
+  address: "127.0.0.1"
+  port: 8081
+}
+interaction_ttl_seconds: 60
+cleanup_interval_seconds: 10
