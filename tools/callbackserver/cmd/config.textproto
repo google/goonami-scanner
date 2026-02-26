@@ -1,0 +1,18 @@
+# proto-file: github.com/google/goonami-scanner/tools/callbackserver/callbackserver_tool_config.proto
+# proto-message: CallbackserverToolConfig
+
+# Each interaction is valid only for 5 minutes.
+interaction_ttl_seconds: 300
+
+# Clean up expired interactions every 10 seconds.
+cleanup_interval_seconds: 10
+
+record_config: {
+  address: "127.0.0.1"
+  port: 8080
+}
+
+poll_config: {
+  address: "127.0.0.1"
+  port: 8081
+}
