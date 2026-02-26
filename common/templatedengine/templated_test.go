@@ -29,10 +29,9 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -60,7 +59,6 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 	}))
 	defer cbs.Close()
 	cbsURL, _ := url.Parse(cbs.URL)
-	cbsPort, _ := strconv.Atoi(cbsURL.Port())
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
@@ -135,10 +133,16 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			cfgProto := config.DefaultProto()
 			if tc.enableCBS {
 				clicfg := cpb.ClientsConfig_builder{
-					CallbackServer: cscpb.CallbackServerClientConfig_builder{
-						CallbackAddress: proto.String(cbsURL.Hostname()),
-						CallbackPort:    proto.Int32(int32(cbsPort)),
-						PollingBaseUrl:  proto.String(cbs.URL),
+					CallbackServer: cbpb.CallbackserverConfig_builder{
+						HttpPollConfig: cbpb.EndpointConfig_builder{
+							PublicUri: cbsURL.String(),
+						}.Build(),
+						HttpRecordConfig: cbpb.EndpointConfig_builder{
+							PublicUri: cbsURL.String(),
+						}.Build(),
+						DnsRecordConfig: cbpb.EndpointConfig_builder{
+							PublicUri: "cb.localhost.lan",
+						}.Build(),
 					}.Build(),
 				}.Build()
 				cfgProto.SetClients(clicfg)

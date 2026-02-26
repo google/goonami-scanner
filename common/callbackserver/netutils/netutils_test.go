@@ -26,22 +26,25 @@ import (
 func TestCallbackURL(t *testing.T) {
 	tests := []struct {
 		name string
-		host string
-		port int
+		uri  string
 		cbid string
 		want string
 	}{
 		{
 			name: "when_hostname_returns_http_url",
-			host: "localhost",
-			port: 8080,
+			uri:  "http://localhost:8080",
+			cbid: "abc",
+			want: "http://localhost:8080/abc",
+		},
+		{
+			name: "when_hostname_with_slash_returns_http_url",
+			uri:  "http://localhost:8080/",
 			cbid: "abc",
 			want: "http://localhost:8080/abc",
 		},
 		{
 			name: "when_ip_returns_http_url",
-			host: "127.0.0.1",
-			port: 80,
+			uri:  "http://127.0.0.1:80",
 			cbid: "123",
 			want: "http://127.0.0.1:80/123",
 		},
@@ -49,7 +52,7 @@ func TestCallbackURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CallbackURL(tt.host, tt.port, tt.cbid); got != tt.want {
+			if got := CallbackURL(tt.uri, tt.cbid); got != tt.want {
 				t.Errorf("CallbackURL() = %v, want %v", got, tt.want)
 			}
 		})
@@ -70,17 +73,11 @@ func TestCallbackDomain(t *testing.T) {
 			cbid:   "abc",
 			want:   "abc.example.com",
 		},
-		{
-			name:    "when_ip_address_returns_error",
-			domain:  "127.0.0.1",
-			cbid:    "abc",
-			wantErr: ErrInvalidDomain,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CallbackDomain(tt.cbid, tt.domain)
+			got, err := CallbackDomain(tt.domain, tt.cbid)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("CallbackDomain() error = %v, want %v", err, tt.wantErr)
 			}

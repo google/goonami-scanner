@@ -31,31 +31,39 @@ import (
 	"github.com/google/goonami-scanner/common/callbackserver/netutils"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	ctpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_tool_config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
 
 func TestConfigFromFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		path    string
-		want    *ctpb.CallbackserverToolConfig
+		want    *cbpb.CallbackserverConfig
 		wantErr error
 	}{
 		{
 			name: "when_valid_config_returns_config",
 			path: "testdata/valid_config.textproto",
-			want: (&ctpb.CallbackserverToolConfig_builder{
-				RecordConfig: (&ctpb.RecordConfig_builder{
-					Address: "127.0.0.1",
-					Port:    8080,
-				}).Build(),
-				PollConfig: (&ctpb.PollConfig_builder{
-					Address: "127.0.0.1",
-					Port:    8081,
-				}).Build(),
+			want: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					PublicUri:   "http://127.0.0.1:8081",
+					BindAddress: "127.0.0.1",
+					BindPort:    8081,
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					PublicUri:   "http://127.0.0.1:8080",
+					BindAddress: "127.0.0.1",
+					BindPort:    8080,
+				}.Build(),
 				InteractionTtlSeconds:  60,
 				CleanupIntervalSeconds: 10,
-			}).Build(),
+			}.Build(),
 		},
 		{
 			name:    "when_file_not_found_returns_error",
@@ -68,23 +76,42 @@ func TestConfigFromFile(t *testing.T) {
 			wantErr: ErrConfigUnmarshal,
 		},
 		{
-			name:    "when_missing_record_config_returns_error",
-			path:    "testdata/missing_record_config.textproto",
-			wantErr: ErrInvalidConfig,
+			name: "when_missing_http_record_config_returns_partial_config",
+			path: "testdata/missing_http_record_config.textproto",
+			want: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					PublicUri:   "http://127.0.0.1:8081",
+					BindAddress: "127.0.0.1",
+					BindPort:    8081,
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
+			}.Build(),
 		},
 		{
-			name:    "when_missing_poll_config_returns_error",
-			path:    "testdata/missing_poll_config.textproto",
-			wantErr: ErrInvalidConfig,
+			name: "when_missing_dns_record_config_returns_partial_config",
+			path: "testdata/missing_dns_record_config.textproto",
+			want: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					PublicUri:   "http://127.0.0.1:8081",
+					BindAddress: "127.0.0.1",
+					BindPort:    8081,
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					PublicUri:   "http://127.0.0.1:8080",
+					BindAddress: "127.0.0.1",
+					BindPort:    8080,
+				}.Build(),
+			}.Build(),
 		},
 		{
-			name:    "when_record_port_out_of_range_returns_error",
-			path:    "testdata/record_port_out_of_range.textproto",
-			wantErr: ErrInvalidConfig,
-		},
-		{
-			name:    "when_poll_port_out_of_range_returns_error",
-			path:    "testdata/poll_port_out_of_range.textproto",
+			name:    "when_http_poll_config_returns_error",
+			path:    "testdata/missing_http_poll_config.textproto",
 			wantErr: ErrInvalidConfig,
 		},
 	}
@@ -107,22 +134,114 @@ func TestConfigFromFile(t *testing.T) {
 	}
 }
 
+func TestValidateConfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *cbpb.CallbackserverConfig
+		wantErr error
+	}{
+		{
+			name: "when_valid_config_returns_nil",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name: "when_valid_config_with_remote_server_returns_nil",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name: "when_valid_config_with_local_ports_returns_nil",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					BindPort: 1,
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					BindPort: 65535,
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name:    "when_missing_http_poll_config_returns_error",
+			cfg:     &cbpb.CallbackserverConfig{},
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_invalid_http_record_port_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					BindPort: 0,
+				}.Build(),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_invalid_dns_record_port_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					BindPort: 65536,
+				}.Build(),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateConfig(tc.cfg)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("ValidateConfig() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestServer(t *testing.T) {
 	recordPort := getFreePort(t)
+	recordURI := fmt.Sprintf("http://127.0.0.1:%d", recordPort)
 	pollPort := getFreePort(t)
+	pollURI := fmt.Sprintf("http://127.0.0.1:%d", pollPort)
 
-	cfg := (&ctpb.CallbackserverToolConfig_builder{
-		RecordConfig: (&ctpb.RecordConfig_builder{
-			Address: "127.0.0.1",
-			Port:    uint32(recordPort),
-		}).Build(),
-		PollConfig: (&ctpb.PollConfig_builder{
-			Address: "127.0.0.1",
-			Port:    uint32(pollPort),
-		}).Build(),
+	cfg := cbpb.CallbackserverConfig_builder{
 		InteractionTtlSeconds:  60,
 		CleanupIntervalSeconds: 10,
-	}).Build()
+		HttpRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(recordPort),
+		}.Build(),
+		HttpPollConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(pollPort),
+		}.Build(),
+		DnsRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:53",
+		}.Build(),
+	}.Build()
 
 	ctx := context.Background()
 	srv := New(ctx, cfg)
@@ -137,24 +256,117 @@ func TestServer(t *testing.T) {
 	// Allow a few milliseconds for the servers to start.
 	time.Sleep(200 * time.Millisecond)
 
-	if srv.recordingServer == nil {
+	if srv.httpRecordingSrv == nil {
 		t.Error("recordingServer is nil after StartRecordingHTTP")
 	}
 
-	if srv.pollingServer == nil {
+	if srv.httpPollingSrv == nil {
 		t.Error("pollingServer is nil after StartPolling")
 	}
 
 	// We register an interaction and immediately check its presence.
-	httpRegisterInteraction(ctx, t, "test", "127.0.0.1", recordPort)
-	httpPollInteraction(ctx, t, "test", "127.0.0.1", pollPort)
+	httpRegisterInteraction(ctx, t, "test", recordURI)
+	httpPollInteraction(ctx, t, "test", pollURI)
 
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Errorf("Shutdown() unexpected error: %v", err)
 	}
 }
 
-func httpRegisterInteraction(ctx context.Context, t *testing.T, secret, recordHost string, recordPort int) {
+func TestServer_RemoteHTTPRecording(t *testing.T) {
+	pollPort := getFreePort(t)
+	cfg := cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  60,
+		CleanupIntervalSeconds: 10,
+		HttpRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:8080",
+		}.Build(),
+		HttpPollConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(pollPort),
+		}.Build(),
+		DnsRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:53",
+		}.Build(),
+	}.Build()
+
+	ctx := context.Background()
+	srv := New(ctx, cfg)
+
+	if srv == nil {
+		t.Fatal("New() returned nil server")
+	}
+
+	srv.StartRecordingHTTP(ctx)
+	srv.StartPolling(ctx)
+
+	// Allow a few milliseconds for the servers to start.
+	time.Sleep(200 * time.Millisecond)
+
+	if srv.httpRecordingSrv != nil {
+		t.Error("recordingServer is not nil after StartRecordingHTTP")
+	}
+
+	if srv.httpPollingSrv == nil {
+		t.Error("pollingServer is nil after StartPolling")
+	}
+
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Errorf("Shutdown() unexpected error: %v", err)
+	}
+}
+
+func TestServer_RemotePolling(t *testing.T) {
+	recordPort := getFreePort(t)
+
+	cfg := cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  60,
+		CleanupIntervalSeconds: 10,
+		HttpRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(recordPort),
+		}.Build(),
+		HttpPollConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:8081",
+		}.Build(),
+		DnsRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:53",
+		}.Build(),
+	}.Build()
+
+	ctx := context.Background()
+	srv := New(ctx, cfg)
+
+	if srv == nil {
+		t.Fatal("New() returned nil server")
+	}
+
+	srv.StartRecordingHTTP(ctx)
+	srv.StartPolling(ctx)
+
+	// Allow a few milliseconds for the servers to start.
+	time.Sleep(200 * time.Millisecond)
+
+	if srv.httpRecordingSrv == nil {
+		t.Error("recordingServer is nil after StartRecordingHTTP")
+	}
+
+	if srv.httpPollingSrv != nil {
+		t.Error("pollingServer is not nil after StartPolling")
+	}
+
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Errorf("Shutdown() unexpected error: %v", err)
+	}
+}
+
+func httpRegisterInteraction(ctx context.Context, t *testing.T, secret, recordURI string) {
 	t.Helper()
 
 	cbid, err := cbid.Generate(secret)
@@ -162,7 +374,7 @@ func httpRegisterInteraction(ctx context.Context, t *testing.T, secret, recordHo
 		t.Fatalf("failed to register interaction: %v", err)
 	}
 
-	url := netutils.CallbackURL(recordHost, recordPort, cbid)
+	url := netutils.CallbackURL(recordURI, cbid)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
@@ -179,10 +391,10 @@ func httpRegisterInteraction(ctx context.Context, t *testing.T, secret, recordHo
 	}
 }
 
-func httpPollInteraction(ctx context.Context, t *testing.T, secret, pollHost string, pollPort int) {
+func httpPollInteraction(ctx context.Context, t *testing.T, secret, pollURI string) {
 	t.Helper()
 
-	url := fmt.Sprintf("http://%s:%d/?secret=%s", pollHost, pollPort, secret)
+	url := fmt.Sprintf("%s/?secret=%s", pollURI, secret)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)

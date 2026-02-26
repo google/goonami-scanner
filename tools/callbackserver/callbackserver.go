@@ -30,7 +30,7 @@ import (
 	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	ctpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_tool_config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
 
 var (
@@ -45,43 +45,59 @@ var (
 )
 
 // ConfigFromFile reads and validates the config from the given file.
-func ConfigFromFile(ctx context.Context, path string) (*ctpb.CallbackserverToolConfig, error) {
+func ConfigFromFile(ctx context.Context, path string) (*cbpb.CallbackserverConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrConfigRead, err)
 	}
 
-	cfg := &ctpb.CallbackserverToolConfig{}
+	cfg := &cbpb.CallbackserverConfig{}
 	if err := prototext.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrConfigUnmarshal, err)
 	}
 
-	if !cfg.HasPollConfig() || !cfg.HasRecordConfig() {
-		return nil, fmt.Errorf("%w: poll_config and record_config are required", ErrInvalidConfig)
-	}
-
-	if cfg.GetPollConfig().GetPort() > 65535 {
-		return nil, fmt.Errorf("%w: poll_config.port is out of range", ErrInvalidConfig)
-	}
-
-	if cfg.GetRecordConfig().GetPort() > 65535 {
-		return nil, fmt.Errorf("%w: record_config.port is out of range", ErrInvalidConfig)
+	if err := ValidateConfig(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
 }
 
+// ValidateConfig for the callback server. Note that this is a server perspective, so we need to
+// ensure that all ports are set and valid only if the server is going to be started locally.
+func ValidateConfig(cfg *cbpb.CallbackserverConfig) error {
+	if !cfg.HasHttpPollConfig() {
+		return fmt.Errorf("%w: http_poll_config is required", ErrInvalidConfig)
+	}
+
+	if cfg.GetHttpRecordConfig().GetMode() == cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
+		port := cfg.GetHttpRecordConfig().GetBindPort()
+		if port <= 0 || port > 65535 {
+			return fmt.Errorf("%w: http_record_config.port must be between 1 and 65535", ErrInvalidConfig)
+		}
+	}
+
+	if cfg.GetDnsRecordConfig().GetMode() == cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
+		port := cfg.GetDnsRecordConfig().GetBindPort()
+		if port <= 0 || port > 65535 {
+			return fmt.Errorf("%w: dns_record_config.port must be between 1 and 65535", ErrInvalidConfig)
+		}
+	}
+
+	return nil
+}
+
 // Server represents a callback server.
 type Server struct {
-	cfg   *ctpb.CallbackserverToolConfig
+	cfg   *cbpb.CallbackserverConfig
 	store storage.InteractionStore
 
-	recordingServer *http.Server
-	pollingServer   *http.Server
+	httpRecordingSrv *http.Server
+	httpPollingSrv   *http.Server
 }
 
 // New creates a new callback server.
-func New(ctx context.Context, cfg *ctpb.CallbackserverToolConfig) *Server {
+func New(ctx context.Context, cfg *cbpb.CallbackserverConfig) *Server {
 	ttl := time.Duration(cfg.GetInteractionTtlSeconds()) * time.Second
 	cleanupInterval := time.Duration(cfg.GetCleanupIntervalSeconds()) * time.Second
 	store := storage.NewInMemoryInteractionStore(ctx, ttl, cleanupInterval)
@@ -94,12 +110,12 @@ func New(ctx context.Context, cfg *ctpb.CallbackserverToolConfig) *Server {
 
 // Shutdown shuts down the callback server.
 func (s *Server) Shutdown(ctx context.Context) error {
-	if s.recordingServer != nil {
-		s.recordingServer.Shutdown(ctx)
+	if s.httpRecordingSrv != nil {
+		s.httpRecordingSrv.Shutdown(ctx)
 	}
 
-	if s.pollingServer != nil {
-		s.pollingServer.Shutdown(ctx)
+	if s.httpPollingSrv != nil {
+		s.httpPollingSrv.Shutdown(ctx)
 	}
 
 	return nil
@@ -108,23 +124,43 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // StartPolling starts the polling server in a new goroutine.
 func (s *Server) StartPolling(ctx context.Context) {
 	ctx = log.ContextForModule(ctx, "callbackserver")
-	listenAddr := s.cfg.GetPollConfig().GetAddress()
-	listenPort := s.cfg.GetPollConfig().GetPort()
+	if !s.cfg.HasHttpPollConfig() {
+		log.WarnContextf(ctx, "HTTP polling server is disabled, not starting")
+		return
+	}
+
+	if s.cfg.GetHttpPollConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
+		log.WarnContextf(ctx, "HTTP polling server is set up to non local mode, not starting")
+		return
+	}
+
+	listenAddr := s.cfg.GetHttpPollConfig().GetBindAddress()
+	listenPort := s.cfg.GetHttpPollConfig().GetBindPort()
 	pollHandler := &tcs_http.PollingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
-	log.InfoContextf(ctx, "starting polling server %q", bindAddr)
-	s.pollingServer = serveHTTP(ctx, "polling", bindAddr, pollHandler)
+	log.InfoContextf(ctx, "binding polling server to %q", bindAddr)
+	s.httpPollingSrv = serveHTTP(ctx, "polling", bindAddr, pollHandler)
 }
 
 // StartRecordingHTTP starts the HTTP interactions recording server in a new goroutine.
 func (s *Server) StartRecordingHTTP(ctx context.Context) {
 	ctx = log.ContextForModule(ctx, "callbackserver")
-	listenAddr := s.cfg.GetRecordConfig().GetAddress()
-	listenPort := s.cfg.GetRecordConfig().GetPort()
+	if !s.cfg.HasHttpRecordConfig() {
+		log.WarnContextf(ctx, "HTTP recording server is disabled, not starting")
+		return
+	}
+
+	if s.cfg.GetHttpRecordConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
+		log.WarnContextf(ctx, "HTTP recording server is set up to non local mode, not starting")
+		return
+	}
+
+	listenAddr := s.cfg.GetHttpRecordConfig().GetBindAddress()
+	listenPort := s.cfg.GetHttpRecordConfig().GetBindPort()
 	recordHandler := &tcs_http.RecordingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
-	log.InfoContextf(ctx, "starting recording server %q", bindAddr)
-	s.recordingServer = serveHTTP(ctx, "recording", bindAddr, recordHandler)
+	log.InfoContextf(ctx, "binding recording server to %q", bindAddr)
+	s.httpRecordingSrv = serveHTTP(ctx, "recording", bindAddr, recordHandler)
 }
 
 func serveHTTP(ctx context.Context, usage string, bindaddr string, handler http.Handler) *http.Server {

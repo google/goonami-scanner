@@ -39,17 +39,13 @@ var (
 )
 
 // CallbackURL returns the URL for the callback server for an HTTP callback.
-func CallbackURL(host string, port int, cbid string) string {
-	// TODO: b/487253053 - Add support for HTTPS.
-	return fmt.Sprintf("http://%s:%d/%s", host, port, cbid)
+func CallbackURL(uri string, cbid string) string {
+	uri = strings.TrimSuffix(uri, "/")
+	return fmt.Sprintf("%s/%s", uri, cbid)
 }
 
 // CallbackDomain returns the domain for the callback server for a DNS callback.
-func CallbackDomain(cbid string, domain string) (string, error) {
-	if iputils.IsIP(domain) {
-		return "", fmt.Errorf("%w: %s", ErrInvalidDomain, domain)
-	}
-
+func CallbackDomain(domain string, cbid string) (string, error) {
 	return fmt.Sprintf("%s.%s", cbid, domain), nil
 }
 

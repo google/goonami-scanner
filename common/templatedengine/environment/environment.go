@@ -22,8 +22,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -90,15 +90,20 @@ func (e *Environment) callbackServerInitialization(ctx context.Context) error {
 		return err
 	}
 
-	uri, err := client.GetCallbackURI(secret)
+	uri, err := client.GetHTTPCallbackURI(secret)
+	if err != nil {
+		return err
+	}
+
+	u, err := url.Parse(uri)
 	if err != nil {
 		return err
 	}
 
 	e.Set(VarCallbackURI, uri)
 	e.Set(VarCallbackSecret, secret)
-	e.Set(VarCallbackPort, strconv.Itoa(int(client.CallbackPort())))
-	e.Set(VarCallbackAddress, client.CallbackAddress())
+	e.Set(VarCallbackPort, u.Port())
+	e.Set(VarCallbackAddress, u.Hostname())
 	return nil
 }
 

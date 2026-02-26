@@ -25,68 +25,42 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
-	"google.golang.org/protobuf/proto"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
-	cfgpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
 
 func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *cfgpb.Config
+		config  *cpb.Config
 		wantErr error
 	}{
 		{
-			name: "when_config_has_no_callback_server_it_is_created_anyway",
-			config: cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{}.Build(),
-			}.Build(),
-			wantErr: nil,
-		},
-		{
 			name: "when_config_has_valid_callback_server_it_succeeds",
-			config: cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{
-					CallbackServer: cscpb.CallbackServerClientConfig_builder{
-						CallbackPort: proto.Int32(8080),
+			config: cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					CallbackServer: cbpb.CallbackserverConfig_builder{
+						HttpPollConfig: cbpb.EndpointConfig_builder{
+							PublicUri: "http://127.0.0.1:8081",
+						}.Build(),
+						HttpRecordConfig: cbpb.EndpointConfig_builder{
+							PublicUri: "http://127.0.0.1:8080",
+						}.Build(),
+						DnsRecordConfig: cbpb.EndpointConfig_builder{
+							PublicUri: "cb.localhost.lan",
+						}.Build(),
 					}.Build(),
 				}.Build(),
 			}.Build(),
 			wantErr: nil,
 		},
 		{
-			name: "when_port_is_too_low_it_returns_error",
-			config: cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{
-					CallbackServer: cscpb.CallbackServerClientConfig_builder{
-						CallbackPort: proto.Int32(0),
-					}.Build(),
-				}.Build(),
+			name: "when_config_has_no_callback_server_it_is_created_anyway",
+			config: cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{}.Build(),
 			}.Build(),
-			wantErr: ErrInvalidConfig,
-		},
-		{
-			name: "when_port_is_negative_it_returns_error",
-			config: cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{
-					CallbackServer: cscpb.CallbackServerClientConfig_builder{
-						CallbackPort: proto.Int32(-1),
-					}.Build(),
-				}.Build(),
-			}.Build(),
-			wantErr: ErrInvalidConfig,
-		},
-		{
-			name: "when_port_is_too_high_it_returns_error",
-			config: cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{
-					CallbackServer: cscpb.CallbackServerClientConfig_builder{
-						CallbackPort: proto.Int32(65536),
-					}.Build(),
-				}.Build(),
-			}.Build(),
-			wantErr: ErrInvalidConfig,
+			wantErr: nil,
 		},
 	}
 
@@ -104,36 +78,62 @@ func TestNew(t *testing.T) {
 func TestClient_IsCallbackServerEnabled(t *testing.T) {
 	tests := []struct {
 		name   string
-		config *cscpb.CallbackServerClientConfig
+		config *cbpb.CallbackserverConfig
 		want   bool
 	}{
 		{
 			name:   "when_config_is_empty_returns_false",
-			config: cscpb.CallbackServerClientConfig_builder{}.Build(),
+			config: cbpb.CallbackserverConfig_builder{}.Build(),
 			want:   false,
 		},
 		{
-			name: "when_all_fields_are_provided_returns_true",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("1.2.3.4"),
-				CallbackPort:    proto.Int32(80),
-				PollingBaseUrl:  proto.String("http://localhost.lan"),
+			name: "when_all_endpoints_are_provided_returns_true",
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			want: true,
 		},
 		{
-			name: "when_address_is_missing_returns_false",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackPort:   proto.Int32(80),
-				PollingBaseUrl: proto.String("http://localhost.lan"),
+			name: "when_dns_record_config_is_missing_returns_false",
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8080",
+				}.Build(),
 			}.Build(),
 			want: false,
 		},
 		{
-			name: "when_polling_url_is_missing_returns_false",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("1.2.3.4"),
-				CallbackPort:    proto.Int32(80),
+			name: "when_http_record_config_is_missing_returns_false",
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8081",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
+			}.Build(),
+			want: false,
+		},
+		{
+			name: "when_http_poll_config_is_missing_returns_false",
+			config: cbpb.CallbackserverConfig_builder{
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://127.0.0.1:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			want: false,
 		},
@@ -149,29 +149,33 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 	}
 }
 
-func TestClient_GetCallbackURI(t *testing.T) {
+func TestClient_GetHTTPCallbackURI(t *testing.T) {
 	tests := []struct {
 		name    string
-		config  *cscpb.CallbackServerClientConfig
+		config  *cbpb.CallbackserverConfig
 		secret  string
 		want    string
 		wantErr error
 	}{
 		{
-			name: "when_disabled_returns_error",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String(""),
-			}.Build(),
+			name:    "when_disabled_returns_error",
+			config:  cbpb.CallbackserverConfig_builder{}.Build(),
 			secret:  "test",
 			want:    "",
 			wantErr: ErrInvalidConfig,
 		},
 		{
 			name: "when_address_is_ip_returns_http_format",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("1.2.3.4"),
-				CallbackPort:    proto.Int32(8080),
-				PollingBaseUrl:  proto.String("http://localhost.lan"),
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://1.2.3.4:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://1.2.3.4:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			secret:  "test",
 			want:    "http://1.2.3.4:8080/3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b",
@@ -179,13 +183,19 @@ func TestClient_GetCallbackURI(t *testing.T) {
 		},
 		{
 			name: "when_address_is_domain_returns_http_format",
-			config: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("callback.com"),
-				CallbackPort:    proto.Int32(80),
-				PollingBaseUrl:  proto.String("http://localhost.lan"),
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://goonami.lan:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://goonami.lan:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			secret:  "test",
-			want:    "http://callback.com:80/3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b",
+			want:    "http://goonami.lan:8080/3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b",
 			wantErr: nil,
 		},
 	}
@@ -193,7 +203,7 @@ func TestClient_GetCallbackURI(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			c := &Client{config: tc.config}
-			got, err := c.GetCallbackURI(tc.secret)
+			got, err := c.GetHTTPCallbackURI(tc.secret)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("GetCallbackURI() error = %v, wantErr %v", err, tc.wantErr)
 				return
@@ -216,7 +226,7 @@ func TestClient_Interaction(t *testing.T) {
 		serverResponse string
 		status         int
 		secret         string
-		config         *cscpb.CallbackServerClientConfig
+		config         *cbpb.CallbackserverConfig
 		want           bool
 		wantErr        error
 	}{
@@ -257,7 +267,7 @@ func TestClient_Interaction(t *testing.T) {
 			serverResponse: ``,
 			status:         http.StatusOK,
 			secret:         "test_secret",
-			config:         cscpb.CallbackServerClientConfig_builder{}.Build(),
+			config:         cbpb.CallbackserverConfig_builder{}.Build(),
 			want:           false,
 			wantErr:        ErrInvalidConfig,
 		},
@@ -276,15 +286,21 @@ func TestClient_Interaction(t *testing.T) {
 
 			serverConfig := tc.config
 			if serverConfig == nil {
-				serverConfig = cscpb.CallbackServerClientConfig_builder{
-					CallbackAddress: proto.String("1.2.3.4"),
-					CallbackPort:    proto.Int32(80),
-					PollingBaseUrl:  proto.String(server.URL),
+				serverConfig = cbpb.CallbackserverConfig_builder{
+					HttpPollConfig: cbpb.EndpointConfig_builder{
+						PublicUri: server.URL,
+					}.Build(),
+					HttpRecordConfig: cbpb.EndpointConfig_builder{
+						PublicUri: "http://irrelevant:8080",
+					}.Build(),
+					DnsRecordConfig: cbpb.EndpointConfig_builder{
+						PublicUri: "cb.localhost.lan",
+					}.Build(),
 				}.Build()
 			}
 
-			cfg := config.FromProto(cfgpb.Config_builder{
-				Clients: cfgpb.ClientsConfig_builder{
+			cfg := config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
 					CallbackServer: serverConfig,
 				}.Build(),
 			}.Build())

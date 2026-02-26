@@ -30,10 +30,9 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	ppb "github.com/google/goonami-scanner/common/clients/callbackserver/polling_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
 
 var (
@@ -51,8 +50,8 @@ var defaultClient *Client = nil
 
 // Client is a client for the Tsunami Callback Server.
 type Client struct {
-	config     *cscpb.CallbackServerClientConfig
 	coreConfig *config.Config
+	config     *cbpb.CallbackserverConfig
 }
 
 // Initialize the default callback server client.
@@ -74,16 +73,10 @@ func DefaultClient() *Client {
 // new creates a new Client.
 func new(ctx context.Context, config *config.Config) (*Client, error) {
 	ctx = log.ContextForModule(ctx, "client/callbackserver")
-	clientConfig := &cscpb.CallbackServerClientConfig{}
-	if config.ClientsConfig().HasCallbackServer() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetCallbackServer())
-	}
+	clientConfig := &cbpb.CallbackserverConfig{}
 
-	if clientConfig.HasCallbackPort() {
-		if clientConfig.GetCallbackPort() <= 0 || clientConfig.GetCallbackPort() > 65535 {
-			log.ErrorContextf(ctx, "invalid callback server port: %d", clientConfig.GetCallbackPort())
-			return nil, ErrInvalidConfig
-		}
+	if config.ClientsConfig().HasCallbackServer() {
+		clientConfig = config.ClientsConfig().GetCallbackServer()
 	}
 
 	return &Client{
@@ -92,25 +85,27 @@ func new(ctx context.Context, config *config.Config) (*Client, error) {
 	}, nil
 }
 
-// IsCallbackServerEnabled returns true if the callback server is enabled.
+// IsCallbackServerEnabled returns true if the callback server is enabled. Note that this is a
+// client perspective, so we only need the public URIs.
 func (c *Client) IsCallbackServerEnabled() bool {
-	if !c.config.HasCallbackPort() {
+	if c.config.GetHttpPollConfig().GetPublicUri() == "" {
 		return false
 	}
 
-	if !c.config.HasCallbackAddress() {
+	if c.config.GetHttpRecordConfig().GetPublicUri() == "" {
 		return false
 	}
 
-	if !c.config.HasPollingBaseUrl() {
+	if c.config.GetDnsRecordConfig().GetPublicUri() == "" {
 		return false
 	}
 
 	return true
 }
 
-// GetCallbackURI returns the callback URI for a given secret string.
-func (c *Client) GetCallbackURI(secret string) (string, error) {
+// GetHTTPCallbackURI returns the callback URI for a given secret string. This is the HTTP URI used to
+// record the interaction.
+func (c *Client) GetHTTPCallbackURI(secret string) (string, error) {
 	if !c.IsCallbackServerEnabled() {
 		return "", ErrInvalidConfig
 	}
@@ -120,19 +115,8 @@ func (c *Client) GetCallbackURI(secret string) (string, error) {
 		return "", err
 	}
 
-	address := c.config.GetCallbackAddress()
-	port := int(c.config.GetCallbackPort())
-	return netutils.CallbackURL(address, port, id), nil
-}
-
-// CallbackPort of the server. Expects caller to have called IsCallbackServerEnabled first.
-func (c *Client) CallbackPort() int32 {
-	return c.config.GetCallbackPort()
-}
-
-// CallbackAddress of the server. Expects caller to have called IsCallbackServerEnabled first.
-func (c *Client) CallbackAddress() string {
-	return c.config.GetCallbackAddress()
+	publicURI := c.config.GetHttpRecordConfig().GetPublicUri()
+	return netutils.CallbackURL(publicURI, id), nil
 }
 
 // HasInteraction checks whether the callback server has recorded any interaction for the given
@@ -152,7 +136,7 @@ func (c *Client) HasInteraction(ctx context.Context, secret string) (bool, error
 }
 
 func (c *Client) poll(ctx context.Context, secret string) (*ppb.PollingResult, error) {
-	pollingURL := strings.TrimSuffix(c.config.GetPollingBaseUrl(), "/")
+	pollingURL := strings.TrimSuffix(c.config.GetHttpPollConfig().GetPublicUri(), "/")
 	url := fmt.Sprintf("%s/?secret=%s", pollingURL, secret)
 
 	ctx, cancel := context.WithTimeout(ctx, c.coreConfig.TimeoutPerRequest())

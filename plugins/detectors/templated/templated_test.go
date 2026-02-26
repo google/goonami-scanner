@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -34,10 +33,9 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -138,12 +136,17 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	defer tcsmock.Close()
 
 	if tc.GetMockCallbackServer().GetEnabled() {
-		port := tcsmock.Listener.Addr().(*net.TCPAddr).Port
 		clicfg := cpb.ClientsConfig_builder{
-			CallbackServer: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("127.0.0.1"),
-				CallbackPort:    proto.Int32(int32(port)),
-				PollingBaseUrl:  proto.String(tcsmock.URL),
+			CallbackServer: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: tcsmock.URL,
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: tcsmock.URL,
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 		}.Build()
 		cfgProto.SetClients(clicfg)

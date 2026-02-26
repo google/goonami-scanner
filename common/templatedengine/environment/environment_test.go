@@ -22,10 +22,9 @@ import (
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
-	"google.golang.org/protobuf/proto"
 
-	cscpb "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
@@ -93,16 +92,22 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		cbsConfig    *cscpb.CallbackServerClientConfig
+		cbsConfig    *cbpb.CallbackserverConfig
 		wantVars     map[string]string
 		wantPatterns map[string]*regexp.Regexp
 	}{
 		{
 			name: "when_callback_server_is_enabled_with_ip_sets_variables",
-			cbsConfig: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("10.0.0.1"),
-				CallbackPort:    proto.Int32(8080),
-				PollingBaseUrl:  proto.String("http://polling.com"),
+			cbsConfig: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://10.0.0.1:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://10.0.0.1:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			wantVars: map[string]string{
 				VarCallbackAddress: "10.0.0.1",
@@ -115,23 +120,29 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 		},
 		{
 			name: "when_callback_server_is_enabled_with_domain_sets_variables",
-			cbsConfig: cscpb.CallbackServerClientConfig_builder{
-				CallbackAddress: proto.String("callback.com"),
-				CallbackPort:    proto.Int32(80),
-				PollingBaseUrl:  proto.String("http://polling.com"),
+			cbsConfig: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://cb.localhost.lan:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://cb.localhost.lan:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
 			}.Build(),
 			wantVars: map[string]string{
-				VarCallbackAddress: "callback.com",
-				VarCallbackPort:    "80",
+				VarCallbackAddress: "cb.localhost.lan",
+				VarCallbackPort:    "8080",
 			},
 			wantPatterns: map[string]*regexp.Regexp{
 				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{256}$`),
-				VarCallbackURI:    regexp.MustCompile(`^http://callback\.com:80/[a-f0-9]{56}$`),
+				VarCallbackURI:    regexp.MustCompile(`^http://cb\.localhost\.lan:8080/[a-f0-9]{56}$`),
 			},
 		},
 		{
 			name:      "when_callback_server_is_disabled_does_not_set_variables",
-			cbsConfig: &cscpb.CallbackServerClientConfig{},
+			cbsConfig: cbpb.CallbackserverConfig_builder{}.Build(),
 			wantVars: map[string]string{
 				VarCallbackAddress: "",
 				VarCallbackPort:    "",

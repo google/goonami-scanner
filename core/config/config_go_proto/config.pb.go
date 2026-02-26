@@ -22,11 +22,11 @@
 package config_go_proto
 
 import (
-	callbackserver_client_config_go_proto "github.com/google/goonami-scanner/common/clients/callbackserver/callbackserver_client_config_go_proto"
 	httpcrawler_client_config_go_proto "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 	webidentity_fp_config_go_proto "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
+	callbackserver_config_go_proto "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -284,11 +284,11 @@ func (b0 GlobalConfig_builder) Build() *GlobalConfig {
 
 // ClientsConfig contains configuration for clients.
 type ClientsConfig struct {
-	state                     protoimpl.MessageState                                            `protogen:"opaque.v1"`
-	xxx_hidden_Nmap           *nmap_client_config_go_proto.NmapClientConfig                     `protobuf:"bytes,1,opt,name=nmap,proto3"`
-	xxx_hidden_HttpCrawler    *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig       `protobuf:"bytes,2,opt,name=http_crawler,json=httpCrawler,proto3"`
-	xxx_hidden_Llm            *llm_client_config_go_proto.LlmClientConfig                       `protobuf:"bytes,3,opt,name=llm,proto3"`
-	xxx_hidden_CallbackServer *callbackserver_client_config_go_proto.CallbackServerClientConfig `protobuf:"bytes,4,opt,name=callback_server,json=callbackServer,proto3"`
+	state                     protoimpl.MessageState                                      `protogen:"opaque.v1"`
+	xxx_hidden_Nmap           *nmap_client_config_go_proto.NmapClientConfig               `protobuf:"bytes,1,opt,name=nmap,proto3"`
+	xxx_hidden_HttpCrawler    *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig `protobuf:"bytes,2,opt,name=http_crawler,json=httpCrawler,proto3"`
+	xxx_hidden_Llm            *llm_client_config_go_proto.LlmClientConfig                 `protobuf:"bytes,3,opt,name=llm,proto3"`
+	xxx_hidden_CallbackServer *callbackserver_config_go_proto.CallbackserverConfig        `protobuf:"bytes,4,opt,name=callback_server,json=callbackServer,proto3"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -339,7 +339,7 @@ func (x *ClientsConfig) GetLlm() *llm_client_config_go_proto.LlmClientConfig {
 	return nil
 }
 
-func (x *ClientsConfig) GetCallbackServer() *callbackserver_client_config_go_proto.CallbackServerClientConfig {
+func (x *ClientsConfig) GetCallbackServer() *callbackserver_config_go_proto.CallbackserverConfig {
 	if x != nil {
 		return x.xxx_hidden_CallbackServer
 	}
@@ -358,7 +358,7 @@ func (x *ClientsConfig) SetLlm(v *llm_client_config_go_proto.LlmClientConfig) {
 	x.xxx_hidden_Llm = v
 }
 
-func (x *ClientsConfig) SetCallbackServer(v *callbackserver_client_config_go_proto.CallbackServerClientConfig) {
+func (x *ClientsConfig) SetCallbackServer(v *callbackserver_config_go_proto.CallbackserverConfig) {
 	x.xxx_hidden_CallbackServer = v
 }
 
@@ -412,7 +412,7 @@ type ClientsConfig_builder struct {
 	Nmap           *nmap_client_config_go_proto.NmapClientConfig
 	HttpCrawler    *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig
 	Llm            *llm_client_config_go_proto.LlmClientConfig
-	CallbackServer *callbackserver_client_config_go_proto.CallbackServerClientConfig
+	CallbackServer *callbackserver_config_go_proto.CallbackserverConfig
 }
 
 func (b0 ClientsConfig_builder) Build() *ClientsConfig {
@@ -675,7 +675,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a@common/clients/callbackserver/callbackserver_client_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xb3\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xb3\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -695,12 +695,12 @@ const file_config_proto_rawDesc = "" +
 	"\x17_max_packets_per_secondB\x1f\n" +
 	"\x1d_max_http_requests_per_secondB\x0e\n" +
 	"\f_performanceB\r\n" +
-	"\v_user_agent\"\xd5\x02\n" +
+	"\v_user_agent\"\xc8\x02\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
-	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12b\n" +
-	"\x0fcallback_server\x18\x04 \x01(\v29.goonami.proto.configs.clients.CallbackServerClientConfigR\x0ecallbackServer\"l\n" +
+	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12U\n" +
+	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\"l\n" +
 	"\rPluginsConfig\x12[\n" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentityBm\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassP\x01Z=github.com/google/goonami-scanner/core/config/config_go_protob\x06proto3"
@@ -713,10 +713,10 @@ var file_config_proto_goTypes = []any{
 	(*PluginsConfig)(nil),                                // 3: goonami.proto.PluginsConfig
 	(*GlobalConfig_Performance)(nil),                     // 4: goonami.proto.GlobalConfig.Performance
 	(*nmap_client_config_go_proto.NmapClientConfig)(nil), // 5: goonami.proto.configs.clients.NmapClientConfig
-	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil),       // 6: goonami.proto.configs.clients.HttpCrawlerClientConfig
-	(*llm_client_config_go_proto.LlmClientConfig)(nil),                       // 7: goonami.proto.configs.clients.LlmClientConfig
-	(*callbackserver_client_config_go_proto.CallbackServerClientConfig)(nil), // 8: goonami.proto.configs.clients.CallbackServerClientConfig
-	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),               // 9: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil), // 6: goonami.proto.configs.clients.HttpCrawlerClientConfig
+	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 7: goonami.proto.configs.clients.LlmClientConfig
+	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),        // 8: goonami.callbackserver.CallbackserverConfig
+	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 9: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 }
 var file_config_proto_depIdxs = []int32{
 	1, // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -726,7 +726,7 @@ var file_config_proto_depIdxs = []int32{
 	5, // 4: goonami.proto.ClientsConfig.nmap:type_name -> goonami.proto.configs.clients.NmapClientConfig
 	6, // 5: goonami.proto.ClientsConfig.http_crawler:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig
 	7, // 6: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
-	8, // 7: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.proto.configs.clients.CallbackServerClientConfig
+	8, // 7: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
 	9, // 8: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 	9, // [9:9] is the sub-list for method output_type
 	9, // [9:9] is the sub-list for method input_type

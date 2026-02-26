@@ -1,8 +1,0 @@
-record_config {
-  address: "127.0.0.1"
-  port: 70000
-}
-poll_config {
-  address: "127.0.0.1"
-  port: 8081
-}

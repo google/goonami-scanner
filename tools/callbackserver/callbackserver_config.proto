@@ -1,0 +1,72 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.callbackserver;
+
+option go_package = "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CallbackserverConfigOuterClass";
+option java_package = "com.google.goonami.callbackserver.proto";
+
+enum CallbackEndpointMode {
+  MODE_UNSPECIFIED = 0;
+
+  // Goonami will start a local server to handle this endpoint.
+  MODE_START_LOCAL_SERVER = 1;
+
+  // Goonami will connect to a remote callback server for this endpoint.
+  MODE_USE_REMOTE_SERVER = 2;
+}
+
+message EndpointConfig {
+  // The mode to use for the endpoint. Whether a local server should be started,
+  // or if a remote server should be used.
+  CallbackEndpointMode mode = 1;
+
+  // The FULL public URI used to reach the endpoint. For example:
+  // http://127.0.0.1:8080 or http://cb.localhost.lan:8082 for HTTP interaction
+  // or cb.localhost.lan:8082 for DNS interactions. This is usually what will
+  // end up being used by the scanner.
+  string public_uri = 2;
+
+  // Only used in MODE_START_LOCAL_SERVER mode. The address to bind to for a
+  // local instance of the server.
+  string bind_address = 3;
+
+  // Only used in MODE_START_LOCAL_SERVER mode. The port to bind to for a local
+  // instance of the server.
+  uint32 bind_port = 4;
+}
+
+message CallbackserverConfig {
+  // The endpoint used to verify the presence of interactions.
+  EndpointConfig http_poll_config = 1;
+
+  // The endpoint used to record HTTP interactions.
+  optional EndpointConfig http_record_config = 2;
+
+  // The endpoint used to record DNS interactions.
+  optional EndpointConfig dns_record_config = 3;
+
+  // Time before interactions are invalidated.
+  uint32 interaction_ttl_seconds = 4;
+
+  // The interval at which to run cleanup of expired interactions.
+  uint32 cleanup_interval_seconds = 5;
+}
