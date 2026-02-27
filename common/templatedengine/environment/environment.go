@@ -85,7 +85,7 @@ func (e *Environment) callbackServerInitialization(ctx context.Context) error {
 		return nil
 	}
 
-	secret, err := generateSecret(128)
+	secret, err := generateSecret(32)
 	if err != nil {
 		return err
 	}
