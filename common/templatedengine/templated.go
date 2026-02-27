@@ -154,6 +154,7 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 	for _, actionName := range workflow.GetActions() {
 		ok, cleanups := d.runActionFromName(ctx, service, actionName, env)
 		if !ok {
+			log.DebugContextf(ctx, log.DebugLevelService, "action '%s' failed", actionName)
 			success = false
 			break
 		}

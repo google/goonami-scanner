@@ -154,7 +154,7 @@ func (c *Client) poll(ctx context.Context, secret string) (*ppb.PollingResult, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.DebugContextf(ctx, log.DebugLevelService, "secret not found")
+		log.DebugContextf(ctx, log.DebugLevelService, "interaction with secret %q not found", secret)
 		return nil, nil
 	}
 

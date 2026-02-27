@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+	"github.com/google/goonami-scanner/core/log"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -49,6 +50,7 @@ func sleepAction(ctx context.Context, sleep *tpb.SleepUtilityAction, env *enviro
 		return true
 	}
 
+	log.DebugContextf(ctx, log.DebugLevelRequest, "sleeping for %d ms", sleep.GetDurationMs())
 	time.Sleep(time.Duration(sleep.GetDurationMs()) * time.Millisecond)
 	return true
 }
