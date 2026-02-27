@@ -195,8 +195,10 @@ type CallbackserverConfig struct {
 	xxx_hidden_HttpPollConfig         *EndpointConfig        `protobuf:"bytes,1,opt,name=http_poll_config,json=httpPollConfig,proto3"`
 	xxx_hidden_HttpRecordConfig       *EndpointConfig        `protobuf:"bytes,2,opt,name=http_record_config,json=httpRecordConfig,proto3,oneof"`
 	xxx_hidden_DnsRecordConfig        *EndpointConfig        `protobuf:"bytes,3,opt,name=dns_record_config,json=dnsRecordConfig,proto3,oneof"`
-	xxx_hidden_InteractionTtlSeconds  uint32                 `protobuf:"varint,4,opt,name=interaction_ttl_seconds,json=interactionTtlSeconds,proto3"`
-	xxx_hidden_CleanupIntervalSeconds uint32                 `protobuf:"varint,5,opt,name=cleanup_interval_seconds,json=cleanupIntervalSeconds,proto3"`
+	xxx_hidden_InteractionTtlSeconds  uint32                 `protobuf:"varint,4,opt,name=interaction_ttl_seconds,json=interactionTtlSeconds,proto3,oneof"`
+	xxx_hidden_CleanupIntervalSeconds uint32                 `protobuf:"varint,5,opt,name=cleanup_interval_seconds,json=cleanupIntervalSeconds,proto3,oneof"`
+	XXX_raceDetectHookData            protoimpl.RaceDetectHookData
+	XXX_presence                      [1]uint32
 	unknownFields                     protoimpl.UnknownFields
 	sizeCache                         protoimpl.SizeCache
 }
@@ -275,10 +277,12 @@ func (x *CallbackserverConfig) SetDnsRecordConfig(v *EndpointConfig) {
 
 func (x *CallbackserverConfig) SetInteractionTtlSeconds(v uint32) {
 	x.xxx_hidden_InteractionTtlSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
 }
 
 func (x *CallbackserverConfig) SetCleanupIntervalSeconds(v uint32) {
 	x.xxx_hidden_CleanupIntervalSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *CallbackserverConfig) HasHttpPollConfig() bool {
@@ -302,6 +306,20 @@ func (x *CallbackserverConfig) HasDnsRecordConfig() bool {
 	return x.xxx_hidden_DnsRecordConfig != nil
 }
 
+func (x *CallbackserverConfig) HasInteractionTtlSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
+func (x *CallbackserverConfig) HasCleanupIntervalSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *CallbackserverConfig) ClearHttpPollConfig() {
 	x.xxx_hidden_HttpPollConfig = nil
 }
@@ -314,6 +332,16 @@ func (x *CallbackserverConfig) ClearDnsRecordConfig() {
 	x.xxx_hidden_DnsRecordConfig = nil
 }
 
+func (x *CallbackserverConfig) ClearInteractionTtlSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_InteractionTtlSeconds = 0
+}
+
+func (x *CallbackserverConfig) ClearCleanupIntervalSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_CleanupIntervalSeconds = 0
+}
+
 type CallbackserverConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -324,9 +352,9 @@ type CallbackserverConfig_builder struct {
 	// The endpoint used to record DNS interactions.
 	DnsRecordConfig *EndpointConfig
 	// Time before interactions are invalidated.
-	InteractionTtlSeconds uint32
+	InteractionTtlSeconds *uint32
 	// The interval at which to run cleanup of expired interactions.
-	CleanupIntervalSeconds uint32
+	CleanupIntervalSeconds *uint32
 }
 
 func (b0 CallbackserverConfig_builder) Build() *CallbackserverConfig {
@@ -336,8 +364,14 @@ func (b0 CallbackserverConfig_builder) Build() *CallbackserverConfig {
 	x.xxx_hidden_HttpPollConfig = b.HttpPollConfig
 	x.xxx_hidden_HttpRecordConfig = b.HttpRecordConfig
 	x.xxx_hidden_DnsRecordConfig = b.DnsRecordConfig
-	x.xxx_hidden_InteractionTtlSeconds = b.InteractionTtlSeconds
-	x.xxx_hidden_CleanupIntervalSeconds = b.CleanupIntervalSeconds
+	if b.InteractionTtlSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		x.xxx_hidden_InteractionTtlSeconds = *b.InteractionTtlSeconds
+	}
+	if b.CleanupIntervalSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_CleanupIntervalSeconds = *b.CleanupIntervalSeconds
+	}
 	return m0
 }
 
@@ -351,15 +385,17 @@ const file_callbackserver_config_proto_rawDesc = "" +
 	"\n" +
 	"public_uri\x18\x02 \x01(\tR\tpublicUri\x12!\n" +
 	"\fbind_address\x18\x03 \x01(\tR\vbindAddress\x12\x1b\n" +
-	"\tbind_port\x18\x04 \x01(\rR\bbindPort\"\xbb\x03\n" +
+	"\tbind_port\x18\x04 \x01(\rR\bbindPort\"\xfe\x03\n" +
 	"\x14CallbackserverConfig\x12P\n" +
 	"\x10http_poll_config\x18\x01 \x01(\v2&.goonami.callbackserver.EndpointConfigR\x0ehttpPollConfig\x12Y\n" +
 	"\x12http_record_config\x18\x02 \x01(\v2&.goonami.callbackserver.EndpointConfigH\x00R\x10httpRecordConfig\x88\x01\x01\x12W\n" +
-	"\x11dns_record_config\x18\x03 \x01(\v2&.goonami.callbackserver.EndpointConfigH\x01R\x0fdnsRecordConfig\x88\x01\x01\x126\n" +
-	"\x17interaction_ttl_seconds\x18\x04 \x01(\rR\x15interactionTtlSeconds\x128\n" +
-	"\x18cleanup_interval_seconds\x18\x05 \x01(\rR\x16cleanupIntervalSecondsB\x15\n" +
+	"\x11dns_record_config\x18\x03 \x01(\v2&.goonami.callbackserver.EndpointConfigH\x01R\x0fdnsRecordConfig\x88\x01\x01\x12;\n" +
+	"\x17interaction_ttl_seconds\x18\x04 \x01(\rH\x02R\x15interactionTtlSeconds\x88\x01\x01\x12=\n" +
+	"\x18cleanup_interval_seconds\x18\x05 \x01(\rH\x03R\x16cleanupIntervalSeconds\x88\x01\x01B\x15\n" +
 	"\x13_http_record_configB\x14\n" +
-	"\x12_dns_record_config*e\n" +
+	"\x12_dns_record_configB\x1a\n" +
+	"\x18_interaction_ttl_secondsB\x1b\n" +
+	"\x19_cleanup_interval_seconds*e\n" +
 	"\x14CallbackEndpointMode\x12\x14\n" +
 	"\x10MODE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17MODE_START_LOCAL_SERVER\x10\x01\x12\x1a\n" +

@@ -65,8 +65,8 @@ message CallbackserverConfig {
   optional EndpointConfig dns_record_config = 3;
 
   // Time before interactions are invalidated.
-  uint32 interaction_ttl_seconds = 4;
+  optional uint32 interaction_ttl_seconds = 4;
 
   // The interval at which to run cleanup of expired interactions.
-  uint32 cleanup_interval_seconds = 5;
+  optional uint32 cleanup_interval_seconds = 5;
 }

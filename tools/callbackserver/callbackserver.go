@@ -29,6 +29,7 @@ import (
 	tcs_http "github.com/google/goonami-scanner/tools/callbackserver/server/http"
 	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
@@ -44,7 +45,16 @@ var (
 	ErrInvalidConfig = errors.New("invalid config")
 )
 
-// ConfigFromFile reads and validates the config from the given file.
+// DefaultConfig returns the default config for the callback server.
+func DefaultConfig() *cbpb.CallbackserverConfig {
+	return cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
+	}.Build()
+}
+
+// ConfigFromFile reads and validates the config from the given file. This is used only by the
+// standalone callback server binary.
 func ConfigFromFile(ctx context.Context, path string) (*cbpb.CallbackserverConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -56,10 +66,6 @@ func ConfigFromFile(ctx context.Context, path string) (*cbpb.CallbackserverConfi
 		return nil, fmt.Errorf("%w: %v", ErrConfigUnmarshal, err)
 	}
 
-	if err := ValidateConfig(cfg); err != nil {
-		return nil, err
-	}
-
 	return cfg, nil
 }
 
@@ -68,6 +74,14 @@ func ConfigFromFile(ctx context.Context, path string) (*cbpb.CallbackserverConfi
 func ValidateConfig(cfg *cbpb.CallbackserverConfig) error {
 	if !cfg.HasHttpPollConfig() {
 		return fmt.Errorf("%w: http_poll_config is required", ErrInvalidConfig)
+	}
+
+	if cfg.GetInteractionTtlSeconds() == 0 {
+		return fmt.Errorf("%w: interaction_ttl_seconds must be greater than 0", ErrInvalidConfig)
+	}
+
+	if cfg.GetCleanupIntervalSeconds() == 0 {
+		return fmt.Errorf("%w: cleanup_interval_seconds must be greater than 0", ErrInvalidConfig)
 	}
 
 	if cfg.GetHttpRecordConfig().GetMode() == cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
@@ -97,15 +111,25 @@ type Server struct {
 }
 
 // New creates a new callback server.
-func New(ctx context.Context, cfg *cbpb.CallbackserverConfig) *Server {
-	ttl := time.Duration(cfg.GetInteractionTtlSeconds()) * time.Second
-	cleanupInterval := time.Duration(cfg.GetCleanupIntervalSeconds()) * time.Second
+func New(ctx context.Context, cfg *cbpb.CallbackserverConfig) (*Server, error) {
+	clientCfg := DefaultConfig()
+
+	if cfg != nil {
+		proto.Merge(clientCfg, cfg)
+	}
+
+	if err := ValidateConfig(clientCfg); err != nil {
+		return nil, err
+	}
+
+	ttl := time.Duration(clientCfg.GetInteractionTtlSeconds()) * time.Second
+	cleanupInterval := time.Duration(clientCfg.GetCleanupIntervalSeconds()) * time.Second
 	store := storage.NewInMemoryInteractionStore(ctx, ttl, cleanupInterval)
 
 	return &Server{
 		store: store,
-		cfg:   cfg,
-	}
+		cfg:   clientCfg,
+	}, nil
 }
 
 // Shutdown shuts down the callback server.

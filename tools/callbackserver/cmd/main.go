@@ -58,7 +58,11 @@ func main() {
 		cancel()
 	}()
 
-	server := callbackserver.New(ctx, cfg)
+	server, err := callbackserver.New(ctx, cfg)
+	if err != nil {
+		log.ErrorContextf(ctx, "failed to create server: %v", err)
+		os.Exit(1)
+	}
 	server.StartRecordingHTTP(ctx)
 	server.StartPolling(ctx)
 

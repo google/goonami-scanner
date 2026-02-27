@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 	"github.com/google/goonami-scanner/common/callbackserver/netutils"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
@@ -61,8 +62,8 @@ func TestConfigFromFile(t *testing.T) {
 					BindAddress: "127.0.0.1",
 					BindPort:    8080,
 				}.Build(),
-				InteractionTtlSeconds:  60,
-				CleanupIntervalSeconds: 10,
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 		},
 		{
@@ -74,45 +75,6 @@ func TestConfigFromFile(t *testing.T) {
 			name:    "when_invalid_prototext_returns_error",
 			path:    "testdata/invalid_prototext.textproto",
 			wantErr: ErrConfigUnmarshal,
-		},
-		{
-			name: "when_missing_http_record_config_returns_partial_config",
-			path: "testdata/missing_http_record_config.textproto",
-			want: cbpb.CallbackserverConfig_builder{
-				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					PublicUri:   "http://127.0.0.1:8081",
-					BindAddress: "127.0.0.1",
-					BindPort:    8081,
-				}.Build(),
-				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-					PublicUri: "cb.localhost.lan",
-				}.Build(),
-			}.Build(),
-		},
-		{
-			name: "when_missing_dns_record_config_returns_partial_config",
-			path: "testdata/missing_dns_record_config.textproto",
-			want: cbpb.CallbackserverConfig_builder{
-				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					PublicUri:   "http://127.0.0.1:8081",
-					BindAddress: "127.0.0.1",
-					BindPort:    8081,
-				}.Build(),
-				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					PublicUri:   "http://127.0.0.1:8080",
-					BindAddress: "127.0.0.1",
-					BindPort:    8080,
-				}.Build(),
-			}.Build(),
-		},
-		{
-			name:    "when_http_poll_config_returns_error",
-			path:    "testdata/missing_http_poll_config.textproto",
-			wantErr: ErrInvalidConfig,
 		},
 	}
 
@@ -146,6 +108,8 @@ func TestValidateConfig(t *testing.T) {
 				HttpPollConfig: cbpb.EndpointConfig_builder{
 					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 		},
 		{
@@ -157,6 +121,8 @@ func TestValidateConfig(t *testing.T) {
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
 					Mode: cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
 				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 		},
 		{
@@ -173,11 +139,16 @@ func TestValidateConfig(t *testing.T) {
 					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 					BindPort: 65535,
 				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 		},
 		{
-			name:    "when_missing_http_poll_config_returns_error",
-			cfg:     &cbpb.CallbackserverConfig{},
+			name: "when_missing_http_poll_config_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
 			wantErr: ErrInvalidConfig,
 		},
 		{
@@ -190,6 +161,8 @@ func TestValidateConfig(t *testing.T) {
 					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 					BindPort: 0,
 				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 			wantErr: ErrInvalidConfig,
 		},
@@ -203,6 +176,28 @@ func TestValidateConfig(t *testing.T) {
 					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 					BindPort: 65536,
 				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_invalid_interaction_ttl_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				InteractionTtlSeconds: proto.Uint32(0),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_invalid_cleanup_interval_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				CleanupIntervalSeconds: proto.Uint32(0),
 			}.Build(),
 			wantErr: ErrInvalidConfig,
 		},
@@ -218,6 +213,83 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+func TestNew(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfg     *cbpb.CallbackserverConfig
+		wantErr error
+		want    *cbpb.CallbackserverConfig
+	}{
+		{
+			name: "when_valid_config_returns_server",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
+			want: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
+		},
+		{
+			name: "when_invalid_config_returns_error",
+			cfg: cbpb.CallbackserverConfig_builder{
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_partial_config_uses_defaults",
+			cfg: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+			}.Build(),
+			want: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+				}.Build(),
+				InteractionTtlSeconds:  proto.Uint32(60),
+				CleanupIntervalSeconds: proto.Uint32(10),
+			}.Build(),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			srv, err := New(ctx, tc.cfg)
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("New() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
+			}
+
+			if srv == nil {
+				t.Fatal("New() returned nil without error")
+			}
+
+			if diff := cmp.Diff(tc.want, srv.cfg, protocmp.Transform()); diff != "" {
+				t.Errorf("New() srv.cfg diff (-want +got):\n%s", diff)
+			}
+
+			if srv.store == nil {
+				t.Error("New() srv.store is nil")
+			}
+		})
+	}
+}
+
 func TestServer(t *testing.T) {
 	recordPort := getFreePort(t)
 	recordURI := fmt.Sprintf("http://127.0.0.1:%d", recordPort)
@@ -225,8 +297,8 @@ func TestServer(t *testing.T) {
 	pollURI := fmt.Sprintf("http://127.0.0.1:%d", pollPort)
 
 	cfg := cbpb.CallbackserverConfig_builder{
-		InteractionTtlSeconds:  60,
-		CleanupIntervalSeconds: 10,
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
 			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 			BindAddress: "127.0.0.1",
@@ -244,7 +316,10 @@ func TestServer(t *testing.T) {
 	}.Build()
 
 	ctx := context.Background()
-	srv := New(ctx, cfg)
+	srv, err := New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
 
 	if srv == nil {
 		t.Fatal("New() returned nil server")
@@ -276,8 +351,8 @@ func TestServer(t *testing.T) {
 func TestServer_RemoteHTTPRecording(t *testing.T) {
 	pollPort := getFreePort(t)
 	cfg := cbpb.CallbackserverConfig_builder{
-		InteractionTtlSeconds:  60,
-		CleanupIntervalSeconds: 10,
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
 			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
 			PublicUri: "http://127.0.0.1:8080",
@@ -294,7 +369,10 @@ func TestServer_RemoteHTTPRecording(t *testing.T) {
 	}.Build()
 
 	ctx := context.Background()
-	srv := New(ctx, cfg)
+	srv, err := New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
 
 	if srv == nil {
 		t.Fatal("New() returned nil server")
@@ -323,8 +401,8 @@ func TestServer_RemotePolling(t *testing.T) {
 	recordPort := getFreePort(t)
 
 	cfg := cbpb.CallbackserverConfig_builder{
-		InteractionTtlSeconds:  60,
-		CleanupIntervalSeconds: 10,
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
 			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
 			BindAddress: "127.0.0.1",
@@ -341,7 +419,10 @@ func TestServer_RemotePolling(t *testing.T) {
 	}.Build()
 
 	ctx := context.Background()
-	srv := New(ctx, cfg)
+	srv, err := New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
 
 	if srv == nil {
 		t.Fatal("New() returned nil server")
