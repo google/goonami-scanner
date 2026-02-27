@@ -134,11 +134,14 @@ func New(ctx context.Context, cfg *cbpb.CallbackserverConfig) (*Server, error) {
 
 // Shutdown shuts down the callback server.
 func (s *Server) Shutdown(ctx context.Context) error {
+	ctx = log.ContextForModule(ctx, "callbackserver")
 	if s.httpRecordingSrv != nil {
+		log.InfoContextf(ctx, "shutting down HTTP recording server")
 		s.httpRecordingSrv.Shutdown(ctx)
 	}
 
 	if s.httpPollingSrv != nil {
+		log.InfoContextf(ctx, "shutting down HTTP polling server")
 		s.httpPollingSrv.Shutdown(ctx)
 	}
 

@@ -32,6 +32,24 @@ import (
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
+var (
+	fakeConfig = `
+clients: {
+  callback_server: {
+		interaction_ttl_seconds: 300
+    cleanup_interval_seconds: 10
+
+    http_poll_config: {
+      mode: MODE_START_LOCAL_SERVER
+      public_uri: "http://127.0.0.1:8081"
+      bind_address: "127.0.0.1"
+      bind_port: 8081
+    }
+  }
+}
+`
+)
+
 func TestRun(t *testing.T) {
 	// Backup and restore
 	oldPS := portScanner
@@ -49,7 +67,7 @@ func TestRun(t *testing.T) {
 
 	tempDir := t.TempDir()
 	configPath := path.Join(tempDir, "config.textproto")
-	if err := os.WriteFile(configPath, []byte(""), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(fakeConfig), 0644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -71,7 +89,7 @@ func TestRun(t *testing.T) {
 func TestRun_ErrorCases(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := path.Join(tempDir, "config.textproto")
-	os.WriteFile(configPath, []byte(""), 0644)
+	os.WriteFile(configPath, []byte(fakeConfig), 0644)
 
 	// Create a file where OutputDir should be to make CreateDirectories fail
 	blockedOutputDir := path.Join(tempDir, "blocked")

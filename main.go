@@ -29,6 +29,7 @@ import (
 	"github.com/google/goonami-scanner/core/entrypoint"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
+	"github.com/google/goonami-scanner/tools/callbackserver"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	// port scanner plugins
@@ -42,6 +43,7 @@ import (
 	// detectors
 	"github.com/google/goonami-scanner/plugins/detectors/templated"
 
+	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
@@ -163,6 +165,13 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to create the entrypoint: %w", err)
 	}
 
+	log.InfoContextf(ctx, "starting the callback server")
+	srv, err := startCallbackServer(ctx, cfg.ClientsConfig().GetCallbackServer())
+	if err != nil {
+		return fmt.Errorf("failed to start the callback server: %w", err)
+	}
+	defer srv.Shutdown(ctx)
+
 	log.InfoContextf(ctx, "running the scanner")
 	results, err := e.Run(ctx, *TargetFlag)
 	if err != nil {
@@ -198,6 +207,18 @@ func validateFlags() error {
 	}
 
 	return nil
+}
+
+func startCallbackServer(ctx context.Context, cfg *cbpb.CallbackserverConfig) (*callbackserver.Server, error) {
+	srv, err := callbackserver.New(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	srv.StartPolling(ctx)
+	srv.StartRecordingHTTP(ctx)
+
+	return srv, nil
 }
 
 func writeResults(resultsPath string, results *srpb.ScanResults) error {
