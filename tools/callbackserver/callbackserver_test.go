@@ -18,6 +18,7 @@ package callbackserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 	"github.com/google/goonami-scanner/common/callbackserver/netutils"
+	"golang.org/x/net/dns/dnsmessage"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -80,7 +82,7 @@ func TestConfigFromFile(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg, err := ConfigFromFile(context.Background(), tc.path)
+			cfg, err := ConfigFromFile(t.Context(), tc.path)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("ConfigFromFile() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -264,7 +266,7 @@ func TestNew(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			srv, err := New(ctx, tc.cfg)
 
 			if !errors.Is(err, tc.wantErr) {
@@ -295,6 +297,8 @@ func TestServer(t *testing.T) {
 	recordURI := fmt.Sprintf("http://127.0.0.1:%d", recordPort)
 	pollPort := getFreePort(t)
 	pollURI := fmt.Sprintf("http://127.0.0.1:%d", pollPort)
+	dnsPort := getFreeUDPPort(t)
+	dnsDomain := "cb.localhost.lan"
 
 	cfg := cbpb.CallbackserverConfig_builder{
 		InteractionTtlSeconds:  proto.Uint32(60),
@@ -310,12 +314,14 @@ func TestServer(t *testing.T) {
 			BindPort:    uint32(pollPort),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:53",
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(dnsPort),
+			PublicUri:   dnsDomain,
 		}.Build(),
 	}.Build()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	srv, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatalf("New() unexpected error: %v", err)
@@ -326,6 +332,9 @@ func TestServer(t *testing.T) {
 	}
 
 	srv.StartRecordingHTTP(ctx)
+	if err := srv.StartRecordingDNS(ctx); err != nil {
+		t.Fatalf("StartRecordingDNS() unexpected error: %v", err)
+	}
 	srv.StartPolling(ctx)
 
 	// Allow a few milliseconds for the servers to start.
@@ -339,9 +348,62 @@ func TestServer(t *testing.T) {
 		t.Error("pollingServer is nil after StartPolling")
 	}
 
+	if srv.dnsRecordingSrv == nil {
+		t.Error("dnsRecordingSrv is nil after StartRecordingDNS")
+	}
+
 	// We register an interaction and immediately check its presence.
-	httpRegisterInteraction(ctx, t, "test", recordURI)
-	httpPollInteraction(ctx, t, "test", pollURI)
+	httpRegisterInteraction(ctx, t, "test-http", recordURI)
+	pollInteraction(ctx, t, "test-http", pollURI, true, false)
+
+	dnsRegisterInteraction(ctx, t, "test-dns", dnsDomain, dnsPort)
+	pollInteraction(ctx, t, "test-dns", pollURI, false, true)
+
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Errorf("Shutdown() unexpected error: %v", err)
+	}
+}
+
+func TestServer_RemoteDNSRecording(t *testing.T) {
+	pollPort := getFreePort(t)
+	cfg := cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
+		HttpRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "http://127.0.0.1:8080",
+		}.Build(),
+		HttpPollConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(pollPort),
+		}.Build(),
+		DnsRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+			PublicUri: "cb.localhost.lan",
+		}.Build(),
+	}.Build()
+
+	ctx := t.Context()
+	srv, err := New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
+
+	if srv == nil {
+		t.Fatal("New() returned nil server")
+	}
+
+	if err := srv.StartRecordingDNS(ctx); err != nil {
+		t.Fatalf("StartRecordingDNS() unexpected error: %v", err)
+	}
+
+	// Allow a few milliseconds for the servers to start.
+	time.Sleep(200 * time.Millisecond)
+
+	if srv.dnsRecordingSrv != nil {
+		t.Error("dnsRecordingSrv is not nil after StartRecordingDNS with remote mode")
+	}
 
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Errorf("Shutdown() unexpected error: %v", err)
@@ -368,7 +430,7 @@ func TestServer_RemoteHTTPRecording(t *testing.T) {
 		}.Build(),
 	}.Build()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	srv, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatalf("New() unexpected error: %v", err)
@@ -418,7 +480,7 @@ func TestServer_RemotePolling(t *testing.T) {
 		}.Build(),
 	}.Build()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	srv, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatalf("New() unexpected error: %v", err)
@@ -472,7 +534,55 @@ func httpRegisterInteraction(ctx context.Context, t *testing.T, secret, recordUR
 	}
 }
 
-func httpPollInteraction(ctx context.Context, t *testing.T, secret, pollURI string) {
+func dnsRegisterInteraction(ctx context.Context, t *testing.T, secret, dnsDomain string, dnsPort int) {
+	t.Helper()
+
+	cbid, err := cbid.Generate(secret)
+	if err != nil {
+		t.Fatalf("failed to generate CBID: %v", err)
+	}
+
+	queryName := fmt.Sprintf("%s.%s", cbid, dnsDomain)
+	name, err := dnsmessage.NewName(queryName + ".")
+	if err != nil {
+		t.Fatalf("failed to create DNS name: %v", err)
+	}
+
+	query := dnsmessage.Message{
+		Header: dnsmessage.Header{ID: 1234},
+		Questions: []dnsmessage.Question{
+			{
+				Name:  name,
+				Type:  dnsmessage.TypeA,
+				Class: dnsmessage.ClassINET,
+			},
+		},
+	}
+	packed, err := query.Pack()
+	if err != nil {
+		t.Fatalf("failed to pack DNS query: %v", err)
+	}
+
+	conn, err := net.Dial("udp", fmt.Sprintf("127.0.0.1:%d", dnsPort))
+	if err != nil {
+		t.Fatalf("failed to dial UDP: %v", err)
+	}
+	defer conn.Close()
+
+	if _, err := conn.Write(packed); err != nil {
+		t.Fatalf("failed to write DNS query: %v", err)
+	}
+
+	// We read the response to ensure it was processed.
+	respBuf := make([]byte, 512)
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	_, err = conn.Read(respBuf)
+	if err != nil {
+		t.Fatalf("failed to read DNS response: %v", err)
+	}
+}
+
+func pollInteraction(ctx context.Context, t *testing.T, secret, pollURI string, wantHTTP, wantDNS bool) {
 	t.Helper()
 
 	url := fmt.Sprintf("%s/?secret=%s", pollURI, secret)
@@ -488,7 +598,7 @@ func httpPollInteraction(ctx context.Context, t *testing.T, secret, pollURI stri
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("unexpected status code: %v", resp.StatusCode)
+		t.Fatalf("unexpected status code: %v", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -496,8 +606,21 @@ func httpPollInteraction(ctx context.Context, t *testing.T, secret, pollURI stri
 		t.Fatalf("failed to read response body: %v", err)
 	}
 
-	if string(body) != `{"hasHttpInteraction":true}` {
-		t.Errorf("unexpected response body: %v", string(body))
+	var result struct {
+		HasHTTP bool `json:"hasHttpInteraction"`
+		HasDNS  bool `json:"hasDnsInteraction"`
+	}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("failed to unmarshal response body: %v", err)
+	}
+
+	if result.HasHTTP != wantHTTP {
+		t.Errorf("hasHttpInteraction = %v, want %v", result.HasHTTP, wantHTTP)
+	}
+
+	if result.HasDNS != wantDNS {
+		t.Errorf("hasDnsInteraction = %v, want %v", result.HasDNS, wantDNS)
 	}
 }
 
@@ -514,4 +637,19 @@ func getFreePort(t *testing.T) int {
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port
+}
+
+func getFreeUDPPort(t *testing.T) int {
+	t.Helper()
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to resolve udp addr: %v", err)
+	}
+
+	l, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		t.Fatalf("failed to listen on udp addr: %v", err)
+	}
+	defer l.Close()
+	return l.LocalAddr().(*net.UDPAddr).Port
 }

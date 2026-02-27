@@ -218,6 +218,10 @@ func startCallbackServer(ctx context.Context, cfg *cbpb.CallbackserverConfig) (*
 	srv.StartPolling(ctx)
 	srv.StartRecordingHTTP(ctx)
 
+	if err := srv.StartRecordingDNS(ctx); err != nil {
+		return nil, err
+	}
+
 	return srv, nil
 }
 

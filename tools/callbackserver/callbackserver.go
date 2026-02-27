@@ -21,11 +21,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/google/goonami-scanner/core/log"
+	tcsdns "github.com/google/goonami-scanner/tools/callbackserver/server/dns"
 	tcshttp "github.com/google/goonami-scanner/tools/callbackserver/server/http"
 	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -107,6 +109,7 @@ type Server struct {
 	store storage.InteractionStore
 
 	httpRecordingSrv *http.Server
+	dnsRecordingSrv  *net.UDPConn
 	httpPollingSrv   *http.Server
 }
 
@@ -145,6 +148,50 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		s.httpPollingSrv.Shutdown(ctx)
 	}
 
+	if s.dnsRecordingSrv != nil {
+		log.InfoContextf(ctx, "shutting down DNS recording server")
+		s.dnsRecordingSrv.Close()
+	}
+
+	return nil
+}
+
+// StartRecordingDNS interactions with the callback server.
+func (s *Server) StartRecordingDNS(ctx context.Context) error {
+	ctx = log.ContextForModule(ctx, "callbackserver/rec/dns")
+	if !s.cfg.HasDnsRecordConfig() {
+		log.WarnContextf(ctx, "DNS recording server is disabled, not starting")
+		return nil
+	}
+
+	if s.cfg.GetDnsRecordConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
+		log.WarnContextf(ctx, "DNS recording server is set up to non local mode, not starting")
+		return nil
+	}
+
+	bindaddr := s.cfg.GetDnsRecordConfig().GetBindAddress()
+	port := s.cfg.GetDnsRecordConfig().GetBindPort()
+	bindaddr = fmt.Sprintf("%s:%d", bindaddr, port)
+	handler := &tcsdns.RecordingHandler{
+		Domain: s.cfg.GetDnsRecordConfig().GetPublicUri(),
+		Store:  s.store,
+	}
+
+	dnsAddr, err := net.ResolveUDPAddr("udp", bindaddr)
+	if err != nil {
+		log.ErrorContextf(ctx, "failed to resolve UDP address %q: %v", bindaddr, err)
+		return err
+	}
+
+	log.InfoContextf(ctx, "binding DNS server to %q", bindaddr)
+	dnsConn, err := net.ListenUDP("udp", dnsAddr)
+	if err != nil {
+		log.ErrorContextf(ctx, "failed to listen on UDP address %q: %v", bindaddr, err)
+		return err
+	}
+
+	go tcsdns.ServeDNS(ctx, dnsConn, handler)
+	s.dnsRecordingSrv = dnsConn
 	return nil
 }
 
