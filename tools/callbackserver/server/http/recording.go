@@ -32,13 +32,12 @@ type RecordingHandler struct {
 }
 
 func (h *RecordingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := log.ContextForModule(r.Context(), "callbackserver/recording")
+	ctx := r.Context()
 	// TODO: b/487253053 - Add support for HTTPS.
 	fullURL := fmt.Sprintf("http://%s%s", r.Host, r.RequestURI)
-
 	cbid, err := netutils.IdentifierFromURL(fullURL)
 	if err != nil {
-		log.ErrorContextf(ctx, "failed to extract CBID from URL '%s': %v", fullURL, err)
+		log.DebugContextf(ctx, log.DebugLevelSession, "failed to extract CBID from URL '%s': %v", fullURL, err)
 		w.WriteHeader(500)
 		return
 	}

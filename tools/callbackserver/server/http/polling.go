@@ -33,7 +33,7 @@ type PollingHandler struct {
 }
 
 func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := log.ContextForModule(r.Context(), "callbackserver/polling")
+	ctx := r.Context()
 	secret := r.URL.Query().Get("secret")
 	if secret == "" {
 		http.Error(w, "required parameter 'secret' not found.", http.StatusBadRequest)

@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/google/goonami-scanner/core/log"
-	tcs_http "github.com/google/goonami-scanner/tools/callbackserver/server/http"
+	tcshttp "github.com/google/goonami-scanner/tools/callbackserver/server/http"
 	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -150,7 +150,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 // StartPolling starts the polling server in a new goroutine.
 func (s *Server) StartPolling(ctx context.Context) {
-	ctx = log.ContextForModule(ctx, "callbackserver")
+	ctx = log.ContextForModule(ctx, "callbackserver/poll")
 	if !s.cfg.HasHttpPollConfig() {
 		log.WarnContextf(ctx, "HTTP polling server is disabled, not starting")
 		return
@@ -163,15 +163,15 @@ func (s *Server) StartPolling(ctx context.Context) {
 
 	listenAddr := s.cfg.GetHttpPollConfig().GetBindAddress()
 	listenPort := s.cfg.GetHttpPollConfig().GetBindPort()
-	pollHandler := &tcs_http.PollingHandler{Store: s.store}
+	pollHandler := &tcshttp.PollingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	log.InfoContextf(ctx, "binding polling server to %q", bindAddr)
-	s.httpPollingSrv = serveHTTP(ctx, "polling", bindAddr, pollHandler)
+	s.httpPollingSrv = serveHTTP(ctx, bindAddr, pollHandler)
 }
 
 // StartRecordingHTTP starts the HTTP interactions recording server in a new goroutine.
 func (s *Server) StartRecordingHTTP(ctx context.Context) {
-	ctx = log.ContextForModule(ctx, "callbackserver")
+	ctx = log.ContextForModule(ctx, "callbackserver/rec/http")
 	if !s.cfg.HasHttpRecordConfig() {
 		log.WarnContextf(ctx, "HTTP recording server is disabled, not starting")
 		return
@@ -184,14 +184,13 @@ func (s *Server) StartRecordingHTTP(ctx context.Context) {
 
 	listenAddr := s.cfg.GetHttpRecordConfig().GetBindAddress()
 	listenPort := s.cfg.GetHttpRecordConfig().GetBindPort()
-	recordHandler := &tcs_http.RecordingHandler{Store: s.store}
+	recordHandler := &tcshttp.RecordingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	log.InfoContextf(ctx, "binding recording server to %q", bindAddr)
-	s.httpRecordingSrv = serveHTTP(ctx, "recording", bindAddr, recordHandler)
+	s.httpRecordingSrv = serveHTTP(ctx, bindAddr, recordHandler)
 }
 
-func serveHTTP(ctx context.Context, usage string, bindaddr string, handler http.Handler) *http.Server {
-	ctx = log.ContextForModule(ctx, fmt.Sprintf("callbackserver/%s", usage))
+func serveHTTP(ctx context.Context, bindaddr string, handler http.Handler) *http.Server {
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 	server := &http.Server{
