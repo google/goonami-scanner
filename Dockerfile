@@ -8,7 +8,7 @@ RUN apt-get update \
  && apt-get clean
 
 # Copy the source code and ensure permissions are set.
-RUN mkdir -p /goonami/src /goonami/bin
+RUN mkdir -p /goonami/src /goonami/bin /goonami/configs
 COPY . /goonami/src/
 RUN chown -R 1000:1000 /goonami
 
@@ -19,13 +19,16 @@ WORKDIR /goonami/src
 # Run tests
 RUN go test ./...
 
-# Build the binary
+# Build the binaries
 RUN go build -o /goonami/bin/goonami main.go
+RUN go build -o /goonami/bin/callbackserver tools/callbackserver/cmd/main.go
 
-# Copy the configuration and modify it to find fingerprints in the Docker image.
-RUN cp /goonami/src/config.textproto /goonami/config.textproto
+# Copy the configurations and modify the main one to point to the right
+# fingerprints directory.
+RUN cp /goonami/src/config.textproto /goonami/configs/scanner.textproto
+RUN cp /goonami/src/tools/callbackserver/cmd/config.textproto /goonami/configs/callbackserver.textproto
 RUN ln -s /goonami/src/plugins/fingerprint/webidentity/fingerprints /goonami/fingerprints \
-  && sed -i 's%"plugins/fingerprint/webidentity/fingerprints"%"/goonami/fingerprints"%g' /goonami/config.textproto
+  && sed -i 's%"plugins/fingerprint/webidentity/fingerprints"%"/goonami/fingerprints"%g' /goonami/configs/scanner.textproto
 
 FROM ubuntu:latest AS release
 
