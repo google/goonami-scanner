@@ -29,6 +29,12 @@ RUN ln -s /goonami/src/plugins/fingerprint/webidentity/fingerprints /goonami/fin
 
 FROM ubuntu:latest AS release
 
+# Ensure ca-certificates are up to date.
+RUN apt-get update && apt-get install -y ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /usr/share/doc && rm -rf /usr/share/man \
+ && apt-get clean
+
 COPY --from=builder /goonami /goonami
 RUN chown -R 1000:1000 /goonami
 
