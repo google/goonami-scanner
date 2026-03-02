@@ -199,7 +199,7 @@ func TestServeDNS(t *testing.T) {
 		t.Fatalf("failed to listen on UDP: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	handler := &RecordingHandler{}
 
 	done := make(chan struct{})
