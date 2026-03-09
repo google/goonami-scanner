@@ -196,16 +196,16 @@ func (s *Server) StartRecordingDNS(ctx context.Context) error {
 }
 
 // StartPolling starts the polling server in a new goroutine.
-func (s *Server) StartPolling(ctx context.Context) {
+func (s *Server) StartPolling(ctx context.Context) error {
 	ctx = log.ContextForModule(ctx, "callbackserver/poll")
 	if !s.cfg.HasHttpPollConfig() {
 		log.WarnContextf(ctx, "HTTP polling server is disabled, not starting")
-		return
+		return nil
 	}
 
 	if s.cfg.GetHttpPollConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
 		log.WarnContextf(ctx, "HTTP polling server is set up to non local mode, not starting")
-		return
+		return nil
 	}
 
 	listenAddr := s.cfg.GetHttpPollConfig().GetBindAddress()
@@ -213,20 +213,27 @@ func (s *Server) StartPolling(ctx context.Context) {
 	pollHandler := &tcshttp.PollingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	log.InfoContextf(ctx, "binding polling server to %q", bindAddr)
-	s.httpPollingSrv = serveHTTP(ctx, bindAddr, pollHandler)
+
+	srv, err := serveHTTP(ctx, bindAddr, pollHandler)
+	if err != nil {
+		return err
+	}
+
+	s.httpPollingSrv = srv
+	return nil
 }
 
 // StartRecordingHTTP starts the HTTP interactions recording server in a new goroutine.
-func (s *Server) StartRecordingHTTP(ctx context.Context) {
+func (s *Server) StartRecordingHTTP(ctx context.Context) error {
 	ctx = log.ContextForModule(ctx, "callbackserver/rec/http")
 	if !s.cfg.HasHttpRecordConfig() {
 		log.WarnContextf(ctx, "HTTP recording server is disabled, not starting")
-		return
+		return nil
 	}
 
 	if s.cfg.GetHttpRecordConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
 		log.WarnContextf(ctx, "HTTP recording server is set up to non local mode, not starting")
-		return
+		return nil
 	}
 
 	listenAddr := s.cfg.GetHttpRecordConfig().GetBindAddress()
@@ -234,10 +241,17 @@ func (s *Server) StartRecordingHTTP(ctx context.Context) {
 	recordHandler := &tcshttp.RecordingHandler{Store: s.store}
 	bindAddr := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	log.InfoContextf(ctx, "binding recording server to %q", bindAddr)
-	s.httpRecordingSrv = serveHTTP(ctx, bindAddr, recordHandler)
+
+	srv, err := serveHTTP(ctx, bindAddr, recordHandler)
+	if err != nil {
+		return err
+	}
+
+	s.httpRecordingSrv = srv
+	return nil
 }
 
-func serveHTTP(ctx context.Context, bindaddr string, handler http.Handler) *http.Server {
+func serveHTTP(ctx context.Context, bindaddr string, handler http.Handler) (*http.Server, error) {
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 	server := &http.Server{
@@ -245,11 +259,18 @@ func serveHTTP(ctx context.Context, bindaddr string, handler http.Handler) *http
 		Handler: mux,
 	}
 
+	listener, err := net.Listen("tcp", bindaddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to listen on %q: %w", bindaddr, err)
+	}
+
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.ErrorContextf(ctx, "HTTP server error: %v", err)
+		if err := server.Serve(listener); err != nil {
+			if err != http.ErrServerClosed {
+				log.ErrorContextf(ctx, "HTTP server error: %v", err)
+			}
 		}
 	}()
 
-	return server
+	return server, nil
 }

@@ -30,6 +30,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/callbackserver/cbid"
 	"github.com/google/goonami-scanner/common/callbackserver/netutils"
+	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"golang.org/x/net/dns/dnsmessage"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -331,11 +332,15 @@ func TestServer(t *testing.T) {
 		t.Fatal("New() returned nil server")
 	}
 
-	srv.StartRecordingHTTP(ctx)
+	if err := srv.StartRecordingHTTP(ctx); err != nil {
+		t.Fatalf("StartRecordingHTTP() unexpected error: %v", err)
+	}
 	if err := srv.StartRecordingDNS(ctx); err != nil {
 		t.Fatalf("StartRecordingDNS() unexpected error: %v", err)
 	}
-	srv.StartPolling(ctx)
+	if err := srv.StartPolling(ctx); err != nil {
+		t.Fatalf("StartPolling() unexpected error: %v", err)
+	}
 
 	// Allow a few milliseconds for the servers to start.
 	time.Sleep(200 * time.Millisecond)
@@ -440,10 +445,12 @@ func TestServer_RemoteHTTPRecording(t *testing.T) {
 		t.Fatal("New() returned nil server")
 	}
 
-	srv.StartRecordingHTTP(ctx)
-	srv.StartPolling(ctx)
-
-	// Allow a few milliseconds for the servers to start.
+	if err := srv.StartRecordingHTTP(ctx); err != nil {
+		t.Fatalf("StartRecordingHTTP() unexpected error: %v", err)
+	}
+	if err := srv.StartPolling(ctx); err != nil {
+		t.Fatalf("StartPolling() unexpected error: %v", err)
+	}
 	time.Sleep(200 * time.Millisecond)
 
 	if srv.httpRecordingSrv != nil {
@@ -490,10 +497,12 @@ func TestServer_RemotePolling(t *testing.T) {
 		t.Fatal("New() returned nil server")
 	}
 
-	srv.StartRecordingHTTP(ctx)
-	srv.StartPolling(ctx)
-
-	// Allow a few milliseconds for the servers to start.
+	if err := srv.StartRecordingHTTP(ctx); err != nil {
+		t.Fatalf("StartRecordingHTTP() unexpected error: %v", err)
+	}
+	if err := srv.StartPolling(ctx); err != nil {
+		t.Fatalf("StartPolling() unexpected error: %v", err)
+	}
 	time.Sleep(200 * time.Millisecond)
 
 	if srv.httpRecordingSrv == nil {
@@ -506,6 +515,81 @@ func TestServer_RemotePolling(t *testing.T) {
 
 	if err := srv.Shutdown(ctx); err != nil {
 		t.Errorf("Shutdown() unexpected error: %v", err)
+	}
+}
+
+func TestServer_DisabledServers(t *testing.T) {
+	cfg := cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
+	}.Build()
+
+	ctx := t.Context()
+	store := storage.NewInMemoryInteractionStore(ctx, 60, 10)
+	// Manually create the server to disable validation.
+	srv := &Server{
+		store: store,
+		cfg:   cfg,
+	}
+
+	if err := srv.StartRecordingHTTP(ctx); err != nil {
+		t.Fatalf("StartRecordingHTTP() unexpected error: %v", err)
+	}
+	if err := srv.StartPolling(ctx); err != nil {
+		t.Fatalf("StartPolling() unexpected error: %v", err)
+	}
+	if err := srv.StartRecordingDNS(ctx); err != nil {
+		t.Fatalf("StartRecordingDNS() unexpected error: %v", err)
+	}
+
+	if srv.httpRecordingSrv != nil {
+		t.Error("recordingServer is not nil after StartRecordingHTTP")
+	}
+
+	if srv.httpPollingSrv != nil {
+		t.Error("pollingServer is not nil after StartPolling")
+	}
+
+	if srv.dnsRecordingSrv != nil {
+		t.Error("dnsRecordingSrv is not nil after StartRecordingDNS")
+	}
+}
+
+func TestServer_ListenFails(t *testing.T) {
+	port := getFreePort(t)
+	// Use the port so the callbackserver fails to listen on it
+	l, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	if err != nil {
+		t.Fatalf("Failed to listen on free port: %v", err)
+	}
+	defer l.Close()
+
+	cfg := cbpb.CallbackserverConfig_builder{
+		InteractionTtlSeconds:  proto.Uint32(60),
+		CleanupIntervalSeconds: proto.Uint32(10),
+		HttpRecordConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(port),
+		}.Build(),
+		HttpPollConfig: cbpb.EndpointConfig_builder{
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+			BindAddress: "127.0.0.1",
+			BindPort:    uint32(port),
+		}.Build(),
+	}.Build()
+
+	ctx := t.Context()
+	srv, err := New(ctx, cfg)
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
+
+	if err := srv.StartRecordingHTTP(ctx); err == nil {
+		t.Fatal("StartRecordingHTTP() expected error, got nil")
+	}
+	if err := srv.StartPolling(ctx); err == nil {
+		t.Fatal("StartPolling() expected error, got nil")
 	}
 }
 

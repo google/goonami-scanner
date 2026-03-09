@@ -63,8 +63,15 @@ func main() {
 		log.ErrorContextf(ctx, "failed to create server: %v", err)
 		os.Exit(1)
 	}
-	server.StartRecordingHTTP(ctx)
-	server.StartPolling(ctx)
+	if err := server.StartRecordingHTTP(ctx); err != nil {
+		log.ErrorContextf(ctx, "failed to start HTTP recording server: %v", err)
+		os.Exit(1)
+	}
+
+	if err := server.StartPolling(ctx); err != nil {
+		log.ErrorContextf(ctx, "failed to start HTTP polling server: %v", err)
+		os.Exit(1)
+	}
 
 	<-ctx.Done()
 	server.Shutdown(ctx)
