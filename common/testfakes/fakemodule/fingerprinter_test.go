@@ -33,9 +33,15 @@ func TestFakeFingerprintFnDoNothing(t *testing.T) {
 	}
 }
 
-func TestFakeFingerprintFnErrors(t *testing.T) {
-	if _, err := FakeFingerprintFnErrors(t.Context(), nil); err != ErrFakeFingerprintGeneric {
-		t.Errorf("FakeFingerprintFnErrors() = %v, want %v", err, ErrFakeFingerprintGeneric)
+func TestFakeFingerprintFnErrorsFatal(t *testing.T) {
+	if _, err := FakeFingerprintFnErrorsFatal(t.Context(), nil); err != ErrFakeFingerprintFatal {
+		t.Errorf("FakeFingerprintFnErrorsFatal() = %v, want %v", err, ErrFakeFingerprintFatal)
+	}
+}
+
+func TestFakeFingerprintFnErrorsRecoverable(t *testing.T) {
+	if _, err := FakeFingerprintFnErrorsRecoverable(t.Context(), nil); err != ErrFakeFingerprintRecoverable {
+		t.Errorf("FakeFingerprintFnErrorsRecoverable() = %v, want %v", err, ErrFakeFingerprintRecoverable)
 	}
 }
 
@@ -80,11 +86,18 @@ func TestFakeFingerprinterFingerprint(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "when_fingerprinting_errors_it_propagates_error",
+			name: "when_fingerprinting_errors_fatal_it_propagates_error",
 			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
-				return nil, ErrFakeFingerprintGeneric
+				return nil, ErrFakeFingerprintFatal
 			},
-			wantErr: ErrFakeFingerprintGeneric,
+			wantErr: ErrFakeFingerprintFatal,
+		},
+		{
+			name: "when_fingerprinting_errors_recoverable_it_propagates_error",
+			scanFn: func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+				return nil, ErrFakeFingerprintRecoverable
+			},
+			wantErr: ErrFakeFingerprintRecoverable,
 		},
 	}
 

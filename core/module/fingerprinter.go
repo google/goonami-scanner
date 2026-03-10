@@ -34,6 +34,9 @@ type Fingerprinter interface {
 	// information. Note: You might be wondering: why a list when only one service come as input?
 	// For historical reasons, Tsunami fingerprinters can "split" a single service if it contains
 	// several identified software (e.g. wordpress on one root and drupal on another).
+	//
+	// Important note: Unless explicitly annotated with `module.ErrRecoverable`, every error returned
+	// by this function will be treated as a fatal error for the entire scan.
 	Fingerprint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error)
 }
 

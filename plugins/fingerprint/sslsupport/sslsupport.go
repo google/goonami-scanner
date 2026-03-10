@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -68,14 +69,14 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 
 	authority, err := netendpoint.ToURIAuthority(service.GetNetworkEndpoint())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
 	}
 
 	// Note: If SSL connection fails, we consider that the service does not support SSL.
 	tlsConn, err := m.connect(ctx, "tcp", authority)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
 		}
 
 		return result, nil

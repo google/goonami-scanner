@@ -35,9 +35,15 @@ func TestFakeDetectFnNoFindings(t *testing.T) {
 	}
 }
 
-func TestFakeDetectFnErrors(t *testing.T) {
-	if _, err := FakeDetectFnErrors(t.Context(), nil); err != ErrFakeDetectGeneric {
-		t.Errorf("FakeDetectFnErrors() = %v, want %v", err, ErrFakeDetectGeneric)
+func TestFakeDetectFnErrorsFatal(t *testing.T) {
+	if _, err := FakeDetectFnErrorsFatal(t.Context(), nil); err != ErrFakeDetectFatal {
+		t.Errorf("FakeDetectFnErrorsFatal() = %v, want %v", err, ErrFakeDetectFatal)
+	}
+}
+
+func TestFakeDetectFnErrorsRecoverable(t *testing.T) {
+	if _, err := FakeDetectFnErrorsRecoverable(t.Context(), nil); err != ErrFakeDetectRecoverable {
+		t.Errorf("FakeDetectFnErrorsRecoverable() = %v, want %v", err, ErrFakeDetectRecoverable)
 	}
 }
 
@@ -95,11 +101,18 @@ func TestFakeVulnDetectorDetect(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "when_detection_errors_it_propagates_error",
+			name: "when_detection_errors_fatal_it_propagates_error",
 			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
-				return nil, ErrFakeDetectGeneric
+				return nil, ErrFakeDetectFatal
 			},
-			wantErr: ErrFakeDetectGeneric,
+			wantErr: ErrFakeDetectFatal,
+		},
+		{
+			name: "when_detection_errors_recoverable_it_propagates_error",
+			detectFn: func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+				return nil, ErrFakeDetectRecoverable
+			},
+			wantErr: ErrFakeDetectRecoverable,
 		},
 	}
 

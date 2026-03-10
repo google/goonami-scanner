@@ -148,6 +148,8 @@ func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.Fingerprint
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
 	ctx = log.ContextForModule(ctx, "core/runner")
 	portscan, err := r.PortScanStep(ctx, target)
+
+	// Note: All port scanning errors are fatal.
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +250,12 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 			ctx = log.ContextForModuleAndService(ctx, fp.Name(), sv)
 			res, err := fp.Fingerprint(ctx, sv)
 			if err != nil {
+				if module.IsRecoverableErr(err) {
+					log.WarnContextf(ctx, "recovered fingerprinting error: %s", err)
+					accumulator = append(accumulator, sv)
+					continue
+				}
+
 				log.ErrorContextf(ctx, "fatal fingerprinting error: %s", err)
 				return nil, err
 			}
@@ -272,12 +280,17 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 		ctx = log.ContextForModuleAndService(ctx, dt.Name(), svc)
 		res, err := dt.Detect(ctx, svc)
 		if err != nil {
+			if module.IsRecoverableErr(err) {
+				log.WarnContextf(ctx, "recovered detection error: %s", err)
+				continue
+			}
+
 			log.ErrorContextf(ctx, "fatal detection error: %s", err)
 			return nil, err
 		}
 
 		if len(res.GetDetectionReports()) > 0 {
-			log.VulnContextf(ctx, "module %s has reported at least one vulnerability", dt.Name())
+			log.VulnContextf(ctx, "module %q has reported %d vulnerabilities", dt.Name(), len(res.GetDetectionReports()))
 		}
 
 		reports = append(reports, res.GetDetectionReports()...)

@@ -31,6 +31,8 @@ type VulnDetector interface {
 	Name() string
 
 	// Detect the presence of a vulnerability on the network service.
+	// Important note: Unless explicitly annotated with `module.ErrRecoverable`, every error returned
+	// by this function will be treated as a fatal error for the entire scan.
 	Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error)
 }
 

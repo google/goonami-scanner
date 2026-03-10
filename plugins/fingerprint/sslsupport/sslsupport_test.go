@@ -30,6 +30,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/module"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -161,6 +162,15 @@ func TestFingerprint_Validation(t *testing.T) {
 			}.Build(),
 			wantErr: netendpoint.ErrEndpointMissingAddress,
 		},
+		{
+			name: "when_network_endpoint_is_invalid_returns_error_fatal",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: nepb.NetworkEndpoint_builder{
+					Type: nepb.NetworkEndpoint_TYPE_UNSPECIFIED,
+				}.Build(),
+			}.Build(),
+			wantErr: module.ErrFatal,
+		},
 	}
 
 	for _, tt := range tests {
@@ -214,6 +224,10 @@ func TestFingerprint_ContextCancelled(t *testing.T) {
 	_, err := mod.Fingerprint(ctx, service)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Fingerprint() error = %v, want %v", err, context.Canceled)
+	}
+
+	if !errors.Is(err, module.ErrFatal) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, module.ErrFatal)
 	}
 }
 

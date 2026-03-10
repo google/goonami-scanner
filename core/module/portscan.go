@@ -30,6 +30,7 @@ type PortScanner interface {
 	Name() string
 
 	// Scan the given target using the port scanner module.
+	// Important note: All errors returned by this function are considered fatal to the scan.
 	Scan(ctx context.Context, target string) (*rpb.PortScanningReport, error)
 }
 
