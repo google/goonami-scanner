@@ -18,6 +18,7 @@ package webidentity
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
 	"google.golang.org/protobuf/proto"
@@ -498,6 +500,64 @@ func TestFingerprint(t *testing.T) {
 				t.Errorf("Fingerprint() returned unexpected diff (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestFingerprint_InvalidService(t *testing.T) {
+	ctx := t.Context()
+	cfg := config.Default()
+
+	reg := hash.NewRegistry()
+	m, err := newWithRegistry(ctx, DefaultConfig(), cfg, reg)
+	if err != nil {
+		t.Fatalf("Failed to create module: %v", err)
+	}
+
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Type: npb.NetworkEndpoint_TYPE_UNSPECIFIED,
+		}.Build(),
+		SupportedHttpMethods: []string{"GET"},
+	}.Build()
+
+	_, err = m.Fingerprint(ctx, service)
+	if !errors.Is(err, module.ErrFatal) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, module.ErrFatal)
+	}
+}
+
+func TestFingerprint_ContextCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	cfg := config.Default()
+	reg := hash.NewRegistry()
+	m, err := newWithRegistry(ctx, DefaultConfig(), cfg, reg)
+	if err != nil {
+		t.Fatalf("Failed to create module: %v", err)
+	}
+
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Type: npb.NetworkEndpoint_IP_PORT,
+			IpAddress: npb.IpAddress_builder{
+				AddressFamily: npb.AddressFamily_IPV4,
+				Address:       "127.0.0.1",
+			}.Build(),
+			Port: npb.Port_builder{
+				PortNumber: 8080,
+			}.Build(),
+		}.Build(),
+		SupportedHttpMethods: []string{"GET"},
+	}.Build()
+
+	_, err = m.Fingerprint(ctx, service)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, context.Canceled)
+	}
+
+	if !errors.Is(err, module.ErrFatal) {
+		t.Errorf("Fingerprint() error = %v, want %v", err, module.ErrFatal)
 	}
 }
 

@@ -19,6 +19,7 @@ package fakemodule
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -35,12 +36,22 @@ func FakeFingerprintFnDoNothing(ctx context.Context, svc *nspb.NetworkService) (
 	return []*nspb.NetworkService{svc}, nil
 }
 
-// ErrFakeFingerprintGeneric is a generic fake fingerprinting error.
-var ErrFakeFingerprintGeneric = errors.New("generic fake fingerprinting error")
+var errFakeFingerprintGeneric = errors.New("generic fake fingerprinting error")
 
-// FakeFingerprintFnErrors is a fake fingerprinting function that errors out.
-func FakeFingerprintFnErrors(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
-	return nil, ErrFakeFingerprintGeneric
+// ErrFakeFingerprintRecoverable is a fake fingerprinting error that is recoverable.
+var ErrFakeFingerprintRecoverable = fmt.Errorf("%w: %v", module.ErrRecoverable, errFakeFingerprintGeneric)
+
+// ErrFakeFingerprintFatal is a fake fingerprinting error that is fatal.
+var ErrFakeFingerprintFatal = fmt.Errorf("%w: %v", module.ErrFatal, errFakeFingerprintGeneric)
+
+// FakeFingerprintFnErrorsFatal is a fake fingerprinting function that errors out with a fatal error.
+func FakeFingerprintFnErrorsFatal(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	return nil, ErrFakeFingerprintFatal
+}
+
+// FakeFingerprintFnErrorsRecoverable is a fake fingerprinting function that errors out with a recoverable error.
+func FakeFingerprintFnErrorsRecoverable(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+	return nil, ErrFakeFingerprintRecoverable
 }
 
 // FakeFingerprinter is a test double for module.Fingerprinter.

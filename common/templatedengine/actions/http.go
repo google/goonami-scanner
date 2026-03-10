@@ -18,12 +18,12 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
-	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 
@@ -42,29 +42,32 @@ func NewHTTPActionRunner(client goohttp.Client) *HTTPActionRunner {
 }
 
 // Run executes the HTTP action and return whether it was successful.
-func (r *HTTPActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
+func (r *HTTPActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) error {
 	httpAction := action.GetHttpRequest()
 	if httpAction == nil {
-		log.ErrorContextf(ctx, "action '%s' is not an HTTP action", action.GetName())
-		return false
+		return fmt.Errorf("%w: %q: not an HTTP action", ErrInvalidAction, action.GetName())
 	}
 
+	lastErr := fmt.Errorf("%w: %q: no URIs provided", ErrInvalidAction, action.GetName())
 	for _, uri := range httpAction.GetUri() {
-		if r.runWithURI(ctx, service, action, env, uri) {
-			return true
+		err := r.runWithURI(ctx, service, action, env, uri)
+		if err == nil {
+			return nil
 		}
+
+		lastErr = err
 	}
 
-	return false
+	return lastErr
 }
 
-func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment, uri string) bool {
+func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment, uri string) error {
+	name := action.GetName()
 	uri = env.Substitute(ctx, uri)
 	uri = strings.TrimPrefix(uri, "/")
 	webRoot, err := netservice.BuildWebRoot(service)
 	if err != nil {
-		log.ErrorContextf(ctx, "failed to build web root: %v", err)
-		return false
+		return fmt.Errorf("%w: %q: failed to build web root: %v", ErrActionFailed, name, err)
 	}
 
 	targetURL := webRoot + "/" + uri
@@ -72,14 +75,12 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 
 	method := httpAction.GetMethod().String()
 	if httpAction.GetMethod() == tpb.HttpAction_METHOD_UNSPECIFIED {
-		log.ErrorContextf(ctx, "action '%s' has unspecified HTTP method", action.GetName())
-		return false
+		return fmt.Errorf("%w: %q: missing HTTP method", ErrInvalidAction, name)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, targetURL, nil)
 	if err != nil {
-		log.ErrorContextf(ctx, "failed to create request: %v", err)
-		return false
+		return fmt.Errorf("%w: %q: failed to create request: %v", ErrActionFailed, name, err)
 	}
 
 	for _, header := range httpAction.GetHeaders() {
@@ -95,107 +96,130 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
 		if !httpAction.GetClientOptions().GetIgnoreHttpClientErrors() {
-			log.ErrorContextf(ctx, "HTTP request failed for action '%s': %v", action.GetName(), err)
+			return fmt.Errorf("%w: %q: HTTP request failed: %v", ErrActionFailed, name, err)
 		}
-		return false
+
+		// TODO: DO NOT SUBMIT; This is a bit tricky: we need to decide whether we want to blindly
+		// return a nil (but then completely ignore any expectation/extraction).
+		return nil
 	}
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.ErrorContextf(ctx, "failed to read response body: %v", err)
-		return false
+		return fmt.Errorf("%w: %q: failed to read response body: %v", ErrActionFailed, name, err)
 	}
 	bodyString := string(bodyBytes)
 
 	if expectedStatus := httpAction.GetResponse().GetHttpStatus(); expectedStatus != 0 {
 		if int64(resp.StatusCode) != expectedStatus {
-			log.DebugContextf(ctx, log.DebugLevelService, "workflow failed: expected status code %d, got %d", expectedStatus, resp.StatusCode)
-			return false
+			return fmt.Errorf("%w: %q: response code mismatch: want %d, got %d", ErrActionFailed, name, expectedStatus, resp.StatusCode)
 		}
 	}
 
-	if !r.checkExpectations(ctx, resp, bodyString, httpAction, env) {
-		return false
+	if err := r.checkExpectations(ctx, resp, bodyString, name, httpAction, env); err != nil {
+		return err
 	}
 
-	if !r.performExtractions(ctx, resp, bodyString, httpAction, env) {
-		return false
+	if err := r.performExtractions(ctx, resp, bodyString, name, httpAction, env); err != nil {
+		return err
 	}
 
-	return true
+	return nil
 }
 
-func (r *HTTPActionRunner) checkExpectations(ctx context.Context, resp *http.Response, body string, httpAction *tpb.HttpAction, env *environment.Environment) bool {
+func (r *HTTPActionRunner) checkExpectations(ctx context.Context, resp *http.Response, body string, name string, httpAction *tpb.HttpAction, env *environment.Environment) error {
 	response := httpAction.GetResponse()
 	if expectAll := response.GetExpectAll(); expectAll != nil {
 		for _, cond := range expectAll.GetConditions() {
-			if !r.checkExpectation(ctx, resp, body, cond, env) {
-				log.DebugContextf(ctx, log.DebugLevelService, "expectation failed: %v", cond)
-				return false
+			if err := r.checkExpectation(ctx, resp, body, name, cond, env); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 	}
 
 	if expectAny := response.GetExpectAny(); expectAny != nil {
 		for _, cond := range expectAny.GetConditions() {
-			if r.checkExpectation(ctx, resp, body, cond, env) {
-				return true
+			if err := r.checkExpectation(ctx, resp, body, name, cond, env); err == nil {
+				return nil
 			}
 		}
-		log.DebugContextf(ctx, log.DebugLevelService, "all expectations failed")
-		return false
+		return fmt.Errorf("%w: %q: all expectations failed", ErrActionFailed, name)
 	}
-	return true
+
+	return nil
 }
 
-func (r *HTTPActionRunner) checkExpectation(ctx context.Context, resp *http.Response, body string, cond *tpb.HttpAction_HttpResponse_Expectation, env *environment.Environment) bool {
+func (r *HTTPActionRunner) checkExpectation(ctx context.Context, resp *http.Response, body string, name string, cond *tpb.HttpAction_HttpResponse_Expectation, env *environment.Environment) error {
 	contains := env.Substitute(ctx, cond.GetContains())
-	if cond.GetBody() != nil {
-		return strings.Contains(body, contains)
+	if cond.HasBody() {
+		if strings.Contains(body, contains) {
+			return nil
+		}
+
+		return fmt.Errorf("%w: %q: expectations: body does not contain %q", ErrActionFailed, name, contains)
 	}
-	if header := cond.GetHeader(); header != nil {
-		headerName := env.Substitute(ctx, header.GetName())
-		return strings.Contains(resp.Header.Get(headerName), contains)
+
+	if !cond.HasHeader() {
+		return fmt.Errorf("%w: %q: invalid expectation %q", ErrInvalidAction, name, cond)
 	}
-	return false
+
+	header := cond.GetHeader()
+	headerName := env.Substitute(ctx, header.GetName())
+	if strings.Contains(resp.Header.Get(headerName), contains) {
+		return nil
+	}
+
+	return fmt.Errorf("%w: %q: expectations: header %q does not contain %q", ErrActionFailed, name, headerName, contains)
 }
 
-func (r *HTTPActionRunner) performExtractions(ctx context.Context, resp *http.Response, body string, httpAction *tpb.HttpAction, env *environment.Environment) bool {
+func (r *HTTPActionRunner) performExtractions(ctx context.Context, resp *http.Response, body string, name string, httpAction *tpb.HttpAction, env *environment.Environment) error {
 	response := httpAction.GetResponse()
 	if extractAll := response.GetExtractAll(); extractAll != nil {
 		for _, ext := range extractAll.GetPatterns() {
-			if !r.performExtraction(ctx, resp, body, ext, env) {
-				log.DebugContextf(ctx, log.DebugLevelService, "extraction failed: %v", ext)
-				return false
+			if err := r.performExtraction(ctx, resp, body, name, ext, env); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 	}
+
 	if extractAny := response.GetExtractAny(); extractAny != nil {
 		for _, ext := range extractAny.GetPatterns() {
-			if r.performExtraction(ctx, resp, body, ext, env) {
-				return true
+			if err := r.performExtraction(ctx, resp, body, name, ext, env); err == nil {
+				return nil
 			}
 		}
-		log.DebugContextf(ctx, log.DebugLevelService, "all extractions failed")
-		return false
+		return fmt.Errorf("%w: %q: all extractions failed", ErrActionFailed, name)
 	}
-	return true
+
+	return nil
 }
 
-func (r *HTTPActionRunner) performExtraction(ctx context.Context, resp *http.Response, body string, ext *tpb.HttpAction_HttpResponse_Extract, env *environment.Environment) bool {
+func (r *HTTPActionRunner) performExtraction(ctx context.Context, resp *http.Response, body string, name string, ext *tpb.HttpAction_HttpResponse_Extract, env *environment.Environment) error {
 	varName := ext.GetVariableName()
 	pattern := env.Substitute(ctx, ext.GetRegexp())
 
-	if ext.GetFromBody() != nil {
-		return env.Extract(ctx, body, varName, pattern)
+	if ext.HasFromBody() {
+		if err := env.Extract(ctx, body, varName, pattern); err != nil {
+			return fmt.Errorf("%w: %q: failed to extract %q from body: %v", ErrActionFailed, name, varName, err)
+		}
+
+		return nil
 	}
-	if fromHeader := ext.GetFromHeader(); fromHeader != nil {
-		headerName := env.Substitute(ctx, fromHeader.GetName())
-		headerValue := resp.Header.Get(headerName)
-		return env.Extract(ctx, headerValue, varName, pattern)
+
+	if !ext.HasFromHeader() {
+		return fmt.Errorf("%w: %q: invalid extraction %q", ErrInvalidAction, name, ext)
 	}
-	return false
+
+	header := ext.GetFromHeader()
+	headerName := env.Substitute(ctx, header.GetName())
+	headerValue := resp.Header.Get(headerName)
+
+	if err := env.Extract(ctx, headerValue, varName, pattern); err != nil {
+		return fmt.Errorf("%w: %q: failed to extract %q from header %q: %v", ErrActionFailed, name, varName, headerName, err)
+	}
+
+	return nil
 }

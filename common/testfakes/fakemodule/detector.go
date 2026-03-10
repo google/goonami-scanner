@@ -19,6 +19,7 @@ package fakemodule
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -36,12 +37,22 @@ func FakeDetectFnNoFindings(ctx context.Context, svc *nspb.NetworkService) (*dpb
 	return nil, nil
 }
 
-// ErrFakeDetectGeneric is a generic fake detection error.
-var ErrFakeDetectGeneric = errors.New("generic fake detection error")
+var errFakeDetectGeneric = errors.New("generic fake detection error")
 
-// FakeDetectFnErrors is a fake fingerprinting function that errors out.
-func FakeDetectFnErrors(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
-	return nil, ErrFakeDetectGeneric
+// ErrFakeDetectRecoverable is a fake detection error that is recoverable.
+var ErrFakeDetectRecoverable = fmt.Errorf("%w: %v", module.ErrRecoverable, errFakeDetectGeneric)
+
+// ErrFakeDetectFatal is a fake detection error that is fatal.
+var ErrFakeDetectFatal = fmt.Errorf("%w: %v", module.ErrFatal, errFakeDetectGeneric)
+
+// FakeDetectFnErrorsFatal is a fake detect function that errors out.
+func FakeDetectFnErrorsFatal(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+	return nil, ErrFakeDetectFatal
+}
+
+// FakeDetectFnErrorsRecoverable is a fake detect function that errors out.
+func FakeDetectFnErrorsRecoverable(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+	return nil, ErrFakeDetectRecoverable
 }
 
 // FakeVulnDetector is a test double for module.VulnDetector.

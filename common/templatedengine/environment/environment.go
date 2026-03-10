@@ -126,27 +126,25 @@ func (e *Environment) Substitute(ctx context.Context, template string) string {
 			return val
 		}
 
-		log.WarnContextf(ctx, "substitution not found for '%s' in environment", varName)
+		log.WarnContextf(ctx, "substitution not found for %q in environment", varName)
 		return match
 	})
 }
 
 // Extract performs regexp extraction of pattern in content and stores it in varname.
-func (e *Environment) Extract(ctx context.Context, content, varname, pattern string) bool {
+func (e *Environment) Extract(ctx context.Context, content, varname, pattern string) error {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		log.WarnContextf(ctx, "failed to compile regexp '%s': %v", pattern, err)
-		return false
+		return fmt.Errorf("failed to compile regexp %q: %v", pattern, err)
 	}
 
 	matches := re.FindStringSubmatch(content)
 	if len(matches) < 2 {
-		log.DebugContextf(ctx, log.DebugLevelService, "failed to extract variable '%s' from content using pattern '%s'", varname, pattern)
-		return false
+		return fmt.Errorf("failed to extract variable %q from content using pattern %q", varname, pattern)
 	}
 
 	e.vars[varname] = matches[1]
-	return true
+	return nil
 }
 
 // generateSecret of a given size. Note that the output is hex encoded, so from a string perspective

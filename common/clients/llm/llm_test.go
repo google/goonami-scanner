@@ -34,7 +34,6 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Provide a partial config: only one field is set.
 	llmConfig := lccpb.LlmClientConfig_builder{
 		MaxAttempts: proto.Int32(5),
 	}.Build()
@@ -45,10 +44,7 @@ func TestNew(t *testing.T) {
 	}.Build())
 
 	ag := fakellmagent.New(nil, nil)
-	client, err := New(cfg, ag)
-	if err != nil {
-		t.Fatalf("New() returned an unexpected error: %v", err)
-	}
+	client := New(cfg, ag)
 	if client == nil {
 		t.Fatalf("New() returned a nil client")
 	}
@@ -187,10 +183,7 @@ func TestRun(t *testing.T) {
 				}.Build(),
 			}.Build())
 
-			c, err := New(cfg, tc.agent)
-			if err != nil {
-				t.Fatalf("Failed to create client: %v", err)
-			}
+			c := New(cfg, tc.agent)
 			if tc.tamper != nil {
 				tc.tamper(c)
 			}
@@ -239,11 +232,8 @@ func TestRun_SessionCreateError(t *testing.T) {
 		}.Build(),
 	}.Build())
 	ag := fakellmagent.NewWithSimpleAnswer("hello")
-	c, err := New(cfg, ag)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-	_, err = c.Run(t.Context(), &genai.Content{}, func(ctx context.Context, result string) error { return nil })
+	c := New(cfg, ag)
+	_, err := c.Run(t.Context(), &genai.Content{}, func(ctx context.Context, result string) error { return nil })
 	if !errors.Is(err, ErrMaxAttemptsReached) {
 		t.Errorf("Run() error = %v, wantErr %v", err, ErrMaxAttemptsReached)
 	}

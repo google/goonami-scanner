@@ -19,6 +19,7 @@ package templatedengine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -89,7 +90,19 @@ func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkSer
 			continue
 		}
 
-		return d.runWorkflowForService(ctx, service, workflow)
+		reports, err := d.runWorkflowForService(ctx, service, workflow)
+		if err != nil {
+			// Note: action failures are ignored as they generally indicate no vulnerability.
+			if errors.Is(err, actions.ErrActionFailed) {
+				log.DebugContextf(ctx, log.DebugLevelService, "vulnerability not found: %v", err)
+				return nil, nil
+			}
+
+			// Any other error is probably coming from an issue with the plugin or the core engine.
+			return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
+		}
+
+		return reports, nil
 	}
 
 	log.WarnContextf(ctx, "current scanner configuration has no compatible workflow")
@@ -118,15 +131,14 @@ func (d *TemplatedDetector) getRunnerForAction(action *tpb.PluginAction) actions
 	return nil
 }
 
-func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
+func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) error {
 	if action.GetHttpRequest() != nil && !netservice.IsWebService(service) {
-		return false
+		return fmt.Errorf("%w: action %q requires an HTTP service", actions.ErrActionFailed, action.GetName())
 	}
 
 	runner := d.getRunnerForAction(action)
 	if runner == nil {
-		log.ErrorContextf(ctx, "unsupported action type for action '%s'", action.GetName())
-		return false
+		return fmt.Errorf("%w: %q", actions.ErrInvalidAction, action.GetName())
 	}
 
 	return runner.Run(ctx, service, action, env)
@@ -148,31 +160,21 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 		env.Set(variable.GetName(), val)
 	}
 
-	success := true
-	var cleanupActions []string
-
 	for _, actionName := range workflow.GetActions() {
-		ok, cleanups := d.runActionFromName(ctx, service, actionName, env)
-		if !ok {
-			log.DebugContextf(ctx, log.DebugLevelService, "action '%s' failed", actionName)
-			success = false
-			break
+		cleanups, err := d.runActionFromName(ctx, service, actionName, env)
+		if err != nil {
+			return nil, err
 		}
 
-		cleanupActions = append(cleanupActions, cleanups...)
-	}
-
-	// Note that if cleanup fails but success was already true, we still want to report the
-	// vulnerability while providing some feedback in the form of a log.
-	for _, cleanupActionName := range cleanupActions {
-		ok, _ := d.runActionFromName(ctx, service, cleanupActionName, env)
-		if !ok {
-			log.ErrorContextf(ctx, "cleanup action '%s' failed", cleanupActionName)
-		}
-	}
-
-	if !success {
-		return nil, nil
+		defer func() {
+			for _, cleanupActionName := range cleanups {
+				_, err := d.runActionFromName(ctx, service, cleanupActionName, env)
+				if err != nil {
+					log.ErrorContextf(ctx, "cleanup action %q failed: %v", cleanupActionName, err)
+					break
+				}
+			}
+		}()
 	}
 
 	timestamp := &tspb.Timestamp{
@@ -191,16 +193,14 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 	}.Build(), nil
 }
 
-// runActionFromName and return if it was successful but also the associated cleanup actions that must be
-// run at the end of the workflow.
-func (d *TemplatedDetector) runActionFromName(ctx context.Context, service *nspb.NetworkService, actionName string, env *environment.Environment) (bool, []string) {
+// runActionFromName executes an action by name and returns its associated cleanup actions and any error encountered.
+func (d *TemplatedDetector) runActionFromName(ctx context.Context, service *nspb.NetworkService, actionName string, env *environment.Environment) ([]string, error) {
 	action, ok := d.knownActions[actionName]
 	if !ok {
-		log.ErrorContextf(ctx, "action '%s' not found in plugin '%s'", actionName, d.Name())
-		return false, nil
+		return nil, fmt.Errorf("%w: %q", actions.ErrActionNotFound, actionName)
 	}
 
-	return d.dispatchAction(ctx, service, action, env), action.GetCleanupActions()
+	return action.GetCleanupActions(), d.dispatchAction(ctx, service, action, env)
 }
 
 // Registry is a helper to load all templated plugins.

@@ -18,6 +18,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
@@ -39,26 +40,31 @@ func NewCallbackServerActionRunner(cfg *config.Config) *CallbackServerActionRunn
 }
 
 // Run executes a callback server action.
-func (r *CallbackServerActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
+func (r *CallbackServerActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) error {
+	name := action.GetName()
 	client := callbackserver.DefaultClient()
 	if !client.IsCallbackServerEnabled() {
-		return false
+		return fmt.Errorf("%w: %q: callback server is not enabled", ErrActionFailed, name)
 	}
 
 	if action.GetCallbackServer().GetActionType() != tpb.CallbackServerAction_CHECK {
-		return false
+		return fmt.Errorf("%w: %q: unknown action type %q", ErrInvalidAction, name, action.GetCallbackServer().GetActionType())
 	}
 
 	secret, ok := env.Get(environment.VarCallbackSecret)
 	if !ok {
-		return false
+		return fmt.Errorf("%w: %q: callback secret not found in environment", ErrActionFailed, name)
 	}
 
 	hasInteraction, err := client.HasInteraction(ctx, secret)
 	if err != nil {
-		return false
+		return fmt.Errorf("%w: %q: failed to check callback interaction: %v", ErrActionFailed, name, err)
 	}
 
-	log.DebugContextf(ctx, log.DebugLevelService, "callback server has interaction response: %v", hasInteraction)
-	return hasInteraction
+	if !hasInteraction {
+		return fmt.Errorf("%w: %q: no callback interaction found", ErrActionFailed, name)
+	}
+
+	log.DebugContextf(ctx, log.DebugLevelService, "callback server interaction found")
+	return nil
 }

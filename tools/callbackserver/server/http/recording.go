@@ -33,6 +33,8 @@ type RecordingHandler struct {
 
 func (h *RecordingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	ctx = log.ContextForModule(ctx, "callbackserver/rec/http")
+
 	// TODO: b/487253053 - Add support for HTTPS.
 	fullURL := fmt.Sprintf("http://%s%s", r.Host, r.RequestURI)
 	cbid, err := netutils.IdentifierFromURL(fullURL)

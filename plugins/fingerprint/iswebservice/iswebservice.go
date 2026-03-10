@@ -20,6 +20,7 @@ package iswebservice
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -55,7 +56,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	result := []*nspb.NetworkService{service}
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, m.config.TimeoutPerRequest())
@@ -63,14 +64,14 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 
 	req, err := http.NewRequestWithContext(ctx, "GET", webroot, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
 	}
 
 	// If the request failed, this is not a web service but not an issue.
 	resp, err := goohttp.DefaultClient().Do(req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", module.ErrFatal, err)
 		}
 
 		return result, nil

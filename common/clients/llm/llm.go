@@ -84,7 +84,7 @@ func DefaultConfig() *lccpb.LlmClientConfig {
 }
 
 // New creates a new LLM client.
-func New(config *config.Config, ag agent.Agent) (*Client, error) {
+func New(config *config.Config, ag agent.Agent) *Client {
 	clientConfig := DefaultConfig()
 	if config.ClientsConfig().HasLlm() {
 		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
@@ -97,7 +97,7 @@ func New(config *config.Config, ag agent.Agent) (*Client, error) {
 		appName:        DefaultAppName,
 		userID:         DefaultUserID,
 		sessionService: defaultSessionService,
-	}, nil
+	}
 }
 
 // AgentResultVerifier is a type of function that can perform validation of the LLM agent output.

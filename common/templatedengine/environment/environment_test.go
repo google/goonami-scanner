@@ -256,7 +256,7 @@ func TestEnvironment_Extract(t *testing.T) {
 		content  string
 		pattern  string
 		varname  string
-		wantOk   bool
+		wantErr  bool
 		wantVars map[string]string
 	}{
 		{
@@ -264,7 +264,7 @@ func TestEnvironment_Extract(t *testing.T) {
 			content: "token: abc-123",
 			pattern: `token: ([a-z0-9-]+)`,
 			varname: "token",
-			wantOk:  true,
+			wantErr: false,
 			wantVars: map[string]string{
 				"token": "abc-123",
 			},
@@ -274,7 +274,7 @@ func TestEnvironment_Extract(t *testing.T) {
 			content: "hello world",
 			pattern: `token: ([a-z0-9-]+)`,
 			varname: "token",
-			wantOk:  false,
+			wantErr: true,
 			wantVars: map[string]string{
 				"token": "",
 			},
@@ -284,7 +284,7 @@ func TestEnvironment_Extract(t *testing.T) {
 			content: "hello world",
 			pattern: `(`,
 			varname: "token",
-			wantOk:  false,
+			wantErr: true,
 			wantVars: map[string]string{
 				"token": "",
 			},
@@ -294,9 +294,9 @@ func TestEnvironment_Extract(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			env := New(config.Default())
-			gotOk := env.Extract(t.Context(), tc.content, tc.varname, tc.pattern)
-			if gotOk != tc.wantOk {
-				t.Errorf("Extract() = %v, want %v", gotOk, tc.wantOk)
+			err := env.Extract(t.Context(), tc.content, tc.varname, tc.pattern)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Extract() error = %v, wantErr %v", err, tc.wantErr)
 			}
 
 			for k, v := range tc.wantVars {

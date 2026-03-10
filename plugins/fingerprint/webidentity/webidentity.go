@@ -139,7 +139,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkService) error {
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", module.ErrFatal, err)
 	}
 	webroot = webroot + "/"
 
@@ -156,7 +156,11 @@ func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkS
 	log.DebugContextf(ctx, log.DebugLevelService, "starting crawling")
 	stats, err := m.crawler.Crawl(ctx, callback, []string{webroot})
 	if err != nil {
-		return err
+		if errors.Is(err, context.Canceled) {
+			return fmt.Errorf("%w: %w", module.ErrFatal, err)
+		}
+
+		return fmt.Errorf("%w: %w", module.ErrRecoverable, err)
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelService, "crawled %d pages (%d bytes written)", stats.TotalPagesCrawled, bytesWritten)
@@ -318,13 +322,13 @@ func getSignaturesDirectory(config *wfpb.WebIdentityFpConfig) (string, error) {
 func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, registry *hash.Registry) error {
 	sigDirectory, err := getSignaturesDirectory(config)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
+		return fmt.Errorf("%w: %w", ErrSignaturesRead, err)
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelRequest, "signatures directory is: %q", sigDirectory)
 	dirs, err := os.ReadDir(sigDirectory)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
+		return fmt.Errorf("%w: %w", ErrSignaturesRead, err)
 	}
 
 	for _, dir := range dirs {
@@ -339,13 +343,13 @@ func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, 
 		filePath := filepath.Join(sigDirectory, dir.Name())
 		fingerprints, err := os.ReadFile(filePath)
 		if err != nil {
-			return fmt.Errorf("%w %q: %v", ErrSignaturesRead, filePath, err)
+			return fmt.Errorf("%w %q: %w", ErrSignaturesRead, filePath, err)
 		}
 
 		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures: %q", dir.Name())
 		fingerprintsProto := &fpb.Fingerprints{}
 		if err := proto.Unmarshal(fingerprints, fingerprintsProto); err != nil {
-			return fmt.Errorf("%w %q: %v", ErrSignaturesUnmarshal, filePath, err)
+			return fmt.Errorf("%w %q: %w", ErrSignaturesUnmarshal, filePath, err)
 		}
 
 		if err := registry.Load(fingerprintsProto); err != nil {

@@ -347,13 +347,27 @@ func TestFingerprintStep(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "when_fingerprinter_errors_it_propagates_error",
+			name: "when_fingerprinter_errors_fatal_it_propagates_error",
 			fingerprinters: []module.Fingerprinter{
-				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrorsFatal),
 				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
 			},
 			want:    nil,
-			wantErr: fakemodule.ErrFakeFingerprintGeneric,
+			wantErr: fakemodule.ErrFakeFingerprintFatal,
+		},
+		{
+			name: "when_fingerprinter_errors_recoverable_it_continues",
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrorsRecoverable),
+				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
+			},
+			want: rpb.FingerprintingReport_builder{
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{ServiceName: "svc1_fp2"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc2_fp2"}.Build(),
+				},
+			}.Build(),
+			wantErr: nil,
 		},
 		{
 			name: "when_fingerprinter_returns_multiple_services_they_are_accumulated",
@@ -476,13 +490,29 @@ func TestDetectStep(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "when_detector_errors_it_propagates_error",
+			name: "when_detector_errors_fatal_it_propagates_error",
 			detectors: []module.VulnDetector{
-				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrorsFatal),
 				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
 			},
 			want:    nil,
-			wantErr: fakemodule.ErrFakeDetectGeneric,
+			wantErr: fakemodule.ErrFakeDetectFatal,
+		},
+		{
+			name: "when_detector_errors_recoverable_it_continues",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrorsRecoverable),
+				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
+			},
+			want: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+			},
+			wantErr: nil,
 		},
 	}
 
@@ -553,23 +583,62 @@ func TestRun(t *testing.T) {
 			wantErr:     fakemodule.ErrFakePortScanGeneric,
 		},
 		{
-			name:        "when_fingerprinting_fails_returns_error",
+			name:        "when_fingerprinting_fails_fatal_returns_error",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
-				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrorsFatal),
 			},
-			wantErr: fakemodule.ErrFakeFingerprintGeneric,
+			wantErr: fakemodule.ErrFakeFingerprintFatal,
 		},
 		{
-			name:        "when_detector_fails_returns_error",
+			name:        "when_fingerprinting_fails_recoverable_continues",
+			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrorsRecoverable),
+			},
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				FullDetectionReports: &srpb.FullDetectionReports{},
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: testReport.GetTargetInfo(),
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name:        "when_detector_fails_fatal_returns_error",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
 			},
 			detectors: []module.VulnDetector{
-				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrorsFatal),
 			},
-			wantErr: fakemodule.ErrFakeDetectGeneric,
+			wantErr: fakemodule.ErrFakeDetectFatal,
+		},
+		{
+			name:        "when_detector_fails_recoverable_continues",
+			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
+			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrorsRecoverable),
+			},
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				FullDetectionReports: &srpb.FullDetectionReports{},
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: testReport.GetTargetInfo(),
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
 		},
 		{
 			name:        "when_scan_succeeds_returns_report",
