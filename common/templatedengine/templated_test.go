@@ -17,6 +17,7 @@
 package templatedengine
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
+	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -73,6 +75,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 		protoFile     string
 		wantDetection bool
 		enableCBS     bool
+		wantErr       error
 	}{
 		{
 			name:          "when_workflow_succeeds_returns_findings",
@@ -90,14 +93,16 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			wantDetection: true,
 		},
 		{
-			name:          "when_action_not_found_returns_no_findings",
+			name:          "when_action_not_found_returns_error",
 			protoFile:     "testdata/action_not_found.textproto",
 			wantDetection: false,
+			wantErr:       actions.ErrActionNotFound,
 		},
 		{
-			name:          "when_unsupported_action_type_returns_no_findings",
+			name:          "when_unsupported_action_type_returns_fatal_error",
 			protoFile:     "testdata/unsupported_action_type.textproto",
 			wantDetection: false,
+			wantErr:       actions.ErrInvalidAction,
 		},
 		{
 			name:          "when_workflow_condition_not_met_skips_it",
@@ -164,8 +169,12 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			}
 
 			reports, err := detector.Detect(t.Context(), service)
-			if err != nil {
-				t.Fatalf("Detect failed: %v", err)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Detect() returned unexpected error: %v, want: %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			hasReports := len(reports.GetDetectionReports()) > 0

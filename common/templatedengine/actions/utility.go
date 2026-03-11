@@ -18,6 +18,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
@@ -31,26 +32,26 @@ import (
 type UtilityActionRunner struct{}
 
 // Run executes a utility action.
-func (r *UtilityActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) bool {
+func (r *UtilityActionRunner) Run(ctx context.Context, service *nspb.NetworkService, action *tpb.PluginAction, env *environment.Environment) error {
 	utility := action.GetUtility()
 	if utility == nil {
-		return false
+		return fmt.Errorf("%w: %q: not an utility action", ErrInvalidAction, action.GetName())
 	}
 
 	if sleep := utility.GetSleep(); sleep != nil {
 		return sleepAction(ctx, sleep, env)
 	}
 
-	return false
+	return fmt.Errorf("%w: %q: unsupported utility action", ErrInvalidAction, action.GetName())
 }
 
-func sleepAction(ctx context.Context, sleep *tpb.SleepUtilityAction, env *environment.Environment) bool {
+func sleepAction(ctx context.Context, sleep *tpb.SleepUtilityAction, env *environment.Environment) error {
 	disabled, ok := env.Get(environment.VarTestingDisableSleep)
 	if ok && disabled == "true" {
-		return true
+		return nil
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelRequest, "sleeping for %d ms", sleep.GetDurationMs())
 	time.Sleep(time.Duration(sleep.GetDurationMs()) * time.Millisecond)
-	return true
+	return nil
 }

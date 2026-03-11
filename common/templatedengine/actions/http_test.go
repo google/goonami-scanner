@@ -17,6 +17,7 @@
 package actions
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -92,64 +93,61 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 		name       string
 		actionFile string
 		env        func() *environment.Environment
-		wantOk     bool
+		wantErr    error
 		wantVars   map[string]string
 	}{
 		{
-			name:       "when_request_succeeds_returns_true",
+			name:       "when_request_succeeds_returns_nil",
 			actionFile: "testdata/request_succeeds.textproto",
-			wantOk:     true,
 		},
 		{
-			name:       "when_status_code_mismatch_returns_false",
+			name:       "when_status_code_mismatch_returns_error",
 			actionFile: "testdata/status_code_mismatch.textproto",
-			wantOk:     false,
+			wantErr:    ErrActionFailed,
 		},
 		{
-			name:       "when_expectation_all_fails_returns_false",
+			name:       "when_expectation_all_fails_returns_error",
 			actionFile: "testdata/expectation_all_fails.textproto",
-			wantOk:     false,
+			wantErr:    ErrActionFailed,
 		},
 		{
-			name:       "when_expectation_missing_header_or_body_fails_returns_false",
+			name:       "when_expectation_missing_header_or_body_fails_returns_error",
 			actionFile: "testdata/expect_missing_body_header.textproto",
-			wantOk:     false,
+			wantErr:    ErrInvalidAction,
 		},
 		{
-			name:       "when_expectation_any_fails_returns_false",
+			name:       "when_expectation_any_fails_returns_error",
 			actionFile: "testdata/expectation_any_fails.textproto",
-			wantOk:     false,
+			wantErr:    ErrActionFailed,
 		},
 		{
 			name:       "when_extraction_succeeds_stores_variable",
 			actionFile: "testdata/extract_all_succeeds.textproto",
-			wantOk:     true,
 			wantVars: map[string]string{
 				"extracted": "content",
 			},
 		},
 		{
-			name:       "when_extraction_all_fails_returns_false",
+			name:       "when_extraction_all_fails_returns_error",
 			actionFile: "testdata/extract_all_fails.textproto",
-			wantOk:     false,
+			wantErr:    ErrActionFailed,
 		},
 		{
-			name:       "when_extraction_missing_header_or_body_fails_returns_false",
+			name:       "when_extraction_missing_header_or_body_fails_returns_error",
 			actionFile: "testdata/extract_missing_header_body.textproto",
-			wantOk:     false,
+			wantErr:    ErrInvalidAction,
 		},
 		{
 			name:       "when_header_extraction_succeeds_stores_variable",
 			actionFile: "testdata/header_extraction_succeeds.textproto",
-			wantOk:     true,
 			wantVars: map[string]string{
 				"header_var": "alue",
 			},
 		},
 		{
-			name:       "when_method_is_unspecified_returns_false",
+			name:       "when_method_is_unspecified_returns_error",
 			actionFile: "testdata/method_unspecified.textproto",
-			wantOk:     false,
+			wantErr:    ErrInvalidAction,
 		},
 		{
 			name:       "when_post_with_substitution_works",
@@ -161,38 +159,32 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 				e.Set("target", "body")
 				return e
 			},
-			wantOk: true,
 		},
 		{
-			name:       "when_multiple_uris_first_fails_second_succeeds_returns_true",
+			name:       "when_multiple_uris_first_fails_second_succeeds_returns_nil",
 			actionFile: "testdata/multiple_uris.textproto",
-			wantOk:     true,
 		},
 		{
 			name:       "when_expect_any_works",
 			actionFile: "testdata/expect_any_works.textproto",
-			wantOk:     true,
 		},
 		{
 			name:       "when_expect_all_works",
 			actionFile: "testdata/expect_all_works.textproto",
-			wantOk:     true,
 		},
 		{
 			name:       "when_extract_any_works",
 			actionFile: "testdata/extract_any_works.textproto",
-			wantOk:     true,
 			wantVars:   map[string]string{"v2": "value"},
 		},
 		{
 			name:       "when_header_expectation_works",
 			actionFile: "testdata/header_expectation_works.textproto",
-			wantOk:     true,
 		},
 		{
 			name:       "when_extraction_does_not_compile_returns_false",
 			actionFile: "testdata/extraction_does_not_compile.textproto",
-			wantOk:     false,
+			wantErr:    ErrActionFailed,
 		},
 	}
 
@@ -205,9 +197,14 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 			}
 
 			runner := NewHTTPActionRunner(goohttp.DefaultClient())
-			gotOk := runner.Run(t.Context(), service, action, env)
-			if gotOk != tc.wantOk {
-				t.Errorf("Run() = %v, want %v", gotOk, tc.wantOk)
+			err := runner.Run(t.Context(), service, action, env)
+
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr != nil {
+				return
 			}
 
 			for k, v := range tc.wantVars {
@@ -246,14 +243,17 @@ func TestHTTPActionRunner_Run_Errors(t *testing.T) {
 	tests := []struct {
 		name       string
 		actionFile string
+		wantErr    bool
 	}{
 		{
 			name:       "when_client_do_fails_returns_false",
 			actionFile: "testdata/simple_get.textproto",
+			wantErr:    true,
 		},
 		{
 			name:       "when_client_do_fails_but_ignored_returns_true",
 			actionFile: "testdata/get_with_ignore_errors.textproto",
+			wantErr:    false,
 		},
 	}
 
@@ -261,8 +261,9 @@ func TestHTTPActionRunner_Run_Errors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			runner := NewHTTPActionRunner(&errorClient{})
 			action := loadAction(t, tc.actionFile)
-			if runner.Run(t.Context(), service, action, environment.New(cfg)) {
-				t.Error("Run() = true, want false on client error")
+			err := runner.Run(t.Context(), service, action, environment.New(cfg))
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}
 		})
 	}

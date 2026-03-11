@@ -20,6 +20,7 @@ package environment
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -36,6 +37,14 @@ import (
 )
 
 var variablePattern = regexp.MustCompile(`\{\{ ([a-zA-Z0-9_]+) \}\}`)
+
+var (
+	// ErrInvalidRegexp is returned when a regexp is invalid.
+	ErrInvalidRegexp = errors.New("invalid regexp")
+
+	// ErrFailedExtraction is returned when an extraction fails.
+	ErrFailedExtraction = errors.New("failed extraction")
+)
 
 // Environment stores variables that are used by the templated detector.
 type Environment struct {
@@ -126,27 +135,25 @@ func (e *Environment) Substitute(ctx context.Context, template string) string {
 			return val
 		}
 
-		log.WarnContextf(ctx, "substitution not found for '%s' in environment", varName)
+		log.WarnContextf(ctx, "%q not found in environment", varName)
 		return match
 	})
 }
 
 // Extract performs regexp extraction of pattern in content and stores it in varname.
-func (e *Environment) Extract(ctx context.Context, content, varname, pattern string) bool {
+func (e *Environment) Extract(ctx context.Context, content, varname, pattern string) error {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		log.WarnContextf(ctx, "failed to compile regexp '%s': %v", pattern, err)
-		return false
+		return fmt.Errorf("%w: %q: %v", ErrInvalidRegexp, pattern, err)
 	}
 
 	matches := re.FindStringSubmatch(content)
 	if len(matches) < 2 {
-		log.DebugContextf(ctx, log.DebugLevelService, "failed to extract variable '%s' from content using pattern '%s'", varname, pattern)
-		return false
+		return fmt.Errorf("%w: %q using pattern %q", ErrFailedExtraction, varname, pattern)
 	}
 
 	e.vars[varname] = matches[1]
-	return true
+	return nil
 }
 
 // generateSecret of a given size. Note that the output is hex encoded, so from a string perspective

@@ -17,6 +17,7 @@
 package actions
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -30,7 +31,7 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 	tests := []struct {
 		name         string
 		action       *tpb.PluginAction
-		wantOk       bool
+		wantErr      error
 		minTime      time.Duration
 		disableSleep bool
 	}{
@@ -41,7 +42,6 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 					Sleep: tpb.SleepUtilityAction_builder{DurationMs: 10}.Build(),
 				}.Build(),
 			}.Build(),
-			wantOk:  true,
 			minTime: 10 * time.Millisecond,
 		},
 		{
@@ -51,15 +51,14 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 					Sleep: tpb.SleepUtilityAction_builder{DurationMs: 10000}.Build(),
 				}.Build(),
 			}.Build(),
-			wantOk:       true,
 			disableSleep: true,
 		},
 		{
-			name: "when_not_utility_action_returns_false",
+			name: "when_not_utility_action_returns_error",
 			action: tpb.PluginAction_builder{
 				HttpRequest: tpb.HttpAction_builder{}.Build(),
 			}.Build(),
-			wantOk: false,
+			wantErr: ErrInvalidAction,
 		},
 	}
 
@@ -73,12 +72,17 @@ func TestUtilityActionRunner_Run(t *testing.T) {
 			}
 
 			start := time.Now()
-			gotOk := runner.Run(t.Context(), nil, tc.action, env)
+			err := runner.Run(t.Context(), nil, tc.action, env)
 			elapsed := time.Since(start)
 
-			if gotOk != tc.wantOk {
-				t.Errorf("Run() = %v, want %v", gotOk, tc.wantOk)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}
+
+			if tc.wantErr != nil {
+				return
+			}
+
 			if tc.minTime > 0 && elapsed < tc.minTime {
 				t.Errorf("Run() took %v, want at least %v", elapsed, tc.minTime)
 			}
