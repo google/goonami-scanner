@@ -43,8 +43,8 @@ require (
   go.opentelemetry.io/otel/trace v1.40.0 // indirect
   golang.org/x/sys v0.41.0 // indirect
   golang.org/x/text v0.34.0 // indirect
-  google.golang.org/genproto/googleapis/rpc v0.0.0-20251014184007-4626949a642f // indirect
-  google.golang.org/grpc v1.76.0 // indirect
+  google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+  google.golang.org/grpc v1.79.3 // indirect
   rsc.io/omap v1.2.0 // indirect
   rsc.io/ordered v1.1.1 // indirect
 )
