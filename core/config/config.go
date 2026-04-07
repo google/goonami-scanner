@@ -181,8 +181,24 @@ func (c *Config) GlobalConfig() *cpb.GlobalConfig {
 }
 
 // ClientsConfig returns configuration options that are specific to clients.
+// It returns the "all" configuration from the map.
 func (c *Config) ClientsConfig() *cpb.ClientsConfig {
-	return c.proto.GetClients()
+	return c.ClientsConfigForModule("all")
+}
+
+// ClientsConfigForModule returns the configuration for a specific module
+// from the clients map. It does NOT merge it with the default configuration.
+func (c *Config) ClientsConfigForModule(moduleName string) *cpb.ClientsConfig {
+	clients := c.proto.GetClients()
+	if clients == nil {
+		return &cpb.ClientsConfig{}
+	}
+
+	if cfg, ok := clients[moduleName]; ok {
+		return cfg
+	}
+
+	return &cpb.ClientsConfig{}
 }
 
 // PluginsConfig returns the configuration options that are specific to plugins.

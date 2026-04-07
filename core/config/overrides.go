@@ -67,6 +67,36 @@ func setField(m protoreflect.Message, key string, value string) error {
 		return fmt.Errorf("%w: field %q not found in %q", ErrFieldNotFound, name, m.Descriptor().FullName())
 	}
 
+	if fd.IsMap() {
+		if len(parts) == 1 {
+			return fmt.Errorf("map field %q requires a key", name)
+		}
+		subParts := strings.SplitN(parts[1], ".", 2)
+		mapKey := subParts[0]
+
+		mapVal := m.Mutable(fd).Map()
+		valFd := fd.MapValue()
+		if valFd.Kind() != protoreflect.MessageKind {
+			return fmt.Errorf("only maps with message values are supported")
+		}
+
+		pKey := protoreflect.ValueOfString(mapKey).MapKey()
+		var nextMsg protoreflect.Message
+		if mapVal.Has(pKey) {
+			nextMsg = mapVal.Get(pKey).Message()
+		} else {
+			newVal := mapVal.NewValue()
+			nextMsg = newVal.Message()
+			mapVal.Set(pKey, newVal)
+		}
+
+		if len(subParts) == 1 {
+			return fmt.Errorf("map field %q requires a field path after key", name)
+		}
+
+		return setField(nextMsg, subParts[1], value)
+	}
+
 	if len(parts) == 1 {
 		return processLeaf(m, fd, value)
 	}

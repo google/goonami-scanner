@@ -88,13 +88,15 @@ func testConfig() *config.Config {
 					TimeoutPerRequestSeconds: proto.Int32(2),
 				}.Build(),
 			}.Build(),
-			Clients: cfgpb.ClientsConfig_builder{
-				HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-					MaxConcurrency: proto.Int32(1),
-					MaxDepth:       proto.Int32(10),
-					MaxRequests:    proto.Int32(10),
+			Clients: map[string]*cfgpb.ClientsConfig{
+				"all": cfgpb.ClientsConfig_builder{
+					HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+						MaxConcurrency: proto.Int32(1),
+						MaxDepth:       proto.Int32(10),
+						MaxRequests:    proto.Int32(10),
+					}.Build(),
 				}.Build(),
-			}.Build(),
+			},
 		}.Build(),
 	)
 }
@@ -154,11 +156,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_callback_errors_it_propagates_error",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs:   []string{rootURL},
@@ -170,12 +174,14 @@ func TestCrawl(t *testing.T) {
 			name: "when_recursion_is_disabled_it_crawls_only_start_urls",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxDepth:    proto.Int32(0),
-							ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxDepth:    proto.Int32(0),
+								ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs:   []string{rootURL},
@@ -187,11 +193,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_page_size_exceeds_max_it_is_dropped",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxPageSizeBytes: proto.Int32(10),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxPageSizeBytes: proto.Int32(10),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			// d2 is larger than 10 bytes, so the crawl count will be incremented but the callback will
@@ -205,11 +213,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_max_depth_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxDepth: proto.Int32(1),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxDepth: proto.Int32(1),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs: []string{srv.URL},
@@ -227,13 +237,15 @@ func TestCrawl(t *testing.T) {
 			name: "when_max_requests_is_reached_it_stops_crawling",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxConcurrency: proto.Int32(1),
-							MaxRequests:    proto.Int32(2),
-							MaxDepth:       proto.Int32(10),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxConcurrency: proto.Int32(1),
+								MaxRequests:    proto.Int32(2),
+								MaxDepth:       proto.Int32(10),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs: []string{srv.URL + "/d1"},
@@ -250,11 +262,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_url_matches_exclusion_it_is_not_crawled",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							Exclusions: []string{".*excluded.*"},
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								Exclusions: []string{".*excluded.*"},
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs:   []string{srv.URL},
@@ -266,11 +280,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_pages_are_linked_multiple_times_they_are_visited_only_once",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxDepth: proto.Int32(10),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxDepth: proto.Int32(10),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs: []string{srv.URL},
@@ -290,11 +306,13 @@ func TestCrawl(t *testing.T) {
 			name: "when_links_contain_invalid_urls_errors_are_ignored",
 			config: config.FromProto(
 				cfgpb.Config_builder{
-					Clients: cfgpb.ClientsConfig_builder{
-						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
-							MaxDepth: proto.Int32(10),
+					Clients: map[string]*cfgpb.ClientsConfig{
+						"all": cfgpb.ClientsConfig_builder{
+							HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+								MaxDepth: proto.Int32(10),
+							}.Build(),
 						}.Build(),
-					}.Build(),
+					},
 				}.Build(),
 			),
 			startURLs: []string{srv.URL + "/d3"},

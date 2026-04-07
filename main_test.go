@@ -32,23 +32,24 @@ import (
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
-var (
-	fakeConfig = `
-clients: {
-  callback_server: {
-		interaction_ttl_seconds: 300
-    cleanup_interval_seconds: 10
+var fakeConfig = `
+clients {
+  key: "all"
+  value {
+    callback_server {
+      interaction_ttl_seconds: 300
+      cleanup_interval_seconds: 10
 
-    http_poll_config: {
-      mode: MODE_START_LOCAL_SERVER
-      public_uri: "http://127.0.0.1:8081"
-      bind_address: "127.0.0.1"
-      bind_port: 8081
+      http_poll_config {
+        mode: MODE_START_LOCAL_SERVER
+        public_uri: "http://127.0.0.1:8081"
+        bind_address: "127.0.0.1"
+        bind_port: 8081
+      }
     }
   }
 }
 `
-)
 
 func TestRun(t *testing.T) {
 	// Backup and restore

@@ -92,12 +92,22 @@ type CrawlStats struct {
 	TotalPagesCrawled int32
 }
 
-// NewSimpleCrawler creates a new SimpleCrawler.
+// NewSimpleCrawler creates a new SimpleCrawler using the default configuration resolved from the core config.
 func NewSimpleCrawler(ctx context.Context, config *config.Config) *SimpleCrawler {
+	return NewSimpleCrawlerWithConfig(ctx, config, nil)
+}
+
+// NewSimpleCrawlerWithConfig creates a new SimpleCrawler with a specific configuration.
+// It merges hardcoded defaults, proto defaults, and the provided module-specific overrides.
+func NewSimpleCrawlerWithConfig(ctx context.Context, coreConfig *config.Config, moduleCfg *cpb.HttpCrawlerClientConfig) *SimpleCrawler {
 	ctx = log.ContextForModule(ctx, "client/httpcrawler")
+
 	clientConfig := DefaultClientConfig()
-	if config.ClientsConfig().HasHttpCrawler() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetHttpCrawler())
+	if coreConfig.ClientsConfig().HasHttpCrawler() {
+		proto.Merge(clientConfig, coreConfig.ClientsConfig().GetHttpCrawler())
+	}
+	if moduleCfg != nil {
+		proto.Merge(clientConfig, moduleCfg)
 	}
 
 	if clientConfig.GetMaxPageSizeBytes() == 0 {
@@ -111,7 +121,7 @@ func NewSimpleCrawler(ctx context.Context, config *config.Config) *SimpleCrawler
 
 	return &SimpleCrawler{
 		config:          clientConfig,
-		coreConfig:      config,
+		coreConfig:      coreConfig,
 		exclusionRegexp: pathExclusionsRegexp,
 	}
 }

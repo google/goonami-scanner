@@ -58,14 +58,16 @@ func TestApplyOverrides(t *testing.T) {
 		},
 		{
 			name:      "when_overriding_bool_field",
-			overrides: []string{"clients.nmap.enable_host_discovery=true"},
+			overrides: []string{"clients.all.nmap.enable_host_discovery=true"},
 			want: func() *Config {
 				c := Default()
-				c.proto.SetClients(cpb.ClientsConfig_builder{
-					Nmap: ncpb.NmapClientConfig_builder{
-						EnableHostDiscovery: proto.Bool(true),
+				c.proto.SetClients(map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Nmap: ncpb.NmapClientConfig_builder{
+							EnableHostDiscovery: proto.Bool(true),
+						}.Build(),
 					}.Build(),
-				}.Build())
+				})
 				return c
 			},
 			wantErr: nil,
@@ -155,7 +157,7 @@ func TestApplyOverrides(t *testing.T) {
 		},
 		{
 			name:      "when_invalid_bool_returns_error",
-			overrides: []string{"clients.nmap.enable_host_discovery=not-a-bool"},
+			overrides: []string{"clients.all.nmap.enable_host_discovery=not-a-bool"},
 			wantErr:   ErrConfigUnmarshal,
 		},
 		{
@@ -185,7 +187,7 @@ func TestApplyOverrides(t *testing.T) {
 		},
 		{
 			name:      "when_unsupported_field_kind_returns_error",
-			overrides: []string{"clients.nmap.scan_technique=CONNECT"},
+			overrides: []string{"clients.all.nmap.scan_technique=CONNECT"},
 			wantErr:   ErrUnsupportedFieldKind,
 		},
 	}

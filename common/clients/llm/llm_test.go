@@ -38,9 +38,11 @@ func TestNew(t *testing.T) {
 		MaxAttempts: proto.Int32(5),
 	}.Build()
 	cfg := config.FromProto(cpb.Config_builder{
-		Clients: cpb.ClientsConfig_builder{
-			Llm: llmConfig,
-		}.Build(),
+		Clients: map[string]*cpb.ClientsConfig{
+			"all": cpb.ClientsConfig_builder{
+				Llm: llmConfig,
+			}.Build(),
+		},
 	}.Build())
 
 	ag := fakellmagent.New(nil, nil)
@@ -178,9 +180,11 @@ func TestRun(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.FromProto(cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					Llm: tc.llmConfig,
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Llm: tc.llmConfig,
+					}.Build(),
+				},
 			}.Build())
 
 			c := New(cfg, tc.agent)
@@ -223,13 +227,15 @@ func TestRun_SessionCreateError(t *testing.T) {
 	}()
 
 	cfg := config.FromProto(cpb.Config_builder{
-		Clients: cpb.ClientsConfig_builder{
-			Llm: lccpb.LlmClientConfig_builder{
-				TimeoutPerRequestSeconds: proto.Int32(1),
-				RetryDelaySeconds:        proto.Int32(0),
-				MaxAttempts:              proto.Int32(1),
+		Clients: map[string]*cpb.ClientsConfig{
+			"all": cpb.ClientsConfig_builder{
+				Llm: lccpb.LlmClientConfig_builder{
+					TimeoutPerRequestSeconds: proto.Int32(1),
+					RetryDelaySeconds:        proto.Int32(0),
+					MaxAttempts:              proto.Int32(1),
+				}.Build(),
 			}.Build(),
-		}.Build(),
+		},
 	}.Build())
 	ag := fakellmagent.NewWithSimpleAnswer("hello")
 	c := New(cfg, ag)

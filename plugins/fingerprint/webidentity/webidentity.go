@@ -104,14 +104,14 @@ func New(ctx context.Context, config *config.Config) (module.Fingerprinter, erro
 	return newWithRegistry(ctx, modConfig, config, registry)
 }
 
-// newWithRegistry performs the initialization of the module once the checks have been performed
-// and the registry loaded. This function is used in tests to load custom registries.
 func newWithRegistry(ctx context.Context, modConfig *wfpb.WebIdentityFpConfig, config *config.Config, registry *hash.Registry) (module.Fingerprinter, error) {
+	clientsCfg := config.ClientsConfigForModule(moduleName)
+
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		coreConfig: config,
 		config:     modConfig,
-		crawler:    httpcrawler.NewSimpleCrawler(ctx, config),
+		crawler:    httpcrawler.NewSimpleCrawlerWithConfig(ctx, config, clientsCfg.GetHttpCrawler()),
 		storage:    storage.New(modConfig.GetWriteHtmlToFile(), modConfig.GetMaximumStorageSpaceBytes()),
 		registry:   registry,
 	}, nil

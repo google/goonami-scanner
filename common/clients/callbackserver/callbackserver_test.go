@@ -39,26 +39,30 @@ func TestNew(t *testing.T) {
 		{
 			name: "when_config_has_valid_callback_server_it_succeeds",
 			config: cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					CallbackServer: cbpb.CallbackserverConfig_builder{
-						HttpPollConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "http://127.0.0.1:8081",
-						}.Build(),
-						HttpRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "http://127.0.0.1:8080",
-						}.Build(),
-						DnsRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "cb.localhost.lan",
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						CallbackServer: cbpb.CallbackserverConfig_builder{
+							HttpPollConfig: cbpb.EndpointConfig_builder{
+								PublicUri: "http://127.0.0.1:8081",
+							}.Build(),
+							HttpRecordConfig: cbpb.EndpointConfig_builder{
+								PublicUri: "http://127.0.0.1:8080",
+							}.Build(),
+							DnsRecordConfig: cbpb.EndpointConfig_builder{
+								PublicUri: "cb.localhost.lan",
+							}.Build(),
 						}.Build(),
 					}.Build(),
-				}.Build(),
+				},
 			}.Build(),
 			wantErr: nil,
 		},
 		{
 			name: "when_config_has_no_callback_server_it_is_created_anyway",
 			config: cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{}.Build(),
+				},
 			}.Build(),
 			wantErr: nil,
 		},
@@ -300,9 +304,11 @@ func TestClient_Interaction(t *testing.T) {
 			}
 
 			cfg := config.FromProto(cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					CallbackServer: serverConfig,
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						CallbackServer: serverConfig,
+					}.Build(),
+				},
 			}.Build())
 			if err := goohttp.InitializeDefaults(cfg); err != nil {
 				t.Fatalf("failed to initialize default HTTP client: %v", err)

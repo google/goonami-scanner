@@ -156,9 +156,11 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.FromProto(cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					CallbackServer: tc.cbsConfig,
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						CallbackServer: tc.cbsConfig,
+					}.Build(),
+				},
 			}.Build())
 
 			ctx := t.Context()

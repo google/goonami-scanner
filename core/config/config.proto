@@ -37,7 +37,7 @@ import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
 
 message Config {
   GlobalConfig globalcfg = 1;
-  ClientsConfig clients = 2;
+  map<string, ClientsConfig> clients = 2;
   PluginsConfig plugins = 3;
 }
 

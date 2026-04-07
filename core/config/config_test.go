@@ -292,11 +292,40 @@ func TestGlobalConfig(t *testing.T) {
 
 func TestClientsConfig(t *testing.T) {
 	want := cpb.ClientsConfig_builder{}.Build()
-	cfg := FromProto(cpb.Config_builder{Clients: want}.Build())
+	cfg := FromProto(cpb.Config_builder{Clients: map[string]*cpb.ClientsConfig{"all": want}}.Build())
 
 	if got := cfg.ClientsConfig(); !proto.Equal(got, want) {
 		t.Errorf("ClientsConfig() = %v, want %v", got, want)
 	}
+}
+
+func TestClientsConfigForModule(t *testing.T) {
+	all := cpb.ClientsConfig_builder{}.Build()
+	mod := cpb.ClientsConfig_builder{}.Build()
+
+	cfg := FromProto(cpb.Config_builder{
+		Clients: map[string]*cpb.ClientsConfig{
+			"all":       all,
+			"my-module": mod,
+		},
+	}.Build())
+
+	t.Run("when_module_not_found_returns_empty", func(t *testing.T) {
+		got := cfg.ClientsConfigForModule("non-existing")
+		if got == all {
+			t.Errorf("ClientsConfigForModule() returned 'all' instance, want a new empty one")
+		}
+		if !proto.Equal(got, &cpb.ClientsConfig{}) {
+			t.Errorf("ClientsConfigForModule() = %v, want empty", got)
+		}
+	})
+
+	t.Run("when_module_found_returns_specific_config", func(t *testing.T) {
+		got := cfg.ClientsConfigForModule("my-module")
+		if !proto.Equal(got, mod) {
+			t.Errorf("ClientsConfigForModule() = %v, want %v", got, mod)
+		}
+	})
 }
 
 func TestPluginsConfig(t *testing.T) {

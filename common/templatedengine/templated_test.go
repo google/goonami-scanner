@@ -137,19 +137,21 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfgProto := config.DefaultProto()
 			if tc.enableCBS {
-				clicfg := cpb.ClientsConfig_builder{
-					CallbackServer: cbpb.CallbackserverConfig_builder{
-						HttpPollConfig: cbpb.EndpointConfig_builder{
-							PublicUri: cbsURL.String(),
-						}.Build(),
-						HttpRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: cbsURL.String(),
-						}.Build(),
-						DnsRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "cb.localhost.lan",
+				clicfg := map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						CallbackServer: cbpb.CallbackserverConfig_builder{
+							HttpPollConfig: cbpb.EndpointConfig_builder{
+								PublicUri: cbsURL.String(),
+							}.Build(),
+							HttpRecordConfig: cbpb.EndpointConfig_builder{
+								PublicUri: cbsURL.String(),
+							}.Build(),
+							DnsRecordConfig: cbpb.EndpointConfig_builder{
+								PublicUri: "cb.localhost.lan",
+							}.Build(),
 						}.Build(),
 					}.Build(),
-				}.Build()
+				}
 				cfgProto.SetClients(clicfg)
 			}
 			cfg := config.FromProto(cfgProto)

@@ -68,15 +68,17 @@ func TestNew(t *testing.T) {
 		{
 			name: "when_has_client_config_returns_tool_with_merged_config",
 			config: config.FromProto(cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					Llm: llmcpb.LlmClientConfig_builder{
-						Tools: llmcpb.ToolConfig_builder{
-							HttpClientConfig: llmcpb.HttpClientConfig_builder{
-								MaxRequestsPerService: proto.Int32(100),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Llm: llmcpb.LlmClientConfig_builder{
+							Tools: llmcpb.ToolConfig_builder{
+								HttpClientConfig: llmcpb.HttpClientConfig_builder{
+									MaxRequestsPerService: proto.Int32(100),
+								}.Build(),
 							}.Build(),
 						}.Build(),
 					}.Build(),
-				}.Build(),
+				},
 			}.Build()),
 			wantErr: nil,
 			verify: func(t *testing.T, got *Tool) {

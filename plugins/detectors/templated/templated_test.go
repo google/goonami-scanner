@@ -136,19 +136,21 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	defer tcsmock.Close()
 
 	if tc.GetMockCallbackServer().GetEnabled() {
-		clicfg := cpb.ClientsConfig_builder{
-			CallbackServer: cbpb.CallbackserverConfig_builder{
-				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: tcsmock.URL,
-				}.Build(),
-				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: tcsmock.URL,
-				}.Build(),
-				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+		clicfg := map[string]*cpb.ClientsConfig{
+			"all": cpb.ClientsConfig_builder{
+				CallbackServer: cbpb.CallbackserverConfig_builder{
+					HttpPollConfig: cbpb.EndpointConfig_builder{
+						PublicUri: tcsmock.URL,
+					}.Build(),
+					HttpRecordConfig: cbpb.EndpointConfig_builder{
+						PublicUri: tcsmock.URL,
+					}.Build(),
+					DnsRecordConfig: cbpb.EndpointConfig_builder{
+						PublicUri: "cb.localhost.lan",
+					}.Build(),
 				}.Build(),
 			}.Build(),
-		}.Build()
+		}
 		cfgProto.SetClients(clicfg)
 	}
 

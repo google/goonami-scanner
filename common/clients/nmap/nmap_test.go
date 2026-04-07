@@ -73,9 +73,11 @@ func TestNew(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfgpb := cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					Nmap: tc.nmapConfig,
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Nmap: tc.nmapConfig,
+					}.Build(),
+				},
 			}.Build()
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)
@@ -99,21 +101,21 @@ func TestCommandLine(t *testing.T) {
 	}{
 		{
 			name:       "when_using_default_config_ipv4_returns_correct_args",
-			configFile: "default.textproto",
+			configFile: "all.textproto",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
 			wantErr:    nil,
 		},
 		{
 			name:       "when_using_default_config_ipv6_returns_correct_args",
-			configFile: "default.textproto",
+			configFile: "all.textproto",
 			target:     "::1",
 			want:       []string{"-oX", "", "-sT", "-T3", "-6", "-p-", "-Pn", "::1"},
 			wantErr:    nil,
 		},
 		{
 			name:       "when_using_default_config_with_ports_returns_correct_args",
-			configFile: "default.textproto",
+			configFile: "all.textproto",
 			ports:      []uint32{80, 443},
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p80,443", "-Pn", "127.0.0.1"},
@@ -192,7 +194,7 @@ func TestCommandLine(t *testing.T) {
 		},
 		{
 			name:       "when_user_agent_is_provided_returns_correct_args",
-			configFile: "default.textproto",
+			configFile: "all.textproto",
 			userAgent:  "test-agent",
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "-T3", "", "-p-", "-Pn", "--script-args", "http.useragent=test-agent", "127.0.0.1"},
@@ -200,7 +202,7 @@ func TestCommandLine(t *testing.T) {
 		},
 		{
 			name:       "when_rate_limit_is_provided_returns_correct_args",
-			configFile: "default.textproto",
+			configFile: "all.textproto",
 			rateLimit:  10,
 			target:     "127.0.0.1",
 			want:       []string{"-oX", "", "-sT", "--max-rate", "10", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
@@ -229,9 +231,11 @@ func TestCommandLine(t *testing.T) {
 			}
 
 			cfgpb := cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					Nmap: loadNmapConfig(t, tc.configFile),
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Nmap: loadNmapConfig(t, tc.configFile),
+					}.Build(),
+				},
 				Globalcfg: globalCfg.Build(),
 			}.Build()
 			cfg := config.FromProto(cfgpb)
@@ -310,9 +314,11 @@ func TestRun(t *testing.T) {
 			}
 
 			cfgpb := cpb.Config_builder{
-				Clients: cpb.ClientsConfig_builder{
-					Nmap: nmapCfgBuilder.Build(),
-				}.Build(),
+				Clients: map[string]*cpb.ClientsConfig{
+					"all": cpb.ClientsConfig_builder{
+						Nmap: nmapCfgBuilder.Build(),
+					}.Build(),
+				},
 			}.Build()
 			cfg := config.FromProto(cfgpb)
 			client := New(cfg)
