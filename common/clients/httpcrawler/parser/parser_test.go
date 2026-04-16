@@ -249,6 +249,19 @@ func TestParseURL(t *testing.T) {
 			wantErr: nil,
 			want:    "",
 		},
+		{
+			name:    "when_node_has_whitespace_returns_trimmed_url",
+			rootURL: "http://domain.com/",
+			nodeURL: "  http://domain.com/a \n",
+			want:    "http://domain.com/a",
+		},
+		{
+			name:    "when_node_is_javascript_with_leading_whitespace_returns_nothing",
+			rootURL: "http://domain.com/",
+			nodeURL: "  javascript:alert('hello')",
+			wantErr: nil,
+			want:    "",
+		},
 	}
 
 	for _, tc := range tests {

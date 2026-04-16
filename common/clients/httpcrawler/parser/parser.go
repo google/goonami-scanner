@@ -113,6 +113,8 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 }
 
 func parseURL(base string, redirect string) (string, error) {
+	redirect = strings.TrimSpace(redirect)
+
 	for _, prefix := range unsupportedPrefixes {
 		if strings.HasPrefix(redirect, prefix) {
 			return "", nil
