@@ -205,10 +205,16 @@ func TestParseURL(t *testing.T) {
 			want:    "http://domain.com/test",
 		},
 		{
-			name:    "when_node_is_query_only_returns_root_url_without_query",
+			name:    "when_node_is_query_only_returns_root_url_with_query",
 			rootURL: "http://domain.com/test",
 			nodeURL: "?q=1",
-			want:    "http://domain.com/test",
+			want:    "http://domain.com/test?q=1",
+		},
+		{
+			name:    "when_node_has_query_returns_url_with_query",
+			rootURL: "http://something.lan:8080/test/",
+			nodeURL: "pubsubz?rhist=HOUR",
+			want:    "http://something.lan:8080/test/pubsubz?rhist=HOUR",
 		},
 		{
 			name:    "when_node_is_protocol_relative_http_returns_http_url",

@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"path"
 	"slices"
 	"strings"
 
@@ -132,6 +131,9 @@ func parseURL(base string, redirect string) (string, error) {
 		}
 	}
 
+	redirurl.Fragment = ""
+	redirurl.RawFragment = ""
+
 	if redirurl.IsAbs() {
 		return redirurl.String(), nil
 	}
@@ -141,23 +143,6 @@ func parseURL(base string, redirect string) (string, error) {
 		return "", fmt.Errorf("%w: %v", ErrParseURL, err)
 	}
 
-	if len(redirurl.Path) == 0 {
-		return rooturl.String(), nil
-	}
-
-	newurl := *rooturl
-
-	if redirurl.Path[0] == '/' {
-		newurl.Path = redirurl.Path
-		return newurl.String(), nil
-	}
-
-	rootDir := path.Dir(rooturl.Path)
-	newpath, err := url.JoinPath(rootDir, redirurl.String())
-	if err != nil {
-		return "", err
-	}
-
-	newurl.Path = newpath
-	return newurl.String(), nil
+	resolved := rooturl.ResolveReference(redirurl)
+	return resolved.String(), nil
 }
