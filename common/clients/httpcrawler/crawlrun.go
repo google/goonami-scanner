@@ -19,12 +19,16 @@ package httpcrawler
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler/scope"
 )
+
+// maxDecodeIterations is the maximum number of times we attempt to URL-decode a string.
+const maxDecodeIterations = 10
 
 // crawlRun tracks the current run of the crawler.
 type crawlRun struct {
@@ -64,28 +68,50 @@ func (r *crawlRun) PageDone() {
 	r.workCount--
 }
 
-// AlreadyVisited returns true if the given URL has already been visited.
-func (r *crawlRun) AlreadyVisited(url string) bool {
-	normalizedURL := url
-	if strings.HasSuffix(url, "/") {
-		normalizedURL = url[:len(url)-1]
+// normalizeURL normalizes a URL for visited-tracking by:
+//  1. Iteratively URL-decoding the URL until it stabilizes (handles multi-encoded parameters like
+//     %253F which decodes to %3F, then to ?).
+//  2. Stripping query parameters and fragments from the decoded URL.
+//  3. Removing trailing slashes.
+func normalizeURL(rawurl string) string {
+	decoded := fullyDecode(rawurl)
+
+	if i := strings.IndexAny(decoded, "?#"); i != -1 {
+		decoded = decoded[:i]
 	}
+
+	return strings.TrimRight(decoded, "/")
+}
+
+// fullyDecode iteratively URL-decodes a string until it no longer changes.
+func fullyDecode(s string) string {
+	for i := 0; i < maxDecodeIterations; i++ {
+		decoded, err := url.PathUnescape(s)
+		if err != nil || decoded == s {
+			return s
+		}
+		s = decoded
+	}
+
+	return s
+}
+
+// AlreadyVisited returns true if the given URL has already been visited.
+func (r *crawlRun) AlreadyVisited(rawurl string) bool {
+	normalized := normalizeURL(rawurl)
 
 	r.mut.Lock()
 	defer r.mut.Unlock()
-	return r.visited[normalizedURL]
+	return r.visited[normalized]
 }
 
 // AddToVisited adds a new URL to the visited set.
-func (r *crawlRun) AddToVisited(url string) {
-	normalizedURL := url
-	if strings.HasSuffix(url, "/") {
-		normalizedURL = url[:len(url)-1]
-	}
+func (r *crawlRun) AddToVisited(rawurl string) {
+	normalized := normalizeURL(rawurl)
 
 	r.mut.Lock()
 	defer r.mut.Unlock()
-	r.visited[normalizedURL] = true
+	r.visited[normalized] = true
 }
 
 // CountVisited returns the number of visited URLs (i.e. requests sent for this run).

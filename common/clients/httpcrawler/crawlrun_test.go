@@ -88,6 +88,30 @@ func TestCrawlRun_AlreadyVisited(t *testing.T) {
 			url:  "/test1/",
 			want: true,
 		},
+		{
+			name:    "when_url_with_query_params_visited_as_base_returns_true",
+			visited: map[string]bool{"/test1": true},
+			url:     "/test1?q=1",
+			want:    true,
+		},
+		{
+			name:    "when_url_with_encoded_query_params_visited_as_base_returns_true",
+			visited: map[string]bool{"http://host/pubsubz": true},
+			url:     "http://host/pubsubz%3Frhist=HOUR&rfamily=JavaBigtable.CP",
+			want:    true,
+		},
+		{
+			name:    "when_url_with_double_encoded_query_params_visited_as_base_returns_true",
+			visited: map[string]bool{"http://host/pubsubz": true},
+			url:     "http://host/pubsubz%253Frhist=HOUR&rfamily=JavaBigtable.CP",
+			want:    true,
+		},
+		{
+			name:    "when_url_with_fragment_visited_as_base_returns_true",
+			visited: map[string]bool{"/page": true},
+			url:     "/page#section",
+			want:    true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -131,6 +155,18 @@ func TestCrawlRun_AddToVisited(t *testing.T) {
 			want:      map[string]bool{"/test1": true},
 			wantCount: 1,
 		},
+		{
+			name:      "when_adding_url_with_query_params_stores_base_path",
+			add:       []string{"/test1?q=1"},
+			want:      map[string]bool{"/test1": true},
+			wantCount: 1,
+		},
+		{
+			name:      "when_adding_urls_with_different_encoded_query_params_only_one_is_stored",
+			add:       []string{"http://host/pubsubz%253Frhist=HOUR&rfamily=JavaBigtable.CP", "http://host/pubsubz%253Frhist=TOTAL&rfamily=JavaBigtable.CP"},
+			want:      map[string]bool{"http://host/pubsubz": true},
+			wantCount: 1,
+		},
 	}
 
 	for _, tc := range tests {
@@ -144,6 +180,97 @@ func TestCrawlRun_AddToVisited(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, r.visited); diff != "" {
 				t.Errorf("visited map differs (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestNormalizeURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "plain_path",
+			url:  "/test",
+			want: "/test",
+		},
+		{
+			name: "trailing_slash_is_stripped",
+			url:  "/test/",
+			want: "/test",
+		},
+		{
+			name: "query_params_are_stripped",
+			url:  "http://host/path?q=1&r=2",
+			want: "http://host/path",
+		},
+		{
+			name: "fragment_is_stripped",
+			url:  "http://host/path#section",
+			want: "http://host/path",
+		},
+		{
+			name: "encoded_question_mark_is_decoded_and_stripped",
+			url:  "http://host/pubsubz%3Frhist=HOUR",
+			want: "http://host/pubsubz",
+		},
+		{
+			name: "double_encoded_question_mark_is_decoded_and_stripped",
+			url:  "http://host/pubsubz%253Frhist=HOUR&rfamily=JavaBigtable.CP",
+			want: "http://host/pubsubz",
+		},
+		{
+			name: "triple_encoded_question_mark_is_decoded_and_stripped",
+			url:  "http://host/censusz%25253Fformat=text",
+			want: "http://host/censusz",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeURL(tc.url)
+			if got != tc.want {
+				t.Errorf("normalizeURL(%q) = %q, want %q", tc.url, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFullyDecode(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "no_encoding",
+			input: "hello",
+			want:  "hello",
+		},
+		{
+			name:  "single_encoding",
+			input: "%3F",
+			want:  "?",
+		},
+		{
+			name:  "double_encoding",
+			input: "%253F",
+			want:  "?",
+		},
+		{
+			name:  "triple_encoding",
+			input: "%25253F",
+			want:  "?",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := fullyDecode(tc.input)
+			if got != tc.want {
+				t.Errorf("fullyDecode(%q) = %q, want %q", tc.input, got, tc.want)
 			}
 		})
 	}
