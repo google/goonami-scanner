@@ -66,12 +66,14 @@ var (
 
 // Client to perform LLMs queries using the agent dev kit.
 type Client struct {
-	config         *lccpb.LlmClientConfig
-	coreConfig     *config.Config
-	ag             agent.Agent
-	appName        string
-	userID         string
-	sessionService session.Service
+	config                  *lccpb.LlmClientConfig
+	coreConfig              *config.Config
+	ag                      agent.Agent
+	appName                 string
+	userID                  string
+	sessionService          session.Service
+	totalTokenCount         int32
+	cachedContentTokenCount int32
 }
 
 // DefaultConfig returns the default configuration for the LLM client.
@@ -109,6 +111,11 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 //   - It integrates the ability to check the validity of the response through a callback.
 func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
 	ctx = log.ContextForModule(ctx, "clients/llm")
+
+	defer func() {
+		log.DebugContextf(ctx, log.DebugLevelService, "Agent token usage: total=%d (cached=%d)", c.totalTokenCount, c.cachedContentTokenCount)
+	}()
+
 	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
 	maxAttempts := int(c.config.GetMaxAttempts())
 
@@ -186,6 +193,11 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 
 		if err := ctx.Err(); err != nil {
 			return "", err
+		}
+
+		if event.UsageMetadata != nil {
+			c.totalTokenCount += event.UsageMetadata.TotalTokenCount
+			c.cachedContentTokenCount += event.UsageMetadata.CachedContentTokenCount
 		}
 
 		if event.Content == nil {
