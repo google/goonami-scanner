@@ -58,12 +58,43 @@ func New(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, ht
 		actionsCache[action.GetName()] = action
 	}
 
-	return &TemplatedDetector{
+	detector := &TemplatedDetector{
 		proto:        proto,
 		knownActions: actionsCache,
 		httpClient:   httpClient,
 		cfg:          cfg,
-	}, nil
+	}
+
+	if err := detector.Validate(); err != nil {
+		return nil, err
+	}
+
+	return detector, nil
+}
+
+// Validate ensures that all actions are valid and all referenced actions exist in the cache.
+func (d *TemplatedDetector) Validate() error {
+	for name, action := range d.knownActions {
+		if d.getRunnerForAction(action) == nil {
+			return fmt.Errorf("%w: %q", actions.ErrInvalidAction, name)
+		}
+
+		for _, cleanupName := range action.GetCleanupActions() {
+			if _, ok := d.knownActions[cleanupName]; !ok {
+				return fmt.Errorf("%w: %q", actions.ErrActionNotFound, cleanupName)
+			}
+		}
+	}
+
+	for _, workflow := range d.proto.GetWorkflows() {
+		for _, actionName := range workflow.GetActions() {
+			if _, ok := d.knownActions[actionName]; !ok {
+				return fmt.Errorf("%w: %q", actions.ErrActionNotFound, actionName)
+			}
+		}
+	}
+
+	return nil
 }
 
 // NewForTesting creates a new TemplatedDetector for testing, forcing it to use the specified

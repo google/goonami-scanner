@@ -1,0 +1,19 @@
+actions {
+  name: "action1"
+  utility {
+    sleep {duration_ms: 1}
+  }
+}
+
+actions {
+  name: "action2"
+  utility {
+    sleep {duration_ms: 1}
+  }
+  cleanup_actions: "unknown_cleanup_action"
+}
+
+workflows {
+  actions: "action1"
+  actions: "action2"
+}

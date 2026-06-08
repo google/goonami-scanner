@@ -39,6 +39,44 @@ import (
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
+func TestTNew(t *testing.T) {
+	tests := []struct {
+		name    string
+		proto   *tpb.TemplatedPlugin
+		wantErr error
+	}{
+		{
+			name:    "action_not_found_returns_error",
+			proto:   loadProto(t, "testdata/action_not_found.textproto"),
+			wantErr: actions.ErrActionNotFound,
+		},
+		{
+			name:    "when_unsupported_action_type_returns_fatal_error",
+			proto:   loadProto(t, "testdata/unsupported_action_type.textproto"),
+			wantErr: actions.ErrInvalidAction,
+		},
+		{
+			name:    "cleanup_action_not_found_returns_error",
+			proto:   loadProto(t, "testdata/cleanup_not_found.textproto"),
+			wantErr: actions.ErrActionNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.Default()
+			if err := goohttp.InitializeDefaults(cfg); err != nil {
+				t.Fatalf("Failed to initialize HTTP client: %v", err)
+			}
+
+			_, err := New(t.Context(), cfg, tc.proto, goohttp.DefaultClient())
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("New() returned unexpected error: %v, want: %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestTemplatedDetector_Detect(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/OK" {
@@ -91,18 +129,6 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			name:          "when_variable_substitution_works",
 			protoFile:     "testdata/variable_substitution.textproto",
 			wantDetection: true,
-		},
-		{
-			name:          "when_action_not_found_returns_error",
-			protoFile:     "testdata/action_not_found.textproto",
-			wantDetection: false,
-			wantErr:       actions.ErrActionNotFound,
-		},
-		{
-			name:          "when_unsupported_action_type_returns_fatal_error",
-			protoFile:     "testdata/unsupported_action_type.textproto",
-			wantDetection: false,
-			wantErr:       actions.ErrInvalidAction,
 		},
 		{
 			name:          "when_workflow_condition_not_met_skips_it",

@@ -1,6 +1,10 @@
 actions {
   name: "action1"
+  utility {
+    sleep {duration_ms: 1}
+  }
 }
+
 workflows {
   actions: "unknown_action"
 }
