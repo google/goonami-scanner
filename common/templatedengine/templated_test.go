@@ -25,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"testing/fstest"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
@@ -241,6 +242,76 @@ func TestLoadPlugins(t *testing.T) {
 			t.Errorf("initFns[%d]() failed: %v", i, err)
 			continue
 		}
+	}
+}
+
+func TestLoadPluginsFromFS(t *testing.T) {
+	fsys := fstest.MapFS{
+		"valid.textproto": &fstest.MapFile{
+			Data: []byte(`
+				info { name: "ValidPlugin" }
+				config { disabled: false }
+			`),
+		},
+		"disabled.textproto": &fstest.MapFile{
+			Data: []byte(`
+				info { name: "DisabledPlugin" }
+				config { disabled: true }
+			`),
+		},
+		"ignored.txt": &fstest.MapFile{
+			Data: []byte(`not a proto`),
+		},
+		"invalid_test.textproto": &fstest.MapFile{
+			Data: []byte(`test file should be skipped`),
+		},
+		"subdir/valid_nested.textproto": &fstest.MapFile{
+			Data: []byte(`
+				info { name: "NestedPlugin" }
+				config { disabled: false }
+			`),
+		},
+	}
+
+	plugins, err := LoadPluginsFromFS(t.Context(), fsys)
+	if err != nil {
+		t.Fatalf("LoadPluginsFromFS() failed: %v", err)
+	}
+
+	if len(plugins) != 2 {
+		t.Errorf("LoadPluginsFromFS() returned %d plugins, want 2", len(plugins))
+	}
+
+	var names []string
+	for _, p := range plugins {
+		names = append(names, p.GetInfo().GetName())
+	}
+
+	wantNames := []string{"ValidPlugin", "NestedPlugin"}
+	for _, want := range wantNames {
+		found := false
+		for _, name := range names {
+			if name == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("LoadPluginsFromFS() missed expected plugin: %s", want)
+		}
+	}
+}
+
+func TestLoadPluginsFromFS_InvalidPluginReturnsError(t *testing.T) {
+	fsys := fstest.MapFS{
+		"invalid.textproto": &fstest.MapFile{
+			Data: []byte(`not a proto`),
+		},
+	}
+
+	_, err := LoadPluginsFromFS(t.Context(), fsys)
+	if err == nil {
+		t.Fatalf("LoadPluginsFromFS() succeeded, want error")
 	}
 }
 

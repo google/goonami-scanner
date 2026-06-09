@@ -21,7 +21,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
@@ -32,6 +35,7 @@ import (
 	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
@@ -116,24 +120,32 @@ func (d *TemplatedDetector) Name() string {
 
 // Detect performs the vulnerability detection.
 func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+	reports, err := d.DetectWithVariables(ctx, service, nil)
+	if err != nil {
+		// Note: action failures are ignored as they generally indicate no vulnerability.
+		if errors.Is(err, actions.ErrActionFailed) {
+			log.DebugContextf(ctx, log.DebugLevelService, "vulnerability not found: %v", err)
+			return nil, nil
+		}
+
+		// Any other error is probably coming from an issue with the plugin or the core engine.
+		return nil, err
+	}
+
+	return reports, nil
+}
+
+// DetectWithVariables performs the vulnerability detection and allows injecting extra variables.
+// extraVars are injected into the environment before evaluating the workflow variables.
+//
+// Caller is responsible for handling errors.
+func (d *TemplatedDetector) DetectWithVariables(ctx context.Context, service *nspb.NetworkService, extraVars map[string]string) (*dpb.DetectionReportList, error) {
 	for _, workflow := range d.proto.GetWorkflows() {
 		if !d.workflowMeetsConditions(ctx, workflow) {
 			continue
 		}
 
-		reports, err := d.runWorkflowForService(ctx, service, workflow)
-		if err != nil {
-			// Note: action failures are ignored as they generally indicate no vulnerability.
-			if errors.Is(err, actions.ErrActionFailed) {
-				log.DebugContextf(ctx, log.DebugLevelService, "vulnerability not found: %v", err)
-				return nil, nil
-			}
-
-			// Any other error is probably coming from an issue with the plugin or the core engine.
-			return nil, err
-		}
-
-		return reports, nil
+		return d.runWorkflowForService(ctx, service, workflow, extraVars)
 	}
 
 	log.WarnContextf(ctx, "current scanner configuration has no compatible workflow")
@@ -175,7 +187,7 @@ func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.Ne
 	return runner.Run(ctx, service, action, env)
 }
 
-func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow) (*dpb.DetectionReportList, error) {
+func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow, extraVars map[string]string) (*dpb.DetectionReportList, error) {
 	env := environment.New(d.cfg)
 	if err := env.InitializeFor(ctx, service); err != nil {
 		return nil, err
@@ -184,6 +196,10 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 	// Override for testing.
 	if d.envForTesting != nil {
 		env = d.envForTesting
+	}
+
+	for k, v := range extraVars {
+		env.Set(k, v)
 	}
 
 	for _, variable := range workflow.GetVariables() {
@@ -256,4 +272,58 @@ func LoadPlugins(cfg *config.Config, plugins []*tpb.TemplatedPlugin) []module.In
 		})
 	}
 	return detectors
+}
+
+// LoadPluginsFromFS loads all templated plugins found in the provided filesystem.
+func LoadPluginsFromFS(ctx context.Context, pluginFilesFS fs.FS) ([]*tpb.TemplatedPlugin, error) {
+	var plugins []*tpb.TemplatedPlugin
+
+	err := fs.WalkDir(pluginFilesFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		if d.IsDir() || filepath.Ext(path) != ".textproto" || strings.HasSuffix(path, "_test.textproto") {
+			return nil
+		}
+
+		plugin, err := loadPlugin(ctx, pluginFilesFS, path)
+		if err != nil || plugin == nil {
+			return err
+		}
+
+		plugins = append(plugins, plugin)
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk embedded plugins: %w", err)
+	}
+
+	return plugins, nil
+}
+
+func loadPlugin(ctx context.Context, pluginFilesFS fs.FS, path string) (*tpb.TemplatedPlugin, error) {
+	content, err := fs.ReadFile(pluginFilesFS, path)
+	if err != nil {
+		log.WarnContextf(ctx, "failed to read plugin file %s: %v", path, err)
+		return nil, err
+	}
+
+	plugin := &tpb.TemplatedPlugin{}
+	if err := prototext.Unmarshal(content, plugin); err != nil {
+		log.WarnContextf(ctx, "failed to unmarshal plugin %s: %v", path, err)
+		return nil, err
+	}
+
+	if plugin.GetConfig().GetDisabled() {
+		log.InfoContextf(ctx, "plugin %s is disabled, skipping", path)
+		return nil, nil
+	}
+
+	return plugin, nil
 }
