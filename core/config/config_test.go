@@ -122,6 +122,18 @@ func TestCreateDirectories(t *testing.T) {
 			},
 			wantErr: ErrCreateDir,
 		},
+		{
+			name: "when_cachedir_creation_fails_because_file_exists_returns_error",
+			setup: func(t *testing.T) string {
+				t.Helper()
+				dir := t.TempDir()
+				if err := os.WriteFile(path.Join(dir, "cache"), []byte(""), 0644); err != nil {
+					t.Fatalf("cannot create cache file: %v", err)
+				}
+				return dir
+			},
+			wantErr: ErrCreateDir,
+		},
 	}
 
 	for _, tt := range tests {
@@ -149,6 +161,9 @@ func TestCreateDirectories(t *testing.T) {
 			}
 			if _, err := os.Stat(cfg.ArtifactsDirectory()); err != nil {
 				t.Errorf("Artifacts directory %q not created: %v", cfg.ArtifactsDirectory(), err)
+			}
+			if _, err := os.Stat(cfg.CacheDirectory()); err != nil {
+				t.Errorf("Cache directory %q not created: %v", cfg.CacheDirectory(), err)
 			}
 		})
 	}
@@ -305,5 +320,62 @@ func TestPluginsConfig(t *testing.T) {
 
 	if got := cfg.PluginsConfig(); !proto.Equal(got, want) {
 		t.Errorf("PluginsConfig() = %v, want %v", got, want)
+	}
+}
+
+func TestCacheDirectoryIsCorrect(t *testing.T) {
+	workDir := t.TempDir()
+	cfg, err := FromFile(validConfig)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+	if err := cfg.CreateDirectories(workDir); err != nil {
+		t.Fatalf("Failed to create directories: %v", err)
+	}
+	defer cfg.Close(t.Context())
+
+	want := path.Join(workDir, "cache")
+	if got := cfg.CacheDirectory(); got != want {
+		t.Errorf("CacheDirectory() = %v, want %v", got, want)
+	}
+}
+
+func TestGetCacheForModule(t *testing.T) {
+	workDir := t.TempDir()
+	cfg, err := FromFile(validConfig)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Test before initialization
+	if _, err := cfg.GetCacheForModule("test_module"); !errors.Is(err, ErrUninitialized) {
+		t.Errorf("GetCacheForModule() error = %v, want %v", err, ErrUninitialized)
+	}
+
+	// Initialize
+	if err := cfg.CreateDirectories(workDir); err != nil {
+		t.Fatalf("Failed to create directories: %v", err)
+	}
+	defer cfg.Close(t.Context())
+
+	// Test lazy creation: directory should not exist before we call GetCacheForModule
+	wantPath := path.Join(cfg.CacheDirectory(), "test_module")
+	if _, err := os.Stat(wantPath); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Module cache directory %q already exists before GetCacheForModule call", wantPath)
+	}
+
+	// Get cache (should create the directory)
+	gotPath, err := cfg.GetCacheForModule("test_module")
+	if err != nil {
+		t.Fatalf("GetCacheForModule() failed: %v", err)
+	}
+
+	if gotPath != wantPath {
+		t.Errorf("GetCacheForModule() = %q, want %q", gotPath, wantPath)
+	}
+
+	// Verify it was created
+	if _, err := os.Stat(gotPath); err != nil {
+		t.Errorf("Module cache directory %q not created: %v", gotPath, err)
 	}
 }
