@@ -85,6 +85,7 @@ type Config struct {
 	workDir      string
 	tempDir      string
 	artifactsDir string
+	cacheDir     string
 }
 
 // DefaultProto returns the default configuration for Goonami.
@@ -161,6 +162,11 @@ func (c *Config) CreateDirectories(workdir string) error {
 		return fmt.Errorf("%w %q: %v", ErrCreateDir, c.artifactsDir, err)
 	}
 
+	c.cacheDir = path.Join(c.workDir, "cache")
+	if err := os.MkdirAll(c.cacheDir, 0700); err != nil {
+		return fmt.Errorf("%w %q: %v", ErrCreateDir, c.cacheDir, err)
+	}
+
 	return nil
 }
 
@@ -209,4 +215,22 @@ func (c *Config) ArtifactsDirectory() string {
 // TimeoutPerRequest is a helper that returns the timeout set in the global configuration.
 func (c *Config) TimeoutPerRequest() time.Duration {
 	return time.Duration(c.GlobalConfig().GetPerformance().GetTimeoutPerRequestSeconds()) * time.Second
+}
+
+// CacheDirectory returns the path to the cache directory.
+func (c *Config) CacheDirectory() string {
+	return c.cacheDir
+}
+
+// GetCacheForModule returns the path to the cache directory for the given module,
+// creating it if it does not exist.
+func (c *Config) GetCacheForModule(moduleName string) (string, error) {
+	if c.cacheDir == "" {
+		return "", ErrUninitialized
+	}
+	dir := path.Join(c.cacheDir, moduleName)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", fmt.Errorf("%w %q: %v", ErrCreateDir, dir, err)
+	}
+	return dir, nil
 }
