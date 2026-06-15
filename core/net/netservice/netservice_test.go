@@ -261,3 +261,138 @@ func TestAddCrawlResults(t *testing.T) {
 		})
 	}
 }
+
+func TestWasCrawled(t *testing.T) {
+	endpoint := npb.NetworkEndpoint_builder{
+		Hostname: npb.Hostname_builder{Name: "local.lan"}.Build(),
+	}.Build()
+
+	tests := []struct {
+		name    string
+		service *nspb.NetworkService
+		uri     string
+		want    bool
+	}{
+		{
+			name:    "when_service_context_is_missing_returns_false",
+			service: nspb.NetworkService_builder{NetworkEndpoint: endpoint}.Build(),
+			uri:     "/1",
+			want:    false,
+		},
+		{
+			name: "when_web_service_context_is_missing_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext:  nspb.ServiceContext_builder{}.Build(),
+			}.Build(),
+			uri:  "/1",
+			want: false,
+		},
+		{
+			name: "when_crawl_results_are_empty_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "/1",
+			want: false,
+		},
+		{
+			name: "when_relative_uri_is_not_in_crawl_results_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "/1",
+			want: false,
+		},
+		{
+			name: "when_relative_uri_is_in_crawl_results_returns_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "/1",
+			want: true,
+		},
+		{
+			name: "when_relative_uri_without_slash_is_in_crawl_results_returns_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "1",
+			want: true,
+		},
+		{
+			name: "when_absolute_uri_is_in_crawl_results_returns_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "http://local.lan/1",
+			want: true,
+		},
+		{
+			name: "when_endpoint_is_invalid_returns_false",
+			service: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:  "/1",
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := WasCrawled(tc.service, tc.uri); got != tc.want {
+				t.Errorf("WasCrawled(%v, %q) = %v, want: %v", tc.service, tc.uri, got, tc.want)
+			}
+		})
+	}
+}

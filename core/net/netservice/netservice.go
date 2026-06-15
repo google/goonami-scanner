@@ -19,6 +19,7 @@ package netservice
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 
@@ -66,4 +67,32 @@ func AddCrawlResults(service *nspb.NetworkService, crawlResults []*wcpb.CrawlRes
 	results := service.GetServiceContext().GetWebServiceContext().GetCrawlResults()
 	results = append(results, crawlResults...)
 	service.GetServiceContext().GetWebServiceContext().SetCrawlResults(results)
+}
+
+// WasCrawled returns whether the given URI was crawled on the given service.
+// Note that crawl results store the absolute URI, so we need to perform the resolution first.
+func WasCrawled(service *nspb.NetworkService, uri string) bool {
+	webRoot, err := BuildWebRoot(service)
+	if err != nil {
+		return false
+	}
+
+	base, err := url.Parse(webRoot)
+	if err != nil {
+		return false
+	}
+
+	ref, err := url.Parse(uri)
+	if err != nil {
+		return false
+	}
+
+	targetURL := base.ResolveReference(ref).String()
+	for _, result := range service.GetServiceContext().GetWebServiceContext().GetCrawlResults() {
+		if result.GetCrawlTarget().GetUrl() == targetURL {
+			return true
+		}
+	}
+
+	return false
 }
