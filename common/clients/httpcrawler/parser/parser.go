@@ -96,6 +96,31 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 		results = append(results, links...)
 	}
 
+	if node.Type == html.ElementNode && node.Data == "meta" {
+		var isRefresh bool
+		var contentVal string
+		for _, attr := range node.Attr {
+			if strings.ToLower(attr.Key) == "http-equiv" && strings.ToLower(attr.Val) == "refresh" {
+				isRefresh = true
+			}
+			if strings.ToLower(attr.Key) == "content" {
+				contentVal = attr.Val
+			}
+		}
+		if isRefresh && contentVal != "" {
+			if redirectURL, ok := parseMetaRefresh(contentVal); ok {
+				link, err := parseURL(rootURL, redirectURL)
+				if err != nil {
+					return nil, err
+				}
+				if link != "" {
+					results = append(results, link)
+				}
+			}
+		}
+		return results, nil
+	}
+
 	for _, attr := range node.Attr {
 		if !slices.Contains(knownLinkAttributes, attr.Key) {
 			continue
@@ -110,6 +135,25 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 	}
 
 	return results, nil
+}
+
+func parseMetaRefresh(content string) (string, bool) {
+	parts := strings.SplitN(content, ";", 2)
+	if len(parts) < 2 {
+		return "", false
+	}
+	urlPart := strings.TrimSpace(parts[1])
+	urlKeyValue := strings.SplitN(urlPart, "=", 2)
+	if len(urlKeyValue) < 2 {
+		return "", false
+	}
+	key := strings.TrimSpace(urlKeyValue[0])
+	if strings.ToLower(key) != "url" {
+		return "", false
+	}
+	rawURL := strings.TrimSpace(urlKeyValue[1])
+	rawURL = strings.Trim(rawURL, `'"`)
+	return rawURL, true
 }
 
 func parseURL(base string, redirect string) (string, error) {
