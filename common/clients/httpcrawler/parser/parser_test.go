@@ -79,6 +79,49 @@ func TestExtractFromHTML(t *testing.T) {
 			testFile: "all_link_attrs.html",
 			wantErr:  ErrParseURL,
 		},
+		{
+			name:    "when_page_contains_meta_refresh_extracts_url",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><head><meta http-equiv="refresh" content="0;URL=index.jsp"></head></html>`),
+			want: []string{
+				"http://a.com/d/index.jsp",
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "when_page_contains_meta_refresh_with_absolute_url_extracts_url",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><head><meta http-equiv="refresh" content="0;URL=http://other.com/index.jsp"></head></html>`),
+			want: []string{
+				"http://other.com/index.jsp",
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "when_page_contains_meta_refresh_case_insensitive_extracts_url",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><head><META HTTP-EQUIV="Refresh" CONTENT="0;url=index.jsp"></head></html>`),
+			want: []string{
+				"http://a.com/d/index.jsp",
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "when_page_contains_meta_refresh_with_spaces_extracts_url",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><head><meta http-equiv="refresh" content=" 0 ; URL = index.jsp "></head></html>`),
+			want: []string{
+				"http://a.com/d/index.jsp",
+			},
+			wantErr: nil,
+		},
+		{
+			name:    "when_page_contains_meta_refresh_no_url_returns_nothing",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><head><meta http-equiv="refresh" content="5"></head></html>`),
+			want:    nil,
+			wantErr: nil,
+		},
 	}
 
 	for _, tc := range tests {

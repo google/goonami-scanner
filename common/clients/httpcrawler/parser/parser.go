@@ -49,6 +49,7 @@ var (
 		"background",
 		"cite",
 		"codebase",
+		"content",
 		"data",
 		"href",
 		"longdesc",
@@ -101,15 +102,42 @@ func processHTMLNode(rootURL string, node *html.Node) ([]string, error) {
 			continue
 		}
 
-		link, err := parseURL(rootURL, attr.Val)
+		link, err := dispatch(node, attr.Key, rootURL, attr.Val)
 		if err != nil {
 			return nil, err
+		}
+
+		if link == "" {
+			continue
 		}
 
 		results = append(results, link)
 	}
 
 	return results, nil
+}
+
+func dispatch(node *html.Node, key, base, redirect string) (string, error) {
+	switch key {
+	case "content":
+		return parseContent(node, base, redirect)
+	default:
+		return parseURL(base, redirect)
+	}
+}
+
+func parseContent(node *html.Node, base, content string) (string, error) {
+	if strings.ToLower(node.Data) != "meta" {
+		return "", nil
+	}
+
+	cleanContent := strings.ToLower(strings.ReplaceAll(content, " ", ""))
+	splitContent := strings.Split(cleanContent, "url=")
+	if len(splitContent) != 2 {
+		return "", nil
+	}
+
+	return parseURL(base, splitContent[1])
 }
 
 func parseURL(base string, redirect string) (string, error) {
