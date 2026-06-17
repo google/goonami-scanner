@@ -23,14 +23,12 @@ import (
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/net/http/simpleclient"
 )
 
 var (
 	// ErrPageTooBig is returned when the response body is larger than the maximum size.
 	ErrPageTooBig = errors.New("page is too big")
-
-	// ErrConfigNil is returned when the configuration is nil.
-	ErrConfigNil = errors.New("config is nil")
 )
 
 // Client is the interface for HTTP clients.
@@ -42,7 +40,7 @@ var defaultClient Client = nil
 
 // InitializeDefaults initializes the default HTTP client with a SimpleClient.
 func InitializeDefaults(cfg *config.Config) error {
-	client, err := NewSimpleClient(cfg)
+	client, err := simpleclient.New(cfg)
 	if err != nil {
 		return err
 	}

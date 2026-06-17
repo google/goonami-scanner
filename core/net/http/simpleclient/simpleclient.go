@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-package http
+// Package simpleclient provides a simple HTTP client.
+package simpleclient
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"golang.org/x/time/rate"
+)
+
+var (
+	// ErrConfigNil is returned when the configuration is nil.
+	ErrConfigNil = errors.New("config is nil")
 )
 
 // SimpleClient is a simple HTTP client that uses the standard library client and a rate limiter.
@@ -30,8 +37,8 @@ type SimpleClient struct {
 	limiter *rate.Limiter
 }
 
-// NewSimpleClient creates a new SimpleClient.
-func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
+// New creates a new SimpleClient.
+func New(cfg *config.Config) (*SimpleClient, error) {
 	if cfg == nil {
 		return nil, ErrConfigNil
 	}

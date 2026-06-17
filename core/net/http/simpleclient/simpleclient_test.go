@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package http
+package simpleclient
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
-func TestNewSimpleClient(t *testing.T) {
+func TestNew(t *testing.T) {
 	tests := []struct {
 		name      string
 		cfg       *config.Config
@@ -75,9 +75,9 @@ func TestNewSimpleClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewSimpleClient(tt.cfg)
+			c, err := New(tt.cfg)
 			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("NewSimpleClient() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -86,11 +86,11 @@ func TestNewSimpleClient(t *testing.T) {
 			}
 
 			if c.limiter.Limit() != tt.wantLimit {
-				t.Errorf("NewSimpleClient() limit = %v, wantLimit %v", c.limiter.Limit(), tt.wantLimit)
+				t.Errorf("New() limit = %v, wantLimit %v", c.limiter.Limit(), tt.wantLimit)
 			}
 
 			if c.limiter.Burst() != tt.wantBurst {
-				t.Errorf("NewSimpleClient() burst = %v, wantBurst %v", c.limiter.Burst(), tt.wantBurst)
+				t.Errorf("New() burst = %v, wantBurst %v", c.limiter.Burst(), tt.wantBurst)
 			}
 		})
 	}
@@ -110,9 +110,9 @@ func TestDoWithoutRateLimit(t *testing.T) {
 		}.Build(),
 	}.Build())
 
-	c, err := NewSimpleClient(cfg)
+	c, err := New(cfg)
 	if err != nil {
-		t.Fatalf("NewSimpleClient() failed: %v", err)
+		t.Fatalf("New() failed: %v", err)
 	}
 
 	req, err := http.NewRequest("GET", ts.URL, nil)
@@ -139,9 +139,9 @@ func TestDo_ContextCancelled(t *testing.T) {
 		}.Build(),
 	}.Build())
 
-	c, err := NewSimpleClient(cfg)
+	c, err := New(cfg)
 	if err != nil {
-		t.Fatalf("NewSimpleClient() failed: %v", err)
+		t.Fatalf("New() failed: %v", err)
 	}
 
 	ctx, cancel := context.WithCancel(t.Context())
