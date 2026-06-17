@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"testing"
 
@@ -152,5 +153,76 @@ func TestDo_ContextCancelled(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Do() returned no error, want error")
+	}
+}
+
+func TestSimpleClient_WithCookieJar(t *testing.T) {
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(10),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	c, err := NewSimpleClient(cfg)
+	if err != nil {
+		t.Fatalf("NewSimpleClient() failed: %v", err)
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar.New() failed: %v", err)
+	}
+
+	newClient := c.WithCookieJar(jar)
+
+	// Type assertion to access internal fields for testing
+	simpleNewClient, ok := newClient.(*SimpleClient)
+	if !ok {
+		t.Fatalf("WithCookieJar() did not return a *SimpleClient")
+	}
+
+	// 1. Verify the exact same limiter pointer is shared
+	if simpleNewClient.limiter != c.limiter {
+		t.Errorf("WithCookieJar() did not share the limiter pointer")
+	}
+
+	// 2. Verify the underlying http.Client is a copy (pointers differ)
+	if simpleNewClient.client == c.client {
+		t.Errorf("WithCookieJar() did not create a copy of the underlying http.Client")
+	}
+
+	// 3. Verify the cookie jar is attached
+	if simpleNewClient.client.Jar != jar {
+		t.Errorf("WithCookieJar() did not attach the cookie jar")
+	}
+
+	// 4. Verify functionality: Cookies are preserved across requests
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/set" {
+			http.SetCookie(w, &http.Cookie{Name: "test", Value: "123"})
+			return
+		}
+		if r.URL.Path == "/get" {
+			cookie, err := r.Cookie("test")
+			if err != nil || cookie.Value != "123" {
+				t.Errorf("Cookie 'test=123' not found in request")
+			}
+			return
+		}
+	}))
+	defer ts.Close()
+
+	reqSet, _ := http.NewRequestWithContext(t.Context(), "GET", ts.URL+"/set", nil)
+	_, err = simpleNewClient.Do(reqSet)
+	if err != nil {
+		t.Fatalf("Do(/set) failed: %v", err)
+	}
+
+	reqGet, _ := http.NewRequestWithContext(t.Context(), "GET", ts.URL+"/get", nil)
+	_, err = simpleNewClient.Do(reqGet)
+	if err != nil {
+		t.Fatalf("Do(/get) failed: %v", err)
 	}
 }

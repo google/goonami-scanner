@@ -140,3 +140,7 @@ type fakeClient struct{}
 func (f *fakeClient) Do(req *http.Request) (*http.Response, error) {
 	return nil, nil
 }
+
+func (f *fakeClient) WithCookieJar(jar http.CookieJar) Client {
+	return f
+}
