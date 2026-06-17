@@ -50,6 +50,18 @@ func NewSimpleClient(cfg *config.Config) (*SimpleClient, error) {
 	}, nil
 }
 
+// WithCookieJar creates a shallow copy of the SimpleClient and attaches the provided CookieJar
+// to its underlying http.Client, while preserving the exact same global rate limiter.
+func (c *SimpleClient) WithCookieJar(jar http.CookieJar) Client {
+	newClient := *c.client
+	newClient.Jar = jar
+
+	return &SimpleClient{
+		client:  &newClient,
+		limiter: c.limiter,
+	}
+}
+
 // Do sends an HTTP request and returns an HTTP response in case of success.
 func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()

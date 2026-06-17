@@ -274,4 +274,5 @@ type errorClient struct{}
 func (c *errorClient) Do(req *http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("simulated error")
 }
-func (c *errorClient) Initialize(cfg *config.Config) error { return nil }
+func (c *errorClient) Initialize(cfg *config.Config) error             { return nil }
+func (c *errorClient) WithCookieJar(jar http.CookieJar) goohttp.Client { return c }

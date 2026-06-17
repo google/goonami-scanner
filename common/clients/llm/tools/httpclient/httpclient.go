@@ -22,6 +22,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"regexp"
 	"slices"
 	"strings"
@@ -57,10 +58,11 @@ var (
 // Tool is specific to each Goonami network service and ensures that the agent can only perform
 // HTTP requests in the context of the service.
 type Tool struct {
-	config     *hccpb.HttpClientConfig
-	coreConfig *config.Config
-	service    *nspb.NetworkService
-	badPaths   []*regexp.Regexp
+	config        *hccpb.HttpClientConfig
+	coreConfig    *config.Config
+	service       *nspb.NetworkService
+	badPaths      []*regexp.Regexp
+	sessionClient goohttp.Client
 
 	mut           sync.Mutex
 	countRequests int
@@ -68,10 +70,11 @@ type Tool struct {
 
 // Request is the request to be sent to the service.
 type Request struct {
-	Method  string            `json:"method" jsonschema:"Method to use: GET, POST."`
-	URI     string            `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
-	Headers map[string]string `json:"headers" jsonschema:"Headers to be added to the request."`
-	Data    string            `json:"data" jsonschema:"Data to send with the request"`
+	Method          string            `json:"method" jsonschema:"Method to use: GET, POST."`
+	URI             string            `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
+	Headers         map[string]string `json:"headers" jsonschema:"Headers to be added to the request."`
+	Data            string            `json:"data" jsonschema:"Data to send with the request"`
+	MaintainSession bool              `json:"maintain_session" jsonschema:"If true, cookies from the response will be saved and sent on subsequent requests where this flag is also true."`
 }
 
 // Response is the response from an HTTP request.
@@ -116,11 +119,15 @@ func newTool(config *config.Config, service *nspb.NetworkService) *Tool {
 		badPaths = append(badPaths, regexp.MustCompile(path))
 	}
 
+	jar, _ := cookiejar.New(nil)
+	sessionClient := goohttp.DefaultClient().WithCookieJar(jar)
+
 	return &Tool{
-		config:     cfg,
-		coreConfig: config,
-		service:    service,
-		badPaths:   badPaths,
+		config:        cfg,
+		coreConfig:    config,
+		service:       service,
+		badPaths:      badPaths,
+		sessionClient: sessionClient,
 	}
 }
 
@@ -149,7 +156,14 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 	}
 
 	h.increaseRequestCount()
-	resp, err := goohttp.DefaultClient().Do(req)
+
+	var resp *http.Response
+	if toolreq.MaintainSession {
+		resp, err = h.sessionClient.Do(req)
+	} else {
+		resp, err = goohttp.DefaultClient().Do(req)
+	}
+
 	if err != nil {
 		return nil, err
 	}

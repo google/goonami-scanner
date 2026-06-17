@@ -36,6 +36,7 @@ var (
 // Client is the interface for HTTP clients.
 type Client interface {
 	Do(req *http.Request) (*http.Response, error)
+	WithCookieJar(jar http.CookieJar) Client
 }
 
 var defaultClient Client = nil

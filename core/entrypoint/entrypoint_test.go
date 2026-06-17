@@ -41,7 +41,8 @@ func (m *fakeHTTPClient) Head(url string) (*http.Response, error) { return nil, 
 func (m *fakeHTTPClient) Post(url string, contentType string, body io.Reader) (*http.Response, error) {
 	return nil, nil
 }
-func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return nil, nil }
+func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error)    { return nil, nil }
+func (m *fakeHTTPClient) WithCookieJar(jar http.CookieJar) goohttp.Client { return m }
 
 func TestNewWhenSideEffects(t *testing.T) {
 	cfg := config.Default()
