@@ -104,6 +104,34 @@ func TestNew(t *testing.T) {
 			wantBurst: 0,
 			wantErr:   nil,
 		},
+		{
+			name: "when_enforce_tls_cert_verification_is_true_insecure_skip_verify_is_false",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			options:   &goohttp.ClientOptions{EnforceTLSCertVerification: true},
+			wantLimit: rate.Inf,
+			wantBurst: 0,
+			wantErr:   nil,
+		},
+		{
+			name: "when_enforce_tls_cert_verification_is_false_insecure_skip_verify_is_true",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			options:   &goohttp.ClientOptions{EnforceTLSCertVerification: false},
+			wantLimit: rate.Inf,
+			wantBurst: 0,
+			wantErr:   nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -134,6 +162,18 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() client.Jar is nil, want cookie jar")
 			} else if !opts.StoreCookies && c.client.Jar != nil {
 				t.Errorf("New() client.Jar is not nil, want no cookie jar")
+			}
+
+			transport, ok := c.client.Transport.(*http.Transport)
+			if !ok {
+				t.Fatalf("New() client.Transport is not an *http.Transport")
+			}
+			if transport.TLSClientConfig == nil {
+				t.Fatalf("New() client.Transport.TLSClientConfig is nil")
+			}
+			wantInsecureSkipVerify := !opts.EnforceTLSCertVerification
+			if transport.TLSClientConfig.InsecureSkipVerify != wantInsecureSkipVerify {
+				t.Errorf("New() InsecureSkipVerify = %v, want %v", transport.TLSClientConfig.InsecureSkipVerify, wantInsecureSkipVerify)
 			}
 		})
 	}
@@ -276,6 +316,61 @@ func TestDo_StoreCookies(t *testing.T) {
 
 			if getResp.StatusCode != tt.wantStatus {
 				t.Errorf("Do() /get status = %d, want %d", getResp.StatusCode, tt.wantStatus)
+			}
+		})
+	}
+}
+
+func TestDo_TLSVerification(t *testing.T) {
+	// httptest.NewTLSServer starts a server with a self-signed TLS certificate.
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name    string
+		options *goohttp.ClientOptions
+		wantErr bool
+	}{
+		{
+			name:    "when_enforce_tls_cert_verification_is_true_returns_error",
+			options: &goohttp.ClientOptions{EnforceTLSCertVerification: true},
+			wantErr: true,
+		},
+		{
+			name:    "when_enforce_tls_cert_verification_is_false_succeeds",
+			options: &goohttp.ClientOptions{EnforceTLSCertVerification: false},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build())
+
+			c, err := New(cfg, tt.options)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			req, err := http.NewRequest("GET", ts.URL, nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() failed: %v", err)
+			}
+
+			resp, err := c.Do(req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Do() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if resp != nil {
+				resp.Body.Close()
 			}
 		})
 	}

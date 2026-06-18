@@ -49,12 +49,17 @@ type Client interface {
 type ClientOptions struct {
 	// StoreCookies indicates whether the client should keep track of cookies.
 	StoreCookies bool
+
+	// Whether to verify TLS certificates. By default, the client does NOT verify TLS certificates.
+	// That is because we want to scan targets that may not have valid certificates.
+	EnforceTLSCertVerification bool
 }
 
 // DefaultClientOptions returns the default client options.
 func DefaultClientOptions() *ClientOptions {
 	return &ClientOptions{
-		StoreCookies: false,
+		StoreCookies:               false,
+		EnforceTLSCertVerification: false,
 	}
 }
 

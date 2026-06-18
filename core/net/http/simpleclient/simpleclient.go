@@ -18,6 +18,7 @@
 package simpleclient
 
 import (
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"net/http/cookiejar"
@@ -61,7 +62,14 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 		limiter.SetLimit(rate.Inf)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: !options.EnforceTLSCertVerification,
+			},
+		},
+	}
+
 	if options.StoreCookies {
 		jar, err := cookiejar.New(nil)
 		if err != nil {
