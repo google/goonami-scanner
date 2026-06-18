@@ -61,6 +61,7 @@ type Tool struct {
 	coreConfig *config.Config
 	service    *nspb.NetworkService
 	badPaths   []*regexp.Regexp
+	client     goohttp.Client
 
 	mut           sync.Mutex
 	countRequests int
@@ -68,10 +69,12 @@ type Tool struct {
 
 // Request is the request to be sent to the service.
 type Request struct {
-	Method  string            `json:"method" jsonschema:"Method to use: GET, POST."`
-	URI     string            `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
-	Headers map[string]string `json:"headers" jsonschema:"Headers to be added to the request."`
-	Data    string            `json:"data" jsonschema:"Data to send with the request"`
+	Method          string            `json:"method" jsonschema:"Method to use: GET, POST."`
+	URI             string            `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
+	Headers         map[string]string `json:"headers" jsonschema:"Headers to be added to the request."`
+	Data            string            `json:"data" jsonschema:"Data to send with the request"`
+	MaintainSession bool              `json:"maintain_session" jsonschema:"If true, cookies from the response will be saved and sent on subsequent requests where this flag is also true."`
+	ClearSession    bool              `json:"clear_session" jsonschema:"If true, wipes the existing cookie jar before executing the request."`
 }
 
 // Response is the response from an HTTP request.
@@ -95,7 +98,10 @@ func DefaultConfig() *hccpb.HttpClientConfig {
 
 // New returns a new instance of the httpclient tool as a tool.Tool from the ADK.
 func New(config *config.Config, service *nspb.NetworkService) (tool.Tool, error) {
-	t := newTool(config, service)
+	t, err := newTool(config, service)
+	if err != nil {
+		return nil, err
+	}
 	return functiontool.New(
 		functiontool.Config{
 			Name:        "httpclient",
@@ -105,7 +111,7 @@ func New(config *config.Config, service *nspb.NetworkService) (tool.Tool, error)
 	)
 }
 
-func newTool(config *config.Config, service *nspb.NetworkService) *Tool {
+func newTool(config *config.Config, service *nspb.NetworkService) (*Tool, error) {
 	cfg := DefaultConfig()
 	if config.ClientsConfig().GetLlm().GetTools().HasHttpClientConfig() {
 		proto.Merge(cfg, config.ClientsConfig().GetLlm().GetTools().GetHttpClientConfig())
@@ -116,12 +122,19 @@ func newTool(config *config.Config, service *nspb.NetworkService) *Tool {
 		badPaths = append(badPaths, regexp.MustCompile(path))
 	}
 
+	clientOpts := &goohttp.ClientOptions{StoreCookies: true}
+	client, err := goohttp.NewClient(config, clientOpts)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Tool{
 		config:     cfg,
 		coreConfig: config,
 		service:    service,
 		badPaths:   badPaths,
-	}
+		client:     client,
+	}, nil
 }
 
 func (h *Tool) increaseRequestCount() {
@@ -134,6 +147,27 @@ func (h *Tool) numberOfRequests() int {
 	h.mut.Lock()
 	defer h.mut.Unlock()
 	return h.countRequests
+}
+
+func (h *Tool) clearSession() error {
+	clientOpts := &goohttp.ClientOptions{StoreCookies: true}
+	client, err := goohttp.NewClient(h.coreConfig, clientOpts)
+	if err != nil {
+		return err
+	}
+	h.mut.Lock()
+	h.client = client
+	h.mut.Unlock()
+	return nil
+}
+
+func (h *Tool) getClient(maintainSession bool) goohttp.Client {
+	if maintainSession {
+		h.mut.Lock()
+		defer h.mut.Unlock()
+		return h.client
+	}
+	return goohttp.SharedClient(h.coreConfig)
 }
 
 // Do performs an HTTP request against the service.
@@ -149,7 +183,15 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 	}
 
 	h.increaseRequestCount()
-	resp, err := goohttp.SharedClient(h.coreConfig).Do(req)
+
+	if toolreq.ClearSession {
+		if err := h.clearSession(); err != nil {
+			return nil, err
+		}
+	}
+
+	client := h.getClient(toolreq.MaintainSession)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

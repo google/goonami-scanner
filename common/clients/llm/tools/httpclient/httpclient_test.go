@@ -114,7 +114,10 @@ func TestNew(t *testing.T) {
 				t.Fatal("New() returned nil tool")
 			}
 
-			got := newTool(tc.config, &nspb.NetworkService{})
+			got, err := newTool(tc.config, &nspb.NetworkService{})
+			if err != nil {
+				t.Fatalf("newTool() unexpected error: %v", err)
+			}
 			if tc.verify != nil {
 				tc.verify(t, got)
 			}
@@ -349,5 +352,141 @@ func TestDo(t *testing.T) {
 				t.Errorf("Do() response mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestTool_Do_MaintainSession(t *testing.T) {
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(10),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	// The default client options are handled by newTool
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" {
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "123"})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("cookie set"))
+			return
+		}
+		if r.URL.Path == "/verify" {
+			cookie, err := r.Cookie("session")
+			if err != nil || cookie.Value != "123" {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("missing cookie"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("success"))
+			return
+		}
+	}))
+	defer ts.Close()
+
+	service := makeService(t, ts.URL)
+	toolInstance, err := newTool(cfg, service)
+	if err != nil {
+		t.Fatalf("newTool() unexpected error: %v", err)
+	}
+
+	// Test 1: MaintainSession = false
+	// Request 1: Get the cookie
+	req1 := &Request{Method: "GET", URI: "/login", MaintainSession: false}
+	resp1, err := toolInstance.Do(nil, req1)
+	if err != nil || resp1.StatusCode != 200 {
+		t.Fatalf("Stateless request 1 failed: %v", err)
+	}
+
+	// Request 2: Verify cookie (should fail because it's stateless)
+	req2 := &Request{Method: "GET", URI: "/verify", MaintainSession: false}
+	resp2, err := toolInstance.Do(nil, req2)
+	if err != nil {
+		t.Fatalf("Stateless request 2 failed: %v", err)
+	}
+	if resp2.StatusCode != 403 {
+		t.Fatalf("Stateless request 2 should have failed with 403, got: %v", resp2.StatusCode)
+	}
+
+	// Test 2: MaintainSession = true
+	// Request 3: Get the cookie with session tracking
+	req3 := &Request{Method: "GET", URI: "/login", MaintainSession: true}
+	resp3, err := toolInstance.Do(nil, req3)
+	if err != nil || resp3.StatusCode != 200 {
+		t.Fatalf("Stateful request 1 failed: %v", err)
+	}
+
+	// Request 4: Verify cookie (should succeed because it's stateful)
+	req4 := &Request{Method: "GET", URI: "/verify", MaintainSession: true}
+	resp4, err := toolInstance.Do(nil, req4)
+	if err != nil {
+		t.Fatalf("Stateful request 2 failed: %v", err)
+	}
+	if resp4.StatusCode != 200 {
+		t.Fatalf("Stateful request 2 should have succeeded with 200, got: %v", resp4.StatusCode)
+	}
+}
+
+func TestTool_Do_ClearSession(t *testing.T) {
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(10),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/set" {
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "123"})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("cookie set"))
+			return
+		}
+		if r.URL.Path == "/verify" {
+			cookie, err := r.Cookie("session")
+			if err != nil || cookie.Value != "123" {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("missing cookie"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("success"))
+			return
+		}
+	}))
+	defer ts.Close()
+
+	service := makeService(t, ts.URL)
+	toolInstance, err := newTool(cfg, service)
+	if err != nil {
+		t.Fatalf("newTool() unexpected error: %v", err)
+	}
+
+	// 1. Set the cookie
+	req1 := &Request{Method: "GET", URI: "/set", MaintainSession: true}
+	resp1, err := toolInstance.Do(nil, req1)
+	if err != nil || resp1.StatusCode != 200 {
+		t.Fatalf("Failed to set cookie: %v", err)
+	}
+
+	// 2. Verify cookie exists
+	req2 := &Request{Method: "GET", URI: "/verify", MaintainSession: true}
+	resp2, err := toolInstance.Do(nil, req2)
+	if err != nil || resp2.StatusCode != 200 {
+		t.Fatalf("Failed to verify cookie: %v", err)
+	}
+
+	// 3. Clear session and verify cookie is gone
+	req3 := &Request{Method: "GET", URI: "/verify", MaintainSession: true, ClearSession: true}
+	resp3, err := toolInstance.Do(nil, req3)
+	if err != nil {
+		t.Fatalf("Request with ClearSession failed: %v", err)
+	}
+	if resp3.StatusCode != 403 {
+		t.Fatalf("ClearSession failed to wipe cookies, got status: %v", resp3.StatusCode)
 	}
 }
