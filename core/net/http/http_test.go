@@ -107,16 +107,16 @@ func TestReadBody_Error(t *testing.T) {
 
 func TestRegisterAndNewClient(t *testing.T) {
 	cfg := config.Default()
-	_, err := NewClient(cfg)
+	_, err := NewClient(cfg, DefaultClientOptions())
 	if err == nil {
 		t.Errorf("NewClient(default) with no simpleclient registered did not return error")
 	}
 
-	Register("simpleclient", func(cfg *config.Config) (Client, error) {
+	Register("simpleclient", func(cfg *config.Config, options *ClientOptions) (Client, error) {
 		return &fakeClient{}, nil
 	})
 
-	client, err := NewClient(cfg)
+	client, err := NewClient(cfg, DefaultClientOptions())
 	if err != nil {
 		t.Fatalf("NewClient(default) returned error: %v", err)
 	}
@@ -129,12 +129,12 @@ func TestRegisterAndNewClient(t *testing.T) {
 			HttpClient: proto.String("unknown-client"),
 		}.Build(),
 	}.Build())
-	_, err = NewClient(customCfg)
+	_, err = NewClient(customCfg, DefaultClientOptions())
 	if err == nil {
 		t.Errorf("NewClient with unknown client did not return error")
 	}
 
-	Register("custom", func(cfg *config.Config) (Client, error) {
+	Register("custom", func(cfg *config.Config, options *ClientOptions) (Client, error) {
 		return &fakeClient{}, nil
 	})
 	customCfg = config.FromProto(cpb.Config_builder{
@@ -142,7 +142,7 @@ func TestRegisterAndNewClient(t *testing.T) {
 			HttpClient: proto.String("custom"),
 		}.Build(),
 	}.Build())
-	client, err = NewClient(customCfg)
+	client, err = NewClient(customCfg, DefaultClientOptions())
 	if err != nil {
 		t.Fatalf("NewClient(custom) returned error: %v", err)
 	}

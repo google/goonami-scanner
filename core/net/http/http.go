@@ -43,8 +43,23 @@ type Client interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// ClientOptions are the parameters that control the behavior of the HTTP client.
+// Options are different from configuration as they are used to instantiate ephemeral clients with
+// a specific behavior. This is useful for some specific modules.
+type ClientOptions struct {
+	// StoreCookies indicates whether the client should keep track of cookies.
+	StoreCookies bool
+}
+
+// DefaultClientOptions returns the default client options.
+func DefaultClientOptions() *ClientOptions {
+	return &ClientOptions{
+		StoreCookies: false,
+	}
+}
+
 // CreateHTTPClientFn is a function that creates a new HTTP Client.
-type CreateHTTPClientFn func(*config.Config) (Client, error)
+type CreateHTTPClientFn func(*config.Config, *ClientOptions) (Client, error)
 
 // Register registers a new HTTP client factory.
 func Register(name string, factory CreateHTTPClientFn) {
@@ -55,7 +70,7 @@ func Register(name string, factory CreateHTTPClientFn) {
 
 // NewClient returns an HTTP Client configured by the global configuration.
 // If the configured client is not registered, it returns an error.
-func NewClient(cfg *config.Config) (Client, error) {
+func NewClient(cfg *config.Config, options *ClientOptions) (Client, error) {
 	if cfg == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -69,15 +84,16 @@ func NewClient(cfg *config.Config) (Client, error) {
 		return nil, fmt.Errorf("http client %q is not registered", name)
 	}
 
-	return factory(cfg)
+	return factory(cfg, options)
 }
 
-// SharedClient returns a shared HTTP Client configured by the global configuration.
+// SharedClient returns a shared HTTP Client configured by the global configuration with default
+// options.
 // If there is any issue creating the client, Goonami panics.
 func SharedClient(cfg *config.Config) Client {
 	sharedClientMut.Do(func() {
 		var err error
-		sharedClient, err = NewClient(cfg)
+		sharedClient, err = NewClient(cfg, DefaultClientOptions())
 		if err != nil {
 			panic(fmt.Sprintf("failed to create shared HTTP client: %v", err))
 		}

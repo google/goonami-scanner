@@ -20,6 +20,7 @@ package simpleclient
 import (
 	"errors"
 	"net/http"
+	"net/http/cookiejar"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
@@ -43,9 +44,13 @@ type SimpleClient struct {
 }
 
 // New creates a new SimpleClient.
-func New(cfg *config.Config) (*SimpleClient, error) {
+func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, error) {
 	if cfg == nil {
 		return nil, ErrConfigNil
+	}
+
+	if options == nil {
+		options = goohttp.DefaultClientOptions()
 	}
 
 	qps := cfg.GlobalConfig().GetPerformance().GetMaxHttpRequestsPerSecond()
@@ -56,8 +61,17 @@ func New(cfg *config.Config) (*SimpleClient, error) {
 		limiter.SetLimit(rate.Inf)
 	}
 
+	client := &http.Client{}
+	if options.StoreCookies {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			return nil, err
+		}
+		client.Jar = jar
+	}
+
 	return &SimpleClient{
-		client:  &http.Client{},
+		client:  client,
 		limiter: limiter,
 	}, nil
 }
@@ -79,6 +93,6 @@ func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
-func newClient(cfg *config.Config) (goohttp.Client, error) {
-	return New(cfg)
+func newClient(cfg *config.Config, options *goohttp.ClientOptions) (goohttp.Client, error) {
+	return New(cfg, options)
 }

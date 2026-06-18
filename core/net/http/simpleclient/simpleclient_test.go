@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
 
@@ -34,6 +35,7 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name      string
 		cfg       *config.Config
+		options   *goohttp.ClientOptions
 		wantLimit rate.Limit
 		wantBurst int
 		wantErr   error
@@ -41,6 +43,7 @@ func TestNew(t *testing.T) {
 		{
 			name:      "when_config_is_nil_returns_error",
 			cfg:       nil,
+			options:   nil,
 			wantLimit: 0,
 			wantBurst: 0,
 			wantErr:   ErrConfigNil,
@@ -54,6 +57,7 @@ func TestNew(t *testing.T) {
 					}.Build(),
 				}.Build(),
 			}.Build()),
+			options:   nil,
 			wantLimit: 10,
 			wantBurst: 10,
 			wantErr:   nil,
@@ -67,6 +71,35 @@ func TestNew(t *testing.T) {
 					}.Build(),
 				}.Build(),
 			}.Build()),
+			options:   nil,
+			wantLimit: rate.Inf,
+			wantBurst: 0,
+			wantErr:   nil,
+		},
+		{
+			name: "when_store_cookies_is_true_sets_cookie_jar",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			options:   &goohttp.ClientOptions{StoreCookies: true},
+			wantLimit: rate.Inf,
+			wantBurst: 0,
+			wantErr:   nil,
+		},
+		{
+			name: "when_store_cookies_is_false_does_not_set_cookie_jar",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			options:   &goohttp.ClientOptions{StoreCookies: false},
 			wantLimit: rate.Inf,
 			wantBurst: 0,
 			wantErr:   nil,
@@ -75,7 +108,11 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := New(tt.cfg)
+			opts := tt.options
+			if opts == nil {
+				opts = goohttp.DefaultClientOptions()
+			}
+			c, err := New(tt.cfg, opts)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -91,6 +128,12 @@ func TestNew(t *testing.T) {
 
 			if c.limiter.Burst() != tt.wantBurst {
 				t.Errorf("New() burst = %v, wantBurst %v", c.limiter.Burst(), tt.wantBurst)
+			}
+
+			if opts.StoreCookies && c.client.Jar == nil {
+				t.Errorf("New() client.Jar is nil, want cookie jar")
+			} else if !opts.StoreCookies && c.client.Jar != nil {
+				t.Errorf("New() client.Jar is not nil, want no cookie jar")
 			}
 		})
 	}
@@ -110,7 +153,7 @@ func TestDoWithoutRateLimit(t *testing.T) {
 		}.Build(),
 	}.Build())
 
-	c, err := New(cfg)
+	c, err := New(cfg, goohttp.DefaultClientOptions())
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -139,7 +182,7 @@ func TestDo_ContextCancelled(t *testing.T) {
 		}.Build(),
 	}.Build())
 
-	c, err := New(cfg)
+	c, err := New(cfg, goohttp.DefaultClientOptions())
 	if err != nil {
 		t.Fatalf("New() failed: %v", err)
 	}
@@ -152,5 +195,88 @@ func TestDo_ContextCancelled(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Do() returned no error, want error")
+	}
+}
+
+func TestDo_StoreCookies(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/set":
+			http.SetCookie(w, &http.Cookie{Name: "foo", Value: "bar"})
+			w.WriteHeader(http.StatusOK)
+		case "/get":
+			cookie, err := r.Cookie("foo")
+			if err != nil || cookie.Value != "bar" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name       string
+		options    *goohttp.ClientOptions
+		wantStatus int
+	}{
+		{
+			name:       "when_store_cookies_is_true_sends_cookies_back",
+			options:    &goohttp.ClientOptions{StoreCookies: true},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "when_store_cookies_is_false_does_not_send_cookies_back",
+			options:    &goohttp.ClientOptions{StoreCookies: false},
+			wantStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build())
+
+			c, err := New(cfg, tt.options)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			// First request to set the cookie
+			setReq, err := http.NewRequest("GET", ts.URL+"/set", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() /set failed: %v", err)
+			}
+			setResp, err := c.Do(setReq)
+			if err != nil {
+				t.Fatalf("Do() /set failed: %v", err)
+			}
+			setResp.Body.Close()
+			if setResp.StatusCode != http.StatusOK {
+				t.Fatalf("Do() /set status = %d, want %d", setResp.StatusCode, http.StatusOK)
+			}
+
+			// Second request to check if cookie is sent back
+			getReq, err := http.NewRequest("GET", ts.URL+"/get", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() /get failed: %v", err)
+			}
+			getResp, err := c.Do(getReq)
+			if err != nil {
+				t.Fatalf("Do() /get failed: %v", err)
+			}
+			getResp.Body.Close()
+
+			if getResp.StatusCode != tt.wantStatus {
+				t.Errorf("Do() /get status = %d, want %d", getResp.StatusCode, tt.wantStatus)
+			}
+		})
 	}
 }
