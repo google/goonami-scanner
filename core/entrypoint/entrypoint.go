@@ -19,6 +19,7 @@ package entrypoint
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
@@ -68,6 +69,10 @@ type Entrypoint struct {
 // configurable singleton logger and HTTP client through the use of globals.
 func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 	ctx = log.ContextForModule(ctx, "entrypoint")
+	if options.Config == nil {
+		return nil, fmt.Errorf("a config is required")
+	}
+
 	if options.Logger != nil {
 		log.SetLogger(options.Logger)
 		log.InfoContextf(ctx, "the logger was modified")
