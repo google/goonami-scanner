@@ -69,30 +69,43 @@ func AddCrawlResults(service *nspb.NetworkService, crawlResults []*wcpb.CrawlRes
 	service.GetServiceContext().GetWebServiceContext().SetCrawlResults(results)
 }
 
+// GetCrawlContent returns the content of the given URI from the service crawl results.
+func GetCrawlContent(service *nspb.NetworkService, uri string) ([]byte, wcpb.CrawlContentType, bool) {
+	targetURL, err := absoluteURI(service, uri)
+	if err != nil {
+		return nil, wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED, false
+	}
+
+	for _, result := range service.GetServiceContext().GetWebServiceContext().GetCrawlResults() {
+		if result.GetCrawlTarget().GetUrl() == targetURL {
+			return result.GetContent(), result.GetCrawlContentType(), true
+		}
+	}
+
+	return nil, wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED, false
+}
+
 // WasCrawled returns whether the given URI was crawled on the given service.
-// Note that crawl results store the absolute URI, so we need to perform the resolution first.
 func WasCrawled(service *nspb.NetworkService, uri string) bool {
+	_, _, ok := GetCrawlContent(service, uri)
+	return ok
+}
+
+func absoluteURI(service *nspb.NetworkService, uri string) (string, error) {
 	webRoot, err := BuildWebRoot(service)
 	if err != nil {
-		return false
+		return "", err
 	}
 
 	base, err := url.Parse(webRoot)
 	if err != nil {
-		return false
+		return "", err
 	}
 
 	ref, err := url.Parse(uri)
 	if err != nil {
-		return false
+		return "", err
 	}
 
-	targetURL := base.ResolveReference(ref).String()
-	for _, result := range service.GetServiceContext().GetWebServiceContext().GetCrawlResults() {
-		if result.GetCrawlTarget().GetUrl() == targetURL {
-			return true
-		}
-	}
-
-	return false
+	return base.ResolveReference(ref).String(), nil
 }

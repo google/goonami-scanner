@@ -17,6 +17,7 @@
 package netservice
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -392,6 +393,169 @@ func TestWasCrawled(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := WasCrawled(tc.service, tc.uri); got != tc.want {
 				t.Errorf("WasCrawled(%v, %q) = %v, want: %v", tc.service, tc.uri, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGetCrawlContent(t *testing.T) {
+	endpoint := npb.NetworkEndpoint_builder{
+		Hostname: npb.Hostname_builder{Name: "local.lan"}.Build(),
+	}.Build()
+
+	tests := []struct {
+		name            string
+		service         *nspb.NetworkService
+		uri             string
+		wantContent     []byte
+		wantContentType wcpb.CrawlContentType
+		wantOk          bool
+	}{
+		{
+			name:            "when_service_context_is_missing_returns_false",
+			service:         nspb.NetworkService_builder{NetworkEndpoint: endpoint}.Build(),
+			uri:             "/1",
+			wantContent:     nil,
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED,
+			wantOk:          false,
+		},
+		{
+			name: "when_web_service_context_is_missing_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext:  nspb.ServiceContext_builder{}.Build(),
+			}.Build(),
+			uri:             "/1",
+			wantContent:     nil,
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED,
+			wantOk:          false,
+		},
+		{
+			name: "when_crawl_results_are_empty_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "/1",
+			wantContent:     nil,
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED,
+			wantOk:          false,
+		},
+		{
+			name: "when_relative_uri_is_not_in_crawl_results_returns_false",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "/1",
+			wantContent:     nil,
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED,
+			wantOk:          false,
+		},
+		{
+			name: "when_relative_uri_is_in_crawl_results_returns_content_and_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+								Content:          []byte("some_content_data"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_RAW,
+							}.Build(),
+							wcpb.CrawlResult_builder{
+								CrawlTarget: wcpb.CrawlTarget_builder{Url: "http://local.lan/2"}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "/1",
+			wantContent:     []byte("some_content_data"),
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_RAW,
+			wantOk:          true,
+		},
+		{
+			name: "when_relative_uri_without_slash_is_in_crawl_results_returns_content_and_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+								Content:          []byte("some_content_data_no_slash"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "1",
+			wantContent:     []byte("some_content_data_no_slash"),
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
+			wantOk:          true,
+		},
+		{
+			name: "when_absolute_uri_is_in_crawl_results_returns_content_and_true",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: endpoint,
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+								Content:          []byte("some_absolute_data"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_RAW,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "http://local.lan/1",
+			wantContent:     []byte("some_absolute_data"),
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_RAW,
+			wantOk:          true,
+		},
+		{
+			name: "when_endpoint_is_invalid_returns_false",
+			service: nspb.NetworkService_builder{
+				ServiceContext: nspb.ServiceContext_builder{
+					WebServiceContext: nspb.WebServiceContext_builder{
+						CrawlResults: []*wcpb.CrawlResult{
+							wcpb.CrawlResult_builder{
+								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "http://local.lan/1"}.Build(),
+								Content:          []byte("some_data"),
+								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_RAW,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			uri:             "/1",
+			wantContent:     nil,
+			wantContentType: wcpb.CrawlContentType_CONTENT_TYPE_UNSPECIFIED,
+			wantOk:          false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotContent, gotContentType, gotOk := GetCrawlContent(tc.service, tc.uri)
+			if !bytes.Equal(gotContent, tc.wantContent) || gotContentType != tc.wantContentType || gotOk != tc.wantOk {
+				t.Errorf("GetCrawlContent(%v, %q) = (%q, %v, %v), want: (%q, %v, %v)",
+					tc.service, tc.uri, gotContent, gotContentType, gotOk, tc.wantContent, tc.wantContentType, tc.wantOk)
 			}
 		})
 	}
