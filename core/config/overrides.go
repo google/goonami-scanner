@@ -27,7 +27,8 @@ import (
 )
 
 var aliases = map[string]string{
-	"ports": "globalcfg.ports_to_scan",
+	"ports":       "globalcfg.ports_to_scan",
+	"http_client": "globalcfg.http_client",
 }
 
 // ApplyOverrides applies a list of overrides to the configuration.

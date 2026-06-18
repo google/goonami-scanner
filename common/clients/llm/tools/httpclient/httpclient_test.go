@@ -31,6 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/proto"
 
 	llmcpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
@@ -330,10 +331,6 @@ func TestDo(t *testing.T) {
 					}.Build(),
 				}.Build(),
 			}.Build())
-
-			if err := goohttp.InitializeDefaults(coreConfig); err != nil {
-				t.Fatalf("failed to initialize default HTTP client: %v", err)
-			}
 
 			tool := buildTool(t, tc.cfg, coreConfig, service)
 			tool.countRequests = tc.presetReqs

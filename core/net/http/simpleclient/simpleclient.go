@@ -23,8 +23,13 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"golang.org/x/time/rate"
 )
+
+func init() {
+	goohttp.Register("simpleclient", newClient)
+}
 
 var (
 	// ErrConfigNil is returned when the configuration is nil.
@@ -72,4 +77,8 @@ func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
 
 	log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q status:%d", req.Method, req.URL.Path, resp.StatusCode)
 	return resp, err
+}
+
+func newClient(cfg *config.Config) (goohttp.Client, error) {
+	return New(cfg)
 }

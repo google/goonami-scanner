@@ -19,16 +19,23 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/google/goonami-scanner/core/config"
-	"github.com/google/goonami-scanner/core/net/http/simpleclient"
 )
 
 var (
 	// ErrPageTooBig is returned when the response body is larger than the maximum size.
 	ErrPageTooBig = errors.New("page is too big")
+
+	registryMut sync.RWMutex
+	registry    = make(map[string]CreateHTTPClientFn)
+
+	sharedClientMut sync.Once
+	sharedClient    Client
 )
 
 // Client is the interface for HTTP clients.
@@ -36,33 +43,56 @@ type Client interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-var defaultClient Client = nil
+// CreateHTTPClientFn is a function that creates a new HTTP Client.
+type CreateHTTPClientFn func(*config.Config) (Client, error)
 
-// InitializeDefaults initializes the default HTTP client with a SimpleClient.
-func InitializeDefaults(cfg *config.Config) error {
-	client, err := simpleclient.New(cfg)
-	if err != nil {
-		return err
-	}
-
-	defaultClient = client
-	return nil
+// Register registers a new HTTP client factory.
+func Register(name string, factory CreateHTTPClientFn) {
+	registryMut.Lock()
+	defer registryMut.Unlock()
+	registry[name] = factory
 }
 
-// SetDefaultClient changes the default HTTP client used by Goonami.
-func SetDefaultClient(client Client) {
-	defaultClient = client
-}
-
-// DefaultClient returns the default HTTP client used by Goonami. This is what most modules in
-// Goonami should use to perform HTTP requests. Note that if no custom client was bound or the
-// defaults were not initialized, this function will panic.
-func DefaultClient() Client {
-	if defaultClient == nil {
-		panic("no HTTP client was set/initialized, abort everything.")
+// NewClient returns an HTTP Client configured by the global configuration.
+// If the configured client is not registered, it returns an error.
+func NewClient(cfg *config.Config) (Client, error) {
+	if cfg == nil {
+		return nil, errors.New("config is nil")
 	}
 
-	return defaultClient
+	name := CurrentClientName(cfg)
+	registryMut.RLock()
+	factory, exists := registry[name]
+	registryMut.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("http client %q is not registered", name)
+	}
+
+	return factory(cfg)
+}
+
+// SharedClient returns a shared HTTP Client configured by the global configuration.
+// If there is any issue creating the client, Goonami panics.
+func SharedClient(cfg *config.Config) Client {
+	sharedClientMut.Do(func() {
+		var err error
+		sharedClient, err = NewClient(cfg)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create shared HTTP client: %v", err))
+		}
+	})
+
+	return sharedClient
+}
+
+// CurrentClientName returns the name of the current HTTP client.
+func CurrentClientName(cfg *config.Config) string {
+	name := cfg.GlobalConfig().GetHttpClient()
+	if name == "" {
+		name = "simpleclient"
+	}
+	return name
 }
 
 // ReadBody reads the body of an HTTP response up to a maximum size. Note that if the response is

@@ -67,7 +67,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	}
 
 	// If the request failed, this is not a web service but not an issue.
-	resp, err := goohttp.DefaultClient().Do(req)
+	resp, err := goohttp.SharedClient(m.config).Do(req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil, err

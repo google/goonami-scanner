@@ -32,6 +32,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
@@ -48,11 +49,6 @@ func TestDetectors(t *testing.T) {
 	// to perform maximum level logging for this test.
 	l := &log.DefaultLogger{VerboseLevel: log.DebugLevelRequest}
 	log.SetLogger(l)
-
-	cfg := config.Default()
-	if err := goohttp.InitializeDefaults(cfg); err != nil {
-		t.Fatalf("Failed to initialize HTTP client: %v", err)
-	}
 
 	plugins, tests, err := loadPluginsAndTests(t)
 	if err != nil {
@@ -162,7 +158,7 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	httpmock := httpMockServer(t, tc, env)
 	defer httpmock.Close()
 
-	httpClient := goohttp.DefaultClient()
+	httpClient := goohttp.SharedClient(cfg)
 	service := serviceForMockHTTPServer(t, httpmock)
 	env.InitializeFor(ctx, service)
 

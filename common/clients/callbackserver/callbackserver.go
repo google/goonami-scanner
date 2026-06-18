@@ -147,7 +147,7 @@ func (c *Client) poll(ctx context.Context, secret string) (*ppb.PollingResult, e
 		return nil, fmt.Errorf("%w: %v", ErrPollingRequest, err)
 	}
 
-	resp, err := goohttp.DefaultClient().Do(req)
+	resp, err := goohttp.SharedClient(c.coreConfig).Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrPollingRequest, err)
 	}

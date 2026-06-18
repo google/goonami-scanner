@@ -33,7 +33,7 @@ import (
 
 	cpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	cfgpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 )
 
 type testPage struct {
@@ -325,9 +325,7 @@ func TestCrawl(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			crawled = nil
-			if err := goohttp.InitializeDefaults(tc.config); err != nil {
-				t.Fatalf("failed to initialize http library defaults: %v", err)
-			}
+
 			ctx := t.Context()
 			sc := NewSimpleCrawler(ctx, tc.config)
 			stats, err := sc.Crawl(ctx, tc.callback, tc.startURLs)

@@ -28,7 +28,7 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -42,28 +42,6 @@ func (m *fakeHTTPClient) Post(url string, contentType string, body io.Reader) (*
 	return nil, nil
 }
 func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return nil, nil }
-
-func TestNewWhenSideEffects(t *testing.T) {
-	cfg := config.Default()
-	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close(t.Context())
-
-	client := &fakeHTTPClient{}
-	opts := &Options{
-		Config:      cfg,
-		HTTPClient:  client,
-		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
-	}
-
-	_, err := New(t.Context(), opts)
-	if err != nil {
-		t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
-	}
-
-	if goohttp.DefaultClient() != client {
-		t.Errorf("New(%v) did not set HTTP client", opts)
-	}
-}
 
 func TestNewWhenDefaultRunner(t *testing.T) {
 	cfg := config.Default()

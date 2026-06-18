@@ -165,6 +165,7 @@ type GlobalConfig struct {
 	xxx_hidden_Performance *GlobalConfig_Performance `protobuf:"bytes,1,opt,name=performance,proto3,oneof"`
 	xxx_hidden_PortsToScan []uint32                  `protobuf:"varint,2,rep,packed,name=ports_to_scan,json=portsToScan,proto3"`
 	xxx_hidden_UserAgent   *string                   `protobuf:"bytes,3,opt,name=user_agent,json=userAgent,proto3,oneof"`
+	xxx_hidden_HttpClient  *string                   `protobuf:"bytes,4,opt,name=http_client,json=httpClient,proto3,oneof"`
 	XXX_raceDetectHookData protoimpl.RaceDetectHookData
 	XXX_presence           [1]uint32
 	unknownFields          protoimpl.UnknownFields
@@ -220,6 +221,16 @@ func (x *GlobalConfig) GetUserAgent() string {
 	return ""
 }
 
+func (x *GlobalConfig) GetHttpClient() string {
+	if x != nil {
+		if x.xxx_hidden_HttpClient != nil {
+			return *x.xxx_hidden_HttpClient
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *GlobalConfig) SetPerformance(v *GlobalConfig_Performance) {
 	x.xxx_hidden_Performance = v
 }
@@ -230,7 +241,12 @@ func (x *GlobalConfig) SetPortsToScan(v []uint32) {
 
 func (x *GlobalConfig) SetUserAgent(v string) {
 	x.xxx_hidden_UserAgent = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 3)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+}
+
+func (x *GlobalConfig) SetHttpClient(v string) {
+	x.xxx_hidden_HttpClient = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
 }
 
 func (x *GlobalConfig) HasPerformance() bool {
@@ -247,6 +263,13 @@ func (x *GlobalConfig) HasUserAgent() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 2)
 }
 
+func (x *GlobalConfig) HasHttpClient() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
+}
+
 func (x *GlobalConfig) ClearPerformance() {
 	x.xxx_hidden_Performance = nil
 }
@@ -254,6 +277,11 @@ func (x *GlobalConfig) ClearPerformance() {
 func (x *GlobalConfig) ClearUserAgent() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 2)
 	x.xxx_hidden_UserAgent = nil
+}
+
+func (x *GlobalConfig) ClearHttpClient() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
+	x.xxx_hidden_HttpClient = nil
 }
 
 type GlobalConfig_builder struct {
@@ -267,6 +295,9 @@ type GlobalConfig_builder struct {
 	// User agent to use throughout the scan.
 	// Default: empty
 	UserAgent *string
+	// HTTP client that will be used for all HTTP requests.
+	// Default: "simpleclient"
+	HttpClient *string
 }
 
 func (b0 GlobalConfig_builder) Build() *GlobalConfig {
@@ -276,8 +307,12 @@ func (b0 GlobalConfig_builder) Build() *GlobalConfig {
 	x.xxx_hidden_Performance = b.Performance
 	x.xxx_hidden_PortsToScan = b.PortsToScan
 	if b.UserAgent != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 3)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
 		x.xxx_hidden_UserAgent = b.UserAgent
+	}
+	if b.HttpClient != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		x.xxx_hidden_HttpClient = b.HttpClient
 	}
 	return m0
 }
@@ -679,12 +714,14 @@ const file_config_proto_rawDesc = "" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
-	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\"\xb6\x04\n" +
+	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\"\xec\x04\n" +
 	"\fGlobalConfig\x12N\n" +
 	"\vperformance\x18\x01 \x01(\v2'.goonami.proto.GlobalConfig.PerformanceH\x00R\vperformance\x88\x01\x01\x12\"\n" +
 	"\rports_to_scan\x18\x02 \x03(\rR\vportsToScan\x12\"\n" +
 	"\n" +
-	"user_agent\x18\x03 \x01(\tH\x01R\tuserAgent\x88\x01\x01\x1a\xee\x02\n" +
+	"user_agent\x18\x03 \x01(\tH\x01R\tuserAgent\x88\x01\x01\x12$\n" +
+	"\vhttp_client\x18\x04 \x01(\tH\x02R\n" +
+	"httpClient\x88\x01\x01\x1a\xee\x02\n" +
 	"\vPerformance\x12,\n" +
 	"\x0fmax_concurrency\x18\x01 \x01(\x05H\x00R\x0emaxConcurrency\x88\x01\x01\x12B\n" +
 	"\x1btimeout_per_request_seconds\x18\x02 \x01(\x05H\x01R\x18timeoutPerRequestSeconds\x88\x01\x01\x128\n" +
@@ -695,7 +732,8 @@ const file_config_proto_rawDesc = "" +
 	"\x17_max_packets_per_secondB\x1f\n" +
 	"\x1d_max_http_requests_per_secondB\x0e\n" +
 	"\f_performanceB\r\n" +
-	"\v_user_agent\"\xc8\x02\n" +
+	"\v_user_agentB\x0e\n" +
+	"\f_http_client\"\xc8\x02\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +

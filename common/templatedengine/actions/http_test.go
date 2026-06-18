@@ -30,6 +30,7 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
@@ -79,7 +80,6 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 	port, _ := strconv.Atoi(u.Port())
 
 	cfg := config.Default()
-	goohttp.InitializeDefaults(cfg)
 
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
@@ -196,7 +196,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 				env = tc.env()
 			}
 
-			runner := NewHTTPActionRunner(goohttp.DefaultClient())
+			runner := NewHTTPActionRunner(goohttp.SharedClient(cfg))
 			err := runner.Run(t.Context(), service, action, env)
 
 			if !errors.Is(err, tc.wantErr) {

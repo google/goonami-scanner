@@ -75,6 +75,10 @@ message GlobalConfig {
   // User agent to use throughout the scan.
   // Default: empty
   optional string user_agent = 3;
+
+  // HTTP client that will be used for all HTTP requests.
+  // Default: "simpleclient"
+  optional string http_client = 4;
 }
 
 // ClientsConfig contains configuration for clients.

@@ -31,7 +31,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -446,10 +446,6 @@ func TestFingerprint(t *testing.T) {
 			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
 			cfg := buildConfig(t, modConfig, "")
 
-			if err := goohttp.InitializeDefaults(cfg); err != nil {
-				t.Fatalf("Failed to initialize http library defaults: %v", err)
-			}
-
 			mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
 			if err != nil {
 				t.Fatalf("Failed to create module: %v", err)
@@ -570,10 +566,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 			registry := hash.NewRegistry()
 			cfg := buildConfig(t, tc.config, workdir)
 			artifactsDir := filepath.Join(workdir, "artifacts")
-
-			if err := goohttp.InitializeDefaults(cfg); err != nil {
-				t.Fatalf("Failed to initialize http library defaults: %v", err)
-			}
 
 			mod, err := newWithRegistry(t.Context(), tc.config, cfg, registry)
 			if err != nil {

@@ -29,7 +29,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -98,10 +98,6 @@ func TestFingerprint(t *testing.T) {
 					}.Build(),
 				}.Build(),
 			}.Build())
-
-			if err := goohttp.InitializeDefaults(cfg); err != nil {
-				t.Fatalf("Failed to initialize HTTP client: %v", err)
-			}
 
 			m, err := New(t.Context(), cfg)
 			if err != nil {

@@ -43,9 +43,6 @@ type Options struct {
 	// (Optional) Logger to use.
 	Logger log.Logger
 
-	// (Optional) HTTPClient is the client that Goonami modules will use to perform HTTP requests.
-	HTTPClient goohttp.Client
-
 	// PortScanner is the init function used to create the port scanner module.
 	PortScanner module.InitPortScannerFn
 
@@ -88,14 +85,9 @@ func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 		r = options.Runner
 	}
 
-	if options.HTTPClient != nil {
-		goohttp.SetDefaultClient(options.HTTPClient)
-		log.InfoContextf(ctx, "the HTTP client was modified")
-	} else {
-		if err = goohttp.InitializeDefaults(options.Config); err != nil {
-			return nil, err
-		}
-	}
+	clientName := goohttp.CurrentClientName(options.Config)
+	log.InfoContextf(ctx, "verifying HTTP client %q", clientName)
+	_ = goohttp.SharedClient(options.Config)
 
 	module, err := options.PortScanner(ctx, options.Config)
 	if err != nil {

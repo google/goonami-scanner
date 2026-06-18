@@ -180,7 +180,7 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return nil
 	}
 
-	resp, err := goohttp.DefaultClient().Do(req)
+	resp, err := goohttp.SharedClient(c.coreConfig).Do(req)
 	if err != nil {
 		// Do not consider deadline errors as fatal.
 		if errors.Is(err, context.DeadlineExceeded) {

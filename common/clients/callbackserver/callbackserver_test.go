@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
@@ -304,9 +304,7 @@ func TestClient_Interaction(t *testing.T) {
 					CallbackServer: serverConfig,
 				}.Build(),
 			}.Build())
-			if err := goohttp.InitializeDefaults(cfg); err != nil {
-				t.Fatalf("failed to initialize default HTTP client: %v", err)
-			}
+
 			ctx := t.Context()
 			client, err := new(ctx, cfg)
 			if err != nil {

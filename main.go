@@ -32,6 +32,9 @@ import (
 	"github.com/google/goonami-scanner/tools/callbackserver"
 	"google.golang.org/protobuf/encoding/prototext"
 
+	// HTTP clients
+	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+
 	// port scanner plugins
 	"github.com/google/goonami-scanner/plugins/portscan/nmap"
 

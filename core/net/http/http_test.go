@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
@@ -104,34 +105,49 @@ func TestReadBody_Error(t *testing.T) {
 	}
 }
 
-func TestDefaultClient_Panic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("DefaultClient() did not panic")
-		}
-	}()
-
-	defaultClient = nil
-	DefaultClient()
-}
-
-func TestSetDefaultClient(t *testing.T) {
-	client := &fakeClient{}
-	SetDefaultClient(client)
-
-	if DefaultClient() != client {
-		t.Errorf("SetDefaultClient() did not set the client")
-	}
-}
-
-func TestInitializeDefaults(t *testing.T) {
-	cfg := config.FromProto(&cpb.Config{})
-	if err := InitializeDefaults(cfg); err != nil {
-		t.Fatalf("InitializeDefaults() returned error: %v", err)
+func TestRegisterAndNewClient(t *testing.T) {
+	cfg := config.Default()
+	_, err := NewClient(cfg)
+	if err == nil {
+		t.Errorf("NewClient(default) with no simpleclient registered did not return error")
 	}
 
-	if DefaultClient() == nil {
-		t.Errorf("InitializeDefaults() did not set the default client")
+	Register("simpleclient", func(cfg *config.Config) (Client, error) {
+		return &fakeClient{}, nil
+	})
+
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient(default) returned error: %v", err)
+	}
+	if client == nil {
+		t.Errorf("NewClient(default) returned nil client")
+	}
+
+	customCfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			HttpClient: proto.String("unknown-client"),
+		}.Build(),
+	}.Build())
+	_, err = NewClient(customCfg)
+	if err == nil {
+		t.Errorf("NewClient with unknown client did not return error")
+	}
+
+	Register("custom", func(cfg *config.Config) (Client, error) {
+		return &fakeClient{}, nil
+	})
+	customCfg = config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			HttpClient: proto.String("custom"),
+		}.Build(),
+	}.Build())
+	client, err = NewClient(customCfg)
+	if err != nil {
+		t.Fatalf("NewClient(custom) returned error: %v", err)
+	}
+	if _, ok := client.(*fakeClient); !ok {
+		t.Errorf("NewClient(custom) did not return fakeClient")
 	}
 }
 

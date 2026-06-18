@@ -149,7 +149,7 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 	}
 
 	h.increaseRequestCount()
-	resp, err := goohttp.DefaultClient().Do(req)
+	resp, err := goohttp.SharedClient(h.coreConfig).Do(req)
 	if err != nil {
 		return nil, err
 	}

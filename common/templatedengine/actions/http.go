@@ -110,7 +110,7 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 		req.ContentLength = int64(len(substitutedData))
 	}
 
-	resp, err := goohttp.DefaultClient().Do(req)
+	resp, err := r.client.Do(req)
 	if err != nil {
 		if !httpAction.GetClientOptions().GetIgnoreHttpClientErrors() {
 			return fmt.Errorf("%w: %q: HTTP request failed: %v", ErrActionFailed, name, err)

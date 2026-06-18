@@ -268,7 +268,7 @@ func LoadPlugins(cfg *config.Config, plugins []*tpb.TemplatedPlugin) []module.In
 
 		seenPlugins = append(seenPlugins, pluginProto.GetInfo().GetName())
 		detectors = append(detectors, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
-			return New(ctx, cfg, pluginProto, goohttp.DefaultClient())
+			return New(ctx, cfg, pluginProto, goohttp.SharedClient(cfg))
 		})
 	}
 	return detectors
