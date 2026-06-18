@@ -40,10 +40,8 @@ clients: {
     cleanup_interval_seconds: 10
 
     http_poll_config: {
-      mode: MODE_START_LOCAL_SERVER
-      public_uri: "http://127.0.0.1:8081"
-      bind_address: "127.0.0.1"
-      bind_port: 8081
+      mode: MODE_USE_REMOTE_SERVER
+      public_uri: "http://127.0.0.1:32189"
     }
   }
 }
