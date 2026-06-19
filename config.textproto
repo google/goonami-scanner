@@ -1,6 +1,24 @@
 # proto-file: goonami/core/config/config.proto
 # proto-message: goonami.proto.Config
 
+workflowcfg: {
+  # port scanner
+  portscan: "ps/nmap"
+
+  # fingerprinters, we want to preserve order.
+  fingerprinters: {
+    require: "fp/iswebservice"
+    require: "fp/sslsupport"
+    require: "fp/webidentity"
+    require: ".*"
+  }
+
+  # detectors
+  detectors: {
+    require: ".*"
+  }
+}
+
 globalcfg: {
   performance: {
     max_concurrency: 10

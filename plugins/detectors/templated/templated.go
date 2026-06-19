@@ -25,10 +25,26 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 )
 
 //go:embed detections
 var pluginFilesFS embed.FS
+
+func init() {
+	plugins, err := templatedengine.LoadPluginsFromFS(context.Background(), pluginFilesFS)
+	if err != nil {
+		panic(fmt.Sprintf("failed to load templated plugins: %v", err))
+	}
+
+	for _, p := range plugins {
+		proto := p
+		name := proto.GetInfo().GetName()
+		module.RegisterDetector(name, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
+			return templatedengine.New(ctx, cfg, proto, goohttp.SharedClient(cfg))
+		})
+	}
+}
 
 // Loader loads templated detectors.
 type Loader struct {
@@ -38,13 +54,4 @@ type Loader struct {
 // NewLoader creates a new Loader.
 func NewLoader(cfg *config.Config) *Loader {
 	return &Loader{cfg: cfg}
-}
-
-// AllPlugins loads all templated detectors found in the embedded directory.
-func (l *Loader) AllPlugins(ctx context.Context) ([]module.InitVulnDetectorFn, error) {
-	plugins, err := templatedengine.LoadPluginsFromFS(ctx, pluginFilesFS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load plugins from FS: %w", err)
-	}
-	return templatedengine.LoadPlugins(l.cfg, plugins), nil
 }

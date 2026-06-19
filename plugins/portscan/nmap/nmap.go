@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	moduleName = "portscan/nmap"
+	moduleName = "ps/nmap"
 )
 
 var (
@@ -59,6 +59,10 @@ type Module struct {
 	*module.BaseModule
 	config *config.Config
 	client nmapClient
+}
+
+func init() {
+	module.RegisterPortScanner(moduleName, New)
 }
 
 // New creates a new nmap module.

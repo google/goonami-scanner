@@ -115,7 +115,7 @@ func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.Templated
 
 // Name returns the name of the detector.
 func (d *TemplatedDetector) Name() string {
-	return fmt.Sprintf("dt/%s", d.proto.GetInfo().GetName())
+	return fmt.Sprintf("dt/tpl/%s", d.proto.GetInfo().GetName())
 }
 
 // Detect performs the vulnerability detection.

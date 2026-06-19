@@ -196,6 +196,11 @@ func (c *Config) PluginsConfig() *cpb.PluginsConfig {
 	return c.proto.GetPlugins()
 }
 
+// WorkflowConfig returns the configuration options that are specific to workflow execution.
+func (c *Config) WorkflowConfig() *cpb.WorkflowConfiguration {
+	return c.proto.GetWorkflowcfg()
+}
+
 // WorkingDirectory that the scanner is using to write files to.
 func (c *Config) WorkingDirectory() string {
 	return c.workDir

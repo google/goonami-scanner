@@ -42,6 +42,10 @@ type Module struct {
 	config *config.Config
 }
 
+func init() {
+	module.RegisterFingerprinter(moduleName, New)
+}
+
 // New returns a new instance of the module.
 func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	return &Module{

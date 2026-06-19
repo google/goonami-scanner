@@ -115,6 +115,22 @@ func TestApplyOverrides(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:      "when_using_workflow_alias",
+			overrides: []string{"portscan=nmap", "fingerprinters.require=fp1,fp2", "fingerprinters.ignore=fp/private.*"},
+			want: func() *Config {
+				c := Default()
+				c.proto.SetWorkflowcfg(cpb.WorkflowConfiguration_builder{
+					Portscan: proto.String("nmap"),
+					Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{
+						Require: []string{"fp1", "fp2"},
+						Ignore:  []string{"fp/private.*"},
+					}.Build(),
+				}.Build())
+				return c
+			},
+			wantErr: nil,
+		},
+		{
 			name:      "when_multiple_overrides",
 			overrides: []string{"globalcfg.user_agent=agent1", "globalcfg.performance.max_concurrency=2"},
 			want: func() *Config {

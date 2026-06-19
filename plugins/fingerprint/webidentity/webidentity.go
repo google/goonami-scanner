@@ -81,6 +81,10 @@ type Module struct {
 	registry   *hash.Registry
 }
 
+func init() {
+	module.RegisterFingerprinter(moduleName, New)
+}
+
 // New returns a new instance of the module.
 func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	modConfig := DefaultConfig()

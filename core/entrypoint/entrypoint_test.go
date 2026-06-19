@@ -27,8 +27,10 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"github.com/google/goonami-scanner/core/module"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -44,13 +46,19 @@ func (m *fakeHTTPClient) Post(url string, contentType string, body io.Reader) (*
 func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return nil, nil }
 
 func TestNewWhenDefaultRunner(t *testing.T) {
-	cfg := config.Default()
+	module.ClearRegistry()
+	module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+
+	cfg := config.FromProto(cpb.Config_builder{
+		Workflowcfg: cpb.WorkflowConfiguration_builder{
+			Portscan: proto.String("ps1"),
+		}.Build(),
+	}.Build())
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close(t.Context())
 
 	opts := &Options{
-		Config:      cfg,
-		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+		Config: cfg,
 	}
 
 	e, err := New(t.Context(), opts)
@@ -64,63 +72,58 @@ func TestNewWhenDefaultRunner(t *testing.T) {
 }
 
 func TestNewWhenPluginRegistration(t *testing.T) {
-	cfg := config.Default()
-	cfg.CreateDirectories(t.TempDir())
-	defer cfg.Close(t.Context())
+	cfgProto := cpb.Config_builder{
+		Workflowcfg: cpb.WorkflowConfiguration_builder{
+			Portscan: proto.String("ps1"),
+			Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{
+				Require: []string{"fp1"},
+			}.Build(),
+			Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+				Require: []string{"d1"},
+			}.Build(),
+		}.Build(),
+	}.Build()
+
 	genericErr := errors.New("generic error")
 
 	tests := []struct {
-		name    string
-		options *Options
-		wantErr error
+		name     string
+		setupReg func()
+		wantErr  error
 	}{
 		{
 			name: "when_modules_are_successfully_initialized_they_are_registered",
-			options: &Options{
-				Config:      cfg,
-				Runner:      fakerunner.New(),
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
-				Fingerprinters: []module.InitFingerprinterFn{
-					fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing),
-				},
-				Detectors: []module.InitVulnDetectorFn{
-					fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings),
-				},
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings))
 			},
 			wantErr: nil,
 		},
 		{
 			name: "when_port_scanner_init_fails_returns_error",
-			options: &Options{
-				Config:      cfg,
-				PortScanner: fakemodule.InitFakePortScanner("ps1", genericErr, fakemodule.FakePortScanFnDoNothing),
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", genericErr, fakemodule.FakePortScanFnDoNothing))
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings))
 			},
 			wantErr: genericErr,
 		},
 		{
 			name: "when_fingerprinter_init_fails_returns_error",
-			options: &Options{
-				Config:      cfg,
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
-				Fingerprinters: []module.InitFingerprinterFn{
-					fakemodule.InitFakeFingerprinter("fp1", genericErr, fakemodule.FakeFingerprintFnDoNothing),
-					fakemodule.InitFakeFingerprinter("fp2", nil, fakemodule.FakeFingerprintFnDoNothing),
-				},
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", genericErr, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings))
 			},
 			wantErr: genericErr,
 		},
 		{
 			name: "when_detector_init_fails_returns_error",
-			options: &Options{
-				Config:      cfg,
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
-				Fingerprinters: []module.InitFingerprinterFn{
-					fakemodule.InitFakeFingerprinter("fp1", nil, nil),
-				},
-				Detectors: []module.InitVulnDetectorFn{
-					fakemodule.InitFakeVulnDetector("d1", genericErr, fakemodule.FakeDetectFnNoFindings),
-					fakemodule.InitFakeVulnDetector("d2", nil, fakemodule.FakeDetectFnNoFindings),
-				},
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", genericErr, fakemodule.FakeDetectFnNoFindings))
 			},
 			wantErr: genericErr,
 		},
@@ -128,7 +131,18 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			opts := tc.options
+			module.ClearRegistry()
+			tc.setupReg()
+
+			cfg := config.FromProto(cfgProto)
+			cfg.CreateDirectories(t.TempDir())
+			defer cfg.Close(t.Context())
+
+			runner := fakerunner.New()
+			opts := &Options{
+				Config: cfg,
+				Runner: runner,
+			}
 			_, err := New(t.Context(), opts)
 
 			if !errors.Is(err, tc.wantErr) {
@@ -142,7 +156,6 @@ func TestNewWhenPluginRegistration(t *testing.T) {
 				t.Fatalf("New(%v) returned unexpected error: %v", opts, err)
 			}
 
-			runner := opts.Runner.(*fakerunner.FakeRunner)
 			if runner.PortScanner() == nil || runner.PortScanner().Name() != "ps1" {
 				t.Errorf("New(%v) did not register port scanner correctly, got %+v", opts, runner.PortScanner())
 			}
@@ -166,16 +179,7 @@ func TestNew_ErrorCases(t *testing.T) {
 		{
 			name: "when_config_is_nil_simplerunner_init_fails_returns_error",
 			options: &Options{
-				Config:      nil,
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
-			},
-		},
-		{
-			name: "when_config_is_nil_http_defaults_init_fails_returns_error",
-			options: &Options{
-				Config:      nil,
-				Runner:      fakerunner.New(),
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+				Config: nil,
 			},
 		},
 	}
@@ -211,7 +215,14 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := config.Default()
+			module.ClearRegistry()
+			module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Portscan: proto.String("ps1"),
+				}.Build(),
+			}.Build())
 			cfg.CreateDirectories(t.TempDir())
 			defer cfg.Close(t.Context())
 
@@ -221,9 +232,8 @@ func TestRun(t *testing.T) {
 			})
 
 			opts := &Options{
-				Config:      cfg,
-				Runner:      runner,
-				PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+				Config: cfg,
+				Runner: runner,
 			}
 			e, err := New(t.Context(), opts)
 			if err != nil {
@@ -247,14 +257,20 @@ func TestRun(t *testing.T) {
 }
 
 func TestArtifacts(t *testing.T) {
-	cfg := config.Default()
+	module.ClearRegistry()
+	module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+
+	cfg := config.FromProto(cpb.Config_builder{
+		Workflowcfg: cpb.WorkflowConfiguration_builder{
+			Portscan: proto.String("ps1"),
+		}.Build(),
+	}.Build())
 	cfg.CreateDirectories(t.TempDir())
 	defer cfg.Close(t.Context())
 
 	artifactsDir := cfg.ArtifactsDirectory()
 	opts := &Options{
-		Config:      cfg,
-		PortScanner: fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing),
+		Config: cfg,
 	}
 
 	e, err := New(t.Context(), opts)
@@ -264,5 +280,84 @@ func TestArtifacts(t *testing.T) {
 
 	if e.Artifacts() != artifactsDir {
 		t.Errorf("Artifacts() = %s, want %s", e.Artifacts(), artifactsDir)
+	}
+}
+
+func TestNewWithWorkflowConfiguration(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupReg    func()
+		workflowcfg *cpb.WorkflowConfiguration
+		wantErr     bool
+	}{
+		{
+			name: "when_workflow_config_is_used_modules_are_loaded_from_registry",
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings))
+			},
+			workflowcfg: cpb.WorkflowConfiguration_builder{
+				Portscan: proto.String("ps1"),
+				Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{
+					Require: []string{"fp1"},
+				}.Build(),
+				Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+					Require: []string{"d1"},
+				}.Build(),
+			}.Build(),
+			wantErr: false,
+		},
+		{
+			name: "when_workflow_config_has_non_existent_module_it_fails",
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+			},
+			workflowcfg: cpb.WorkflowConfiguration_builder{
+				Portscan: proto.String("ps1"),
+				Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{
+					Require: []string{"non-existent"},
+				}.Build(),
+			}.Build(),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			module.ClearRegistry()
+			tc.setupReg()
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Workflowcfg: tc.workflowcfg,
+			}.Build())
+			cfg.CreateDirectories(t.TempDir())
+			defer cfg.Close(t.Context())
+
+			runner := fakerunner.New()
+			opts := &Options{
+				Config: cfg,
+				Runner: runner,
+			}
+
+			_, err := New(t.Context(), opts)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("New() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr {
+				return
+			}
+
+			if runner.PortScanner() == nil || runner.PortScanner().Name() != "ps1" {
+				t.Errorf("expected ps1 port scanner, got %+v", runner.PortScanner())
+			}
+			if len(runner.Fingerprinters()) != 1 || runner.Fingerprinters()[0].Name() != "fp1" {
+				t.Errorf("expected fp1 fingerprinter, got %+v", runner.Fingerprinters())
+			}
+			if len(runner.Detectors()) != 1 || runner.Detectors()[0].Name() != "d1" {
+				t.Errorf("expected d1 detector, got %+v", runner.Detectors())
+			}
+		})
 	}
 }

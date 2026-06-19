@@ -42,17 +42,6 @@ type Options struct {
 
 	// (Optional) Logger to use.
 	Logger log.Logger
-
-	// PortScanner is the init function used to create the port scanner module.
-	PortScanner module.InitPortScannerFn
-
-	// Fingerprinters are the init functions used to create the fingerprinter modules. Order is
-	// important.
-	Fingerprinters []module.InitFingerprinterFn
-
-	// Detectors are the init functions used to create the vulnerability detector modules. Order is
-	// important.
-	Detectors []module.InitVulnDetectorFn
 }
 
 // Entrypoint is the entry point to use Goonami.
@@ -89,31 +78,29 @@ func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 	log.InfoContextf(ctx, "verifying HTTP client %q", clientName)
 	_ = goohttp.SharedClient(options.Config)
 
-	module, err := options.PortScanner(ctx, options.Config)
+	portScan, err := module.GetPortScanner(ctx, options.Config)
 	if err != nil {
 		return nil, err
 	}
-	log.InfoContextf(ctx, "registering port scanner: %s", module.Name())
-	r.RegisterPortScanner(ctx, module)
+	log.InfoContextf(ctx, "registering port scanner: %s", portScan.Name())
+	r.RegisterPortScanner(ctx, portScan)
 
-	log.InfoContextf(ctx, "registering %d fingerprinters", len(options.Fingerprinters))
-	for _, fingerprinterInit := range options.Fingerprinters {
-		module, err := fingerprinterInit(ctx, options.Config)
-		if err != nil {
-			return nil, err
-		}
-
-		r.RegisterFingerprinter(ctx, module)
+	activeFPs, err := module.GetFingerprinters(ctx, options.Config)
+	if err != nil {
+		return nil, err
+	}
+	log.InfoContextf(ctx, "registering %d fingerprinters", len(activeFPs))
+	for _, fp := range activeFPs {
+		r.RegisterFingerprinter(ctx, fp)
 	}
 
-	log.InfoContextf(ctx, "registering %d vulnerability detectors", len(options.Detectors))
-	for _, detectorInit := range options.Detectors {
-		module, err := detectorInit(ctx, options.Config)
-		if err != nil {
-			return nil, err
-		}
-
-		r.RegisterDetector(ctx, module)
+	activeDTs, err := module.GetDetectors(ctx, options.Config)
+	if err != nil {
+		return nil, err
+	}
+	log.InfoContextf(ctx, "registering %d vulnerability detectors", len(activeDTs))
+	for _, dt := range activeDTs {
+		r.RegisterDetector(ctx, dt)
 	}
 
 	log.InfoContextf(ctx, "initializing callback server client")

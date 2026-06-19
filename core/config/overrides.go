@@ -27,8 +27,13 @@ import (
 )
 
 var aliases = map[string]string{
-	"ports":       "globalcfg.ports_to_scan",
-	"http_client": "globalcfg.http_client",
+	"ports":                  "globalcfg.ports_to_scan",
+	"http_client":            "globalcfg.http_client",
+	"portscan":               "workflowcfg.portscan",
+	"fingerprinters.require": "workflowcfg.fingerprinters.require",
+	"fingerprinters.ignore":  "workflowcfg.fingerprinters.ignore",
+	"detectors.require":      "workflowcfg.detectors.require",
+	"detectors.ignore":       "workflowcfg.detectors.ignore",
 }
 
 // ApplyOverrides applies a list of overrides to the configuration.

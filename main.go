@@ -28,7 +28,6 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/entrypoint"
 	"github.com/google/goonami-scanner/core/log"
-	"github.com/google/goonami-scanner/core/module"
 	"github.com/google/goonami-scanner/tools/callbackserver"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -36,15 +35,15 @@ import (
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 
 	// port scanner plugins
-	"github.com/google/goonami-scanner/plugins/portscan/nmap"
+	_ "github.com/google/goonami-scanner/plugins/portscan/nmap"
 
 	// fingerprinters
-	"github.com/google/goonami-scanner/plugins/fingerprint/iswebservice"
-	"github.com/google/goonami-scanner/plugins/fingerprint/sslsupport"
-	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
+	_ "github.com/google/goonami-scanner/plugins/fingerprint/iswebservice"
+	_ "github.com/google/goonami-scanner/plugins/fingerprint/sslsupport"
+	_ "github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
 
 	// detectors
-	"github.com/google/goonami-scanner/plugins/detectors/templated"
+	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -69,23 +68,6 @@ var (
 	// ErrWriteResults is returned when the scan results cannot be written to a file.
 	ErrWriteResults = errors.New("failed to write scan results to file")
 )
-
-// The port scanner to use for the scan.
-var portScanner = nmap.New
-
-// The list of fingerprinters to use for the scan.
-var fingerprinters = []module.InitFingerprinterFn{
-	sslsupport.New,
-	iswebservice.New,
-
-	// note: keep last. The webidentity plugin can fork the existing list of service. For efficiency,
-	// it should be the last plugin in the list.
-	webidentity.New,
-}
-
-// The list of detectors to use for the scan.
-// Note that templated detectors are added dynamically.
-var detectors = []module.InitVulnDetectorFn{}
 
 var (
 	// ConfigFlag controls the path to the configuration file of the scanner.
@@ -146,21 +128,10 @@ func run(ctx context.Context) error {
 		UseColors:    *ColorFlag,
 	}
 
-	log.InfoContextf(ctx, "loading templated detectors")
-	templatedLoader := templated.NewLoader(cfg)
-	templatedDetectors, err := templatedLoader.AllPlugins(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to load templated detectors: %w", err)
-	}
-	detectors = append(detectors, templatedDetectors...)
-
 	log.InfoContextf(ctx, "initializing the scanner's entrypoint")
 	options := &entrypoint.Options{
-		Config:         cfg,
-		Logger:         logger,
-		PortScanner:    portScanner,
-		Fingerprinters: fingerprinters,
-		Detectors:      detectors,
+		Config: cfg,
+		Logger: logger,
 	}
 
 	e, err := entrypoint.New(ctx, options)

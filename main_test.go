@@ -34,6 +34,12 @@ import (
 
 var (
 	fakeConfig = `
+workflowcfg: {
+  portscan: "ps1"
+  fingerprinters: {
+    require: ["fp1"]
+  }
+}
 clients: {
   callback_server: {
 		interaction_ttl_seconds: 300
@@ -49,19 +55,9 @@ clients: {
 )
 
 func TestRun(t *testing.T) {
-	// Backup and restore
-	oldPS := portScanner
-	oldFPs := fingerprinters
-	defer func() {
-		portScanner = oldPS
-		fingerprinters = oldFPs
-	}()
-
-	// Override with fakes
-	portScanner = fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing)
-	fingerprinters = []module.InitFingerprinterFn{
-		fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing),
-	}
+	module.ClearRegistry()
+	module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+	module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
 
 	tempDir := t.TempDir()
 	configPath := path.Join(tempDir, "config.textproto")
@@ -99,7 +95,6 @@ func TestRun_ErrorCases(t *testing.T) {
 		outputDir string
 		config    string
 		setup     func()
-		teardown  func()
 		wantErr   error
 	}{
 		{
@@ -127,18 +122,10 @@ func TestRun_ErrorCases(t *testing.T) {
 			outputDir: t.TempDir(),
 			config:    configPath,
 			setup: func() {
-				oldPS := portScanner
-				oldFPs := fingerprinters
-				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
+				module.ClearRegistry()
+				module.RegisterPortScanner("ps1", func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return nil, fmt.Errorf("init error")
-				}
-				fingerprinters = nil
-				_oldPS = oldPS
-				_oldFPs = oldFPs
-			},
-			teardown: func() {
-				portScanner = _oldPS
-				fingerprinters = _oldFPs
+				})
 			},
 			wantErr: errors.New("init error"),
 		},
@@ -148,20 +135,13 @@ func TestRun_ErrorCases(t *testing.T) {
 			outputDir: t.TempDir(),
 			config:    configPath,
 			setup: func() {
-				oldPS := portScanner
-				oldFPs := fingerprinters
-				portScanner = func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
+				module.ClearRegistry()
+				module.RegisterPortScanner("ps1", func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
 					return fakemodule.NewFakePortScanner("ps1", func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 						return nil, fmt.Errorf("run error")
 					}), nil
-				}
-				fingerprinters = nil
-				_oldPS = oldPS
-				_oldFPs = oldFPs
-			},
-			teardown: func() {
-				portScanner = _oldPS
-				fingerprinters = _oldFPs
+				})
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
 			},
 			wantErr: errors.New("run error"),
 		},
@@ -169,6 +149,10 @@ func TestRun_ErrorCases(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			module.ClearRegistry()
+			module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+			module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+
 			*TargetFlag = tc.target
 			*OutputDirFlag = tc.outputDir
 			*ConfigFlag = tc.config
@@ -176,9 +160,6 @@ func TestRun_ErrorCases(t *testing.T) {
 
 			if tc.setup != nil {
 				tc.setup()
-			}
-			if tc.teardown != nil {
-				defer tc.teardown()
 			}
 
 			err := run(t.Context())
@@ -196,9 +177,6 @@ func TestRun_ErrorCases(t *testing.T) {
 		})
 	}
 }
-
-var _oldPS module.InitPortScannerFn
-var _oldFPs []module.InitFingerprinterFn
 
 func TestValidateFlags(t *testing.T) {
 	tests := []struct {
@@ -295,6 +273,4 @@ func TestWriteResults(t *testing.T) {
 	if len(data) == 0 {
 		t.Errorf("written results file is empty")
 	}
-
-	// Optional: we could unmarshal and compare, but checking if file is written and non-empty is already good.
 }

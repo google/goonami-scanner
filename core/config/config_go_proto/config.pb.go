@@ -41,12 +41,13 @@ const (
 )
 
 type Config struct {
-	state                protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_Globalcfg *GlobalConfig          `protobuf:"bytes,1,opt,name=globalcfg,proto3"`
-	xxx_hidden_Clients   *ClientsConfig         `protobuf:"bytes,2,opt,name=clients,proto3"`
-	xxx_hidden_Plugins   *PluginsConfig         `protobuf:"bytes,3,opt,name=plugins,proto3"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Globalcfg   *GlobalConfig          `protobuf:"bytes,1,opt,name=globalcfg,proto3"`
+	xxx_hidden_Clients     *ClientsConfig         `protobuf:"bytes,2,opt,name=clients,proto3"`
+	xxx_hidden_Plugins     *PluginsConfig         `protobuf:"bytes,3,opt,name=plugins,proto3"`
+	xxx_hidden_Workflowcfg *WorkflowConfiguration `protobuf:"bytes,4,opt,name=workflowcfg,proto3"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *Config) Reset() {
@@ -95,6 +96,13 @@ func (x *Config) GetPlugins() *PluginsConfig {
 	return nil
 }
 
+func (x *Config) GetWorkflowcfg() *WorkflowConfiguration {
+	if x != nil {
+		return x.xxx_hidden_Workflowcfg
+	}
+	return nil
+}
+
 func (x *Config) SetGlobalcfg(v *GlobalConfig) {
 	x.xxx_hidden_Globalcfg = v
 }
@@ -105,6 +113,10 @@ func (x *Config) SetClients(v *ClientsConfig) {
 
 func (x *Config) SetPlugins(v *PluginsConfig) {
 	x.xxx_hidden_Plugins = v
+}
+
+func (x *Config) SetWorkflowcfg(v *WorkflowConfiguration) {
+	x.xxx_hidden_Workflowcfg = v
 }
 
 func (x *Config) HasGlobalcfg() bool {
@@ -128,6 +140,13 @@ func (x *Config) HasPlugins() bool {
 	return x.xxx_hidden_Plugins != nil
 }
 
+func (x *Config) HasWorkflowcfg() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Workflowcfg != nil
+}
+
 func (x *Config) ClearGlobalcfg() {
 	x.xxx_hidden_Globalcfg = nil
 }
@@ -140,12 +159,17 @@ func (x *Config) ClearPlugins() {
 	x.xxx_hidden_Plugins = nil
 }
 
+func (x *Config) ClearWorkflowcfg() {
+	x.xxx_hidden_Workflowcfg = nil
+}
+
 type Config_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
-	Globalcfg *GlobalConfig
-	Clients   *ClientsConfig
-	Plugins   *PluginsConfig
+	Globalcfg   *GlobalConfig
+	Clients     *ClientsConfig
+	Plugins     *PluginsConfig
+	Workflowcfg *WorkflowConfiguration
 }
 
 func (b0 Config_builder) Build() *Config {
@@ -155,6 +179,140 @@ func (b0 Config_builder) Build() *Config {
 	x.xxx_hidden_Globalcfg = b.Globalcfg
 	x.xxx_hidden_Clients = b.Clients
 	x.xxx_hidden_Plugins = b.Plugins
+	x.xxx_hidden_Workflowcfg = b.Workflowcfg
+	return m0
+}
+
+// WorkflowConfiguration contains configuration to control which scanner,
+// fingerprinters and detectors are run and in which order.
+type WorkflowConfiguration struct {
+	state                     protoimpl.MessageState              `protogen:"opaque.v1"`
+	xxx_hidden_Portscan       *string                             `protobuf:"bytes,1,opt,name=portscan,proto3,oneof"`
+	xxx_hidden_Fingerprinters *WorkflowConfiguration_ModuleFilter `protobuf:"bytes,2,opt,name=fingerprinters,proto3,oneof"`
+	xxx_hidden_Detectors      *WorkflowConfiguration_ModuleFilter `protobuf:"bytes,3,opt,name=detectors,proto3,oneof"`
+	XXX_raceDetectHookData    protoimpl.RaceDetectHookData
+	XXX_presence              [1]uint32
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *WorkflowConfiguration) Reset() {
+	*x = WorkflowConfiguration{}
+	mi := &file_config_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowConfiguration) ProtoMessage() {}
+
+func (x *WorkflowConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *WorkflowConfiguration) GetPortscan() string {
+	if x != nil {
+		if x.xxx_hidden_Portscan != nil {
+			return *x.xxx_hidden_Portscan
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *WorkflowConfiguration) GetFingerprinters() *WorkflowConfiguration_ModuleFilter {
+	if x != nil {
+		return x.xxx_hidden_Fingerprinters
+	}
+	return nil
+}
+
+func (x *WorkflowConfiguration) GetDetectors() *WorkflowConfiguration_ModuleFilter {
+	if x != nil {
+		return x.xxx_hidden_Detectors
+	}
+	return nil
+}
+
+func (x *WorkflowConfiguration) SetPortscan(v string) {
+	x.xxx_hidden_Portscan = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 3)
+}
+
+func (x *WorkflowConfiguration) SetFingerprinters(v *WorkflowConfiguration_ModuleFilter) {
+	x.xxx_hidden_Fingerprinters = v
+}
+
+func (x *WorkflowConfiguration) SetDetectors(v *WorkflowConfiguration_ModuleFilter) {
+	x.xxx_hidden_Detectors = v
+}
+
+func (x *WorkflowConfiguration) HasPortscan() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 0)
+}
+
+func (x *WorkflowConfiguration) HasFingerprinters() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Fingerprinters != nil
+}
+
+func (x *WorkflowConfiguration) HasDetectors() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Detectors != nil
+}
+
+func (x *WorkflowConfiguration) ClearPortscan() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
+	x.xxx_hidden_Portscan = nil
+}
+
+func (x *WorkflowConfiguration) ClearFingerprinters() {
+	x.xxx_hidden_Fingerprinters = nil
+}
+
+func (x *WorkflowConfiguration) ClearDetectors() {
+	x.xxx_hidden_Detectors = nil
+}
+
+type WorkflowConfiguration_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Port scanner to use.
+	Portscan *string
+	// Fingerprinters to use (order dependent).
+	Fingerprinters *WorkflowConfiguration_ModuleFilter
+	// Detectors to use (order dependent).
+	Detectors *WorkflowConfiguration_ModuleFilter
+}
+
+func (b0 WorkflowConfiguration_builder) Build() *WorkflowConfiguration {
+	m0 := &WorkflowConfiguration{}
+	b, x := &b0, m0
+	_, _ = b, x
+	if b.Portscan != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 3)
+		x.xxx_hidden_Portscan = b.Portscan
+	}
+	x.xxx_hidden_Fingerprinters = b.Fingerprinters
+	x.xxx_hidden_Detectors = b.Detectors
 	return m0
 }
 
@@ -174,7 +332,7 @@ type GlobalConfig struct {
 
 func (x *GlobalConfig) Reset() {
 	*x = GlobalConfig{}
-	mi := &file_config_proto_msgTypes[1]
+	mi := &file_config_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -186,7 +344,7 @@ func (x *GlobalConfig) String() string {
 func (*GlobalConfig) ProtoMessage() {}
 
 func (x *GlobalConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[1]
+	mi := &file_config_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -330,7 +488,7 @@ type ClientsConfig struct {
 
 func (x *ClientsConfig) Reset() {
 	*x = ClientsConfig{}
-	mi := &file_config_proto_msgTypes[2]
+	mi := &file_config_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +500,7 @@ func (x *ClientsConfig) String() string {
 func (*ClientsConfig) ProtoMessage() {}
 
 func (x *ClientsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[2]
+	mi := &file_config_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -471,7 +629,7 @@ type PluginsConfig struct {
 
 func (x *PluginsConfig) Reset() {
 	*x = PluginsConfig{}
-	mi := &file_config_proto_msgTypes[3]
+	mi := &file_config_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +641,7 @@ func (x *PluginsConfig) String() string {
 func (*PluginsConfig) ProtoMessage() {}
 
 func (x *PluginsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[3]
+	mi := &file_config_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -530,6 +688,82 @@ func (b0 PluginsConfig_builder) Build() *PluginsConfig {
 	return m0
 }
 
+type WorkflowConfiguration_ModuleFilter struct {
+	state              protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_Require []string               `protobuf:"bytes,1,rep,name=require,proto3"`
+	xxx_hidden_Ignore  []string               `protobuf:"bytes,2,rep,name=ignore,proto3"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) Reset() {
+	*x = WorkflowConfiguration_ModuleFilter{}
+	mi := &file_config_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkflowConfiguration_ModuleFilter) ProtoMessage() {}
+
+func (x *WorkflowConfiguration_ModuleFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_config_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) GetRequire() []string {
+	if x != nil {
+		return x.xxx_hidden_Require
+	}
+	return nil
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) GetIgnore() []string {
+	if x != nil {
+		return x.xxx_hidden_Ignore
+	}
+	return nil
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) SetRequire(v []string) {
+	x.xxx_hidden_Require = v
+}
+
+func (x *WorkflowConfiguration_ModuleFilter) SetIgnore(v []string) {
+	x.xxx_hidden_Ignore = v
+}
+
+type WorkflowConfiguration_ModuleFilter_builder struct {
+	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
+
+	// Require is matched against the list of registered modules and every match
+	// is appended to the workflow to be executed. Supports regexes.
+	// Note: Automatically embeds "^" and "$" around each entry.
+	Require []string
+	// Once matches have been computed from require, they are filtered down
+	// against this `ignore` entry.
+	Ignore []string
+}
+
+func (b0 WorkflowConfiguration_ModuleFilter_builder) Build() *WorkflowConfiguration_ModuleFilter {
+	m0 := &WorkflowConfiguration_ModuleFilter{}
+	b, x := &b0, m0
+	_, _ = b, x
+	x.xxx_hidden_Require = b.Require
+	x.xxx_hidden_Ignore = b.Ignore
+	return m0
+}
+
 type GlobalConfig_Performance struct {
 	state                               protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_MaxConcurrency           int32                  `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof"`
@@ -544,7 +778,7 @@ type GlobalConfig_Performance struct {
 
 func (x *GlobalConfig_Performance) Reset() {
 	*x = GlobalConfig_Performance{}
-	mi := &file_config_proto_msgTypes[4]
+	mi := &file_config_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -556,7 +790,7 @@ func (x *GlobalConfig_Performance) String() string {
 func (*GlobalConfig_Performance) ProtoMessage() {}
 
 func (x *GlobalConfig_Performance) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[4]
+	mi := &file_config_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -710,11 +944,23 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xb3\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
-	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\"\xec\x04\n" +
+	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\x12F\n" +
+	"\vworkflowcfg\x18\x04 \x01(\v2$.goonami.proto.WorkflowConfigurationR\vworkflowcfg\"\xde\x02\n" +
+	"\x15WorkflowConfiguration\x12\x1f\n" +
+	"\bportscan\x18\x01 \x01(\tH\x00R\bportscan\x88\x01\x01\x12^\n" +
+	"\x0efingerprinters\x18\x02 \x01(\v21.goonami.proto.WorkflowConfiguration.ModuleFilterH\x01R\x0efingerprinters\x88\x01\x01\x12T\n" +
+	"\tdetectors\x18\x03 \x01(\v21.goonami.proto.WorkflowConfiguration.ModuleFilterH\x02R\tdetectors\x88\x01\x01\x1a@\n" +
+	"\fModuleFilter\x12\x18\n" +
+	"\arequire\x18\x01 \x03(\tR\arequire\x12\x16\n" +
+	"\x06ignore\x18\x02 \x03(\tR\x06ignoreB\v\n" +
+	"\t_portscanB\x11\n" +
+	"\x0f_fingerprintersB\f\n" +
+	"\n" +
+	"_detectors\"\xec\x04\n" +
 	"\fGlobalConfig\x12N\n" +
 	"\vperformance\x18\x01 \x01(\v2'.goonami.proto.GlobalConfig.PerformanceH\x00R\vperformance\x88\x01\x01\x12\"\n" +
 	"\rports_to_scan\x18\x02 \x03(\rR\vportsToScan\x12\"\n" +
@@ -743,34 +989,39 @@ const file_config_proto_rawDesc = "" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentityBm\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassP\x01Z=github.com/google/goonami-scanner/core/config/config_go_protob\x06proto3"
 
-var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_config_proto_goTypes = []any{
-	(*Config)(nil),                                       // 0: goonami.proto.Config
-	(*GlobalConfig)(nil),                                 // 1: goonami.proto.GlobalConfig
-	(*ClientsConfig)(nil),                                // 2: goonami.proto.ClientsConfig
-	(*PluginsConfig)(nil),                                // 3: goonami.proto.PluginsConfig
-	(*GlobalConfig_Performance)(nil),                     // 4: goonami.proto.GlobalConfig.Performance
-	(*nmap_client_config_go_proto.NmapClientConfig)(nil), // 5: goonami.proto.configs.clients.NmapClientConfig
-	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil), // 6: goonami.proto.configs.clients.HttpCrawlerClientConfig
-	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 7: goonami.proto.configs.clients.LlmClientConfig
-	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),        // 8: goonami.callbackserver.CallbackserverConfig
-	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 9: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*Config)(nil),                                                     // 0: goonami.proto.Config
+	(*WorkflowConfiguration)(nil),                                      // 1: goonami.proto.WorkflowConfiguration
+	(*GlobalConfig)(nil),                                               // 2: goonami.proto.GlobalConfig
+	(*ClientsConfig)(nil),                                              // 3: goonami.proto.ClientsConfig
+	(*PluginsConfig)(nil),                                              // 4: goonami.proto.PluginsConfig
+	(*WorkflowConfiguration_ModuleFilter)(nil),                         // 5: goonami.proto.WorkflowConfiguration.ModuleFilter
+	(*GlobalConfig_Performance)(nil),                                   // 6: goonami.proto.GlobalConfig.Performance
+	(*nmap_client_config_go_proto.NmapClientConfig)(nil),               // 7: goonami.proto.configs.clients.NmapClientConfig
+	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil), // 8: goonami.proto.configs.clients.HttpCrawlerClientConfig
+	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 9: goonami.proto.configs.clients.LlmClientConfig
+	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),        // 10: goonami.callbackserver.CallbackserverConfig
+	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 11: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 }
 var file_config_proto_depIdxs = []int32{
-	1, // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
-	2, // 1: goonami.proto.Config.clients:type_name -> goonami.proto.ClientsConfig
-	3, // 2: goonami.proto.Config.plugins:type_name -> goonami.proto.PluginsConfig
-	4, // 3: goonami.proto.GlobalConfig.performance:type_name -> goonami.proto.GlobalConfig.Performance
-	5, // 4: goonami.proto.ClientsConfig.nmap:type_name -> goonami.proto.configs.clients.NmapClientConfig
-	6, // 5: goonami.proto.ClientsConfig.http_crawler:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig
-	7, // 6: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
-	8, // 7: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
-	9, // 8: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
+	3,  // 1: goonami.proto.Config.clients:type_name -> goonami.proto.ClientsConfig
+	4,  // 2: goonami.proto.Config.plugins:type_name -> goonami.proto.PluginsConfig
+	1,  // 3: goonami.proto.Config.workflowcfg:type_name -> goonami.proto.WorkflowConfiguration
+	5,  // 4: goonami.proto.WorkflowConfiguration.fingerprinters:type_name -> goonami.proto.WorkflowConfiguration.ModuleFilter
+	5,  // 5: goonami.proto.WorkflowConfiguration.detectors:type_name -> goonami.proto.WorkflowConfiguration.ModuleFilter
+	6,  // 6: goonami.proto.GlobalConfig.performance:type_name -> goonami.proto.GlobalConfig.Performance
+	7,  // 7: goonami.proto.ClientsConfig.nmap:type_name -> goonami.proto.configs.clients.NmapClientConfig
+	8,  // 8: goonami.proto.ClientsConfig.http_crawler:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig
+	9,  // 9: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
+	10, // 10: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
+	11, // 11: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
@@ -779,14 +1030,15 @@ func file_config_proto_init() {
 		return
 	}
 	file_config_proto_msgTypes[1].OneofWrappers = []any{}
-	file_config_proto_msgTypes[4].OneofWrappers = []any{}
+	file_config_proto_msgTypes[2].OneofWrappers = []any{}
+	file_config_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_config_proto_rawDesc), len(file_config_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

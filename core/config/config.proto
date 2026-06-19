@@ -39,6 +39,31 @@ message Config {
   GlobalConfig globalcfg = 1;
   ClientsConfig clients = 2;
   PluginsConfig plugins = 3;
+  WorkflowConfiguration workflowcfg = 4;
+}
+
+// WorkflowConfiguration contains configuration to control which scanner,
+// fingerprinters and detectors are run and in which order.
+message WorkflowConfiguration {
+  message ModuleFilter {
+    // Require is matched against the list of registered modules and every match
+    // is appended to the workflow to be executed. Supports regexes.
+    // Note: Automatically embeds "^" and "$" around each entry.
+    repeated string require = 1;
+
+    // Once matches have been computed from require, they are filtered down
+    // against this `ignore` entry.
+    repeated string ignore = 2;
+  }
+
+  // Port scanner to use.
+  optional string portscan = 1;
+
+  // Fingerprinters to use (order dependent).
+  optional ModuleFilter fingerprinters = 2;
+
+  // Detectors to use (order dependent).
+  optional ModuleFilter detectors = 3;
 }
 
 // GlobalConfig contains configuration that is used by the core engine and
