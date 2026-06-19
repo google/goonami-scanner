@@ -7,8 +7,8 @@ workflowcfg: {
 
   # fingerprinters, we want to preserve order.
   fingerprinters: {
-    require: "fp/iswebservice"
     require: "fp/sslsupport"
+    require: "fp/iswebservice"
     require: "fp/webidentity"
     require: ".*"
   }
