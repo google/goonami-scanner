@@ -19,6 +19,7 @@ syntax = "proto3";
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto";
+
 option java_multiple_files = true;
 option java_outer_classname = "NmapClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
