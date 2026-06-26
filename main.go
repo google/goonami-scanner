@@ -35,6 +35,7 @@ import (
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 
 	// port scanner plugins
+	_ "github.com/google/goonami-scanner/plugins/portscan/httpscan"
 	_ "github.com/google/goonami-scanner/plugins/portscan/nmap"
 
 	// fingerprinters

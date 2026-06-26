@@ -31,6 +31,10 @@ import "common/clients/llm/llm_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
 import "tools/callbackserver/callbackserver_config.proto";
 
+// portscan config
+// these configs are in the `goonami.proto.configs.portscan` namespace.
+import "plugins/portscan/httpscan/httpscan_portscan_config.proto";
+
 // fingerprinters config
 // these configs are in the `goonami.proto.configs.fingerprinters` namespace.
 import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
@@ -117,4 +121,5 @@ message ClientsConfig {
 // PluginsConfig contains configuration for plugin.
 message PluginsConfig {
   goonami.proto.configs.fingerprinters.WebIdentityFpConfig webidentity = 1;
+  goonami.proto.configs.portscan.HttpScanPluginConfig httpscan = 2;
 }

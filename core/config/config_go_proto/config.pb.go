@@ -26,6 +26,7 @@ import (
 	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 	webidentity_fp_config_go_proto "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
+	httpscan_portscan_config_go_proto "github.com/google/goonami-scanner/plugins/portscan/httpscan/httpscan_portscan_config_go_proto"
 	callbackserver_config_go_proto "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -621,8 +622,9 @@ func (b0 ClientsConfig_builder) Build() *ClientsConfig {
 
 // PluginsConfig contains configuration for plugin.
 type PluginsConfig struct {
-	state                  protoimpl.MessageState                              `protogen:"opaque.v1"`
-	xxx_hidden_Webidentity *webidentity_fp_config_go_proto.WebIdentityFpConfig `protobuf:"bytes,1,opt,name=webidentity,proto3"`
+	state                  protoimpl.MessageState                                  `protogen:"opaque.v1"`
+	xxx_hidden_Webidentity *webidentity_fp_config_go_proto.WebIdentityFpConfig     `protobuf:"bytes,1,opt,name=webidentity,proto3"`
+	xxx_hidden_Httpscan    *httpscan_portscan_config_go_proto.HttpScanPluginConfig `protobuf:"bytes,2,opt,name=httpscan,proto3"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -659,8 +661,19 @@ func (x *PluginsConfig) GetWebidentity() *webidentity_fp_config_go_proto.WebIden
 	return nil
 }
 
+func (x *PluginsConfig) GetHttpscan() *httpscan_portscan_config_go_proto.HttpScanPluginConfig {
+	if x != nil {
+		return x.xxx_hidden_Httpscan
+	}
+	return nil
+}
+
 func (x *PluginsConfig) SetWebidentity(v *webidentity_fp_config_go_proto.WebIdentityFpConfig) {
 	x.xxx_hidden_Webidentity = v
+}
+
+func (x *PluginsConfig) SetHttpscan(v *httpscan_portscan_config_go_proto.HttpScanPluginConfig) {
+	x.xxx_hidden_Httpscan = v
 }
 
 func (x *PluginsConfig) HasWebidentity() bool {
@@ -670,14 +683,26 @@ func (x *PluginsConfig) HasWebidentity() bool {
 	return x.xxx_hidden_Webidentity != nil
 }
 
+func (x *PluginsConfig) HasHttpscan() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Httpscan != nil
+}
+
 func (x *PluginsConfig) ClearWebidentity() {
 	x.xxx_hidden_Webidentity = nil
+}
+
+func (x *PluginsConfig) ClearHttpscan() {
+	x.xxx_hidden_Httpscan = nil
 }
 
 type PluginsConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Webidentity *webidentity_fp_config_go_proto.WebIdentityFpConfig
+	Httpscan    *httpscan_portscan_config_go_proto.HttpScanPluginConfig
 }
 
 func (b0 PluginsConfig_builder) Build() *PluginsConfig {
@@ -685,6 +710,7 @@ func (b0 PluginsConfig_builder) Build() *PluginsConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	x.xxx_hidden_Webidentity = b.Webidentity
+	x.xxx_hidden_Httpscan = b.Httpscan
 	return m0
 }
 
@@ -944,7 +970,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xfb\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -984,9 +1010,10 @@ const file_config_proto_rawDesc = "" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
 	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12U\n" +
-	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\"l\n" +
+	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\"\xbe\x01\n" +
 	"\rPluginsConfig\x12[\n" +
-	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentityBm\n" +
+	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentity\x12P\n" +
+	"\bhttpscan\x18\x02 \x01(\v24.goonami.proto.configs.portscan.HttpScanPluginConfigR\bhttpscanBm\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassP\x01Z=github.com/google/goonami-scanner/core/config/config_go_protob\x06proto3"
 
 var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
@@ -1003,6 +1030,7 @@ var file_config_proto_goTypes = []any{
 	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 9: goonami.proto.configs.clients.LlmClientConfig
 	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),        // 10: goonami.callbackserver.CallbackserverConfig
 	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 11: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),     // 12: goonami.proto.configs.portscan.HttpScanPluginConfig
 }
 var file_config_proto_depIdxs = []int32{
 	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -1017,11 +1045,12 @@ var file_config_proto_depIdxs = []int32{
 	9,  // 9: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
 	10, // 10: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
 	11, // 11: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	12, // 12: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
