@@ -220,6 +220,60 @@ func TestClient_GetHTTPCallbackURI(t *testing.T) {
 	}
 }
 
+func TestClient_GetDNSCallbackDomain(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  *cbpb.CallbackserverConfig
+		secret  string
+		want    string
+		wantErr error
+	}{
+		{
+			name:    "when_disabled_returns_error",
+			config:  cbpb.CallbackserverConfig_builder{}.Build(),
+			secret:  "test",
+			want:    "",
+			wantErr: ErrInvalidConfig,
+		},
+		{
+			name: "when_address_is_domain_returns_domain_format",
+			config: cbpb.CallbackserverConfig_builder{
+				HttpPollConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://1.2.3.4:8081",
+				}.Build(),
+				HttpRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "http://1.2.3.4:8080",
+				}.Build(),
+				DnsRecordConfig: cbpb.EndpointConfig_builder{
+					PublicUri: "cb.localhost.lan",
+				}.Build(),
+			}.Build(),
+			secret:  "test",
+			want:    "3797bf0afbbfca4a7bbba7602a2b552746876517a7f9b7ce2db0ae7b.cb.localhost.lan",
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Client{config: tc.config}
+			got, err := c.GetDNSCallbackDomain(tc.secret)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("GetDNSCallbackDomain() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+
+			if tc.wantErr != nil {
+				return
+			}
+
+			if got != tc.want {
+				t.Errorf("GetDNSCallbackDomain() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestClient_Interaction(t *testing.T) {
 	tests := []struct {
 		name           string

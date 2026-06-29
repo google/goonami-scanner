@@ -117,6 +117,7 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 			wantPatterns: map[string]*regexp.Regexp{
 				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{64}$`),                         // 128 bytes hex encoded
 				VarCallbackURI:    regexp.MustCompile(`^http://10\.0\.0\.1:8080/[a-f0-9]{56}$`), // SHA3-224 is 56 hex chars
+				VarCallbackDNS:    regexp.MustCompile(`^[a-f0-9]{56}\.cb\.localhost\.lan$`),
 			},
 		},
 		{
@@ -139,6 +140,7 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 			wantPatterns: map[string]*regexp.Regexp{
 				VarCallbackSecret: regexp.MustCompile(`^[a-f0-9]{64}$`),
 				VarCallbackURI:    regexp.MustCompile(`^http://cb\.localhost\.lan:8080/[a-f0-9]{56}$`),
+				VarCallbackDNS:    regexp.MustCompile(`^[a-f0-9]{56}\.cb\.localhost\.lan$`),
 			},
 		},
 		{
@@ -149,6 +151,7 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 				VarCallbackPort:    "",
 				VarCallbackSecret:  "",
 				VarCallbackURI:     "",
+				VarCallbackDNS:     "",
 			},
 		},
 	}

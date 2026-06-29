@@ -119,6 +119,22 @@ func (c *Client) GetHTTPCallbackURI(secret string) (string, error) {
 	return netutils.CallbackURL(publicURI, id), nil
 }
 
+// GetDNSCallbackDomain returns the callback domain for a given secret string. This is the domain used to
+// record the DNS interaction.
+func (c *Client) GetDNSCallbackDomain(secret string) (string, error) {
+	if !c.IsCallbackServerEnabled() {
+		return "", ErrInvalidConfig
+	}
+
+	id, err := cbid.Generate(secret)
+	if err != nil {
+		return "", err
+	}
+
+	domain := c.config.GetDnsRecordConfig().GetPublicUri()
+	return netutils.CallbackDomain(domain, id)
+}
+
 // HasInteraction checks whether the callback server has recorded any interaction for the given
 // secret. Expects caller to have called IsCallbackServerEnabled first.
 func (c *Client) HasInteraction(ctx context.Context, secret string) (bool, error) {

@@ -113,6 +113,11 @@ func (e *Environment) callbackServerInitialization(ctx context.Context) error {
 	e.Set(VarCallbackSecret, secret)
 	e.Set(VarCallbackPort, u.Port())
 	e.Set(VarCallbackAddress, u.Hostname())
+
+	if dns, err := client.GetDNSCallbackDomain(secret); err == nil {
+		e.Set(VarCallbackDNS, dns)
+	}
+
 	return nil
 }
 

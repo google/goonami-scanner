@@ -38,6 +38,10 @@ const (
 	// VarCallbackURI is the full URI of the callback server. It is used to record an interaction.
 	VarCallbackURI = "T_CBS_URI"
 
+	// VarCallbackDNS is the domain name for the callback server. It is used to record an interaction
+	// via DNS.
+	VarCallbackDNS = "T_CBS_DNS"
+
 	// VarCallbackSecret is the secret of the callback server. It is generated per service and per
 	// workflow run.
 	VarCallbackSecret = "T_CBS_SECRET"
