@@ -29,8 +29,8 @@ github.com/google/safehtml v0.1.0 h1:EwLKo8qawTKfsi0orxcQAZzu07cICaBeFMegAU9eaT8
 github.com/google/safehtml v0.1.0/go.mod h1:L4KWwDsUJdECRAEpZoBn3O64bQaywRscowZjJAzjHnU=
 github.com/google/tsunami-security-scanner v0.2.0 h1:rP2f+iOkfZ/VIDG9U0YDDfb+UrbV5pktVff/f3RkCd8=
 github.com/google/tsunami-security-scanner v0.2.0/go.mod h1:E4XYfpuWzppruQwO/JCGrcPDjTN4R0rR+L11SVRYRRo=
-github.com/google/tsunami-security-scanner-plugins v0.0.0-20260609143656-30830e27de8f h1:1hQ/WcZNYZJdcWbrs2lRqsKaoiWKcpCE8ltLysdRVP4=
-github.com/google/tsunami-security-scanner-plugins v0.0.0-20260609143656-30830e27de8f/go.mod h1:CP1d1ESXj8rZNPf8ro9GdFD9cy6JaWLwOhk2B9T0Gd4=
+github.com/google/tsunami-security-scanner-plugins v0.0.0-20260629192206-c2135b145ab8 h1:XsiGNv8mDZUVTiEZmEJxpuWq9Pk8Plwbvnfkjwg6nQU=
+github.com/google/tsunami-security-scanner-plugins v0.0.0-20260629192206-c2135b145ab8/go.mod h1:CP1d1ESXj8rZNPf8ro9GdFD9cy6JaWLwOhk2B9T0Gd4=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
