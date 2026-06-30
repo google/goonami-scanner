@@ -247,13 +247,24 @@ func matchesConditions(t *testing.T, r *http.Request, cond *ttpb.MockHttpServer_
 		}
 	}
 
-	if len(cond.GetBodyContent()) == 0 {
-		return true
+	for _, param := range cond.GetGetParameter() {
+		if r.URL.Query().Get(param.GetName()) != env.Substitute(ctx, param.GetValue()) {
+			return false
+		}
 	}
 
-	body, _ := io.ReadAll(r.Body)
-	r.Body = io.NopCloser(strings.NewReader(string(body)))
-	bodyStr := string(body)
+	if cond.GetRequestType() != ttpb.MockHttpServer_UNKNOWN {
+		if r.Method != cond.GetRequestType().String() {
+			return false
+		}
+	}
+
+	var bodyStr string
+	if len(cond.GetBodyContent()) > 0 {
+		body, _ := io.ReadAll(r.Body)
+		r.Body = io.NopCloser(strings.NewReader(string(body)))
+		bodyStr = string(body)
+	}
 
 	for _, content := range cond.GetBodyContent() {
 		if !strings.Contains(bodyStr, env.Substitute(ctx, content)) {
