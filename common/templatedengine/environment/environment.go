@@ -81,10 +81,12 @@ func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkSe
 		return err
 	}
 
+	var vars []string
 	for k, v := range e.vars {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "environment: %s = %s", k, v)
+		vars = append(vars, fmt.Sprintf("%s = %q", k, v))
 	}
 
+	log.DebugContextf(ctx, log.DebugLevelRequest, "initial environment: %s", strings.Join(vars, ", "))
 	return nil
 }
 
