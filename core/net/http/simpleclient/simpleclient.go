@@ -78,6 +78,12 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 		client.Jar = jar
 	}
 
+	if options.DisableFollowRedirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+
 	return &SimpleClient{
 		client:  client,
 		limiter: limiter,

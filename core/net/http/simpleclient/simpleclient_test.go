@@ -375,3 +375,66 @@ func TestDo_TLSVerification(t *testing.T) {
 		})
 	}
 }
+
+func TestDo_DisableFollowRedirects(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/redirect" {
+			http.Redirect(w, r, "/destination", http.StatusFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name                   string
+		disableFollowRedirects bool
+		wantStatus             int
+	}{
+		{
+			name:                   "when_disable_follow_redirects_is_true_returns_redirect_status",
+			disableFollowRedirects: true,
+			wantStatus:             http.StatusFound,
+		},
+		{
+			name:                   "when_disable_follow_redirects_is_false_returns_ok_status",
+			disableFollowRedirects: false,
+			wantStatus:             http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build())
+
+			opts := &goohttp.ClientOptions{
+				DisableFollowRedirects: tt.disableFollowRedirects,
+			}
+			c, err := New(cfg, opts)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			req, err := http.NewRequest("GET", ts.URL+"/redirect", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() failed: %v", err)
+			}
+
+			resp, err := c.Do(req)
+			if err != nil {
+				t.Fatalf("Do() failed: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Errorf("Do() status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+		})
+	}
+}
