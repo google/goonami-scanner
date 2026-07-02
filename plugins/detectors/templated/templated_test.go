@@ -17,6 +17,7 @@
 package templated
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine"
+	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
@@ -167,9 +169,18 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 		t.Fatalf("Failed to create detector: %v", err)
 	}
 
-	reports, err := detector.Detect(ctx, service)
+	// Note: we use DetectWithVariables to explicitly surface errors hidden by the engine.
+	reports, err := detector.DetectWithVariables(ctx, service, nil)
 	if err != nil {
-		t.Fatalf("%s Detect() failed: %v", plugin.GetInfo().GetName(), err)
+		if errors.Is(err, actions.ErrActionFailed) {
+			if tc.GetExpectVulnerability() {
+				t.Fatalf("Detect() action failed, expected a vulnerability: %v", err)
+			}
+
+			return
+		}
+
+		t.Fatalf("Detect() returned unexpected error: %v", err)
 	}
 
 	hasVulnerability := len(reports.GetDetectionReports()) > 0

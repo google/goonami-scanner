@@ -43,6 +43,11 @@ import (
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var (
+	// ErrNoCompatibleWorkflow is returned when no compatible workflow can be selected.
+	ErrNoCompatibleWorkflow = errors.New("current scanner configuration has no compatible workflow")
+)
+
 // TemplatedDetector is a vulnerability detector that runs templated plugins.
 type TemplatedDetector struct {
 	cfg          *config.Config
@@ -128,6 +133,12 @@ func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkSer
 			return nil, nil
 		}
 
+		// Failure to find a valid workflow is not reported up.
+		if errors.Is(err, ErrNoCompatibleWorkflow) {
+			log.WarnContextf(ctx, "no compatible workflow: %v", err)
+			return nil, nil
+		}
+
 		// Any other error is probably coming from an issue with the plugin or the core engine.
 		return nil, err
 	}
@@ -148,8 +159,7 @@ func (d *TemplatedDetector) DetectWithVariables(ctx context.Context, service *ns
 		return d.runWorkflowForService(ctx, service, workflow, extraVars)
 	}
 
-	log.WarnContextf(ctx, "current scanner configuration has no compatible workflow")
-	return &dpb.DetectionReportList{}, nil
+	return nil, ErrNoCompatibleWorkflow
 }
 
 func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflow *tpb.PluginWorkflow) bool {

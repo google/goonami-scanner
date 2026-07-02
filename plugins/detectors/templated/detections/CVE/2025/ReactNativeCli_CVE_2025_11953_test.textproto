@@ -37,7 +37,6 @@ tests: {
 
   mock_callback_server: {
     enabled: true
-    has_interaction: false
   }
 
   mock_http_server: {
@@ -62,8 +61,7 @@ tests: {
   expect_vulnerability: false
 
   mock_callback_server: {
-    enabled: false
-    has_interaction: false
+    enabled: true
   }
 
   mock_http_server: {

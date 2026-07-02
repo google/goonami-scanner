@@ -46,6 +46,10 @@ tests: {
   name: "whenNotKafkaUi_returnsNoVuln"
   expect_vulnerability: false
 
+  mock_callback_server: {
+    enabled: true
+  }
+
   mock_http_server: {
     mock_responses: [
       {

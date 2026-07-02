@@ -9,6 +9,9 @@ config: {
 tests: {
   name: "whenNotNodeRedNotFound_returnsNoVuln"
   expect_vulnerability: false
+  mock_callback_server: {
+    enabled: true
+  }
 
   mock_http_server: {
     mock_responses: [
@@ -23,6 +26,9 @@ tests: {
 tests: {
   name: "whenNotNodeRedInvalidResponse_returnsNoVuln"
   expect_vulnerability: false
+  mock_callback_server: {
+    enabled: true
+  }
 
   mock_http_server: {
     mock_responses: [
