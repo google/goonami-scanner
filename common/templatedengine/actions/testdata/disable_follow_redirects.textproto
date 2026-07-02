@@ -1,0 +1,10 @@
+http_request {
+  method: GET
+  uri: "/REDIRECT"
+  client_options {
+    disable_follow_redirects: true
+  }
+  response {
+    http_status: 302
+  }
+}

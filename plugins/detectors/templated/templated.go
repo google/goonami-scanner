@@ -25,7 +25,6 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
 )
 
 //go:embed detections
@@ -41,7 +40,7 @@ func init() {
 		proto := p
 		name := proto.GetInfo().GetName()
 		module.RegisterDetector(name, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
-			return templatedengine.New(ctx, cfg, proto, goohttp.SharedClient(cfg))
+			return templatedengine.New(ctx, cfg, proto)
 		})
 	}
 }

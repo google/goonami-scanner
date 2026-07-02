@@ -33,7 +33,6 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -53,7 +52,6 @@ type TemplatedDetector struct {
 	cfg          *config.Config
 	proto        *tpb.TemplatedPlugin
 	knownActions map[string]*tpb.PluginAction
-	httpClient   goohttp.Client
 
 	// envForTesting forces the detector to use the specified shared environment. This is only used
 	// for testing.
@@ -61,7 +59,7 @@ type TemplatedDetector struct {
 }
 
 // New creates a new TemplatedDetector for a specific plugin.
-func New(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, httpClient goohttp.Client) (*TemplatedDetector, error) {
+func New(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin) (*TemplatedDetector, error) {
 	actionsCache := make(map[string]*tpb.PluginAction)
 	for _, action := range proto.GetActions() {
 		actionsCache[action.GetName()] = action
@@ -70,7 +68,6 @@ func New(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, ht
 	detector := &TemplatedDetector{
 		proto:        proto,
 		knownActions: actionsCache,
-		httpClient:   httpClient,
 		cfg:          cfg,
 	}
 
@@ -108,8 +105,8 @@ func (d *TemplatedDetector) Validate() error {
 
 // NewForTesting creates a new TemplatedDetector for testing, forcing it to use the specified
 // environment.
-func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, httpClient goohttp.Client, env *environment.Environment) (*TemplatedDetector, error) {
-	d, err := New(ctx, cfg, proto, httpClient)
+func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.TemplatedPlugin, env *environment.Environment) (*TemplatedDetector, error) {
+	d, err := New(ctx, cfg, proto)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +170,7 @@ func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflo
 
 func (d *TemplatedDetector) getRunnerForAction(action *tpb.PluginAction) actions.ActionRunner {
 	if action.GetHttpRequest() != nil {
-		return actions.NewHTTPActionRunner(d.httpClient)
+		return actions.NewHTTPActionRunner(d.cfg)
 	}
 	if action.GetUtility() != nil {
 		return &actions.UtilityActionRunner{}
@@ -278,7 +275,7 @@ func LoadPlugins(cfg *config.Config, plugins []*tpb.TemplatedPlugin) []module.In
 
 		seenPlugins = append(seenPlugins, pluginProto.GetInfo().GetName())
 		detectors = append(detectors, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
-			return New(ctx, cfg, pluginProto, goohttp.SharedClient(cfg))
+			return New(ctx, cfg, pluginProto)
 		})
 	}
 	return detectors

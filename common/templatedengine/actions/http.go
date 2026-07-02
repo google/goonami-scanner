@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 
@@ -34,12 +35,14 @@ import (
 
 // HTTPActionRunner runs HTTP actions.
 type HTTPActionRunner struct {
-	client goohttp.Client
+	cfg *config.Config
 }
 
 // NewHTTPActionRunner creates a new HTTPActionRunner.
-func NewHTTPActionRunner(client goohttp.Client) *HTTPActionRunner {
-	return &HTTPActionRunner{client: client}
+func NewHTTPActionRunner(cfg *config.Config) *HTTPActionRunner {
+	return &HTTPActionRunner{
+		cfg: cfg,
+	}
 }
 
 // Run executes the HTTP action and return whether it was successful.
@@ -95,6 +98,9 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 		return fmt.Errorf("%w: %q: missing HTTP method", ErrInvalidAction, name)
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, r.cfg.TimeoutPerRequest())
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, method, targetURL, nil)
 	if err != nil {
 		return fmt.Errorf("%w: %q: failed to create request: %v", ErrActionFailed, name, err)
@@ -110,7 +116,12 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 		req.ContentLength = int64(len(substitutedData))
 	}
 
-	resp, err := r.client.Do(req)
+	client, err := r.getHTTPClient(r.cfg, httpAction)
+	if err != nil {
+		return fmt.Errorf("%w: %q: failed to create HTTP client: %v", ErrActionFailed, name, err)
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		if !httpAction.GetClientOptions().GetIgnoreHttpClientErrors() {
 			return fmt.Errorf("%w: %q: HTTP request failed: %v", ErrActionFailed, name, err)
@@ -249,4 +260,14 @@ func (r *HTTPActionRunner) performExtraction(ctx context.Context, resp *http.Res
 	}
 
 	return nil
+}
+
+func (r *HTTPActionRunner) getHTTPClient(cfg *config.Config, httpAction *tpb.HttpAction) (goohttp.Client, error) {
+	if !httpAction.GetClientOptions().GetDisableFollowRedirects() {
+		return goohttp.SharedClient(cfg), nil
+	}
+
+	opts := goohttp.DefaultClientOptions()
+	opts.DisableFollowRedirects = true
+	return goohttp.NewClient(cfg, opts)
 }

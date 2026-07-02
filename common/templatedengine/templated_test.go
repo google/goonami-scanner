@@ -30,7 +30,6 @@ import (
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/core/config"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -68,7 +67,7 @@ func TestTNew(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Default()
 
-			_, err := New(t.Context(), cfg, tc.proto, goohttp.SharedClient(cfg))
+			_, err := New(t.Context(), cfg, tc.proto)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("New() returned unexpected error: %v, want: %v", err, tc.wantErr)
 			}
@@ -184,7 +183,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			}
 
 			proto := loadProto(t, tc.protoFile)
-			detector, err := New(t.Context(), cfg, proto, goohttp.SharedClient(cfg))
+			detector, err := New(t.Context(), cfg, proto)
 			if err != nil {
 				t.Fatalf("Failed to create detector: %v", err)
 			}
@@ -321,7 +320,7 @@ func TestTemplatedDetector_Detect_NonWebService(t *testing.T) {
 	proto := loadProto(t, "testdata/non_web_service.textproto")
 
 	cfg := config.Default()
-	detector, _ := New(t.Context(), cfg, proto, goohttp.SharedClient(cfg))
+	detector, _ := New(t.Context(), cfg, proto)
 	reports, err := detector.Detect(t.Context(), service)
 	if err != nil {
 		t.Fatalf("Detect failed: %v", err)

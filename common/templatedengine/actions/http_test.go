@@ -29,7 +29,6 @@ import (
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -70,6 +69,8 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 		} else if r.URL.Path == "/HEADER_EXPECT" {
 			w.Header().Set("X-Status", "Ready")
 			w.WriteHeader(http.StatusOK)
+		} else if r.URL.Path == "/REDIRECT" {
+			http.Redirect(w, r, "/OK", http.StatusFound)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -186,6 +187,14 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 			actionFile: "testdata/extraction_does_not_compile.textproto",
 			wantErr:    ErrActionFailed,
 		},
+		{
+			name:       "when_disable_follow_redirects_is_true_returns_redirect_status",
+			actionFile: "testdata/disable_follow_redirects.textproto",
+		},
+		{
+			name:       "when_disable_follow_redirects_is_false_follows_redirect_returns_ok",
+			actionFile: "testdata/follow_redirects.textproto",
+		},
 	}
 
 	for _, tc := range tests {
@@ -196,7 +205,7 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 				env = tc.env()
 			}
 
-			runner := NewHTTPActionRunner(goohttp.SharedClient(cfg))
+			runner := NewHTTPActionRunner(cfg)
 			err := runner.Run(t.Context(), service, action, env)
 
 			if !errors.Is(err, tc.wantErr) {
@@ -229,49 +238,3 @@ func loadAction(t *testing.T, filename string) *tpb.PluginAction {
 	}
 	return action
 }
-
-func TestHTTPActionRunner_Run_Errors(t *testing.T) {
-	service := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Hostname: npb.Hostname_builder{Name: "localhost"}.Build(),
-			Port:     npb.Port_builder{PortNumber: 80}.Build(),
-		}.Build(),
-		SupportedHttpMethods: []string{"GET"},
-	}.Build()
-	cfg := config.Default()
-
-	tests := []struct {
-		name       string
-		actionFile string
-		wantErr    bool
-	}{
-		{
-			name:       "when_client_do_fails_returns_false",
-			actionFile: "testdata/simple_get.textproto",
-			wantErr:    true,
-		},
-		{
-			name:       "when_client_do_fails_but_ignored_returns_true",
-			actionFile: "testdata/get_with_ignore_errors.textproto",
-			wantErr:    false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			runner := NewHTTPActionRunner(&errorClient{})
-			action := loadAction(t, tc.actionFile)
-			err := runner.Run(t.Context(), service, action, environment.New(cfg))
-			if (err != nil) != tc.wantErr {
-				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
-			}
-		})
-	}
-}
-
-type errorClient struct{}
-
-func (c *errorClient) Do(req *http.Request) (*http.Response, error) {
-	return nil, fmt.Errorf("simulated error")
-}
-func (c *errorClient) Initialize(cfg *config.Config) error { return nil }

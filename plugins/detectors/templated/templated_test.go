@@ -33,7 +33,6 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
-	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -160,11 +159,10 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	httpmock := httpMockServer(t, tc, env)
 	defer httpmock.Close()
 
-	httpClient := goohttp.SharedClient(cfg)
 	service := serviceForMockHTTPServer(t, httpmock)
 	env.InitializeFor(ctx, service)
 
-	detector, err := templatedengine.NewForTesting(ctx, cfg, plugin, httpClient, env)
+	detector, err := templatedengine.NewForTesting(ctx, cfg, plugin, env)
 	if err != nil {
 		t.Fatalf("Failed to create detector: %v", err)
 	}
