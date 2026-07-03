@@ -125,4 +125,10 @@ plugins: {
     maximum_file_size_bytes: 512000  # 500 KB
     maximum_storage_space_bytes: 51200000  # 100 pages (~48 MB total)
   }
+
+  templatedweakcredentials: {
+    max_attempts_per_service: 100
+    username_file: "plugins/detectors/templatedweakcredentials/data/usernames.txt"
+    passwords_file: "plugins/detectors/templatedweakcredentials/data/passwords.txt"
+  }
 }

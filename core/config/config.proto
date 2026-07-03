@@ -38,6 +38,7 @@ import "plugins/portscan/httpscan/httpscan_portscan_config.proto";
 // fingerprinters config
 // these configs are in the `goonami.proto.configs.fingerprinters` namespace.
 import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
+import "plugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto";
 
 message Config {
   GlobalConfig globalcfg = 1;
@@ -122,4 +123,5 @@ message ClientsConfig {
 message PluginsConfig {
   goonami.proto.configs.fingerprinters.WebIdentityFpConfig webidentity = 1;
   goonami.proto.configs.portscan.HttpScanPluginConfig httpscan = 2;
+  goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig templatedweakcredentials = 3;
 }
