@@ -45,6 +45,7 @@ import (
 
 	// detectors
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
+	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
