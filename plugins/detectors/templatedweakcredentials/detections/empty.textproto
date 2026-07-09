@@ -1,0 +1,12 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+info: {
+  name: "WeakCredentialsEmptyPlugin"
+}
+
+finding: {}
+
+config: {
+  disabled: true
+}
