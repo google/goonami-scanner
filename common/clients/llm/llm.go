@@ -131,12 +131,7 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 
 		resp, err := c.runOnce(ctx, content)
 		if err != nil {
-			errLog := err
-			if len(errLog.Error()) > 200 {
-				errLog = errors.New("(truncated) " + errLog.Error()[:200])
-			}
-
-			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, errLog)
+			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, err)
 			continue
 		}
 
