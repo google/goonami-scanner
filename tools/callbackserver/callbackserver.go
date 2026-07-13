@@ -165,7 +165,7 @@ func (s *Server) StartRecordingDNS(ctx context.Context) error {
 	}
 
 	if s.cfg.GetDnsRecordConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
-		log.WarnContextf(ctx, "DNS recording server is set up to non local mode, not starting")
+		log.WarnContextf(ctx, "DNS recording server set to remote (%s), not starting", s.cfg.GetDnsRecordConfig().GetPublicUri())
 		return nil
 	}
 
@@ -204,7 +204,7 @@ func (s *Server) StartPolling(ctx context.Context) error {
 	}
 
 	if s.cfg.GetHttpPollConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
-		log.WarnContextf(ctx, "HTTP polling server is set up to non local mode, not starting")
+		log.WarnContextf(ctx, "HTTP polling server set to remote (%s), not starting", s.cfg.GetHttpPollConfig().GetPublicUri())
 		return nil
 	}
 
@@ -232,7 +232,7 @@ func (s *Server) StartRecordingHTTP(ctx context.Context) error {
 	}
 
 	if s.cfg.GetHttpRecordConfig().GetMode() != cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER {
-		log.WarnContextf(ctx, "HTTP recording server is set up to non local mode, not starting")
+		log.WarnContextf(ctx, "HTTP recording server set to remote (%s), not starting", s.cfg.GetHttpRecordConfig().GetPublicUri())
 		return nil
 	}
 
