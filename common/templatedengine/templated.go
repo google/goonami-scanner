@@ -42,6 +42,10 @@ import (
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
+const (
+	namePrefix = "dt/tpl/"
+)
+
 var (
 	// ErrNoCompatibleWorkflow is returned when no compatible workflow can be selected.
 	ErrNoCompatibleWorkflow = errors.New("current scanner configuration has no compatible workflow")
@@ -117,7 +121,7 @@ func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.Templated
 
 // Name returns the name of the detector.
 func (d *TemplatedDetector) Name() string {
-	return fmt.Sprintf("dt/tpl/%s", d.proto.GetInfo().GetName())
+	return namePrefix + d.proto.GetInfo().GetName()
 }
 
 // Detect performs the vulnerability detection.

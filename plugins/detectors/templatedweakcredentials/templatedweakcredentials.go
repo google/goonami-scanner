@@ -38,6 +38,10 @@ import (
 //go:embed detections
 var pluginFilesFS embed.FS
 
+const (
+	namePrefix = "dt/wktpl/"
+)
+
 func init() {
 	sharedStore := NewCredentialStore()
 	plugins, err := templatedengine.LoadPluginsFromFS(context.Background(), pluginFilesFS)
@@ -46,7 +50,7 @@ func init() {
 	}
 
 	for _, proto := range plugins {
-		name := proto.GetInfo().GetName()
+		name := namePrefix + proto.GetInfo().GetName()
 		module.RegisterDetector(name, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 			return NewFromProto(ctx, cfg, proto, sharedStore)
 		})
@@ -87,7 +91,7 @@ type Detector struct {
 
 // Name returns the name of the detector.
 func (d *Detector) Name() string {
-	return fmt.Sprintf("dt/wktpl/%s", d.proto.GetInfo().GetName())
+	return namePrefix + d.proto.GetInfo().GetName()
 }
 
 func (d *Detector) loadCredentials(ctx context.Context) {

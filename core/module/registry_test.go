@@ -377,6 +377,73 @@ func TestGetDetectors(t *testing.T) {
 			wantNames: []string{"dt/cve-1", "dt/cve-2"},
 		},
 		{
+			name: "when_regexp_pattern_matches_registers_prefixed_detectors",
+			setupReg: func() {
+				RegisterDetector("dt/adkweakcreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/adkweakcreds")}, nil
+				})
+				RegisterDetector("dt/tpl/DocsGPT", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/tpl/DocsGPT")}, nil
+				})
+				RegisterDetector("dt/wktpl/WeakCreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/wktpl/WeakCreds")}, nil
+				})
+			},
+			config: cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+						Require: []string{"dt/adk.*"},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantNames: []string{"dt/adkweakcreds"},
+		},
+		{
+			name: "when_regexp_pattern_matches_all_registers_all_detectors",
+			setupReg: func() {
+				RegisterDetector("dt/adkweakcreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/adkweakcreds")}, nil
+				})
+				RegisterDetector("dt/tpl/DocsGPT", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/tpl/DocsGPT")}, nil
+				})
+				RegisterDetector("dt/wktpl/WeakCreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/wktpl/WeakCreds")}, nil
+				})
+			},
+			config: cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+						Require: []string{"dt/.*"},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantNames: []string{"dt/adkweakcreds", "dt/tpl/DocsGPT", "dt/wktpl/WeakCreds"},
+		},
+		{
+			name: "when_regexp_ignore_filters_out_registers_only_matching_detectors",
+			setupReg: func() {
+				RegisterDetector("dt/adkweakcreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/adkweakcreds")}, nil
+				})
+				RegisterDetector("dt/tpl/DocsGPT", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/tpl/DocsGPT")}, nil
+				})
+				RegisterDetector("dt/wktpl/WeakCreds", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/wktpl/WeakCreds")}, nil
+				})
+			},
+			config: cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+						Require: []string{".*"},
+						Ignore:  []string{"dt/tpl/.*"},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantNames: []string{"dt/adkweakcreds", "dt/wktpl/WeakCreds"},
+		},
+		{
 			name: "when_invalid_require_pattern_returns_error",
 			setupReg: func() {
 				RegisterDetector("dt1", func(context.Context, *config.Config) (VulnDetector, error) {

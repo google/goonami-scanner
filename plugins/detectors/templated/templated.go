@@ -27,6 +27,10 @@ import (
 	"github.com/google/goonami-scanner/core/module"
 )
 
+const (
+	namePrefix = "dt/tpl/"
+)
+
 //go:embed detections
 var pluginFilesFS embed.FS
 
@@ -38,7 +42,7 @@ func init() {
 
 	for _, p := range plugins {
 		proto := p
-		name := proto.GetInfo().GetName()
+		name := namePrefix + proto.GetInfo().GetName()
 		module.RegisterDetector(name, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 			return templatedengine.New(ctx, cfg, proto)
 		})
