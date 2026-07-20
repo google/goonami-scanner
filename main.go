@@ -110,7 +110,7 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
-	log.InfoContextf(ctx, "initializing the scanner's config")
+	log.InfoContextf(ctx, "initializing the scanner's config from %q", *ConfigFlag)
 	cfg, err := config.FromFile(*ConfigFlag)
 	if err != nil {
 		return fmt.Errorf("failed to load the config: %w", err)
