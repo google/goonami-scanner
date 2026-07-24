@@ -165,6 +165,7 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 	}
 
 	results := srpb.ScanResults_builder{
+		ScanStatus: srpb.ScanStatus_SUCCEEDED,
 		ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 			TargetInfo:      portscan.GetTargetInfo(),
 			NetworkServices: fpreport.GetNetworkServices(),

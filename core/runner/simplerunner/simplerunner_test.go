@@ -582,6 +582,7 @@ func TestRun(t *testing.T) {
 			},
 			wantErr: nil,
 			want: srpb.ScanResults_builder{
+				ScanStatus:           srpb.ScanStatus_SUCCEEDED,
 				FullDetectionReports: &srpb.FullDetectionReports{},
 				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 					TargetInfo: rpb.TargetInfo_builder{
