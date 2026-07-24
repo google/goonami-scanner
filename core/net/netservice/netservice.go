@@ -38,10 +38,21 @@ func IsWebService(service *nspb.NetworkService) bool {
 }
 
 // BuildWebRoot returns the HTTP(S) URL used to query the web root of the given endpoint.
+// Note that it prioritizes the hostname to allow virtual-host matching of HTTP servers to succeed.
 func BuildWebRoot(service *nspb.NetworkService) (string, error) {
-	authority, err := netendpoint.ToURIAuthority(service.GetNetworkEndpoint())
+	webRoots, err := BuildAllWebRoots(service)
 	if err != nil {
 		return "", err
+	}
+
+	return webRoots[0], nil
+}
+
+// BuildAllWebRoots returns all potential HTTP(S) URLs used to query the web roots of the given endpoint.
+func BuildAllWebRoots(service *nspb.NetworkService) ([]string, error) {
+	authorities, err := netendpoint.ToURIAuthorities(service.GetNetworkEndpoint())
+	if err != nil {
+		return nil, err
 	}
 
 	protocol := "http"
@@ -49,7 +60,12 @@ func BuildWebRoot(service *nspb.NetworkService) (string, error) {
 		protocol = "https"
 	}
 
-	return fmt.Sprintf("%s://%s", protocol, authority), nil
+	var webRoots []string
+	for _, authority := range authorities {
+		webRoots = append(webRoots, fmt.Sprintf("%s://%s", protocol, authority))
+	}
+
+	return webRoots, nil
 }
 
 // AddCrawlResults adds the given set of crawl results to the service context.

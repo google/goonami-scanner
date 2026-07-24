@@ -141,11 +141,15 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 }
 
 func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkService) error {
-	webroot, err := netservice.BuildWebRoot(service)
+	webroots, err := netservice.BuildAllWebRoots(service)
 	if err != nil {
 		return err
 	}
-	webroot = webroot + "/"
+
+	var seeds []string
+	for _, root := range webroots {
+		seeds = append(seeds, root+"/")
+	}
 
 	var bytesWritten int64
 	callback := func(ctx context.Context, info *httpcrawler.PageInfo, resp *http.Response, content []byte) error {
@@ -158,7 +162,7 @@ func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkS
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelService, "starting crawling")
-	stats, err := m.crawler.Crawl(ctx, callback, []string{webroot})
+	stats, err := m.crawler.Crawl(ctx, callback, seeds)
 	if err != nil {
 		return err
 	}

@@ -73,26 +73,45 @@ func FromString(endpoint string) *npb.NetworkEndpoint {
 //   - IP_HOSTNAME: "127.0.0.1:example.com" -> "example.com"
 //   - HOSTNAME: "example.com" -> "example.com"
 func ToURIAuthority(endpoint *npb.NetworkEndpoint) (string, error) {
+	authorities, err := ToURIAuthorities(endpoint)
+	if err != nil {
+		return "", err
+	}
+
+	return authorities[0], nil
+}
+
+// ToURIAuthorities converts a NetworkEndpoint to all available URI authorities.
+// It returns both the hostname-based and IP-based authorities if both are present in the endpoint.
+// It puts the hostname-based authorities first in the list.
+// If no authorities are available, it returns an error.
+func ToURIAuthorities(endpoint *npb.NetworkEndpoint) ([]string, error) {
+	var authorities []string
+
 	if endpoint.HasHostname() {
 		if endpoint.HasPort() {
-			return fmt.Sprintf("%s:%d", endpoint.GetHostname().GetName(), endpoint.GetPort().GetPortNumber()), nil
+			authorities = append(authorities, fmt.Sprintf("%s:%d", endpoint.GetHostname().GetName(), endpoint.GetPort().GetPortNumber()))
+		} else {
+			authorities = append(authorities, fmt.Sprintf("%s", endpoint.GetHostname().GetName()))
+		}
+	}
+
+	if endpoint.HasIpAddress() {
+		address := endpoint.GetIpAddress().GetAddress()
+		if endpoint.GetIpAddress().GetAddressFamily() == npb.AddressFamily_IPV6 {
+			address = fmt.Sprintf("[%s]", address)
 		}
 
-		return fmt.Sprintf("%s", endpoint.GetHostname().GetName()), nil
+		if endpoint.HasPort() {
+			authorities = append(authorities, fmt.Sprintf("%s:%d", address, endpoint.GetPort().GetPortNumber()))
+		} else {
+			authorities = append(authorities, fmt.Sprintf("%s", address))
+		}
 	}
 
-	if !endpoint.HasIpAddress() {
-		return "", ErrEndpointMissingAddress
+	if len(authorities) == 0 {
+		return nil, ErrEndpointMissingAddress
 	}
 
-	address := endpoint.GetIpAddress().GetAddress()
-	if endpoint.GetIpAddress().GetAddressFamily() == npb.AddressFamily_IPV6 {
-		address = fmt.Sprintf("[%s]", address)
-	}
-
-	if endpoint.HasPort() {
-		return fmt.Sprintf("%s:%d", address, endpoint.GetPort().GetPortNumber()), nil
-	}
-
-	return fmt.Sprintf("%s", address), nil
+	return authorities, nil
 }

@@ -145,6 +145,76 @@ func TestBuildWebRoot(t *testing.T) {
 	}
 }
 
+func TestBuildAllWebRoots(t *testing.T) {
+	tests := []struct {
+		name    string
+		service *nspb.NetworkService
+		want    []string
+		wantErr error
+	}{
+		{
+			name: "when_no_tls_is_supported_returns_http_uris",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Hostname: npb.Hostname_builder{Name: "localhost.lan"}.Build(),
+					Port:     npb.Port_builder{PortNumber: 80}.Build(),
+				}.Build(),
+			}.Build(),
+			want:    []string{"http://localhost.lan:80"},
+			wantErr: nil,
+		},
+		{
+			name: "when_tls_is_supported_returns_https_uris",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Hostname: npb.Hostname_builder{Name: "localhost.lan"}.Build(),
+					Port:     npb.Port_builder{PortNumber: 443}.Build(),
+				}.Build(),
+				SupportedSslVersions: []string{"TLSv1.2"},
+			}.Build(),
+			want:    []string{"https://localhost.lan:443"},
+			wantErr: nil,
+		},
+		{
+			name: "when_endpoint_has_ip_and_hostname_returns_multiple_uris",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Hostname:  npb.Hostname_builder{Name: "localhost.lan"}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+					Port:      npb.Port_builder{PortNumber: 443}.Build(),
+				}.Build(),
+				SupportedSslVersions: []string{"TLSv1.2"},
+			}.Build(),
+			want:    []string{"https://localhost.lan:443", "https://127.0.0.1:443"},
+			wantErr: nil,
+		},
+		{
+			name: "when_endpoint_is_missing_address_returns_error",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 80}.Build(),
+				}.Build(),
+			}.Build(),
+			want:    nil,
+			wantErr: netendpoint.ErrEndpointMissingAddress,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := BuildAllWebRoots(tc.service)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("BuildAllWebRoots(%v) got err %v, wantErr: %v", tc.service, err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("BuildAllWebRoots(%v) returned diff (-want +got):\n%s", tc.service, diff)
+			}
+		})
+	}
+}
+
 func TestAddCrawlResults(t *testing.T) {
 	tests := []struct {
 		name         string
