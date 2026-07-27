@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
@@ -32,6 +33,8 @@ import (
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var (
@@ -147,6 +150,7 @@ func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.Fingerprint
 // Run runs the Goonami modules in the order of port scan, fingerprinting and then detection.
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
 	ctx = log.ContextForModule(ctx, "core/runner")
+	scanStart := time.Now()
 	portscan, err := r.PortScanStep(ctx, target)
 	if err != nil {
 		return nil, err
@@ -163,9 +167,13 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 	if err != nil {
 		return nil, err
 	}
+	scanDuration := time.Since(scanStart)
 
 	results := srpb.ScanResults_builder{
-		ScanStatus: srpb.ScanStatus_SUCCEEDED,
+		ScanStatus:         srpb.ScanStatus_SUCCEEDED,
+		ScanStartTimestamp: timestamppb.New(scanStart),
+		ScanDuration:       durationpb.New(scanDuration),
+		TargetAlive:        len(portscan.GetNetworkServices()) > 0,
 		ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 			TargetInfo:      portscan.GetTargetInfo(),
 			NetworkServices: fpreport.GetNetworkServices(),

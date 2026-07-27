@@ -533,6 +533,23 @@ func TestRun(t *testing.T) {
 		return testReport, nil
 	}
 
+	testEmptyReport := rpb.PortScanningReport_builder{
+		TargetInfo: rpb.TargetInfo_builder{
+			NetworkEndpoints: []*npb.NetworkEndpoint{
+				npb.NetworkEndpoint_builder{
+					Type: npb.NetworkEndpoint_IP,
+					IpAddress: npb.IpAddress_builder{
+						AddressFamily: npb.AddressFamily_IPV4,
+						Address:       "1.1.1.1",
+					}.Build(),
+				}.Build(),
+			},
+		}.Build(),
+	}.Build()
+	testEmptyReportFn := func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
+		return testEmptyReport, nil
+	}
+
 	tests := []struct {
 		name           string
 		portScanner    module.PortScanner
@@ -583,6 +600,7 @@ func TestRun(t *testing.T) {
 			wantErr: nil,
 			want: srpb.ScanResults_builder{
 				ScanStatus:           srpb.ScanStatus_SUCCEEDED,
+				TargetAlive:          true,
 				FullDetectionReports: &srpb.FullDetectionReports{},
 				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 					TargetInfo: rpb.TargetInfo_builder{
@@ -600,6 +618,35 @@ func TestRun(t *testing.T) {
 						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
 						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
 					},
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name:        "when_scan_succeeds_with_no_open_ports_returns_report",
+			portScanner: fakemodule.NewFakePortScanner("ps1", testEmptyReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
+			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings),
+			},
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				ScanStatus:           srpb.ScanStatus_SUCCEEDED,
+				TargetAlive:          false,
+				FullDetectionReports: &srpb.FullDetectionReports{},
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: rpb.TargetInfo_builder{
+						NetworkEndpoints: []*npb.NetworkEndpoint{
+							npb.NetworkEndpoint_builder{
+								Type: npb.NetworkEndpoint_IP,
+								IpAddress: npb.IpAddress_builder{
+									AddressFamily: npb.AddressFamily_IPV4,
+									Address:       "1.1.1.1",
+								}.Build(),
+							}.Build(),
+						},
+					}.Build(),
 				}.Build(),
 			}.Build(),
 		},
@@ -624,9 +671,18 @@ func TestRun(t *testing.T) {
 				return
 			}
 
+			if got.GetScanStartTimestamp() == nil {
+				t.Errorf("Run() ScanStartTimestamp is nil, want non-nil")
+			}
+
+			if got.GetScanDuration() == nil {
+				t.Errorf("Run() ScanDuration is nil, want non-nil")
+			}
+
 			opts := []cmp.Option{
 				protocmp.Transform(),
 				protocmp.SortRepeatedFields(&rpb.ReconnaissanceReport{}, "network_services"),
+				protocmp.IgnoreFields(&srpb.ScanResults{}, "scan_start_timestamp", "scan_duration"),
 			}
 			if diff := cmp.Diff(tc.want, got, opts...); diff != "" {
 				t.Errorf("Run() returned diff (-want +got):\n%s", diff)
