@@ -223,6 +223,7 @@ func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.Netwo
 	crawlResults := run.CrawlResults()
 	matches := run.Matches()
 	if len(matches) == 0 {
+		log.DebugContextf(ctx, log.DebugLevelService, "no matches found for service")
 		netservice.AddCrawlResults(service, crawlResults)
 		return []*nspb.NetworkService{service}, nil
 	}
@@ -230,6 +231,7 @@ func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.Netwo
 	var networkServices []*nspb.NetworkService
 	for _, identities := range matches {
 		for _, identity := range identities {
+			log.DebugContextf(ctx, log.DebugLevelService, "potential identity found for service: %v", identity)
 			networkServices = append(networkServices, identityToNewService(ctx, service, crawlResults, identity))
 		}
 	}
