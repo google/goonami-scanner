@@ -182,7 +182,7 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 		}
 
 		finding := srpb.ScanFinding_builder{
-			TargetInfo:     detection.GetTargetInfo(),
+			TargetInfo:     portscan.GetTargetInfo(),
 			NetworkService: detection.GetNetworkService(),
 			Vulnerability:  detection.GetVulnerability(),
 		}.Build()

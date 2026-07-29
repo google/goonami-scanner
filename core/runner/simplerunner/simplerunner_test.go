@@ -723,6 +723,17 @@ func TestRun(t *testing.T) {
 				TargetAlive: true,
 				ScanFindings: []*srpb.ScanFinding{
 					srpb.ScanFinding_builder{
+						TargetInfo: rpb.TargetInfo_builder{
+							NetworkEndpoints: []*npb.NetworkEndpoint{
+								npb.NetworkEndpoint_builder{
+									Type: npb.NetworkEndpoint_IP,
+									IpAddress: npb.IpAddress_builder{
+										AddressFamily: npb.AddressFamily_IPV4,
+										Address:       "1.1.1.1",
+									}.Build(),
+								}.Build(),
+							},
+						}.Build(),
 						NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
 						Vulnerability: vpb.Vulnerability_builder{
 							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
@@ -730,6 +741,17 @@ func TestRun(t *testing.T) {
 						}.Build(),
 					}.Build(),
 					srpb.ScanFinding_builder{
+						TargetInfo: rpb.TargetInfo_builder{
+							NetworkEndpoints: []*npb.NetworkEndpoint{
+								npb.NetworkEndpoint_builder{
+									Type: npb.NetworkEndpoint_IP,
+									IpAddress: npb.IpAddress_builder{
+										AddressFamily: npb.AddressFamily_IPV4,
+										Address:       "1.1.1.1",
+									}.Build(),
+								}.Build(),
+							},
+						}.Build(),
 						NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
 						Vulnerability: vpb.Vulnerability_builder{
 							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
