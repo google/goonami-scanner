@@ -20,6 +20,7 @@ package simplerunner
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -169,11 +170,31 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 	}
 	scanDuration := time.Since(scanStart)
 
+	var scanFindings []*srpb.ScanFinding
+	for _, detection := range detections {
+		goodStatuses := []dpb.DetectionStatus{
+			dpb.DetectionStatus_VULNERABILITY_PRESENT,
+			dpb.DetectionStatus_VULNERABILITY_VERIFIED,
+		}
+
+		if !slices.Contains(goodStatuses, detection.GetDetectionStatus()) {
+			continue
+		}
+
+		finding := srpb.ScanFinding_builder{
+			TargetInfo:     detection.GetTargetInfo(),
+			NetworkService: detection.GetNetworkService(),
+			Vulnerability:  detection.GetVulnerability(),
+		}.Build()
+		scanFindings = append(scanFindings, finding)
+	}
+
 	results := srpb.ScanResults_builder{
 		ScanStatus:         srpb.ScanStatus_SUCCEEDED,
 		ScanStartTimestamp: timestamppb.New(scanStart),
 		ScanDuration:       durationpb.New(scanDuration),
 		TargetAlive:        len(portscan.GetNetworkServices()) > 0,
+		ScanFindings:       scanFindings,
 		ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
 			TargetInfo:      portscan.GetTargetInfo(),
 			NetworkServices: fpreport.GetNetworkServices(),

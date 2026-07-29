@@ -35,6 +35,7 @@ import (
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	vpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 func TestNew(t *testing.T) {
@@ -550,6 +551,63 @@ func TestRun(t *testing.T) {
 		return testEmptyReport, nil
 	}
 
+	granularTestReport := rpb.PortScanningReport_builder{
+		TargetInfo: rpb.TargetInfo_builder{
+			NetworkEndpoints: []*npb.NetworkEndpoint{
+				npb.NetworkEndpoint_builder{
+					Type: npb.NetworkEndpoint_IP,
+					IpAddress: npb.IpAddress_builder{
+						AddressFamily: npb.AddressFamily_IPV4,
+						Address:       "1.1.1.1",
+					}.Build(),
+				}.Build(),
+			},
+		}.Build(),
+		NetworkServices: []*nspb.NetworkService{
+			nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+			nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+			nspb.NetworkService_builder{ServiceName: "svc3"}.Build(),
+		},
+	}.Build()
+	granularTestReportFn := func(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
+		return granularTestReport, nil
+	}
+
+	fakeDetectFnWithGranularFindings := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		var reports []*dpb.DetectionReport
+		if svc.GetServiceName() == "svc1" {
+			reports = append(reports, dpb.DetectionReport_builder{
+				DetectionStatus: dpb.DetectionStatus_VULNERABILITY_VERIFIED,
+				NetworkService:  svc,
+				Vulnerability: vpb.Vulnerability_builder{
+					MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+					Title:  "Fake Vulnerability 1",
+				}.Build(),
+			}.Build())
+		} else if svc.GetServiceName() == "svc2" {
+			reports = append(reports, dpb.DetectionReport_builder{
+				DetectionStatus: dpb.DetectionStatus_VULNERABILITY_PRESENT,
+				NetworkService:  svc,
+				Vulnerability: vpb.Vulnerability_builder{
+					MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+					Title:  "Fake Vulnerability 2",
+				}.Build(),
+			}.Build())
+		} else if svc.GetServiceName() == "svc3" {
+			reports = append(reports, dpb.DetectionReport_builder{
+				DetectionStatus: dpb.DetectionStatus_SAFE,
+				NetworkService:  svc,
+				Vulnerability: vpb.Vulnerability_builder{
+					MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln3"}.Build(),
+					Title:  "Fake Vulnerability 3",
+				}.Build(),
+			}.Build())
+		}
+		return dpb.DetectionReportList_builder{
+			DetectionReports: reports,
+		}.Build(), nil
+	}
+
 	tests := []struct {
 		name           string
 		portScanner    module.PortScanner
@@ -650,6 +708,83 @@ func TestRun(t *testing.T) {
 				}.Build(),
 			}.Build(),
 		},
+		{
+			name:        "when_granular_vulnerabilities_are_detected_filters_properly",
+			portScanner: fakemodule.NewFakePortScanner("ps1", granularTestReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
+			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnWithGranularFindings),
+			},
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				ScanStatus:  srpb.ScanStatus_SUCCEEDED,
+				TargetAlive: true,
+				ScanFindings: []*srpb.ScanFinding{
+					srpb.ScanFinding_builder{
+						NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						Vulnerability: vpb.Vulnerability_builder{
+							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+							Title:  "Fake Vulnerability 1",
+						}.Build(),
+					}.Build(),
+					srpb.ScanFinding_builder{
+						NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+						Vulnerability: vpb.Vulnerability_builder{
+							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+							Title:  "Fake Vulnerability 2",
+						}.Build(),
+					}.Build(),
+				},
+				FullDetectionReports: srpb.FullDetectionReports_builder{
+					DetectionReports: []*dpb.DetectionReport{
+						dpb.DetectionReport_builder{
+							DetectionStatus: dpb.DetectionStatus_VULNERABILITY_VERIFIED,
+							NetworkService:  nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+							Vulnerability: vpb.Vulnerability_builder{
+								MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+								Title:  "Fake Vulnerability 1",
+							}.Build(),
+						}.Build(),
+						dpb.DetectionReport_builder{
+							DetectionStatus: dpb.DetectionStatus_VULNERABILITY_PRESENT,
+							NetworkService:  nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+							Vulnerability: vpb.Vulnerability_builder{
+								MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+								Title:  "Fake Vulnerability 2",
+							}.Build(),
+						}.Build(),
+						dpb.DetectionReport_builder{
+							DetectionStatus: dpb.DetectionStatus_SAFE,
+							NetworkService:  nspb.NetworkService_builder{ServiceName: "svc3"}.Build(),
+							Vulnerability: vpb.Vulnerability_builder{
+								MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln3"}.Build(),
+								Title:  "Fake Vulnerability 3",
+							}.Build(),
+						}.Build(),
+					},
+				}.Build(),
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: rpb.TargetInfo_builder{
+						NetworkEndpoints: []*npb.NetworkEndpoint{
+							npb.NetworkEndpoint_builder{
+								Type: npb.NetworkEndpoint_IP,
+								IpAddress: npb.IpAddress_builder{
+									AddressFamily: npb.AddressFamily_IPV4,
+									Address:       "1.1.1.1",
+								}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc3"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
+		},
 	}
 
 	for _, tc := range tests {
@@ -682,6 +817,8 @@ func TestRun(t *testing.T) {
 			opts := []cmp.Option{
 				protocmp.Transform(),
 				protocmp.SortRepeatedFields(&rpb.ReconnaissanceReport{}, "network_services"),
+				protocmp.SortRepeatedFields(&srpb.ScanResults{}, "scan_findings"),
+				protocmp.SortRepeatedFields(&srpb.FullDetectionReports{}, "detection_reports"),
 				protocmp.IgnoreFields(&srpb.ScanResults{}, "scan_start_timestamp", "scan_duration"),
 			}
 			if diff := cmp.Diff(tc.want, got, opts...); diff != "" {
