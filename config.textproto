@@ -99,6 +99,10 @@ clients: {
     max_attempts: 3
     retry_delay_seconds: 10
 
+    lite_model: "gemini-3.5-flash-lite"
+    fast_model: "gemini-3-flash-preview"
+    pro_model: "gemini-3.1-pro-preview"
+
     tools: {
       http_client_config: {
         allowed_methods: ["GET", "POST"]

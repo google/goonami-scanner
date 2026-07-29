@@ -39,6 +39,18 @@ message LlmClientConfig {
 
   // Configuration for the tools that the LLM agent can use.
   optional ToolConfig tools = 4;
+
+  // Abstraction for a lite model.
+  // Default: gemini-3.5-flash-lite
+  optional string lite_model = 5;
+
+  // Abstraction for a fast model.
+  // Default: gemini-3.6-flash
+  optional string fast_model = 6;
+
+  // Abstraction for a pro model.
+  // Default: gemini-2.5-pro
+  optional string pro_model = 7;
 }
 
 message ToolConfig {

@@ -238,3 +238,78 @@ func TestRun_SessionCreateError(t *testing.T) {
 		t.Errorf("Run() error = %v, wantErr %v", err, ErrMaxAttemptsReached)
 	}
 }
+
+func TestGetModel(t *testing.T) {
+	testCases := []struct {
+		name      string
+		llmConfig *lccpb.LlmClientConfig
+		tier      ModelTier
+		want      string
+	}{
+		{
+			name:      "when_tier_is_lite_and_config_is_empty_returns_default",
+			llmConfig: nil,
+			tier:      ModelTierLite,
+			want:      "gemini-3.5-flash-lite",
+		},
+		{
+			name:      "when_tier_is_fast_and_config_is_empty_returns_default",
+			llmConfig: nil,
+			tier:      ModelTierFast,
+			want:      "gemini-3.6-flash",
+		},
+		{
+			name:      "when_tier_is_pro_and_config_is_empty_returns_default",
+			llmConfig: nil,
+			tier:      ModelTierPro,
+			want:      "gemini-2.5-pro",
+		},
+		{
+			name:      "when_tier_is_unknown_and_config_is_empty_returns_lite_default",
+			llmConfig: nil,
+			tier:      ModelTier(999),
+			want:      "gemini-3.5-flash-lite",
+		},
+		{
+			name: "when_tier_is_lite_and_config_has_model_returns_model",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				LiteModel: proto.String("custom-lite"),
+			}.Build(),
+			tier: ModelTierLite,
+			want: "custom-lite",
+		},
+		{
+			name: "when_tier_is_fast_and_config_has_model_returns_model",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				FastModel: proto.String("custom-fast"),
+			}.Build(),
+			tier: ModelTierFast,
+			want: "custom-fast",
+		},
+		{
+			name: "when_tier_is_pro_and_config_has_model_returns_model",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				ProModel: proto.String("custom-pro"),
+			}.Build(),
+			tier: ModelTierPro,
+			want: "custom-pro",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfgBuilder := cpb.Config_builder{}
+			if tc.llmConfig != nil {
+				cfgBuilder.Clients = cpb.ClientsConfig_builder{
+					Llm: tc.llmConfig,
+				}.Build()
+			}
+			cfg := config.FromProto(cfgBuilder.Build())
+
+			got := GetModel(cfg, tc.tier)
+			if got != tc.want {
+				t.Errorf("GetModel() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

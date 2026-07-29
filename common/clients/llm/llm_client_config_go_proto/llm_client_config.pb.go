@@ -41,6 +41,9 @@ type LlmClientConfig struct {
 	xxx_hidden_MaxAttempts              int32                  `protobuf:"varint,2,opt,name=max_attempts,json=maxAttempts,proto3,oneof"`
 	xxx_hidden_RetryDelaySeconds        int32                  `protobuf:"varint,3,opt,name=retry_delay_seconds,json=retryDelaySeconds,proto3,oneof"`
 	xxx_hidden_Tools                    *ToolConfig            `protobuf:"bytes,4,opt,name=tools,proto3,oneof"`
+	xxx_hidden_LiteModel                *string                `protobuf:"bytes,5,opt,name=lite_model,json=liteModel,proto3,oneof"`
+	xxx_hidden_FastModel                *string                `protobuf:"bytes,6,opt,name=fast_model,json=fastModel,proto3,oneof"`
+	xxx_hidden_ProModel                 *string                `protobuf:"bytes,7,opt,name=pro_model,json=proModel,proto3,oneof"`
 	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
 	XXX_presence                        [1]uint32
 	unknownFields                       protoimpl.UnknownFields
@@ -100,23 +103,68 @@ func (x *LlmClientConfig) GetTools() *ToolConfig {
 	return nil
 }
 
+func (x *LlmClientConfig) GetLiteModel() string {
+	if x != nil {
+		if x.xxx_hidden_LiteModel != nil {
+			return *x.xxx_hidden_LiteModel
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *LlmClientConfig) GetFastModel() string {
+	if x != nil {
+		if x.xxx_hidden_FastModel != nil {
+			return *x.xxx_hidden_FastModel
+		}
+		return ""
+	}
+	return ""
+}
+
+func (x *LlmClientConfig) GetProModel() string {
+	if x != nil {
+		if x.xxx_hidden_ProModel != nil {
+			return *x.xxx_hidden_ProModel
+		}
+		return ""
+	}
+	return ""
+}
+
 func (x *LlmClientConfig) SetTimeoutPerRequestSeconds(v int32) {
 	x.xxx_hidden_TimeoutPerRequestSeconds = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
 }
 
 func (x *LlmClientConfig) SetMaxAttempts(v int32) {
 	x.xxx_hidden_MaxAttempts = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
 }
 
 func (x *LlmClientConfig) SetRetryDelaySeconds(v int32) {
 	x.xxx_hidden_RetryDelaySeconds = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
 }
 
 func (x *LlmClientConfig) SetTools(v *ToolConfig) {
 	x.xxx_hidden_Tools = v
+}
+
+func (x *LlmClientConfig) SetLiteModel(v string) {
+	x.xxx_hidden_LiteModel = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+}
+
+func (x *LlmClientConfig) SetFastModel(v string) {
+	x.xxx_hidden_FastModel = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+}
+
+func (x *LlmClientConfig) SetProModel(v string) {
+	x.xxx_hidden_ProModel = &v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
 }
 
 func (x *LlmClientConfig) HasTimeoutPerRequestSeconds() bool {
@@ -147,6 +195,27 @@ func (x *LlmClientConfig) HasTools() bool {
 	return x.xxx_hidden_Tools != nil
 }
 
+func (x *LlmClientConfig) HasLiteModel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
+func (x *LlmClientConfig) HasFastModel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *LlmClientConfig) HasProModel() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
 func (x *LlmClientConfig) ClearTimeoutPerRequestSeconds() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_TimeoutPerRequestSeconds = 0
@@ -166,6 +235,21 @@ func (x *LlmClientConfig) ClearTools() {
 	x.xxx_hidden_Tools = nil
 }
 
+func (x *LlmClientConfig) ClearLiteModel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+	x.xxx_hidden_LiteModel = nil
+}
+
+func (x *LlmClientConfig) ClearFastModel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_FastModel = nil
+}
+
+func (x *LlmClientConfig) ClearProModel() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_ProModel = nil
+}
+
 type LlmClientConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -180,6 +264,15 @@ type LlmClientConfig_builder struct {
 	RetryDelaySeconds *int32
 	// Configuration for the tools that the LLM agent can use.
 	Tools *ToolConfig
+	// Abstraction for a lite model.
+	// Default: gemini-3.5-flash-lite
+	LiteModel *string
+	// Abstraction for a fast model.
+	// Default: gemini-3.6-flash
+	FastModel *string
+	// Abstraction for a pro model.
+	// Default: gemini-2.5-pro
+	ProModel *string
 }
 
 func (b0 LlmClientConfig_builder) Build() *LlmClientConfig {
@@ -187,18 +280,30 @@ func (b0 LlmClientConfig_builder) Build() *LlmClientConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.TimeoutPerRequestSeconds != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
 		x.xxx_hidden_TimeoutPerRequestSeconds = *b.TimeoutPerRequestSeconds
 	}
 	if b.MaxAttempts != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
 		x.xxx_hidden_MaxAttempts = *b.MaxAttempts
 	}
 	if b.RetryDelaySeconds != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
 		x.xxx_hidden_RetryDelaySeconds = *b.RetryDelaySeconds
 	}
 	x.xxx_hidden_Tools = b.Tools
+	if b.LiteModel != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		x.xxx_hidden_LiteModel = b.LiteModel
+	}
+	if b.FastModel != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		x.xxx_hidden_FastModel = b.FastModel
+	}
+	if b.ProModel != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		x.xxx_hidden_ProModel = b.ProModel
+	}
 	return m0
 }
 
@@ -420,16 +525,25 @@ var File_llm_client_config_proto protoreflect.FileDescriptor
 
 const file_llm_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xcb\x02\n" +
+	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xe1\x03\n" +
 	"\x0fLlmClientConfig\x12B\n" +
 	"\x1btimeout_per_request_seconds\x18\x01 \x01(\x05H\x00R\x18timeoutPerRequestSeconds\x88\x01\x01\x12&\n" +
 	"\fmax_attempts\x18\x02 \x01(\x05H\x01R\vmaxAttempts\x88\x01\x01\x123\n" +
 	"\x13retry_delay_seconds\x18\x03 \x01(\x05H\x02R\x11retryDelaySeconds\x88\x01\x01\x12D\n" +
-	"\x05tools\x18\x04 \x01(\v2).goonami.proto.configs.clients.ToolConfigH\x03R\x05tools\x88\x01\x01B\x1e\n" +
+	"\x05tools\x18\x04 \x01(\v2).goonami.proto.configs.clients.ToolConfigH\x03R\x05tools\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"lite_model\x18\x05 \x01(\tH\x04R\tliteModel\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"fast_model\x18\x06 \x01(\tH\x05R\tfastModel\x88\x01\x01\x12 \n" +
+	"\tpro_model\x18\a \x01(\tH\x06R\bproModel\x88\x01\x01B\x1e\n" +
 	"\x1c_timeout_per_request_secondsB\x0f\n" +
 	"\r_max_attemptsB\x16\n" +
 	"\x14_retry_delay_secondsB\b\n" +
-	"\x06_tools\"\x87\x01\n" +
+	"\x06_toolsB\r\n" +
+	"\v_lite_modelB\r\n" +
+	"\v_fast_modelB\f\n" +
+	"\n" +
+	"_pro_model\"\x87\x01\n" +
 	"\n" +
 	"ToolConfig\x12b\n" +
 	"\x12http_client_config\x18\x01 \x01(\v2/.goonami.proto.configs.clients.HttpClientConfigH\x00R\x10httpClientConfig\x88\x01\x01B\x15\n" +

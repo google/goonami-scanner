@@ -82,7 +82,41 @@ func DefaultConfig() *lccpb.LlmClientConfig {
 		MaxAttempts:              proto.Int32(3),
 		TimeoutPerRequestSeconds: proto.Int32(240),
 		RetryDelaySeconds:        proto.Int32(10),
+		LiteModel:                proto.String("gemini-3.5-flash-lite"),
+		FastModel:                proto.String("gemini-3.6-flash"),
+		ProModel:                 proto.String("gemini-2.5-pro"),
 	}.Build()
+}
+
+// ModelTier represents the tier of the model to use.
+type ModelTier int
+
+const (
+	// ModelTierLite is a lightweight tier model.
+	ModelTierLite ModelTier = iota
+	// ModelTierFast is a fast tier model.
+	ModelTierFast
+	// ModelTierPro is a pro tier model.
+	ModelTierPro
+)
+
+// GetModel returns the model name for a specific tier from the configuration.
+func GetModel(config *config.Config, tier ModelTier) string {
+	clientConfig := DefaultConfig()
+	if config.ClientsConfig().HasLlm() {
+		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
+	}
+
+	switch tier {
+	case ModelTierLite:
+		return clientConfig.GetLiteModel()
+	case ModelTierFast:
+		return clientConfig.GetFastModel()
+	case ModelTierPro:
+		return clientConfig.GetProModel()
+	default:
+		return clientConfig.GetLiteModel()
+	}
 }
 
 // New creates a new LLM client.
