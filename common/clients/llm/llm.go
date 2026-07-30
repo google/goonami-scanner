@@ -84,7 +84,7 @@ func DefaultConfig() *lccpb.LlmClientConfig {
 		RetryDelaySeconds:        proto.Int32(10),
 		LiteModel:                proto.String("gemini-3.5-flash-lite"),
 		FastModel:                proto.String("gemini-3.6-flash"),
-		ProModel:                 proto.String("gemini-2.5-pro"),
+		ProModel:                 proto.String("gemini-3.1-pro-preview"),
 	}.Build()
 }
 

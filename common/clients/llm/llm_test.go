@@ -262,7 +262,7 @@ func TestGetModel(t *testing.T) {
 			name:      "when_tier_is_pro_and_config_is_empty_returns_default",
 			llmConfig: nil,
 			tier:      ModelTierPro,
-			want:      "gemini-2.5-pro",
+			want:      "gemini-3.1-pro-preview",
 		},
 		{
 			name:      "when_tier_is_unknown_and_config_is_empty_returns_lite_default",
