@@ -61,7 +61,7 @@ clients: {
   }
 
   nmap: {
-    timeout_seconds: 300
+    timeout_seconds: 900  # 15 minutes
 
     scan_technique: CONNECT
     scan_intensity: 4
@@ -131,7 +131,7 @@ plugins: {
   }
 
   templatedweakcredentials: {
-    max_attempts_per_service: 0 # no limit
+    max_attempts_per_service: 0  # no limit
     username_file: "plugins/detectors/templatedweakcredentials/data/usernames.txt"
     passwords_file: "plugins/detectors/templatedweakcredentials/data/passwords.txt"
   }
