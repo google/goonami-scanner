@@ -237,6 +237,11 @@ func (c *SimpleClient) optIPVersion(target string) string {
 func (c *SimpleClient) optPerformance(ctx context.Context) []string {
 	var args []string
 
+	if c.config.GetMinRate() > 0 {
+		args = append(args, "--min-rate")
+		args = append(args, strconv.Itoa(int(c.config.GetMinRate())))
+	}
+
 	qps := c.coreConfig.GlobalConfig().GetPerformance().GetMaxPacketsPerSecond()
 	if qps > 0 {
 		args = append(args, "--max-rate")

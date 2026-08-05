@@ -207,6 +207,21 @@ func TestCommandLine(t *testing.T) {
 			wantErr:    nil,
 		},
 		{
+			name:       "when_min_rate_is_provided_returns_correct_args",
+			configFile: "min_rate.textproto",
+			target:     "127.0.0.1",
+			want:       []string{"-oX", "", "-sT", "--min-rate", "100", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
+		},
+		{
+			name:       "when_min_rate_and_global_rate_limit_are_provided_returns_correct_args",
+			configFile: "min_rate.textproto",
+			rateLimit:  10,
+			target:     "127.0.0.1",
+			want:       []string{"-oX", "", "-sT", "--min-rate", "100", "--max-rate", "10", "-T3", "", "-p-", "-Pn", "127.0.0.1"},
+			wantErr:    nil,
+		},
+		{
 			name:       "when_scan_technique_is_unknown_returns_error",
 			configFile: "unknown_scan_technique.textproto",
 			target:     "127.0.0.1",

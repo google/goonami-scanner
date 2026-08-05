@@ -19,11 +19,11 @@ syntax = "proto3";
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto";
-
 option java_multiple_files = true;
 option java_outer_classname = "NmapClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
 
+// Next ID: 11
 message NmapClientConfig {
   enum Technique {
     UNKNOWN = 0;
@@ -53,6 +53,11 @@ message NmapClientConfig {
   // Host discovery; when disabled: -Pn
   // Default: false
   optional bool enable_host_discovery = 5;
+
+  // Minimum number of packet per second to be sent. A value of 0 means no min
+  // rate. Correspond to the `--min-rate` option passed to nmap.
+  // Default: 0
+  optional int32 min_rate = 10;
 
   ///////////////////////
   // VERSION DETECTION //

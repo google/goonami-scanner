@@ -1,0 +1,8 @@
+# proto-file: goonami/common/clients/nmap/nmap_client_config.proto
+# proto-message: NmapClientConfig
+timeout_seconds: 300
+scan_technique: CONNECT
+scan_intensity: 3
+enable_host_discovery: false
+enable_version_detection: false
+min_rate: 100

@@ -62,6 +62,7 @@ clients: {
 
   nmap: {
     timeout_seconds: 900  # 15 minutes
+    min_rate: 0  # disabled
 
     scan_technique: CONNECT
     scan_intensity: 4
