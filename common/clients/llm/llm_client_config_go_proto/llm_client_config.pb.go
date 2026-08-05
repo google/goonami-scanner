@@ -271,7 +271,7 @@ type LlmClientConfig_builder struct {
 	// Default: gemini-3.6-flash
 	FastModel *string
 	// Abstraction for a pro model.
-	// Default: gemini-2.5-pro
+	// Default: gemini-3.1-pro-preview
 	ProModel *string
 }
 
