@@ -85,11 +85,16 @@ func TestRun(t *testing.T) {
 		RetryDelaySeconds:        proto.Int32(0),
 		MaxAttempts:              proto.Int32(1),
 	}.Build()
+	defaultContent := &genai.Content{
+		Role:  "user",
+		Parts: []*genai.Part{&genai.Part{Text: "hello world"}},
+	}
 
 	testCases := []struct {
 		name          string
 		llmConfig     *lccpb.LlmClientConfig
 		agent         *fakellmagent.FakeAgent
+		content       *genai.Content
 		verifier      AgentResultVerifier
 		cancelContext bool
 		tamper        func(*Client)
@@ -100,6 +105,7 @@ func TestRun(t *testing.T) {
 			name:      "when_agent_returns_verified_result_it_is_returned",
 			llmConfig: testConfig,
 			agent:     fakellmagent.NewWithSimpleAnswer("hello world"),
+			content:   defaultContent,
 			verifier:  func(ctx context.Context, result string) error { return nil },
 			want:      "hello world",
 		},
@@ -107,6 +113,7 @@ func TestRun(t *testing.T) {
 			name:      "when_agent_returns_error_several_times_max_attempts_error_is_returned",
 			llmConfig: testConfig,
 			agent:     fakellmagent.NewWithError(errors.New("agent error")),
+			content:   defaultContent,
 			verifier:  func(ctx context.Context, result string) error { return nil },
 			wantErr:   ErrMaxAttemptsReached,
 		},
@@ -114,6 +121,7 @@ func TestRun(t *testing.T) {
 			name:      "when_verification_fails_several_times_max_attempts_error_is_returned",
 			llmConfig: testConfig,
 			agent:     fakellmagent.NewWithSimpleAnswer("bad"),
+			content:   defaultContent,
 			verifier: func(ctx context.Context, result string) error {
 				return errors.New("verifier error")
 			},
@@ -123,6 +131,7 @@ func TestRun(t *testing.T) {
 			name:          "when_context_is_cancelled_error_is_returned",
 			llmConfig:     testConfig,
 			agent:         fakellmagent.New(nil, nil),
+			content:       defaultContent,
 			verifier:      func(ctx context.Context, result string) error { return nil },
 			cancelContext: true,
 			wantErr:       context.Canceled,
@@ -135,6 +144,7 @@ func TestRun(t *testing.T) {
 				MaxAttempts:              proto.Int32(2),
 			}.Build(),
 			agent:    fakellmagent.NewWithSimpleAnswer("bad"),
+			content:  defaultContent,
 			verifier: func(ctx context.Context, result string) error { return errors.New("verifier error") },
 			wantErr:  ErrMaxAttemptsReached,
 		},
@@ -142,6 +152,7 @@ func TestRun(t *testing.T) {
 			name:      "when_error_is_too_long_it_is_truncated",
 			llmConfig: testConfig,
 			agent:     fakellmagent.NewWithError(errors.New(strings.Repeat("a", 201))),
+			content:   defaultContent,
 			verifier:  func(ctx context.Context, result string) error { return nil },
 			wantErr:   ErrMaxAttemptsReached,
 		},
@@ -149,6 +160,7 @@ func TestRun(t *testing.T) {
 			name:      "when_session_service_fails_error_is_returned",
 			llmConfig: testConfig,
 			agent:     fakellmagent.NewWithSimpleAnswer("hello"),
+			content:   defaultContent,
 			verifier:  func(ctx context.Context, result string) error { return nil },
 			wantErr:   ErrMaxAttemptsReached,
 			tamper:    func(c *Client) { c.sessionService = nil },
@@ -160,7 +172,8 @@ func TestRun(t *testing.T) {
 				RetryDelaySeconds:        proto.Int32(0),
 				MaxAttempts:              proto.Int32(2),
 			}.Build(),
-			agent: fakellmagent.NewWithSimpleAnswer("good"),
+			agent:   fakellmagent.NewWithSimpleAnswer("good"),
+			content: defaultContent,
 			verifier: func() AgentResultVerifier {
 				var calls int
 				return func(ctx context.Context, result string) error {
@@ -172,6 +185,22 @@ func TestRun(t *testing.T) {
 				}
 			}(),
 			want: "good",
+		},
+		{
+			name:      "when_content_is_nil_error_is_returned",
+			llmConfig: testConfig,
+			agent:     fakellmagent.NewWithSimpleAnswer("hello"),
+			content:   nil,
+			verifier:  func(ctx context.Context, result string) error { return nil },
+			wantErr:   ErrContentRequired,
+		},
+		{
+			name:      "when_content_role_is_missing_error_is_returned",
+			llmConfig: testConfig,
+			agent:     fakellmagent.NewWithSimpleAnswer("hello"),
+			content:   &genai.Content{Parts: []*genai.Part{&genai.Part{Text: "hello world"}}},
+			verifier:  func(ctx context.Context, result string) error { return nil },
+			wantErr:   ErrContentRequired,
 		},
 	}
 
@@ -195,7 +224,7 @@ func TestRun(t *testing.T) {
 				cancel()
 			}
 
-			got, err := c.Run(ctx, &genai.Content{}, tc.verifier)
+			got, err := c.Run(ctx, tc.content, tc.verifier)
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
 			}
@@ -232,8 +261,12 @@ func TestRun_SessionCreateError(t *testing.T) {
 		}.Build(),
 	}.Build())
 	ag := fakellmagent.NewWithSimpleAnswer("hello")
+	content := &genai.Content{
+		Role:  "user",
+		Parts: []*genai.Part{&genai.Part{Text: "hello world"}},
+	}
 	c := New(cfg, ag)
-	_, err := c.Run(t.Context(), &genai.Content{}, func(ctx context.Context, result string) error { return nil })
+	_, err := c.Run(t.Context(), content, func(ctx context.Context, result string) error { return nil })
 	if !errors.Is(err, ErrMaxAttemptsReached) {
 		t.Errorf("Run() error = %v, wantErr %v", err, ErrMaxAttemptsReached)
 	}

@@ -60,6 +60,9 @@ var (
 	// ErrRunnerCreation is returned when the agent runner cannot be created.
 	ErrRunnerCreation = errors.New("failed to create agent runner")
 
+	// ErrContentRequired is returned when the content is required.
+	ErrContentRequired = errors.New("content is required (and must have a role)")
+
 	// For most of Goonami's use cases, the in-memory session service is sufficient.
 	defaultSessionService session.Service = session.InMemoryService()
 )
@@ -145,6 +148,10 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 //   - It integrates the ability to check the validity of the response through a callback.
 func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
 	ctx = log.ContextForModule(ctx, "clients/llm")
+
+	if content == nil || content.Role == "" {
+		return "", ErrContentRequired
+	}
 
 	defer func() {
 		log.DebugContextf(ctx, log.DebugLevelService, "Agent token usage: total=%d (cached=%d)", c.totalTokenCount, c.cachedContentTokenCount)
