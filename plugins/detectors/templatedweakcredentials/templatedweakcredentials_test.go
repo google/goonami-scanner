@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
+	"github.com/google/goonami-scanner/common/credentialstore"
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
@@ -235,7 +236,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			expectVulnerability: false,
 		},
 		{
-			name:            "when_external_username_and_password_files_configured_successfully_scans",
+			name:            "when_embedded_credentials_match_successfully_scans",
 			pluginProtoText: mockPluginTextproto,
 			responseFunc: func(w http.ResponseWriter, r *http.Request) {
 				bodyBytes, _ := io.ReadAll(r.Body)
@@ -249,39 +250,9 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				fmt.Fprint(w, "Unauthorized")
 			},
 			configSetup: func() *config.Config {
-				twcCfg := twcpb.TemplatedWeakCredentialsConfig_builder{
-					UsernameFile:  stringPtr("data/usernames.txt"),
-					PasswordsFile: stringPtr("data/passwords.txt"),
-				}.Build()
-				pluginsCfg := cpb.PluginsConfig_builder{
-					Templatedweakcredentials: twcCfg,
-				}.Build()
-				cfgProto := cpb.Config_builder{
-					Plugins: pluginsCfg,
-				}.Build()
-				return config.FromProto(cfgProto)
+				return config.Default()
 			},
 			expectVulnerability: true,
-		},
-		{
-			name:            "when_nonexistent_files_configured_new_from_proto_fails",
-			pluginProtoText: mockPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			},
-			configSetup: func() *config.Config {
-				twcCfg := twcpb.TemplatedWeakCredentialsConfig_builder{
-					UsernameFile: stringPtr("nonexistent_user_file.txt"),
-				}.Build()
-				pluginsCfg := cpb.PluginsConfig_builder{
-					Templatedweakcredentials: twcCfg,
-				}.Build()
-				cfgProto := cpb.Config_builder{
-					Plugins: pluginsCfg,
-				}.Build()
-				return config.FromProto(cfgProto)
-			},
-			expectError: true,
 		},
 		{
 			name:            "when_password_only_authentication_configured_successfully_scans",
@@ -383,13 +354,12 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			env := environment.New(cfg)
 			env.InitializeFor(ctx, service)
 
-			store := NewCredentialStore()
-			err := store.LoadFromConfigOnce(ctx, cfg)
+			store, err := credentialstore.NewWithDefaults()
 			if err != nil {
 				if tc.expectError {
 					return
 				}
-				t.Fatalf("LoadCredentialsFromConfig failed: %v", err)
+				t.Fatalf("credentialstore.NewDefault failed: %v", err)
 			}
 
 			detector, err := NewFromProto(ctx, cfg, &pluginProto, store)
@@ -668,8 +638,8 @@ func newDetectorForTesting(ctx context.Context, cfg *config.Config, pluginProto 
 		return nil, err
 	}
 
-	store := NewCredentialStore()
-	if err := store.LoadFromConfigOnce(ctx, cfg); err != nil {
+	store, err := credentialstore.NewWithDefaults()
+	if err != nil {
 		return nil, err
 	}
 

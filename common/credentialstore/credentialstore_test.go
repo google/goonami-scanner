@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package templatedweakcredentials
+package credentialstore
 
 import (
 	"slices"
 	"testing"
+	"testing/fstest"
 )
 
-func TestCredentialStore_NewCredentialStore(t *testing.T) {
-	store := NewCredentialStore()
+func TestCredentialStore_New(t *testing.T) {
+	store := New()
 	if store == nil {
-		t.Fatal("NewCredentialStore() returned nil")
+		t.Fatal("New() returned nil")
 	}
 	if store.Count() != 0 {
 		t.Errorf("expected count 0, got %d", store.Count())
@@ -34,8 +35,34 @@ func TestCredentialStore_NewCredentialStore(t *testing.T) {
 	}
 }
 
+func TestCredentialStore_NewWithDefaults(t *testing.T) {
+	store, err := NewWithDefaults()
+	if err != nil {
+		t.Fatalf("NewWithDefaults() failed: %v", err)
+	}
+	if store == nil {
+		t.Fatal("NewWithDefaults() returned nil store")
+	}
+	if len(store.Usernames()) == 0 {
+		t.Errorf("expected default usernames, got 0")
+	}
+	if store.Count() == 0 {
+		t.Errorf("expected default credentials, got 0")
+	}
+	if !slices.Contains(store.Usernames(), "root") {
+		t.Errorf("expected 'root' in default usernames, got %v", store.Usernames())
+	}
+	if !slices.Contains(store.Usernames(), "admin") {
+		t.Errorf("expected 'admin' in default usernames, got %v", store.Usernames())
+	}
+	rootPasses := store.Passwords("root")
+	if !slices.Contains(rootPasses, "password") {
+		t.Errorf("expected 'password' in root passwords, got %v", rootPasses)
+	}
+}
+
 func TestCredentialStore_Copy(t *testing.T) {
-	store := NewCredentialStore()
+	store := New()
 	store.AddUser("user1")
 	store.AddPasswordForUser("user1", "pass1")
 	store.AddUser("user2")
@@ -87,7 +114,7 @@ func TestCredentialStore_AddUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for _, u := range tt.initialUsers {
 				store.AddUser(u)
 			}
@@ -131,7 +158,7 @@ func TestCredentialStore_PrependUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for _, u := range tt.initialUsers {
 				store.AddUser(u)
 			}
@@ -180,7 +207,7 @@ func TestCredentialStore_AddPasswordForUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for u, passes := range tt.initialPasswords {
 				for _, p := range passes {
 					store.AddPasswordForUser(u, p)
@@ -238,7 +265,7 @@ func TestCredentialStore_PrependPasswordForUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for u, passes := range tt.initialPasswords {
 				for _, p := range passes {
 					store.AddPasswordForUser(u, p)
@@ -278,7 +305,7 @@ func TestCredentialStore_AddMultiplePasswordsForUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			store.AddMultiplePasswordsForUser(tt.user, tt.passwords)
 
 			creds := store.Passwords(tt.user)
@@ -311,7 +338,7 @@ func TestCredentialStore_AddPassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for _, u := range tt.initialUsers {
 				store.AddUser(u)
 			}
@@ -350,7 +377,7 @@ func TestCredentialStore_Count(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for u, passes := range tt.initialPasswords {
 				for _, p := range passes {
 					store.AddPasswordForUser(u, p)
@@ -364,7 +391,12 @@ func TestCredentialStore_Count(t *testing.T) {
 	}
 }
 
-func TestCredentialStore_UsersFromFile(t *testing.T) {
+func TestCredentialStore_UsersFromFS(t *testing.T) {
+	mockFS := fstest.MapFS{
+		"users.txt":       &fstest.MapFile{Data: []byte("testuser1\ntestuser2\n")},
+		"empty/users.txt": &fstest.MapFile{Data: []byte("")},
+	}
+
 	tests := []struct {
 		name      string
 		path      string
@@ -373,24 +405,30 @@ func TestCredentialStore_UsersFromFile(t *testing.T) {
 	}{
 		{
 			name:      "when_reading_valid_users_file_adds_users",
-			path:      "testdata/users.txt",
+			path:      "users.txt",
 			wantUsers: []string{"testuser1", "testuser2"},
 			wantErr:   false,
 		},
 		{
-			name:    "when_reading_invalid_file_returns_error",
-			path:    "testdata/nonexistent.txt",
+			name:      "when_reading_empty_users_file_adds_no_users",
+			path:      "empty/users.txt",
+			wantUsers: []string{},
+			wantErr:   false,
+		},
+		{
+			name:    "when_reading_nonexistent_file_returns_error",
+			path:    "nonexistent.txt",
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 
-			err := store.UsersFromFile(tt.path)
+			err := store.UsersFromFS(mockFS, tt.path)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("UsersFromFile() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("UsersFromFS() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if !tt.wantErr {
@@ -408,7 +446,11 @@ func TestCredentialStore_UsersFromFile(t *testing.T) {
 	}
 }
 
-func TestCredentialStore_PasswordsFromFile(t *testing.T) {
+func TestCredentialStore_PasswordsFromFS(t *testing.T) {
+	mockFS := fstest.MapFS{
+		"passwords.txt": &fstest.MapFile{Data: []byte("testpassword1\ntestpassword2\n")},
+	}
+
 	tests := []struct {
 		name          string
 		initialUsers  []string
@@ -419,22 +461,28 @@ func TestCredentialStore_PasswordsFromFile(t *testing.T) {
 		{
 			name:          "when_reading_valid_passwords_file_adds_passwords_to_all_users",
 			initialUsers:  []string{"user1"},
-			path:          "testdata/passwords.txt",
+			path:          "passwords.txt",
 			wantPasswords: []string{"testpassword1", "testpassword2"},
 			wantErr:       false,
+		},
+		{
+			name:         "when_reading_nonexistent_file_returns_error",
+			initialUsers: []string{"user1"},
+			path:         "nonexistent.txt",
+			wantErr:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			store := NewCredentialStore()
+			store := New()
 			for _, u := range tt.initialUsers {
 				store.AddUser(u)
 			}
 
-			err := store.PasswordsFromFile(tt.path)
+			err := store.PasswordsFromFS(mockFS, tt.path)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("PasswordsFromFile() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("PasswordsFromFS() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
 			if !tt.wantErr {
@@ -451,5 +499,122 @@ func TestCredentialStore_PasswordsFromFile(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCredentialStore_LoadFromFS(t *testing.T) {
+	tests := []struct {
+		name          string
+		fsys          fstest.MapFS
+		wantUsers     []string
+		wantPasswords []string
+		wantCount     int
+		wantErr       bool
+	}{
+		{
+			name: "when_valid_usernames_and_passwords_present_loads_successfully",
+			fsys: fstest.MapFS{
+				"data/usernames.txt": &fstest.MapFile{Data: []byte("admin\nroot\n")},
+				"data/passwords.txt": &fstest.MapFile{Data: []byte("pass1\npass2\n")},
+			},
+			wantUsers:     []string{"admin", "root"},
+			wantPasswords: []string{"pass1", "pass2"},
+			wantCount:     4,
+			wantErr:       false,
+		},
+		{
+			name: "when_usernames_missing_returns_error",
+			fsys: fstest.MapFS{
+				"data/passwords.txt": &fstest.MapFile{Data: []byte("pass1\npass2\n")},
+			},
+			wantErr: true,
+		},
+		{
+			name: "when_passwords_missing_returns_error",
+			fsys: fstest.MapFS{
+				"data/usernames.txt": &fstest.MapFile{Data: []byte("admin\nroot\n")},
+			},
+			wantErr: true,
+		},
+		{
+			name: "when_multiple_usernames_files_present_returns_error",
+			fsys: fstest.MapFS{
+				"dir1/usernames.txt": &fstest.MapFile{Data: []byte("admin\n")},
+				"dir2/usernames.txt": &fstest.MapFile{Data: []byte("root\n")},
+				"data/passwords.txt": &fstest.MapFile{Data: []byte("pass1\n")},
+			},
+			wantErr: true,
+		},
+		{
+			name: "when_multiple_passwords_files_present_returns_error",
+			fsys: fstest.MapFS{
+				"data/usernames.txt": &fstest.MapFile{Data: []byte("admin\n")},
+				"dir1/passwords.txt": &fstest.MapFile{Data: []byte("pass1\n")},
+				"dir2/passwords.txt": &fstest.MapFile{Data: []byte("pass2\n")},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := New()
+			err := store.LoadFromFS(tt.fsys)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("LoadFromFS() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !tt.wantErr {
+				if len(store.Usernames()) != len(tt.wantUsers) {
+					t.Errorf("expected %d users, got %d: %v", len(tt.wantUsers), len(store.Usernames()), store.Usernames())
+				}
+				for _, u := range tt.wantUsers {
+					if !slices.Contains(store.Usernames(), u) {
+						t.Errorf("expected user %s in store", u)
+					}
+					passes := store.Passwords(u)
+					if len(passes) != len(tt.wantPasswords) {
+						t.Errorf("expected %d passwords for %s, got %d: %v", len(tt.wantPasswords), u, len(passes), passes)
+					}
+					for _, p := range tt.wantPasswords {
+						if !slices.Contains(passes, p) {
+							t.Errorf("expected password %s for %s", p, u)
+						}
+					}
+				}
+				if store.Count() != tt.wantCount {
+					t.Errorf("expected %d credentials, got %d", tt.wantCount, store.Count())
+				}
+			}
+		})
+	}
+}
+
+func TestCredentialStore_LoadDefaults(t *testing.T) {
+	store := New()
+	if err := store.LoadDefaults(); err != nil {
+		t.Fatalf("LoadDefaults() error = %v", err)
+	}
+	if store.Count() == 0 {
+		t.Errorf("expected non-zero count after LoadDefaults(), got 0")
+	}
+}
+
+func TestCredentialStore_LoadDefaultsOnce(t *testing.T) {
+	store := New()
+	if err := store.LoadDefaultsOnce(); err != nil {
+		t.Fatalf("LoadDefaultsOnce() error = %v", err)
+	}
+	count1 := store.Count()
+	if count1 == 0 {
+		t.Errorf("expected non-zero count, got 0")
+	}
+
+	// Calling second time should be a no-op and not duplicate entries
+	if err := store.LoadDefaultsOnce(); err != nil {
+		t.Fatalf("Second LoadDefaultsOnce() error = %v", err)
+	}
+	if store.Count() != count1 {
+		t.Errorf("expected count to remain %d, got %d", count1, store.Count())
 	}
 }

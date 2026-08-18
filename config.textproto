@@ -133,7 +133,5 @@ plugins: {
 
   templatedweakcredentials: {
     max_attempts_per_service: 0  # no limit
-    username_file: "plugins/detectors/templatedweakcredentials/data/usernames.txt"
-    passwords_file: "plugins/detectors/templatedweakcredentials/data/passwords.txt"
   }
 }

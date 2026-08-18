@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/goonami-scanner/common/credentialstore"
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/core/config"
@@ -43,7 +44,10 @@ const (
 )
 
 func init() {
-	sharedStore := NewCredentialStore()
+	sharedStore, err := credentialstore.NewWithDefaults()
+	if err != nil {
+		panic(fmt.Sprintf("failed to load default credentials: %v", err))
+	}
 	plugins, err := templatedengine.LoadPluginsFromFS(context.Background(), pluginFilesFS)
 	if err != nil {
 		panic(fmt.Sprintf("failed to load templated weak credential plugins: %v", err))
@@ -58,15 +62,9 @@ func init() {
 }
 
 // NewFromProto creates a new templated weak credentials detector.
-func NewFromProto(ctx context.Context, cfg *config.Config, pluginProto *tpb.TemplatedPlugin, store *CredentialStore) (module.VulnDetector, error) {
+func NewFromProto(ctx context.Context, cfg *config.Config, pluginProto *tpb.TemplatedPlugin, store *credentialstore.CredentialStore) (module.VulnDetector, error) {
 	baseDetector, err := templatedengine.New(ctx, cfg, pluginProto)
 	if err != nil {
-		return nil, err
-	}
-
-	// We perform the load on the shared store before copying it to avoid loading the files multiple
-	// times.
-	if err := store.LoadFromConfigOnce(ctx, cfg); err != nil {
 		return nil, err
 	}
 
@@ -86,7 +84,7 @@ type Detector struct {
 	cfg          *config.Config
 	baseDetector *templatedengine.TemplatedDetector
 	proto        *tpb.TemplatedPlugin
-	store        *CredentialStore
+	store        *credentialstore.CredentialStore
 }
 
 // Name returns the name of the detector.
