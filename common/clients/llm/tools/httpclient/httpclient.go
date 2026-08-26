@@ -31,6 +31,7 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/protobuf/proto"
@@ -172,7 +173,7 @@ func (h *Tool) getClient(maintainSession bool) (goohttp.Client, error) {
 }
 
 // Do performs an HTTP request against the service.
-func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
+func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	uri := toolreq.URI
 	ctx := log.ContextForModuleAndService(context.Background(), "clients/llm/httpclient", h.service)
 	ctx, cancel := context.WithTimeout(ctx, h.coreConfig.TimeoutPerRequest())
