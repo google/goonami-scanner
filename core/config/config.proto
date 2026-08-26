@@ -93,6 +93,10 @@ message GlobalConfig {
     // Rate limiting for HTTP requests. A value of 0 means no limit.
     // Default: 0 (no limit)
     optional int32 max_http_requests_per_second = 4;
+
+    // Maximum number of HTTP redirects to follow.
+    // Default: 10
+    optional int32 max_http_redirects = 5;
   }
 
   // Performance related configurations.

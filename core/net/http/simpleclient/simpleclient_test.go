@@ -438,3 +438,74 @@ func TestDo_DisableFollowRedirects(t *testing.T) {
 		})
 	}
 }
+
+func TestDo_MaxRedirects(t *testing.T) {
+	redirectCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirectCount++
+		http.Redirect(w, r, "/loop", http.StatusFound)
+	}))
+	defer ts.Close()
+
+	tests := []struct {
+		name          string
+		maxRedirects  *int32
+		expectedCount int
+	}{
+		{
+			name:          "when_default_stops_after_10_redirects",
+			maxRedirects:  nil,
+			expectedCount: 10,
+		},
+		{
+			name:          "when_custom_max_redirects_stops_after_configured_count",
+			maxRedirects:  proto.Int32(3),
+			expectedCount: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			redirectCount = 0
+
+			perfBuilder := cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(0),
+			}
+			if tt.maxRedirects != nil {
+				perfBuilder.MaxHttpRedirects = tt.maxRedirects
+			}
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: perfBuilder.Build(),
+				}.Build(),
+			}.Build())
+
+			c, err := New(cfg, nil)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			req, err := http.NewRequest("GET", ts.URL+"/loop", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() failed: %v", err)
+			}
+
+			resp, err := c.Do(req)
+			if err == nil {
+				if resp != nil {
+					resp.Body.Close()
+				}
+				t.Fatalf("Do() expected error on redirect loop, got nil")
+			}
+
+			if !errors.Is(err, ErrTooManyRedirects) {
+				t.Errorf("Do() error = %v, want error matching ErrTooManyRedirects", err)
+			}
+
+			if redirectCount != tt.expectedCount {
+				t.Errorf("redirectCount = %d, want %d", redirectCount, tt.expectedCount)
+			}
+		})
+	}
+}

@@ -36,6 +36,9 @@ func init() {
 var (
 	// ErrConfigNil is returned when the configuration is nil.
 	ErrConfigNil = errors.New("config is nil")
+
+	// ErrTooManyRedirects is returned when a request exceeds the maximum number of redirects.
+	ErrTooManyRedirects = errors.New("stopped after too many redirects")
 )
 
 // SimpleClient is a simple HTTP client that uses the standard library client and a rate limiter.
@@ -78,10 +81,17 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 		client.Jar = jar
 	}
 
-	if options.DisableFollowRedirects {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	maxRedirects := int(cfg.GlobalConfig().GetPerformance().GetMaxHttpRedirects())
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if options.DisableFollowRedirects {
 			return http.ErrUseLastResponse
 		}
+
+		if len(via) >= maxRedirects {
+			return ErrTooManyRedirects
+		}
+
+		return nil
 	}
 
 	return &SimpleClient{
