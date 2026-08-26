@@ -31,8 +31,8 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/protobuf/proto"
 
 	hccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
