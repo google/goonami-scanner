@@ -61,9 +61,9 @@ type Tool struct {
 	coreConfig *config.Config
 	service    *nspb.NetworkService
 	badPaths   []*regexp.Regexp
-	client     goohttp.Client
 
 	mut           sync.Mutex
+	client        goohttp.Client
 	countRequests int
 }
 
@@ -161,13 +161,14 @@ func (h *Tool) clearSession() error {
 	return nil
 }
 
-func (h *Tool) getClient(maintainSession bool) goohttp.Client {
+func (h *Tool) getClient(maintainSession bool) (goohttp.Client, error) {
 	if maintainSession {
 		h.mut.Lock()
 		defer h.mut.Unlock()
-		return h.client
+		return h.client, nil
 	}
-	return goohttp.SharedClient(h.coreConfig)
+
+	return goohttp.NewClient(h.coreConfig, nil)
 }
 
 // Do performs an HTTP request against the service.
@@ -190,7 +191,11 @@ func (h *Tool) Do(toolctx tool.Context, toolreq *Request) (*Response, error) {
 		}
 	}
 
-	client := h.getClient(toolreq.MaintainSession)
+	client, err := h.getClient(toolreq.MaintainSession)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

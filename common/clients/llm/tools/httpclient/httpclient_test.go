@@ -153,11 +153,18 @@ func buildTool(t *testing.T, cfg *llmcpb.HttpClientConfig, coreConfig *config.Co
 	for _, path := range cfg.GetForbiddenPaths() {
 		badPaths = append(badPaths, regexp.MustCompile(path))
 	}
+
+	client, err := goohttp.NewClient(coreConfig, &goohttp.ClientOptions{StoreCookies: true})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
 	return &Tool{
 		config:     cfg,
 		coreConfig: coreConfig,
 		service:    service,
 		badPaths:   badPaths,
+		client:     client,
 	}
 }
 
