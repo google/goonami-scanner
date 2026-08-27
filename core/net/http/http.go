@@ -21,10 +21,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
+
+	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 var (
@@ -56,6 +62,10 @@ type ClientOptions struct {
 
 	// DisableFollowRedirects indicates whether the client should not follow HTTP redirects.
 	DisableFollowRedirects bool
+
+	// AllowedAuthorities restricts redirects to only targets whose authority (host:port or host)
+	// is in this list. If empty, all redirects are allowed (unless DisableFollowRedirects is true).
+	AllowedAuthorities []string
 }
 
 // DefaultClientOptions returns the default client options.
@@ -64,7 +74,61 @@ func DefaultClientOptions() *ClientOptions {
 		StoreCookies:               false,
 		EnforceTLSCertVerification: false,
 		DisableFollowRedirects:     false,
+		AllowedAuthorities:         nil,
 	}
+}
+
+// LoadAuthorities loads the allowed authorities from the given network service.
+func (co *ClientOptions) LoadAuthorities(service *nspb.NetworkService) error {
+	if !service.HasNetworkEndpoint() {
+		return nil
+	}
+
+	auths, err := netendpoint.ToURIAuthorities(service.GetNetworkEndpoint())
+	if err != nil {
+		return err
+	}
+
+	co.AllowedAuthorities = auths
+	return nil
+}
+
+// IsAuthorityAllowed checks if the target URL's authority is allowed according to the client
+// options.
+func (co *ClientOptions) IsAuthorityAllowed(targetURL *url.URL) bool {
+	if len(co.AllowedAuthorities) == 0 {
+		return true
+	}
+
+	targetHost := targetURL.Hostname()
+	targetPort := targetURL.Port()
+	if targetPort == "" {
+		if strings.EqualFold(targetURL.Scheme, "https") {
+			targetPort = "443"
+		} else if strings.EqualFold(targetURL.Scheme, "http") {
+			targetPort = "80"
+		}
+	}
+
+	for _, auth := range co.AllowedAuthorities {
+		if strings.EqualFold(targetURL.Host, auth) {
+			return true
+		}
+
+		authHost, authPort, err := net.SplitHostPort(auth)
+		if err != nil {
+			authHost = strings.TrimSuffix(strings.TrimPrefix(auth, "["), "]")
+			if strings.EqualFold(targetHost, authHost) {
+				return true
+			}
+		} else {
+			authHost = strings.TrimSuffix(strings.TrimPrefix(authHost, "["), "]")
+			if strings.EqualFold(targetHost, authHost) && targetPort == authPort {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CreateHTTPClientFn is a function that creates a new HTTP Client.

@@ -19,8 +19,10 @@ package simpleclient
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -505,6 +507,117 @@ func TestDo_MaxRedirects(t *testing.T) {
 
 			if redirectCount != tt.expectedCount {
 				t.Errorf("redirectCount = %d, want %d", redirectCount, tt.expectedCount)
+			}
+		})
+	}
+}
+
+func TestDo_AllowedAuthorities(t *testing.T) {
+	// External server that should not be reached if out-of-scope redirect is not followed
+	externalVisited := false
+	externalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		externalVisited = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("external content"))
+	}))
+	defer externalServer.Close()
+
+	// In-scope server that redirects
+	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/redirect_in_scope":
+			http.Redirect(w, r, "/destination", http.StatusFound)
+		case "/redirect_out_of_scope":
+			http.Redirect(w, r, externalServer.URL+"/external", http.StatusFound)
+		case "/destination":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("in-scope destination"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer targetServer.Close()
+
+	targetURL, _ := url.Parse(targetServer.URL)
+	targetAuthority := targetURL.Host
+
+	tests := []struct {
+		name                string
+		requestPath         string
+		allowedAuthorities  []string
+		wantStatus          int
+		wantBody            string
+		wantExternalVisited bool
+	}{
+		{
+			name:                "when_redirect_in_scope_follows_redirect",
+			requestPath:         "/redirect_in_scope",
+			allowedAuthorities:  []string{targetAuthority},
+			wantStatus:          http.StatusOK,
+			wantBody:            "in-scope destination",
+			wantExternalVisited: false,
+		},
+		{
+			name:                "when_redirect_out_of_scope_stops_and_returns_redirect_response",
+			requestPath:         "/redirect_out_of_scope",
+			allowedAuthorities:  []string{targetAuthority},
+			wantStatus:          http.StatusFound,
+			wantExternalVisited: false,
+		},
+		{
+			name:                "when_allowed_authorities_empty_follows_external_redirect",
+			requestPath:         "/redirect_out_of_scope",
+			allowedAuthorities:  nil,
+			wantStatus:          http.StatusOK,
+			wantBody:            "external content",
+			wantExternalVisited: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			externalVisited = false
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxHttpRequestsPerSecond: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build())
+
+			opts := &goohttp.ClientOptions{
+				AllowedAuthorities: tt.allowedAuthorities,
+			}
+			c, err := New(cfg, opts)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			req, err := http.NewRequest("GET", targetServer.URL+tt.requestPath, nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() failed: %v", err)
+			}
+
+			resp, err := c.Do(req)
+			if err != nil {
+				t.Fatalf("Do() failed: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Errorf("Do() status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			if externalVisited != tt.wantExternalVisited {
+				t.Errorf("externalVisited = %v, want %v", externalVisited, tt.wantExternalVisited)
+			}
+
+			if tt.wantBody != "" {
+				body, _ := io.ReadAll(resp.Body)
+				if string(body) != tt.wantBody {
+					t.Errorf("Do() body = %q, want %q", string(body), tt.wantBody)
+				}
 			}
 		})
 	}

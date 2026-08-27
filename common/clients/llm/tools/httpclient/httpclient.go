@@ -63,9 +63,10 @@ type Tool struct {
 	service    *nspb.NetworkService
 	badPaths   []*regexp.Regexp
 
-	mut           sync.Mutex
-	client        goohttp.Client
-	countRequests int
+	mut             sync.Mutex
+	client          goohttp.Client
+	statelessClient goohttp.Client
+	countRequests   int
 }
 
 // Request is the request to be sent to the service.
@@ -123,18 +124,33 @@ func newTool(config *config.Config, service *nspb.NetworkService) (*Tool, error)
 		badPaths = append(badPaths, regexp.MustCompile(path))
 	}
 
-	clientOpts := &goohttp.ClientOptions{StoreCookies: true}
-	client, err := goohttp.NewClient(config, clientOpts)
+	opts := &goohttp.ClientOptions{StoreCookies: true}
+	if err := opts.LoadAuthorities(service); err != nil {
+		return nil, err
+	}
+
+	client, err := goohttp.NewClient(config, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	statelessOpts := &goohttp.ClientOptions{StoreCookies: false}
+	if err := statelessOpts.LoadAuthorities(service); err != nil {
+		return nil, err
+	}
+
+	statelessClient, err := goohttp.NewClient(config, statelessOpts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Tool{
-		config:     cfg,
-		coreConfig: config,
-		service:    service,
-		badPaths:   badPaths,
-		client:     client,
+		config:          cfg,
+		coreConfig:      config,
+		service:         service,
+		badPaths:        badPaths,
+		client:          client,
+		statelessClient: statelessClient,
 	}, nil
 }
 
@@ -151,8 +167,12 @@ func (h *Tool) numberOfRequests() int {
 }
 
 func (h *Tool) clearSession() error {
-	clientOpts := &goohttp.ClientOptions{StoreCookies: true}
-	client, err := goohttp.NewClient(h.coreConfig, clientOpts)
+	opts := &goohttp.ClientOptions{StoreCookies: true}
+	if err := opts.LoadAuthorities(h.service); err != nil {
+		return err
+	}
+
+	client, err := goohttp.NewClient(h.coreConfig, opts)
 	if err != nil {
 		return err
 	}
@@ -162,14 +182,14 @@ func (h *Tool) clearSession() error {
 	return nil
 }
 
-func (h *Tool) getClient(maintainSession bool) (goohttp.Client, error) {
+func (h *Tool) getClient(maintainSession bool) goohttp.Client {
 	if maintainSession {
 		h.mut.Lock()
 		defer h.mut.Unlock()
-		return h.client, nil
+		return h.client
 	}
 
-	return goohttp.NewClient(h.coreConfig, nil)
+	return h.statelessClient
 }
 
 // Do performs an HTTP request against the service.
@@ -192,11 +212,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 		}
 	}
 
-	client, err := h.getClient(toolreq.MaintainSession)
-	if err != nil {
-		return nil, err
-	}
-
+	client := h.getClient(toolreq.MaintainSession)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

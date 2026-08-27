@@ -87,6 +87,10 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 			return http.ErrUseLastResponse
 		}
 
+		if !options.IsAuthorityAllowed(req.URL) {
+			return http.ErrUseLastResponse
+		}
+
 		if len(via) >= maxRedirects {
 			return ErrTooManyRedirects
 		}

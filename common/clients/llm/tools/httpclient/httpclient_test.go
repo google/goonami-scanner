@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
 	"strconv"
 	"testing"
 
@@ -145,27 +144,6 @@ func makeService(t *testing.T, svrURL string) *nspb.NetworkService {
 			Port:      npb.Port_builder{PortNumber: uint32(port)}.Build(),
 		}.Build(),
 	}.Build()
-}
-
-func buildTool(t *testing.T, cfg *llmcpb.HttpClientConfig, coreConfig *config.Config, service *nspb.NetworkService) *Tool {
-	t.Helper()
-	var badPaths []*regexp.Regexp
-	for _, path := range cfg.GetForbiddenPaths() {
-		badPaths = append(badPaths, regexp.MustCompile(path))
-	}
-
-	client, err := goohttp.NewClient(coreConfig, &goohttp.ClientOptions{StoreCookies: true})
-	if err != nil {
-		t.Fatalf("failed to create client: %v", err)
-	}
-
-	return &Tool{
-		config:     cfg,
-		coreConfig: coreConfig,
-		service:    service,
-		badPaths:   badPaths,
-		client:     client,
-	}
 }
 
 func TestDo(t *testing.T) {
@@ -340,9 +318,19 @@ func TestDo(t *testing.T) {
 						MaxConcurrency:           proto.Int32(1),
 					}.Build(),
 				}.Build(),
+				Clients: cpb.ClientsConfig_builder{
+					Llm: llmcpb.LlmClientConfig_builder{
+						Tools: llmcpb.ToolConfig_builder{
+							HttpClientConfig: tc.cfg,
+						}.Build(),
+					}.Build(),
+				}.Build(),
 			}.Build())
 
-			tool := buildTool(t, tc.cfg, coreConfig, service)
+			tool, err := newTool(coreConfig, service)
+			if err != nil {
+				t.Fatalf("newTool() unexpected error: %v", err)
+			}
 			tool.countRequests = tc.presetReqs
 
 			got, err := tool.Do(nil, tc.req)
@@ -495,5 +483,96 @@ func TestTool_Do_ClearSession(t *testing.T) {
 	}
 	if resp3.StatusCode != 403 {
 		t.Fatalf("ClearSession failed to wipe cookies, got status: %v", resp3.StatusCode)
+	}
+}
+
+func TestTool_Do_RedirectOutOfScope(t *testing.T) {
+	externalVisited := false
+	externalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		externalVisited = true
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("external content"))
+	}))
+	defer externalServer.Close()
+
+	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/redirect_in_scope":
+			http.Redirect(w, r, "/destination", http.StatusFound)
+		case "/redirect_out_of_scope":
+			http.Redirect(w, r, externalServer.URL+"/external", http.StatusFound)
+		case "/destination":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("in-scope destination"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer targetServer.Close()
+
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(10),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	service := makeService(t, targetServer.URL)
+	toolInstance, err := newTool(cfg, service)
+	if err != nil {
+		t.Fatalf("newTool() unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		name                string
+		req                 *Request
+		wantStatus          int32
+		wantContent         string
+		wantExternalVisited bool
+	}{
+		{
+			name: "when_redirect_in_scope_follows_redirect",
+			req: &Request{
+				Method: "GET",
+				URI:    "/redirect_in_scope",
+			},
+			wantStatus:          http.StatusOK,
+			wantContent:         "in-scope destination",
+			wantExternalVisited: false,
+		},
+		{
+			name: "when_redirect_out_of_scope_stops_and_returns_redirect_response",
+			req: &Request{
+				Method: "GET",
+				URI:    "/redirect_out_of_scope",
+			},
+			wantStatus:          http.StatusFound,
+			wantContent:         "",
+			wantExternalVisited: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			externalVisited = false
+
+			resp, err := toolInstance.Do(nil, tt.req)
+			if err != nil {
+				t.Fatalf("Do(%v) unexpected error: %v", tt.req.URI, err)
+			}
+
+			if resp.StatusCode != tt.wantStatus {
+				t.Errorf("Do() status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			if tt.wantContent != "" && resp.Content != tt.wantContent {
+				t.Errorf("Do() content = %q, want %q", resp.Content, tt.wantContent)
+			}
+
+			if externalVisited != tt.wantExternalVisited {
+				t.Errorf("externalVisited = %v, want %v", externalVisited, tt.wantExternalVisited)
+			}
+		})
 	}
 }
