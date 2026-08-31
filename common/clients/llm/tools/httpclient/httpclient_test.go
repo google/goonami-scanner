@@ -574,6 +574,12 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 			if externalVisited != tt.wantExternalVisited {
 				t.Errorf("externalVisited = %v, want %v", externalVisited, tt.wantExternalVisited)
 			}
+
+			if tt.wantStatus == http.StatusFound {
+				if gotLoc := resp.Headers["Location"]; gotLoc != externalServer.URL+"/external" {
+					t.Errorf("Do() Headers[Location] = %q, want %q", gotLoc, externalServer.URL+"/external")
+				}
+			}
 		})
 	}
 }
@@ -585,53 +591,42 @@ func TestExtractRelevantHeaders(t *testing.T) {
 		want map[string]string
 	}{
 		{
-			name: "when_all_relevant_headers_present_extracts_and_lowercases",
+			name: "when_response_has_mixed_headers_extracts_only_relevant_canonical",
 			h: http.Header{
-				"WWW-Authenticate": []string{"Basic realm=\"admin\""},
-				"Location":         []string{"/login"},
-				"Content-Type":     []string{"application/json"},
-				"Server":           []string{"nginx/1.18.0"},
+				"Www-Authenticate":          []string{"Basic realm=\"admin\""},
+				"Location":                  []string{"/login"},
+				"Content-Type":              []string{"application/json"},
+				"Server":                    []string{"nginx/1.18.0"},
+				"Date":                      []string{"Fri, 28 Aug 2026 12:00:00 GMT"},
+				"ETag":                      []string{"\"xyz\""},
+				"Set-Cookie":                []string{"session=abc; Path=/"},
+				"Strict-Transport-Security": []string{"max-age=31536000"},
 			},
 			want: map[string]string{
-				"www-authenticate": "Basic realm=\"admin\"",
-				"location":         "/login",
-				"content-type":     "application/json",
-				"server":           "nginx/1.18.0",
-			},
-		},
-		{
-			name: "when_mixed_case_keys_normalizes_to_lowercase",
-			h: http.Header{
-				"wWw-AuThEnTiCaTe": []string{"Basic"},
-				"LOCATION":         []string{"/home"},
-			},
-			want: map[string]string{
-				"www-authenticate": "Basic",
-				"location":         "/home",
+				"Www-Authenticate": "Basic realm=\"admin\"",
+				"Location":         "/login",
+				"Content-Type":     "application/json",
 			},
 		},
 		{
 			name: "when_multiple_header_values_joins_with_comma",
 			h: http.Header{
-				"WWW-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
+				"Www-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
 			},
 			want: map[string]string{
-				"www-authenticate": "Negotiate, Basic realm=\"foo\"",
+				"Www-Authenticate": "Negotiate, Basic realm=\"foo\"",
 			},
 		},
 		{
-			name: "when_irrelevant_headers_present_filters_them_out",
+			name: "when_header_has_empty_value_slice_omits_key",
 			h: http.Header{
-				"Date":                      []string{"Fri, 28 Aug 2026 12:00:00 GMT"},
-				"ETag":                      []string{"\"xyz\""},
-				"X-Request-Id":              []string{"abc-123"},
-				"Strict-Transport-Security": []string{"max-age=31536000"},
+				"Content-Type": []string{},
 			},
 			want: map[string]string{},
 		},
 		{
-			name: "when_empty_header_returns_empty_map",
-			h:    http.Header{},
+			name: "when_nil_or_empty_header_returns_empty_map",
+			h:    nil,
 			want: map[string]string{},
 		},
 	}
@@ -669,9 +664,8 @@ func TestTool_Do_Headers(t *testing.T) {
 	}
 
 	wantHeaders := map[string]string{
-		"www-authenticate": "Basic realm=\"Router\"",
-		"server":           "Embedded/1.0",
-		"content-type":     "text/plain; charset=utf-8",
+		"Www-Authenticate": "Basic realm=\"Router\"",
+		"Content-Type":     "text/plain; charset=utf-8",
 	}
 	if diff := cmp.Diff(wantHeaders, resp.Headers); diff != "" {
 		t.Errorf("Do() Headers mismatch (-want +got):\n%s", diff)

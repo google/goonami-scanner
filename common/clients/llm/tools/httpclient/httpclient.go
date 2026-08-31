@@ -82,7 +82,7 @@ type Request struct {
 // Response is the response from an HTTP request.
 type Response struct {
 	StatusCode int32             `json:"status_code" jsonschema:"HTTP status code returned by the server."`
-	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. www-authenticate, location, content-type, server) normalized to lowercase."`
+	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Www-Authenticate)."`
 	Content    string            `json:"content" jsonschema:"Raw body content returned by the server."`
 }
 
@@ -284,19 +284,19 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 }
 
 var relevantResponseHeaders = []string{
-	"content-type",
-	"location",
-	"server",
-	"www-authenticate",
+	"Content-Type",
+	"Location",
+	"Www-Authenticate",
 }
 
-// extractRelevantHeaders filters and returns high-signal HTTP response headers normalized to lowercase.
+// extractRelevantHeaders filters and returns high-signal HTTP response headers.
+// Keys in http.Response.Header are guaranteed to be canonicalized by net/http,
+// enabling direct O(1) lookups without scanning or lowercasing all response headers.
 func extractRelevantHeaders(h http.Header) map[string]string {
 	extracted := make(map[string]string)
-	for k, v := range h {
-		lower := strings.ToLower(k)
-		if slices.Contains(relevantResponseHeaders, lower) {
-			extracted[lower] = strings.Join(v, ", ")
+	for _, key := range relevantResponseHeaders {
+		if vals := h[key]; len(vals) > 0 {
+			extracted[key] = strings.Join(vals, ", ")
 		}
 	}
 	return extracted
