@@ -81,8 +81,9 @@ type Request struct {
 
 // Response is the response from an HTTP request.
 type Response struct {
-	StatusCode int32  `json:"status_code"`
-	Content    string `json:"content"`
+	StatusCode int32             `json:"status_code" jsonschema:"HTTP status code returned by the server."`
+	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. www-authenticate, location, content-type, server) normalized to lowercase."`
+	Content    string            `json:"content" jsonschema:"Raw body content returned by the server."`
 }
 
 // DefaultConfig for the httpclient tool.
@@ -226,6 +227,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 
 	return &Response{
 		StatusCode: int32(resp.StatusCode),
+		Headers:    extractRelevantHeaders(resp.Header),
 		Content:    string(content),
 	}, nil
 }
@@ -279,4 +281,23 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 	}
 
 	return req, nil
+}
+
+var relevantResponseHeaders = []string{
+	"content-type",
+	"location",
+	"server",
+	"www-authenticate",
+}
+
+// extractRelevantHeaders filters and returns high-signal HTTP response headers normalized to lowercase.
+func extractRelevantHeaders(h http.Header) map[string]string {
+	extracted := make(map[string]string)
+	for k, v := range h {
+		lower := strings.ToLower(k)
+		if slices.Contains(relevantResponseHeaders, lower) {
+			extracted[lower] = strings.Join(v, ", ")
+		}
+	}
+	return extracted
 }

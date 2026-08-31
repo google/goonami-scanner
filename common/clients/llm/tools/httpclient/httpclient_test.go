@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
@@ -343,7 +344,7 @@ func TestDo(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(Response{}, "Headers")); diff != "" {
 				t.Errorf("Do() response mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -574,5 +575,105 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 				t.Errorf("externalVisited = %v, want %v", externalVisited, tt.wantExternalVisited)
 			}
 		})
+	}
+}
+
+func TestExtractRelevantHeaders(t *testing.T) {
+	tests := []struct {
+		name string
+		h    http.Header
+		want map[string]string
+	}{
+		{
+			name: "when_all_relevant_headers_present_extracts_and_lowercases",
+			h: http.Header{
+				"WWW-Authenticate": []string{"Basic realm=\"admin\""},
+				"Location":         []string{"/login"},
+				"Content-Type":     []string{"application/json"},
+				"Server":           []string{"nginx/1.18.0"},
+			},
+			want: map[string]string{
+				"www-authenticate": "Basic realm=\"admin\"",
+				"location":         "/login",
+				"content-type":     "application/json",
+				"server":           "nginx/1.18.0",
+			},
+		},
+		{
+			name: "when_mixed_case_keys_normalizes_to_lowercase",
+			h: http.Header{
+				"wWw-AuThEnTiCaTe": []string{"Basic"},
+				"LOCATION":         []string{"/home"},
+			},
+			want: map[string]string{
+				"www-authenticate": "Basic",
+				"location":         "/home",
+			},
+		},
+		{
+			name: "when_multiple_header_values_joins_with_comma",
+			h: http.Header{
+				"WWW-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
+			},
+			want: map[string]string{
+				"www-authenticate": "Negotiate, Basic realm=\"foo\"",
+			},
+		},
+		{
+			name: "when_irrelevant_headers_present_filters_them_out",
+			h: http.Header{
+				"Date":                      []string{"Fri, 28 Aug 2026 12:00:00 GMT"},
+				"ETag":                      []string{"\"xyz\""},
+				"X-Request-Id":              []string{"abc-123"},
+				"Strict-Transport-Security": []string{"max-age=31536000"},
+			},
+			want: map[string]string{},
+		},
+		{
+			name: "when_empty_header_returns_empty_map",
+			h:    http.Header{},
+			want: map[string]string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := extractRelevantHeaders(tc.h)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("extractRelevantHeaders() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestTool_Do_Headers(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("WWW-Authenticate", "Basic realm=\"Router\"")
+		w.Header().Set("Server", "Embedded/1.0")
+		w.Header().Set("Date", "Fri, 28 Aug 2026 12:00:00 GMT")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("unauthorized"))
+	}))
+	defer ts.Close()
+
+	cfg := config.FromProto(cpb.Config_builder{}.Build())
+	service := makeService(t, ts.URL)
+	toolInstance, err := newTool(cfg, service)
+	if err != nil {
+		t.Fatalf("newTool() unexpected error: %v", err)
+	}
+
+	resp, err := toolInstance.Do(nil, &Request{Method: "GET", URI: "/"})
+	if err != nil {
+		t.Fatalf("Do() unexpected error: %v", err)
+	}
+
+	wantHeaders := map[string]string{
+		"www-authenticate": "Basic realm=\"Router\"",
+		"server":           "Embedded/1.0",
+		"content-type":     "text/plain; charset=utf-8",
+	}
+	if diff := cmp.Diff(wantHeaders, resp.Headers); diff != "" {
+		t.Errorf("Do() Headers mismatch (-want +got):\n%s", diff)
 	}
 }
