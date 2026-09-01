@@ -346,3 +346,67 @@ func TestGetModel(t *testing.T) {
 		})
 	}
 }
+
+func Test_addUsageMetadata(t *testing.T) {
+	tests := []struct {
+		name string
+		dst  *genai.GenerateContentResponseUsageMetadata
+		src  *genai.GenerateContentResponseUsageMetadata
+		want *genai.GenerateContentResponseUsageMetadata
+	}{
+		{
+			name: "when_nil_dst_does_not_panic",
+			dst:  nil,
+			src: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount: 10,
+			},
+			want: nil,
+		},
+		{
+			name: "when_nil_src_does_not_mutate_dst",
+			dst: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount: 10,
+			},
+			src: nil,
+			want: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount: 10,
+			},
+		},
+		{
+			name: "when_valid_src_accumulates_all_fields",
+			dst: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount:        100,
+				CandidatesTokenCount:    50,
+				CachedContentTokenCount: 20,
+				ThoughtsTokenCount:      10,
+				ToolUsePromptTokenCount: 5,
+				TotalTokenCount:         155,
+			},
+			src: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount:        50,
+				CandidatesTokenCount:    25,
+				CachedContentTokenCount: 10,
+				ThoughtsTokenCount:      5,
+				ToolUsePromptTokenCount: 5,
+				TotalTokenCount:         80,
+			},
+			want: &genai.GenerateContentResponseUsageMetadata{
+				PromptTokenCount:        150,
+				CandidatesTokenCount:    75,
+				CachedContentTokenCount: 30,
+				ThoughtsTokenCount:      15,
+				ToolUsePromptTokenCount: 10,
+				TotalTokenCount:         235,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			addUsageMetadata(tc.dst, tc.src)
+			if diff := cmp.Diff(tc.want, tc.dst); diff != "" {
+				t.Errorf("addUsageMetadata() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

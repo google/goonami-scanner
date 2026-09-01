@@ -69,14 +69,26 @@ var (
 
 // Client to perform LLMs queries using the agent dev kit.
 type Client struct {
-	config                  *lccpb.LlmClientConfig
-	coreConfig              *config.Config
-	ag                      agent.Agent
-	appName                 string
-	userID                  string
-	sessionService          session.Service
-	totalTokenCount         int32
-	cachedContentTokenCount int32
+	config         *lccpb.LlmClientConfig
+	coreConfig     *config.Config
+	ag             agent.Agent
+	appName        string
+	userID         string
+	sessionService session.Service
+	usageMetadata  genai.GenerateContentResponseUsageMetadata
+}
+
+// addUsageMetadata accumulates token metrics from src into dst.
+func addUsageMetadata(dst, src *genai.GenerateContentResponseUsageMetadata) {
+	if dst == nil || src == nil {
+		return
+	}
+	dst.PromptTokenCount += src.PromptTokenCount
+	dst.CandidatesTokenCount += src.CandidatesTokenCount
+	dst.CachedContentTokenCount += src.CachedContentTokenCount
+	dst.ThoughtsTokenCount += src.ThoughtsTokenCount
+	dst.ToolUsePromptTokenCount += src.ToolUsePromptTokenCount
+	dst.TotalTokenCount += src.TotalTokenCount
 }
 
 // DefaultConfig returns the default configuration for the LLM client.
@@ -154,7 +166,17 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 	}
 
 	defer func() {
-		log.DebugContextf(ctx, log.DebugLevelService, "Agent token usage: total=%d (cached=%d)", c.totalTokenCount, c.cachedContentTokenCount)
+		log.DebugContextf(
+			ctx,
+			log.DebugLevelService,
+			"Agent token usage: total=%d (prompt=%d, candidates=%d, cached=%d, thoughts=%d, tool_use=%d)",
+			c.usageMetadata.TotalTokenCount,
+			c.usageMetadata.PromptTokenCount,
+			c.usageMetadata.CandidatesTokenCount,
+			c.usageMetadata.CachedContentTokenCount,
+			c.usageMetadata.ThoughtsTokenCount,
+			c.usageMetadata.ToolUsePromptTokenCount,
+		)
 	}()
 
 	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
@@ -232,8 +254,7 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 		}
 
 		if event.UsageMetadata != nil {
-			c.totalTokenCount += event.UsageMetadata.TotalTokenCount
-			c.cachedContentTokenCount += event.UsageMetadata.CachedContentTokenCount
+			addUsageMetadata(&c.usageMetadata, event.UsageMetadata)
 		}
 
 		if event.Content == nil {
