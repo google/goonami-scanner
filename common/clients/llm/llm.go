@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -50,9 +51,6 @@ var (
 
 	// ErrAgentRun is returned when the LLM agent fails to run.
 	ErrAgentRun = errors.New("LLM agent run failed")
-
-	// ErrAgentVerification is returned when the LLM agent's response verification fails.
-	ErrAgentVerification = errors.New("LLM agent response verification failed")
 
 	// ErrSessionService is returned when there is an error with the session service.
 	ErrSessionService = errors.New("session service error")
@@ -142,11 +140,11 @@ func New(config *config.Config, ag agent.Agent) *Client {
 // AgentResultVerifier is a type of function that can perform validation of the LLM agent output.
 type AgentResultVerifier func(ctx context.Context, result string) error
 
-// Run an agent with retries and timeouts. This function provides a few abstraction:
-//   - It provides timeout enforcement to the run of the agent.
-//   - It provides a retry mechanism with a fixed backoff.
-//   - It integrates the ability to check the validity of the response through a callback.
-func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
+// RunWithFeedbackLoop runs an agent with retries, timeouts, and response verification.
+// When response verification fails, the active session is preserved and the verifier's diagnostic error
+// is fed back to the model as the subsequent user turn for conversational refinement.
+// Hard agent execution failures reset the session and restart from the initial prompt.
+func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
 	ctx = log.ContextForModule(ctx, "clients/llm")
 
 	if content == nil || content.Role == "" {
@@ -160,25 +158,34 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
 	maxAttempts := int(c.config.GetMaxAttempts())
 
-	for i := 0; i < maxAttempts; i++ {
+	var sessionID string
+	turnContent := content
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
 
-		if i > 0 {
+		if attempt > 1 {
 			log.DebugContextf(ctx, log.DebugLevelService, "waiting %v before next attempt", retryDelay)
 			time.Sleep(retryDelay)
 		}
 
-		resp, err := c.runOnce(ctx, content)
+		nextSessionID, resp, err := c.runTurn(ctx, sessionID, turnContent)
 		if err != nil {
-			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", i+1, maxAttempts, err)
+			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", attempt, maxAttempts, err)
+			sessionID = ""
+			turnContent = content
 			continue
 		}
 
-		if err := verifier(ctx, resp); err != nil {
-			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) agent's response verification failed: %v", i+1, maxAttempts, err)
-			continue
+		if verifier != nil {
+			if err := verifier(ctx, resp); err != nil {
+				log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) agent's response verification failed: %v", attempt, maxAttempts, err)
+				sessionID = nextSessionID
+				turnContent = feedbackContent(err)
+				continue
+			}
 		}
 
 		return resp, nil
@@ -187,48 +194,43 @@ func (c *Client) Run(ctx context.Context, content *genai.Content, verifier Agent
 	return "", ErrMaxAttemptsReached
 }
 
-func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, error) {
-	runnerConfig := runner.Config{
+// Run an agent with retries, timeouts, and optional output verification.
+// Callers requiring verification should migrate to RunWithFeedbackLoop.
+func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
+	return c.RunWithFeedbackLoop(ctx, content, verifier)
+}
+
+// runTurn executes a single network turn with the model through the ADK runner.
+// It creates the session if absent, applies the per-request timeout, consumes
+// the runner event stream, tracks token consumption, and filters thought parts.
+func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.Content) (string, string, error) {
+	if sessionID == "" {
+		id, err := c.createSession(ctx)
+		if err != nil {
+			return "", "", err
+		}
+		sessionID = id
+	}
+
+	r, err := runner.New(runner.Config{
 		Agent:          c.ag,
 		SessionService: c.sessionService,
 		AppName:        c.appName,
-	}
-
-	r, err := runner.New(runnerConfig)
+	})
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrRunnerCreation, err)
-	}
-
-	if c.sessionService == nil {
-		return "", ErrSessionService
-	}
-
-	sessionID := uuid.New()
-	sessionReq := &session.CreateRequest{
-		SessionID: sessionID,
-		UserID:    c.userID,
-		AppName:   c.appName,
-	}
-	_, err = c.sessionService.Create(ctx, sessionReq)
-	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrSessionService, err)
+		return "", "", fmt.Errorf("%w: %v", ErrRunnerCreation, err)
 	}
 
 	timeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	runConfig := agent.RunConfig{}
-	events := r.Run(ctx, DefaultUserID, sessionID, content, runConfig)
+	events := r.Run(ctx, c.userID, sessionID, content, agent.RunConfig{})
 
-	var response string
+	var response strings.Builder
 	for event, err := range events {
 		if err != nil {
-			return "", fmt.Errorf("%w: %v", ErrAgentRun, err)
-		}
-
-		if err := ctx.Err(); err != nil {
-			return "", err
+			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
 		}
 
 		if event.UsageMetadata != nil {
@@ -241,11 +243,39 @@ func (c *Client) runOnce(ctx context.Context, content *genai.Content) (string, e
 		}
 
 		for _, part := range event.Content.Parts {
-			if part.Text != "" {
-				response += part.Text
+			if part.Text != "" && !part.Thought {
+				response.WriteString(part.Text)
 			}
 		}
 	}
 
-	return response, nil
+	return sessionID, response.String(), nil
+}
+
+// createSession creates a new unique session with the configured session service.
+func (c *Client) createSession(ctx context.Context) (string, error) {
+	if c.sessionService == nil {
+		return "", ErrSessionService
+	}
+
+	sessionID := uuid.New()
+	_, err := c.sessionService.Create(ctx, &session.CreateRequest{
+		SessionID: sessionID,
+		UserID:    c.userID,
+		AppName:   c.appName,
+	})
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrSessionService, err)
+	}
+	return sessionID, nil
+}
+
+// feedbackContent formats the verifier failure diagnostic as a user turn for refinement.
+func feedbackContent(err error) *genai.Content {
+	return &genai.Content{
+		Role: "user",
+		Parts: []*genai.Part{{
+			Text: fmt.Sprintf("Verification of your previous response failed:\n%v\n\nPlease correct the issues and provide an updated response.", err),
+		}},
+	}
 }
