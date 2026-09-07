@@ -441,44 +441,6 @@ func (f *fakeSessionService) Create(ctx context.Context, req *session.CreateRequ
 	return nil, errors.New("create error")
 }
 
-func TestRun(t *testing.T) {
-	testConfig := makeTestConfig(1, 0)
-	defaultContent := userContent("hello world")
-
-	t.Run("when_agent_returns_verified_result_it_is_returned", func(t *testing.T) {
-		ag := fakellmagent.NewWithSimpleAnswer("good")
-		c := New(testConfig, ag)
-		var verifierCalled bool
-		got, err := c.Run(t.Context(), defaultContent, func(ctx context.Context, res string) error {
-			verifierCalled = true
-			if res != "good" {
-				t.Errorf("verifier received result %q, want %q", res, "good")
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("Run() error = %v", err)
-		}
-		if got != "good" {
-			t.Errorf("Run() = %q, want %q", got, "good")
-		}
-		if !verifierCalled {
-			t.Errorf("Run() did not invoke the provided verifier")
-		}
-	})
-
-	t.Run("when_verification_fails_error_is_returned", func(t *testing.T) {
-		ag := fakellmagent.NewWithSimpleAnswer("bad")
-		c := New(testConfig, ag)
-		_, err := c.Run(t.Context(), defaultContent, func(ctx context.Context, res string) error {
-			return errors.New("invalid format")
-		})
-		if !errors.Is(err, ErrMaxAttemptsReached) {
-			t.Errorf("Run() error = %v, want %v", err, ErrMaxAttemptsReached)
-		}
-	})
-}
-
 func TestGetModel(t *testing.T) {
 	testCases := []struct {
 		name      string

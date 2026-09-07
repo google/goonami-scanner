@@ -194,12 +194,6 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 	return "", ErrMaxAttemptsReached
 }
 
-// Run an agent with retries, timeouts, and optional output verification.
-// Callers requiring verification should migrate to RunWithFeedbackLoop.
-func (c *Client) Run(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
-	return c.RunWithFeedbackLoop(ctx, content, verifier)
-}
-
 // runTurn executes a single network turn with the model through the ADK runner.
 // It creates the session if absent, applies the per-request timeout, consumes
 // the runner event stream, tracks token consumption, and filters thought parts.
