@@ -36,7 +36,17 @@ func (h *PollingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx = log.ContextForModule(ctx, "callbackserver/poll")
 
-	secret := r.URL.Query().Get("secret")
+	query := r.URL.Query()
+	if !query.Has("secret") {
+		// Health check requests (e.g. from GCLB / Envoy) probe "/" without query parameters.
+		// Return 200 OK with an empty response so that serving-port health checks succeed.
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+		return
+	}
+
+	secret := query.Get("secret")
 	if secret == "" {
 		http.Error(w, "required parameter 'secret' not found.", http.StatusBadRequest)
 		return

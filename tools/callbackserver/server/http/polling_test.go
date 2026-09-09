@@ -34,18 +34,27 @@ import (
 func TestPollingHandler(t *testing.T) {
 	tests := []struct {
 		name           string
+		hasSecret      bool
 		secret         string
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
-			name:           "when_no_secret_returns_bad_request",
+			name:           "when_no_secret_param_returns_ok",
+			hasSecret:      false,
+			expectedStatus: http.StatusOK,
+			expectedBody:   "{}",
+		},
+		{
+			name:           "when_empty_secret_param_returns_bad_request",
+			hasSecret:      true,
 			secret:         "",
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "required parameter 'secret' not found.\n",
 		},
 		{
 			name:           "when_no_interaction_found_returns_not_found",
+			hasSecret:      true,
 			secret:         "notfound",
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   "interaction with secret not found\n",
@@ -58,7 +67,7 @@ func TestPollingHandler(t *testing.T) {
 			handler := &PollingHandler{Store: store}
 
 			req := httptest.NewRequest("GET", "/polling", nil)
-			if tt.secret != "" {
+			if tt.hasSecret {
 				q := req.URL.Query()
 				q.Add("secret", tt.secret)
 				req.URL.RawQuery = q.Encode()
