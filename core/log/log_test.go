@@ -256,3 +256,62 @@ func TestDefaultLoggerVulnColors(t *testing.T) {
 		t.Errorf("Log output does not contain expected colored message: %q", got)
 	}
 }
+
+func TestContextHelpers(t *testing.T) {
+	svc80 := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Port: npb.Port_builder{
+				PortNumber: 80,
+			}.Build(),
+		}.Build(),
+	}.Build()
+
+	testCases := []struct {
+		name       string
+		ctx        context.Context
+		wantModule string
+		wantPort   int
+	}{
+		{
+			name:       "when_nil_context_returns_empty_and_zero",
+			ctx:        nil,
+			wantModule: "",
+			wantPort:   0,
+		},
+		{
+			name:       "when_empty_context_returns_empty_and_zero",
+			ctx:        t.Context(),
+			wantModule: "",
+			wantPort:   0,
+		},
+		{
+			name:       "when_module_in_context_returns_module",
+			ctx:        ContextForModule(t.Context(), "testmod"),
+			wantModule: "testmod",
+			wantPort:   0,
+		},
+		{
+			name:       "when_service_in_context_returns_port",
+			ctx:        ContextForService(t.Context(), svc80),
+			wantModule: "",
+			wantPort:   80,
+		},
+		{
+			name:       "when_both_in_context_returns_both",
+			ctx:        ContextForModuleAndService(t.Context(), "testmod", svc80),
+			wantModule: "testmod",
+			wantPort:   80,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ModuleFromContext(tc.ctx); got != tc.wantModule {
+				t.Errorf("ModuleFromContext() = %q, want %q", got, tc.wantModule)
+			}
+			if got := ServicePortFromContext(tc.ctx); got != tc.wantPort {
+				t.Errorf("ServicePortFromContext() = %d, want %d", got, tc.wantPort)
+			}
+		})
+	}
+}
