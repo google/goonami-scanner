@@ -81,6 +81,28 @@ func ContextForModuleAndService(ctx context.Context, name string, service *nspb.
 	return ContextForModule(ContextForService(ctx, service), name)
 }
 
+// ModuleFromContext returns the module name attached to the context, or "" if none.
+func ModuleFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if name, ok := ctx.Value(moduleKey).(string); ok {
+		return name
+	}
+	return ""
+}
+
+// ServicePortFromContext returns the service port attached to the context, or 0 if none.
+func ServicePortFromContext(ctx context.Context) int {
+	if ctx == nil {
+		return 0
+	}
+	if port, ok := ctx.Value(serviceKey).(int); ok {
+		return port
+	}
+	return 0
+}
+
 var logger Logger = &DefaultLogger{}
 
 // SetLogger overwrites the default logger with a user specified one.
