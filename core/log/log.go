@@ -57,22 +57,20 @@ const (
 	DebugLevelRequest = 3
 )
 
-type contextKey int
-
-const (
-	moduleKey contextKey = iota
-	serviceKey
+type (
+	moduleKey  struct{}
+	serviceKey struct{}
 )
 
 // ContextForModule returns a new context with the module name attached.
 func ContextForModule(ctx context.Context, name string) context.Context {
-	return context.WithValue(ctx, moduleKey, name)
+	return context.WithValue(ctx, moduleKey{}, name)
 }
 
 // ContextForService returns a new context with the service information (port) attached.
 func ContextForService(ctx context.Context, service *nspb.NetworkService) context.Context {
 	port := int(service.GetNetworkEndpoint().GetPort().GetPortNumber())
-	return context.WithValue(ctx, serviceKey, port)
+	return context.WithValue(ctx, serviceKey{}, port)
 }
 
 // ContextForModuleAndService returns a new context with both the module name and the service
@@ -150,11 +148,11 @@ type DefaultLogger struct {
 func (l *DefaultLogger) log(ctx context.Context, level string, msg string) {
 	prefix := level + " "
 
-	if port, ok := ctx.Value(serviceKey).(int); ok {
+	if port, ok := ctx.Value(serviceKey{}).(int); ok {
 		portVal := colorize(fmt.Sprintf("%5d", port), ansiGreen, l.UseColors)
 		prefix += "[ " + portVal + " ] "
 	}
-	if module, ok := ctx.Value(moduleKey).(string); ok {
+	if module, ok := ctx.Value(moduleKey{}).(string); ok {
 		moduleVal := colorize(module, ansiCyan, l.UseColors)
 		prefix += "[ " + moduleVal + " ] "
 	}
