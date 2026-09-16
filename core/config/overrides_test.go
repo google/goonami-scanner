@@ -105,6 +105,26 @@ func TestApplyOverrides(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:      "when_overriding_repeated_field_with_empty_value_it_clears_it",
+			overrides: []string{"globalcfg.ports_to_scan=80,443", "globalcfg.ports_to_scan="},
+			want: func() *Config {
+				return Default()
+			},
+			wantErr: nil,
+		},
+		{
+			name:      "when_overriding_repeated_string_field_with_empty_value_it_clears_it",
+			overrides: []string{"fingerprinters.require=fp1,fp2", "fingerprinters.require="},
+			want: func() *Config {
+				c := Default()
+				c.proto.SetWorkflowcfg(cpb.WorkflowConfiguration_builder{
+					Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{}.Build(),
+				}.Build())
+				return c
+			},
+			wantErr: nil,
+		},
+		{
 			name:      "when_using_alias",
 			overrides: []string{"ports=8080,8081"},
 			want: func() *Config {

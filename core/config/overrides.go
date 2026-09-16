@@ -105,8 +105,12 @@ func processLeaf(m protoreflect.Message, fd protoreflect.FieldDescriptor, value 
 	// If the field is a list, we truncate its content.
 	if fd.IsList() {
 		list := m.Mutable(fd).List()
-		for list.Len() > 0 {
-			list.Truncate(0)
+		list.Truncate(0)
+
+		// An empty value clears the list: splitting it would otherwise yield a single empty
+		// element, which is never a valid entry.
+		if value == "" {
+			return nil
 		}
 
 		vals := strings.Split(value, ",")
