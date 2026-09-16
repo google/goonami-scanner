@@ -86,9 +86,11 @@ func setField(m protoreflect.Message, key string, value string) error {
 }
 
 // processMiddleNode handles intermediate nodes in the field path, ensuring the message exists.
+// Repeated and map fields are rejected: they are message kinds, but they cannot be traversed as
+// a single message.
 func processMiddleNode(m protoreflect.Message, fd protoreflect.FieldDescriptor) (protoreflect.Message, error) {
-	if fd.Kind() != protoreflect.MessageKind {
-		return nil, fmt.Errorf("%w: field %q is not a message", ErrFieldNotMessage, fd.Name())
+	if fd.Kind() != protoreflect.MessageKind || fd.IsList() || fd.IsMap() {
+		return nil, fmt.Errorf("%w: field %q is not a singular message", ErrFieldNotMessage, fd.Name())
 	}
 
 	if !m.Has(fd) {

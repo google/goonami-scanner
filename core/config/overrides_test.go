@@ -170,6 +170,11 @@ func TestApplyOverrides(t *testing.T) {
 			wantErr:   ErrFieldNotMessage,
 		},
 		{
+			name:      "when_intermediate_field_is_repeated_returns_error",
+			overrides: []string{"clients.http_crawler.scopes.domain=example.com"},
+			wantErr:   ErrFieldNotMessage,
+		},
+		{
 			name:      "when_invalid_bool_returns_error",
 			overrides: []string{"clients.nmap.enable_host_discovery=not-a-bool"},
 			wantErr:   ErrConfigUnmarshal,
