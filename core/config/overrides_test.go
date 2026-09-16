@@ -71,6 +71,34 @@ func TestApplyOverrides(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:      "when_overriding_enum_field_with_a_name",
+			overrides: []string{"clients.nmap.scan_technique=UDP"},
+			want: func() *Config {
+				c := Default()
+				c.proto.SetClients(cpb.ClientsConfig_builder{
+					Nmap: ncpb.NmapClientConfig_builder{
+						ScanTechnique: ncpb.NmapClientConfig_UDP.Enum(),
+					}.Build(),
+				}.Build())
+				return c
+			},
+			wantErr: nil,
+		},
+		{
+			name:      "when_overriding_enum_field_with_a_number",
+			overrides: []string{"clients.nmap.scan_technique=2"},
+			want: func() *Config {
+				c := Default()
+				c.proto.SetClients(cpb.ClientsConfig_builder{
+					Nmap: ncpb.NmapClientConfig_builder{
+						ScanTechnique: ncpb.NmapClientConfig_UDP.Enum(),
+					}.Build(),
+				}.Build())
+				return c
+			},
+			wantErr: nil,
+		},
+		{
 			name:      "when_overriding_int64_field",
 			overrides: []string{"plugins.webidentity.maximum_file_size_bytes=1024"},
 			want: func() *Config {
@@ -225,8 +253,18 @@ func TestApplyOverrides(t *testing.T) {
 			wantErr:   ErrConfigUnmarshal,
 		},
 		{
+			name:      "when_invalid_enum_returns_error",
+			overrides: []string{"clients.nmap.scan_technique=not-a-technique"},
+			wantErr:   ErrConfigUnmarshal,
+		},
+		{
+			name:      "when_unknown_enum_number_returns_error",
+			overrides: []string{"clients.nmap.scan_technique=42"},
+			wantErr:   ErrConfigUnmarshal,
+		},
+		{
 			name:      "when_unsupported_field_kind_returns_error",
-			overrides: []string{"clients.nmap.scan_technique=CONNECT"},
+			overrides: []string{"globalcfg.performance=5"},
 			wantErr:   ErrUnsupportedFieldKind,
 		},
 	}

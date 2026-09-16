@@ -137,6 +137,8 @@ func parseValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Val
 	switch fd.Kind() {
 	case protoreflect.StringKind:
 		return protoreflect.ValueOfString(value), nil
+	case protoreflect.EnumKind:
+		return parseEnumValue(fd, value)
 	case protoreflect.BoolKind:
 		b, err := strconv.ParseBool(value)
 		if err != nil {
@@ -170,4 +172,21 @@ func parseValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Val
 	default:
 		return protoreflect.Value{}, fmt.Errorf("%w: unsupported field kind %v for field %q", ErrUnsupportedFieldKind, fd.Kind(), fd.Name())
 	}
+}
+
+// parseEnumValue resolves an enum value from its name (e.g. "CONNECT") or, as a fallback, from its
+// number (e.g. "1"). Values that are not part of the enum are rejected.
+func parseEnumValue(fd protoreflect.FieldDescriptor, value string) (protoreflect.Value, error) {
+	values := fd.Enum().Values()
+	if ev := values.ByName(protoreflect.Name(value)); ev != nil {
+		return protoreflect.ValueOfEnum(ev.Number()), nil
+	}
+
+	if number, err := strconv.ParseInt(value, 10, 32); err == nil {
+		if ev := values.ByNumber(protoreflect.EnumNumber(number)); ev != nil {
+			return protoreflect.ValueOfEnum(ev.Number()), nil
+		}
+	}
+
+	return protoreflect.Value{}, fmt.Errorf("%w: %q is not a value of enum %q", ErrConfigUnmarshal, value, fd.Enum().FullName())
 }
