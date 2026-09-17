@@ -24,6 +24,7 @@ import (
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/runner"
@@ -42,6 +43,10 @@ type Options struct {
 
 	// (Optional) Logger to use.
 	Logger log.Logger
+
+	// (Optional) Recorder that receives the scan's metrics. When it is not set,
+	// metrics are discarded.
+	Recorder metrics.Recorder
 }
 
 // Entrypoint is the entry point to use Goonami.
@@ -62,6 +67,13 @@ func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 	if options.Logger != nil {
 		log.SetLogger(options.Logger)
 		log.InfoContextf(ctx, "the logger was modified")
+	}
+
+	if options.Recorder != nil {
+		metrics.SetRecorder(options.Recorder)
+		log.InfoContextf(ctx, "metrics collection is enabled")
+	} else {
+		log.WarnContextf(ctx, "metrics collection is disabled")
 	}
 
 	var r runner.Runner

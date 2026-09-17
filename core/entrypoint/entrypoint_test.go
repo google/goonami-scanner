@@ -28,6 +28,7 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/proto"
@@ -357,6 +358,54 @@ func TestNewWithWorkflowConfiguration(t *testing.T) {
 			}
 			if len(runner.Detectors()) != 1 || runner.Detectors()[0].Name() != "d1" {
 				t.Errorf("expected d1 detector, got %+v", runner.Detectors())
+			}
+		})
+	}
+}
+
+func TestNewInstallsRecorder(t *testing.T) {
+	testCases := []struct {
+		name         string
+		withRecorder bool
+	}{
+		{
+			name:         "when_a_recorder_is_provided_it_receives_observations",
+			withRecorder: true,
+		},
+		{
+			name:         "when_no_recorder_is_provided_observations_are_discarded",
+			withRecorder: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			metrics.SetRecorder(nil)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
+			module.ClearRegistry()
+			module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Portscan: proto.String("ps1"),
+				}.Build(),
+			}.Build())
+			cfg.CreateDirectories(t.TempDir())
+			defer cfg.Close(t.Context())
+
+			opts := &Options{Config: cfg}
+			collector := metrics.NewCollector()
+			if tc.withRecorder {
+				opts.Recorder = collector
+			}
+
+			if _, err := New(t.Context(), opts); err != nil {
+				t.Fatalf("New() returned unexpected error: %v", err)
+			}
+
+			if got, want := metrics.CurrentRecorder() == metrics.Recorder(collector), tc.withRecorder; got != want {
+				t.Errorf("the collector is installed = %t, want %t", got, want)
 			}
 		})
 	}
