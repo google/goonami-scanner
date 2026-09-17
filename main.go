@@ -28,6 +28,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/entrypoint"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/tools/callbackserver"
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -84,6 +85,9 @@ var (
 	ColorFlag = flag.Bool("color", true, "use colors in the output")
 	// OverridesFlag allows overriding specific options from the configuration file.
 	OverridesFlag = stringSlice("o", "override configuration options (format: key=value)")
+	// MetricsFlag controls whether the scan collects metrics and writes them to
+	// metrics.textproto in the output directory.
+	MetricsFlag = flag.Bool("metrics", false, "collect scan metrics and write them to metrics.textproto")
 )
 
 func stringSlice(name, usage string) *[]string {
@@ -136,6 +140,12 @@ func run(ctx context.Context) error {
 		Logger: logger,
 	}
 
+	var collector *metrics.Collector
+	if *MetricsFlag {
+		collector = metrics.NewCollector()
+		options.Recorder = collector
+	}
+
 	e, err := entrypoint.New(ctx, options)
 	if err != nil {
 		return fmt.Errorf("failed to create the entrypoint: %w", err)
@@ -150,19 +160,35 @@ func run(ctx context.Context) error {
 
 	log.InfoContextf(ctx, "running the scanner")
 	results, err := e.Run(ctx, *TargetFlag)
+
+	// Write the metrics unconditionally of the scan success.
+	writeMetrics(ctx, collector, cfg.WorkingDirectory())
+
 	if err != nil {
 		return fmt.Errorf("failed to run the scanner: %w", err)
 	}
 
 	// note: we dissociate the scan results from the other artifacts.
 	resultsPath := path.Join(cfg.WorkingDirectory(), "results.textproto")
-	log.InfoContextf(ctx, "writing results to %q", resultsPath)
 	if err := writeResults(resultsPath, results); err != nil {
 		return fmt.Errorf("failed to write results to %q: %w", resultsPath, err)
 	}
 
 	log.InfoContextf(ctx, "results written to %q", resultsPath)
 	return nil
+}
+
+func writeMetrics(ctx context.Context, collector *metrics.Collector, dir string) {
+	if collector == nil {
+		return
+	}
+
+	metricsPath := path.Join(dir, "metrics.textproto")
+	if err := collector.WriteFile(metricsPath); err != nil {
+		log.ErrorContextf(ctx, "failed to write metrics to %q: %v", metricsPath, err)
+		return
+	}
+	log.InfoContextf(ctx, "metrics written to %q", metricsPath)
 }
 
 func validateFlags() error {

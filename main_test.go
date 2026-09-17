@@ -27,7 +27,11 @@ import (
 
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
+	"google.golang.org/protobuf/encoding/prototext"
+
+	smpb "github.com/google/goonami-scanner/core/metrics/scan_metrics_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
@@ -77,6 +81,75 @@ func TestRun(t *testing.T) {
 	// Verify results file exists
 	if _, err := os.Stat(path.Join(tempDir, "results.textproto")); err != nil {
 		t.Errorf("results.textproto was not created: %v", err)
+	}
+}
+
+func TestRunMetricsFlagGatesCollection(t *testing.T) {
+	testCases := []struct {
+		name            string
+		metrics         bool
+		wantMetricsFile bool
+	}{
+		{
+			name:            "when_the_flag_is_unset_no_metrics_file_is_written",
+			metrics:         false,
+			wantMetricsFile: false,
+		},
+		{
+			name:            "when_the_flag_is_set_the_metrics_file_is_written",
+			metrics:         true,
+			wantMetricsFile: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			module.ClearRegistry()
+			module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+			module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+
+			tempDir := t.TempDir()
+			configPath := path.Join(tempDir, "config.textproto")
+			if err := os.WriteFile(configPath, []byte(fakeConfig), 0644); err != nil {
+				t.Fatalf("failed to write config file: %v", err)
+			}
+
+			*ConfigFlag = configPath
+			*OutputDirFlag = tempDir
+			*TargetFlag = "1.1.1.1"
+			*DebugLevelFlag = 0
+			*MetricsFlag = tc.metrics
+			// The recorder is a process global: leaving this test's collector
+			// installed would make the next test record into it.
+			t.Cleanup(func() {
+				*MetricsFlag = false
+				metrics.SetRecorder(nil)
+			})
+
+			if err := run(t.Context()); err != nil {
+				t.Fatalf("run() returned error: %v", err)
+			}
+
+			metricsPath := path.Join(tempDir, "metrics.textproto")
+			_, err := os.Stat(metricsPath)
+			if got := err == nil; got != tc.wantMetricsFile {
+				t.Fatalf("metrics.textproto exists = %t, want %t (stat error: %v)", got, tc.wantMetricsFile, err)
+			}
+			if !tc.wantMetricsFile {
+				return
+			}
+
+			// The file must be a usable ScanMetrics, not just present. It is
+			// empty for now: nothing records yet.
+			written, err := os.ReadFile(metricsPath)
+			if err != nil {
+				t.Fatalf("reading the metrics file failed: %v", err)
+			}
+			parsed := &smpb.ScanMetrics{}
+			if err := prototext.Unmarshal(written, parsed); err != nil {
+				t.Fatalf("the written metrics file is not a valid textproto: %v", err)
+			}
+		})
 	}
 }
 
