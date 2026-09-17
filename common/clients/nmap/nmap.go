@@ -125,6 +125,9 @@ func (c *SimpleClient) Run(ctx context.Context, target string) (*OutputXML, erro
 	log.DebugContextf(ctx, log.DebugLevelSession, "running %q with args: %v", binaryPath, args)
 	cmd := exec.CommandContext(scanCtx, binaryPath, args...)
 	if err := cmd.Run(); err != nil {
+		if ctxErr := scanCtx.Err(); ctxErr != nil {
+			return nil, fmt.Errorf("%w: %w: %v", ErrNmapExecution, ctxErr, err)
+		}
 		return nil, fmt.Errorf("%w: %v", ErrNmapExecution, err)
 	}
 

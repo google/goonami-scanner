@@ -17,6 +17,7 @@
 package nmap
 
 import (
+	"context"
 	"encoding/xml"
 	"errors"
 	"os"
@@ -272,7 +273,7 @@ func TestRun(t *testing.T) {
 		mockFile string
 		timeout  int32
 		want     *OutputXML
-		wantErr  error
+		wantErrs []error
 	}{
 		{
 			name:     "when_nmap_returns_valid_xml_returns_parsed_output",
@@ -284,28 +285,27 @@ func TestRun(t *testing.T) {
 					{Status: Status{State: "up", Reason: "syn-ack"}},
 				},
 			},
-			wantErr: nil,
 		},
 		{
 			name:     "when_nmap_fails_returns_error",
 			mockFile: "failure.sh",
-			wantErr:  ErrNmapExecution,
+			wantErrs: []error{ErrNmapExecution},
 		},
 		{
 			name:     "when_nmap_returns_invalid_xml_returns_error",
 			mockFile: "invalid_xml.sh",
-			wantErr:  ErrNmapXMLUnmarshal,
+			wantErrs: []error{ErrNmapXMLUnmarshal},
 		},
 		{
-			name:     "when_nmap_times_out_returns_error",
+			name:     "when_nmap_times_out_returns_error_carrying_the_deadline",
 			mockFile: "timeout.sh",
 			timeout:  1,
-			wantErr:  ErrNmapExecution,
+			wantErrs: []error{ErrNmapExecution, context.DeadlineExceeded},
 		},
 		{
 			name:     "when_output_file_is_missing_returns_error",
 			mockFile: "missing_output.sh",
-			wantErr:  ErrNmapOutputRead,
+			wantErrs: []error{ErrNmapOutputRead},
 		},
 	}
 
@@ -333,11 +333,16 @@ func TestRun(t *testing.T) {
 			client := New(cfg)
 
 			got, err := client.Run(t.Context(), "127.0.0.1")
-			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("Run() error = %v, wantErr %v", err, tc.wantErr)
+			for _, wantErr := range tc.wantErrs {
+				if !errors.Is(err, wantErr) {
+					t.Errorf("Run() error = %v, want an error matching %v", err, wantErr)
+				}
 			}
-			if tc.wantErr != nil {
+			if len(tc.wantErrs) > 0 {
 				return
+			}
+			if err != nil {
+				t.Fatalf("Run() returned an unexpected error: %v", err)
 			}
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("Run() returned unexpected diff (-want +got):\n%s", diff)

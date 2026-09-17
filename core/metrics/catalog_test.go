@@ -48,6 +48,11 @@ func TestClassifyError(t *testing.T) {
 			want: errorClassDeadlineExceeded,
 		},
 		{
+			name: "when_the_deadline_error_is_one_of_several_wrapped_errors_it_is_still_deadline_exceeded",
+			err:  fmt.Errorf("%w: %w: %v", errors.New("nmap execution failed"), context.DeadlineExceeded, errors.New("signal: killed")),
+			want: errorClassDeadlineExceeded,
+		},
+		{
 			name: "when_the_context_was_canceled_it_is_canceled",
 			err:  context.Canceled,
 			want: errorClassCanceled,
