@@ -175,10 +175,15 @@ func TestDo(t *testing.T) {
 		{
 			name: "when_post_with_data_and_headers_returns_response",
 			req: &Request{
-				Method:  "POST",
-				URI:     "/post",
-				Headers: map[string]string{"Content-Type": "text/plain"},
-				Data:    "data",
+				Method: "POST",
+				URI:    "/post",
+				Headers: []Header{
+					{
+						Name:  "Content-Type",
+						Value: "text/plain",
+					},
+				},
+				Data: "data",
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != "POST" {
@@ -207,8 +212,11 @@ func TestDo(t *testing.T) {
 			req: &Request{
 				Method: "GET",
 				URI:    "/",
-				Headers: map[string]string{
-					"": "value",
+				Headers: []Header{
+					{
+						Name:  "",
+						Value: "value",
+					},
 				},
 			},
 			handler: func(w http.ResponseWriter, r *http.Request) {

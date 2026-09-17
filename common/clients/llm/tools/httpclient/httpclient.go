@@ -69,14 +69,20 @@ type Tool struct {
 	countRequests   int
 }
 
+// Header represents a key-value header pair.
+type Header struct {
+	Name  string `json:"name" jsonschema:"Header name, e.g. 'Content-Type'."`
+	Value string `json:"value" jsonschema:"Header value, e.g. 'application/json'."`
+}
+
 // Request is the request to be sent to the service.
 type Request struct {
-	Method          string            `json:"method" jsonschema:"Method to use: GET, POST."`
-	URI             string            `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
-	Headers         map[string]string `json:"headers" jsonschema:"Headers to be added to the request."`
-	Data            string            `json:"data" jsonschema:"Data to send with the request"`
-	MaintainSession bool              `json:"maintain_session" jsonschema:"If true, cookies from the response will be saved and sent on subsequent requests where this flag is also true."`
-	ClearSession    bool              `json:"clear_session" jsonschema:"If true, wipes the existing cookie jar before executing the request."`
+	Method          string   `json:"method" jsonschema:"Method to use: GET, POST."`
+	URI             string   `json:"uri" jsonschema:"Absolute URI to request, for example '/' or '/index.html'."`
+	Headers         []Header `json:"headers" jsonschema:"Optional HTTP headers list. Only include required headers such as 'Content-Type'."`
+	Data            string   `json:"data" jsonschema:"Data to send with the request"`
+	MaintainSession bool     `json:"maintain_session" jsonschema:"If true, cookies from the response will be saved and sent on subsequent requests where this flag is also true."`
+	ClearSession    bool     `json:"clear_session" jsonschema:"If true, wipes the existing cookie jar before executing the request."`
 }
 
 // Response is the response from an HTTP request.
@@ -272,12 +278,12 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 		return nil, err
 	}
 
-	for header, value := range toolreq.Headers {
-		if header == "" {
+	for _, header := range toolreq.Headers {
+		if header.Name == "" {
 			continue
 		}
 
-		req.Header.Set(header, value)
+		req.Header.Set(header.Name, header.Value)
 	}
 
 	return req, nil
