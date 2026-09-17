@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/pborman/uuid"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/runner"
@@ -42,6 +43,10 @@ const (
 
 	// DefaultUserID is the default user ID to use for the LLM client.
 	DefaultUserID = "goonami"
+
+	// llmMetricsModule is the module name this client reports under, both in logs
+	// and in the module label of its metrics.
+	llmMetricsModule = "clients/llm"
 )
 
 var (
@@ -137,6 +142,36 @@ func New(config *config.Config, ag agent.Agent) *Client {
 	}
 }
 
+// recordTokens attributes token consumption to the model that served the
+// response.
+//
+// The breakdown mirrors what the backend reports: the total is the sum of the
+// prompt, the generated candidates, the tool results fed back in and the
+// thinking tokens. Each count is recorded only when present, so a model that
+// does not think, or a request that uses no tools, simply has no series rather
+// than a series pinned at zero.
+func recordTokens(ctx context.Context, usage *genai.GenerateContentResponseUsageMetadata, model string) {
+	label := metrics.LLMModel(model)
+
+	counts := []struct {
+		metric *metrics.Counter
+		value  int32
+	}{
+		{metrics.LLMTokens, usage.TotalTokenCount},
+		{metrics.LLMInputTokens, usage.PromptTokenCount},
+		{metrics.LLMCachedTokens, usage.CachedContentTokenCount},
+		{metrics.LLMOutputTokens, usage.CandidatesTokenCount},
+		{metrics.LLMThoughtTokens, usage.ThoughtsTokenCount},
+		{metrics.LLMToolInputTokens, usage.ToolUsePromptTokenCount},
+	}
+
+	for _, count := range counts {
+		if count.value > 0 {
+			count.metric.Add(ctx, int64(count.value), label)
+		}
+	}
+}
+
 // AgentResultVerifier is a type of function that can perform validation of the LLM agent output.
 type AgentResultVerifier func(ctx context.Context, result string) error
 
@@ -144,14 +179,16 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 // When response verification fails, the active session is preserved and the verifier's diagnostic error
 // is fed back to the model as the subsequent user turn for conversational refinement.
 // Hard agent execution failures reset the session and restart from the initial prompt.
-func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (string, error) {
-	ctx = log.ContextForModule(ctx, "clients/llm")
+func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (result string, err error) {
+	ctx = log.ContextForModule(ctx, llmMetricsModule)
 
 	if content == nil || content.Role == "" {
 		return "", ErrContentRequired
 	}
 
+	start := time.Now()
 	defer func() {
+		metrics.LLMDuration.Observe(ctx, time.Since(start).Seconds(), metrics.ErrorClass(err))
 		log.DebugContextf(ctx, log.DebugLevelService, "Agent token usage: total=%d (cached=%d)", c.totalTokenCount, c.cachedContentTokenCount)
 	}()
 
@@ -191,6 +228,11 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 		return resp, nil
 	}
 
+	// The agent never produced an acceptable answer within its budget.
+	metrics.BudgetExhausted.Add(ctx, 1,
+		metrics.Module(llmMetricsModule),
+		metrics.LimitName(metrics.LimitMaxAttempts))
+
 	return "", ErrMaxAttemptsReached
 }
 
@@ -227,9 +269,13 @@ func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.C
 			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
 		}
 
-		if event.UsageMetadata != nil {
+		// Partial events repeat the usage of the turn they belong to: the runner
+		// forwards them verbatim and only the final event is authoritative.
+		// Counting them would multiply every token metric by the chunk count.
+		if event.UsageMetadata != nil && !event.Partial {
 			c.totalTokenCount += event.UsageMetadata.TotalTokenCount
 			c.cachedContentTokenCount += event.UsageMetadata.CachedContentTokenCount
+			recordTokens(ctx, event.UsageMetadata, event.ModelVersion)
 		}
 
 		if event.Content == nil {
