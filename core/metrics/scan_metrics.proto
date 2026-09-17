@@ -1,0 +1,83 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.metrics;
+
+option go_package = "github.com/google/goonami-scanner/core/metrics/scan_metrics_go_proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ScanMetricsOuterClass";
+option java_package = "com.google.goonami.proto.metrics";
+
+// ScanMetrics is the aggregated telemetry of a single scan, written next to the
+// scan results at the end of a run.
+message ScanMetrics {
+  // The collected series, ordered by name then labels.
+  repeated Series series = 1;
+
+  // Metrics that exceeded their series cap. A non-empty list means a label was
+  // unbounded and the corresponding series are incomplete.
+  repeated DroppedSeries dropped = 2;
+}
+
+// Label is one dimension of a series.
+message Label {
+  string key = 1;
+  string value = 2;
+}
+
+// Distribution summarizes the samples of a distribution series.
+message Distribution {
+  // Number of samples.
+  int64 count = 1;
+
+  // Total of every sample.
+  double sum = 2;
+
+  // Smallest sample.
+  double min = 3;
+
+  // Largest sample.
+  double max = 4;
+}
+
+// Series is a single metric with a single combination of labels.
+message Series {
+  // Name of the metric, e.g. "module/duration".
+  string name = 1;
+
+  // Dimensions of this series.
+  repeated Label labels = 2;
+
+  oneof value {
+    // Total of a counter.
+    int64 counter = 3;
+
+    // Summary of a distribution.
+    Distribution distribution = 4;
+  }
+}
+
+// DroppedSeries reports observations lost to a metric's series cap.
+message DroppedSeries {
+  // Name of the metric that reached its cap.
+  string metric = 1;
+
+  // Number of observations dropped.
+  int64 observations = 2;
+}
