@@ -34,6 +34,7 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
@@ -203,6 +204,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 		customServiceSetup  func(ts *httptest.Server) *nspb.NetworkService
 		expectVulnerability bool
 		expectError         bool
+		wantBudgetExhausted int64
 	}{
 		{
 			name:            "when_valid_credentials_exist_detection_reports_are_generated",
@@ -326,11 +328,16 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				return config.FromProto(cfgProto)
 			},
 			expectVulnerability: false,
+			wantBudgetExhausted: 1,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			collector := metrics.NewCollector()
+			metrics.SetRecorder(collector)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
 			var pluginProto tpb.TemplatedPlugin
 			if err := prototext.Unmarshal([]byte(tc.pluginProtoText), &pluginProto); err != nil {
 				t.Fatalf("Failed to parse mock plugin: %v", err)
@@ -391,6 +398,13 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			hasVob := reports != nil && len(reports.GetDetectionReports()) > 0
 			if hasVob != tc.expectVulnerability {
 				t.Errorf("Detect() hasVulnerability = %v, want %v", hasVob, tc.expectVulnerability)
+			}
+
+			budget := collector.Value(t.Context(), metrics.BudgetExhausted,
+				metrics.Module(detector.Name()),
+				metrics.LimitName(metrics.LimitMaxAttemptsPerService))
+			if budget != tc.wantBudgetExhausted {
+				t.Errorf("budget/exhausted = %d, want %d", budget, tc.wantBudgetExhausted)
 			}
 		})
 	}

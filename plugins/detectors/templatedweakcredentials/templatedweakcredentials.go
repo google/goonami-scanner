@@ -28,6 +28,7 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
@@ -126,6 +127,10 @@ func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*d
 	for _, username := range d.store.Usernames() {
 		for _, password := range d.store.Passwords(username) {
 			if maxAttempts > 0 && attempts >= maxAttempts {
+				metrics.BudgetExhausted.Add(ctx, 1,
+					metrics.Module(d.Name()),
+					metrics.LimitName(metrics.LimitMaxAttemptsPerService))
+
 				log.DebugContextf(ctx, log.DebugLevelService, "reached maximum authentication attempts limit of %d", maxAttempts)
 				return nil, nil
 			}
