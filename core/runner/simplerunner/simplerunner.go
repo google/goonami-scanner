@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
@@ -122,7 +123,26 @@ func (r *SimpleRunner) PortScanStep(ctx context.Context, target string) (*rpb.Po
 		return nil, ErrNoPortScanner
 	}
 
-	return r.portScanner.Scan(ctx, target)
+	start := time.Now()
+	report, err := r.portScanner.Scan(ctx, target)
+	recordModuleRun(ctx, r.portScanner.Name(), start, err)
+	return report, err
+}
+
+// recordModuleRun records one module invocation: how long it took and, if it
+// failed, a bounded classification of the failure.
+//
+// The duration is observed for failures too, so its sample count is the number
+// of invocations. Successful runs are that count minus the error count, and are
+// not counted separately.
+func recordModuleRun(ctx context.Context, name string, start time.Time, err error) {
+	module := metrics.Module(name)
+
+	metrics.ModuleDuration.Observe(ctx, time.Since(start).Seconds(), module)
+
+	if err != nil {
+		metrics.ModuleErrors.Add(ctx, 1, module, metrics.ErrorClass(err))
+	}
 }
 
 // FingerprintStep runs fingerprinting (in place) from the port scanning report.
@@ -152,23 +172,35 @@ func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.Fingerprint
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
 	ctx = log.ContextForModule(ctx, "core/runner")
 	scanStart := time.Now()
+
+	phaseStart := time.Now()
 	portscan, err := r.PortScanStep(ctx, target)
 	if err != nil {
 		return nil, err
 	}
+	metrics.PortScanDuration.Observe(ctx, time.Since(phaseStart).Seconds())
+	metrics.ServicesDiscovered.Add(ctx, int64(len(portscan.GetNetworkServices())))
 
 	log.DebugContextf(ctx, log.DebugLevelSession, "port scan complete: Found %d open services", len(portscan.GetNetworkServices()))
+
+	phaseStart = time.Now()
 	fpreport, err := r.FingerprintStep(ctx, portscan)
 	if err != nil {
 		return nil, err
 	}
+	metrics.FingerprintDuration.Observe(ctx, time.Since(phaseStart).Seconds())
 
 	log.DebugContextf(ctx, log.DebugLevelSession, "fingerprinting phase complete")
+
+	phaseStart = time.Now()
 	detections, err := r.DetectStep(ctx, fpreport)
 	if err != nil {
 		return nil, err
 	}
+	metrics.DetectDuration.Observe(ctx, time.Since(phaseStart).Seconds())
+
 	scanDuration := time.Since(scanStart)
+	metrics.ScanDuration.Observe(ctx, scanDuration.Seconds())
 
 	var scanFindings []*srpb.ScanFinding
 	for _, detection := range detections {
@@ -276,7 +308,11 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 			}
 
 			ctx = log.ContextForModuleAndService(ctx, fp.Name(), sv)
+
+			start := time.Now()
 			res, err := fp.Fingerprint(ctx, sv)
+			recordModuleRun(ctx, fp.Name(), start, err)
+
 			if err != nil {
 				log.ErrorContextf(ctx, "fatal fingerprinting error: %s", err)
 				return nil, err
@@ -300,10 +336,18 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 		}
 
 		ctx = log.ContextForModuleAndService(ctx, dt.Name(), svc)
+
+		start := time.Now()
 		res, err := dt.Detect(ctx, svc)
+		recordModuleRun(ctx, dt.Name(), start, err)
+
 		if err != nil {
 			log.ErrorContextf(ctx, "fatal detection error: %s", err)
 			return nil, err
+		}
+
+		for range res.GetDetectionReports() {
+			metrics.Findings.Add(ctx, 1, metrics.Module(dt.Name()))
 		}
 
 		if len(res.GetDetectionReports()) > 0 {

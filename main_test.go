@@ -139,8 +139,8 @@ func TestRunMetricsFlagGatesCollection(t *testing.T) {
 				return
 			}
 
-			// The file must be a usable ScanMetrics, not just present. It is
-			// empty for now: nothing records yet.
+			// The file must be a usable ScanMetrics, not just present: a scan
+			// always runs the port scanner, so it always has something to say.
 			written, err := os.ReadFile(metricsPath)
 			if err != nil {
 				t.Fatalf("reading the metrics file failed: %v", err)
@@ -148,6 +148,9 @@ func TestRunMetricsFlagGatesCollection(t *testing.T) {
 			parsed := &smpb.ScanMetrics{}
 			if err := prototext.Unmarshal(written, parsed); err != nil {
 				t.Fatalf("the written metrics file is not a valid textproto: %v", err)
+			}
+			if len(parsed.GetSeries()) == 0 {
+				t.Errorf("the written metrics file has no series, want at least one")
 			}
 		})
 	}
