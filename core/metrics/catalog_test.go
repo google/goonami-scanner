@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"testing"
 )
 
@@ -118,6 +119,153 @@ func TestSimpleLabelConstructors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.label != tc.want {
 				t.Errorf("label = %v, want %v", tc.label, tc.want)
+			}
+		})
+	}
+}
+
+// catalogMetrics returns the declared metrics that belong to the Goonami
+// catalog, skipping the throwaway metrics the tests in this package register.
+func catalogMetrics() []Metric {
+	testPrefixes := []string{"test/", "panics/", "accessors/", "collector/", "export/"}
+
+	var catalog []Metric
+	for _, m := range Declared() {
+		isTestMetric := false
+		for _, prefix := range testPrefixes {
+			if strings.HasPrefix(m.Name(), prefix) {
+				isTestMetric = true
+				break
+			}
+		}
+		if !isTestMetric {
+			catalog = append(catalog, m)
+		}
+	}
+	return catalog
+}
+
+// aggregateWords are the names a measurement covering other measurements tends
+// to be given. None of them may appear as a label value or as a name segment.
+var aggregateWords = map[string]bool{"total": true, "all": true, "any": true, "sum": true}
+
+func TestCatalogMetricsOnlyUseDeclaredLabelKeys(t *testing.T) {
+	// Guards the cardinality contract: every catalog metric must declare the keys
+	// it is recorded with, and no metric may declare a key that is not a known
+	// label. A new key must be added to this list deliberately.
+	known := map[LabelKey]bool{
+		LabelModule:     true,
+		LabelErrorClass: true,
+		LabelLimitName:  true,
+		LabelModel:      true,
+	}
+
+	for _, m := range catalogMetrics() {
+		for _, key := range m.LabelKeys() {
+			if !known[key] {
+				t.Errorf("metric %q declares unknown label key %q", m.Name(), key)
+			}
+		}
+	}
+}
+
+func TestCatalogHasNoAggregateLabelValues(t *testing.T) {
+	// Guards the labels-versus-names rule. A label value that names an aggregate
+	// sits in the same series family as the parts it is made of, so the obvious
+	// query (sum across the label) double counts. Such a measurement belongs in
+	// its own metric.
+	//
+	// The catalog declares keys, not values, so this checks the constructors
+	// that produce closed value sets.
+	closedSetLabels := []Label{
+		LimitName(LimitMaxAttemptsPerService), LimitName(LimitMaxRequestsPerService),
+		LimitName(LimitMaxHTTPRedirects), LimitName(LimitMaxAttempts),
+	}
+
+	for _, label := range closedSetLabels {
+		if aggregateWords[label.Value] {
+			t.Errorf("label %s=%q names an aggregate: it overlaps the other values of the key, so it must be its own metric", label.Key, label.Value)
+		}
+	}
+}
+
+func TestCatalogHasNoAggregateNameSegments(t *testing.T) {
+	// Guards the same rule on the other side. A dimension folded into the name
+	// must put the parts under the whole, never beside it: "scan/duration/total"
+	// would be summed together with "scan/duration/portscan" by anything that
+	// globs the family, which is the double counting trap moved from the label
+	// to the name.
+	for _, m := range catalogMetrics() {
+		segments := strings.Split(m.Name(), "/")
+		leaf := segments[len(segments)-1]
+		if aggregateWords[leaf] {
+			t.Errorf("metric %q ends in %q: an aggregate must be the parent of its parts, not a sibling of them", m.Name(), leaf)
+		}
+	}
+}
+
+func TestCatalogChildMetricsHaveADeclaredParent(t *testing.T) {
+	// A name like "a/b/c" claims to be a part of "a/b", so "a/b" has to be a
+	// metric someone can actually read. The first segment of a two segment name
+	// is only a namespace ("module", "budget"), but a deeper prefix is a promise.
+	//
+	// This is what turns deleting an aggregate into a test failure instead of an
+	// orphan: dropping "module/runs" while keeping "module/runs/error" would
+	// leave a child pointing at a whole that no longer exists.
+	declared := make(map[string]bool)
+	for _, m := range catalogMetrics() {
+		declared[m.Name()] = true
+	}
+
+	for _, m := range catalogMetrics() {
+		segments := strings.Split(m.Name(), "/")
+		if len(segments) < 3 {
+			continue
+		}
+
+		parent := strings.Join(segments[:len(segments)-1], "/")
+		if !declared[parent] {
+			t.Errorf("metric %q has no declared parent %q: declare the parent or flatten the name", m.Name(), parent)
+		}
+	}
+}
+
+func TestAggregateMetricsAreTheParentOfTheirParts(t *testing.T) {
+	testCases := []struct {
+		name   string
+		parent Metric
+		parts  []Metric
+	}{
+		{
+			name:   "scan_phases_are_children_of_the_whole_scan_duration",
+			parent: ScanDuration,
+			parts:  []Metric{PortScanDuration, FingerprintDuration, DetectDuration},
+		},
+		{
+			name:   "the_token_breakdown_are_children_of_the_token_total",
+			parent: LLMTokens,
+			parts: []Metric{
+				LLMInputTokens, LLMOutputTokens, LLMThoughtTokens, LLMToolInputTokens,
+			},
+		},
+		{
+			name:   "cached_tokens_are_a_child_of_the_input_tokens",
+			parent: LLMInputTokens,
+			parts:  []Metric{LLMCachedTokens},
+		},
+		{
+			name:   "failed_requests_are_a_child_of_the_request_count",
+			parent: HTTPRequests,
+			parts:  []Metric{HTTPRequestErrors},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, part := range tc.parts {
+				if !strings.HasPrefix(part.Name(), tc.parent.Name()+"/") {
+					t.Errorf("metric %q is not a child of %q", part.Name(), tc.parent.Name())
+				}
 			}
 		})
 	}

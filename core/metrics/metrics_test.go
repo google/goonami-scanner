@@ -132,3 +132,27 @@ func TestNewDistributionWhenNameIsAlreadyACounterPanics(t *testing.T) {
 
 	NewDistribution("panics/declared_as_both", "A description.", UnitSeconds)
 }
+
+func TestDeclaredIncludesCatalogMetricsSorted(t *testing.T) {
+	declared := Declared()
+
+	if len(declared) == 0 {
+		t.Fatalf("Declared() returned no metrics, want the catalog")
+	}
+
+	for i := 1; i < len(declared); i++ {
+		if declared[i-1].Name() >= declared[i].Name() {
+			t.Errorf("Declared() is not sorted: %q came before %q", declared[i-1].Name(), declared[i].Name())
+		}
+	}
+
+	found := false
+	for _, m := range declared {
+		if m == ModuleDuration {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Declared() does not contain ModuleDuration, want it to contain every catalog metric")
+	}
+}
