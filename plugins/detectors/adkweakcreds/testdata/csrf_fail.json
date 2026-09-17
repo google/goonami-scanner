@@ -1,0 +1,35 @@
+{
+  "supports_authentication": true,
+  "authentication_details": {
+    "csrf_request": {
+      "method": "GET",
+      "path": "/notfound",
+      "body": "",
+      "extraction_regex": "value=\"([^\"]+)\"",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "text/html"
+        }
+      ]
+    },
+    "login_request": {
+      "method": "POST",
+      "path": "/login",
+      "body": "user=[[username]]&pass=[[password]]&csrf=[[csrftoken]]",
+      "extraction_regex": "(error)",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        }
+      ]
+    },
+    "credentials_to_test": [
+      {
+        "username": "admin",
+        "password": "password"
+      }
+    ]
+  }
+}

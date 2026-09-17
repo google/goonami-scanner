@@ -1,0 +1,23 @@
+{
+  "supports_authentication": true,
+  "authentication_details": {
+    "login_request": {
+      "method": "POST",
+      "path": "/login",
+      "body": "user=[[username]]&pass=[[password]]",
+      "extraction_regex": "(wrong)",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        }
+      ]
+    },
+    "credentials_to_test": [
+      {
+        "username": "admin",
+        "password": "password"
+      }
+    ]
+  }
+}

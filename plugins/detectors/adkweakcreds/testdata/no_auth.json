@@ -1,0 +1,16 @@
+{
+  "supports_authentication": false,
+  "login_request": {
+    "method": "GET",
+    "path": "/",
+    "body": "",
+    "extraction_regex": "",
+    "headers": [
+      {
+        "name": "Content-Type",
+        "value": ""
+      }
+    ]
+  },
+  "credentials_to_test": []
+}

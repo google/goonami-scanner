@@ -1,0 +1,18 @@
+{
+  "supports_authentication": true,
+  "authentication_details": {
+    "login_request": {
+      "method": "POST",
+      "path": "/login",
+      "body": "",
+      "extraction_regex": "something",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "text/plain"
+        }
+      ]
+    },
+    "credentials_to_test": []
+  }
+}

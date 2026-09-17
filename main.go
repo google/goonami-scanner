@@ -45,6 +45,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/fingerprint/webidentity"
 
 	// detectors
+	_ "github.com/google/goonami-scanner/plugins/detectors/adkweakcreds"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 
