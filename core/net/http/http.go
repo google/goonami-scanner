@@ -28,6 +28,7 @@ import (
 	"sync"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -143,6 +144,10 @@ func Register(name string, factory CreateHTTPClientFn) {
 
 // NewClient returns an HTTP Client configured by the global configuration.
 // If the configured client is not registered, it returns an error.
+//
+// The returned client is instrumented: wrapping here rather than in each
+// implementation means every registered client is measured, including ones
+// registered outside this package.
 func NewClient(cfg *config.Config, options *ClientOptions) (Client, error) {
 	if cfg == nil {
 		return nil, errors.New("config is nil")
@@ -157,7 +162,35 @@ func NewClient(cfg *config.Config, options *ClientOptions) (Client, error) {
 		return nil, fmt.Errorf("http client %q is not registered", name)
 	}
 
-	return factory(cfg, options)
+	client, err := factory(cfg, options)
+	if err != nil {
+		return nil, err
+	}
+
+	return &instrumentedClient{wrapped: client}, nil
+}
+
+// instrumentedClient records the volume of outbound requests.
+type instrumentedClient struct {
+	wrapped Client
+}
+
+// Do records the request and delegates to the wrapped client.
+//
+// Only the volume and whether the request reached a response are recorded. The
+// URL, the host, the method and the status code are all chosen by the target or
+// the caller and describe the target rather than the scanner.
+func (c *instrumentedClient) Do(req *http.Request) (*http.Response, error) {
+	resp, err := c.wrapped.Do(req)
+
+	ctx := req.Context()
+	metrics.HTTPRequests.Add(ctx, 1)
+
+	if err != nil {
+		metrics.HTTPRequestErrors.Add(ctx, 1, metrics.ErrorClass(err))
+	}
+
+	return resp, err
 }
 
 // SharedClient returns a shared HTTP Client configured by the global configuration with default

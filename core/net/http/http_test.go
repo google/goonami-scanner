@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
@@ -147,15 +148,29 @@ func TestRegisterAndNewClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient(custom) returned error: %v", err)
 	}
-	if _, ok := client.(*fakeClient); !ok {
-		t.Errorf("NewClient(custom) did not return fakeClient")
+	instrumented, ok := client.(*instrumentedClient)
+	if !ok {
+		t.Fatalf("NewClient(custom) returned %T, want *instrumentedClient", client)
+	}
+	if _, ok := instrumented.wrapped.(*fakeClient); !ok {
+		t.Errorf("NewClient(custom) wrapped %T, want *fakeClient", instrumented.wrapped)
 	}
 }
 
-type fakeClient struct{}
+// fakeClient is a Client whose response and error are configurable.
+type fakeClient struct {
+	statusCode int
+	err        error
+}
 
 func (f *fakeClient) Do(req *http.Request) (*http.Response, error) {
-	return nil, nil
+	if f.err != nil {
+		return nil, f.err
+	}
+	if f.statusCode == 0 {
+		return nil, nil
+	}
+	return &http.Response{StatusCode: f.statusCode}, nil
 }
 
 func TestOptions_IsAuthorityAllowed(t *testing.T) {
@@ -237,4 +252,109 @@ func TestOptions_IsAuthorityAllowed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInstrumentedClientRecordsMetrics(t *testing.T) {
+	transportErr := errors.New("connection refused")
+
+	testCases := []struct {
+		name           string
+		method         string
+		client         *fakeClient
+		wantErrorClass string
+		wantErr        error
+	}{
+		{
+			name:   "when_the_response_is_successful_only_the_request_is_counted",
+			method: "GET",
+			client: &fakeClient{statusCode: 200},
+		},
+		{
+			name:   "when_the_target_returns_a_server_error_it_is_not_an_error",
+			method: "POST",
+			client: &fakeClient{statusCode: 503},
+		},
+		{
+			name:   "when_the_response_is_nil_without_error_it_is_not_an_error",
+			method: "GET",
+			client: &fakeClient{},
+		},
+		{
+			name:           "when_the_transport_fails_the_error_class_is_recorded",
+			method:         "GET",
+			client:         &fakeClient{err: transportErr},
+			wantErrorClass: "other",
+			wantErr:        transportErr,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			collector := metrics.NewCollector()
+			metrics.SetRecorder(collector)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
+			req, err := http.NewRequestWithContext(t.Context(), tc.method, "http://example.com/", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequestWithContext() error = %v", err)
+			}
+
+			client := &instrumentedClient{wrapped: tc.client}
+			if _, err := client.Do(req); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Do() error = %v, want %v", err, tc.wantErr)
+			}
+
+			if got := collector.Value(t.Context(), metrics.HTTPRequests); got != 1 {
+				t.Errorf("http/requests = %d, want 1", got)
+			}
+
+			// A status chosen by the target is not a failure: only a request
+			// that never reached a response counts as one.
+			var wantErrors int64
+			if tc.wantErrorClass != "" {
+				wantErrors = 1
+				label := metrics.Label{Key: metrics.LabelErrorClass, Value: tc.wantErrorClass}
+				if got := collector.Value(t.Context(), metrics.HTTPRequestErrors, label); got != 1 {
+					t.Errorf("http/requests/error[%v] = %d, want 1", label, got)
+				}
+			}
+			if got := totalRequestErrors(collector); got != wantErrors {
+				t.Errorf("http/requests/error total = %d, want %d", got, wantErrors)
+			}
+		})
+	}
+}
+
+func TestInstrumentedClientWhenMultipleRequestsAreAggregated(t *testing.T) {
+	collector := metrics.NewCollector()
+	metrics.SetRecorder(collector)
+	t.Cleanup(func() { metrics.SetRecorder(nil) })
+
+	client := &instrumentedClient{wrapped: &fakeClient{statusCode: 204}}
+	for range 3 {
+		req, err := http.NewRequestWithContext(t.Context(), "GET", "http://example.com/", nil)
+		if err != nil {
+			t.Fatalf("http.NewRequestWithContext() error = %v", err)
+		}
+		if _, err := client.Do(req); err != nil {
+			t.Fatalf("Do() error = %v", err)
+		}
+	}
+
+	if got := collector.Value(t.Context(), metrics.HTTPRequests); got != 3 {
+		t.Errorf("http/requests = %d, want 3", got)
+	}
+}
+
+// totalRequestErrors sums every http/requests/error series, whatever its error
+// class. It is used to assert that no failure at all was recorded, which a
+// single lookup cannot prove.
+func totalRequestErrors(collector *metrics.Collector) int64 {
+	var total int64
+	for _, series := range collector.Series() {
+		if series.Metric == metrics.HTTPRequestErrors {
+			total += series.Value()
+		}
+	}
+	return total
 }
