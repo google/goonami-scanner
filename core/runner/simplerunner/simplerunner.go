@@ -22,12 +22,14 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/proto"
 
@@ -61,6 +63,7 @@ type SimpleRunner struct {
 	portScanner    module.PortScanner
 	fingerprinters []module.Fingerprinter
 	detectors      []module.VulnDetector
+	degraded       atomic.Bool // reports if any module failed to run
 }
 
 // New creates a new SimpleRunner.
@@ -171,6 +174,7 @@ func (r *SimpleRunner) DetectStep(ctx context.Context, fpreport *rpb.Fingerprint
 // Run runs the Goonami modules in the order of port scan, fingerprinting and then detection.
 func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResults, error) {
 	ctx = log.ContextForModule(ctx, "core/runner")
+	r.degraded.Store(false)
 	scanStart := time.Now()
 
 	phaseStart := time.Now()
@@ -221,8 +225,14 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 		scanFindings = append(scanFindings, finding)
 	}
 
+	scanStatus := srpb.ScanStatus_SUCCEEDED
+	if r.degraded.Load() {
+		scanStatus = srpb.ScanStatus_PARTIALLY_SUCCEEDED
+		log.WarnContextf(ctx, "at least one module failed, scan reported as PARTIALLY_SUCCEEDED")
+	}
+
 	results := srpb.ScanResults_builder{
-		ScanStatus:         srpb.ScanStatus_SUCCEEDED,
+		ScanStatus:         scanStatus,
 		ScanStartTimestamp: timestamppb.New(scanStart),
 		ScanDuration:       durationpb.New(scanDuration),
 		TargetAlive:        len(portscan.GetNetworkServices()) > 0,
@@ -300,6 +310,10 @@ func runConcurrent[E any](ctx context.Context, concurrency int, services []*nspb
 func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 	var services []*nspb.NetworkService = []*nspb.NetworkService{svc}
 	for _, fp := range r.fingerprinters {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
 		var accumulator []*nspb.NetworkService
 
 		for _, sv := range services {
@@ -314,8 +328,17 @@ func (r *SimpleRunner) fingerprintService(ctx context.Context, svc *nspb.Network
 			recordModuleRun(ctx, fp.Name(), start, err)
 
 			if err != nil {
-				log.ErrorContextf(ctx, "fatal fingerprinting error: %s", err)
-				return nil, err
+				r.degraded.Store(true)
+
+				// There is no address to talk to, so no later module will do any better.
+				if errors.Is(err, netendpoint.ErrEndpointMissingAddress) {
+					log.ErrorContextf(ctx, "dropping unusable service after fingerprinter %s: %s", fp.Name(), err)
+					continue
+				}
+
+				log.ErrorContextf(ctx, "fingerprinter %s failed, continuing without it: %s", fp.Name(), err)
+				accumulator = append(accumulator, sv)
+				continue
 			}
 
 			accumulator = append(accumulator, res...)
@@ -342,8 +365,9 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 		recordModuleRun(ctx, dt.Name(), start, err)
 
 		if err != nil {
-			log.ErrorContextf(ctx, "fatal detection error: %s", err)
-			return nil, err
+			r.degraded.Store(true)
+			log.ErrorContextf(ctx, "detector %s failed, continuing without it: %s", dt.Name(), err)
+			continue
 		}
 
 		for range res.GetDetectionReports() {

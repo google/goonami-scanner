@@ -27,6 +27,7 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
@@ -317,6 +318,17 @@ func TestFingerprintStep(t *testing.T) {
 			return []*nspb.NetworkService{svc}, nil
 		}
 	}
+	// fpFailForFn fails for one service only, and enriches every other one.
+	fpFailForFn := func(failFor string, val string) fakemodule.FakeFingerprintFn {
+		return func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+			if svc.GetServiceName() == failFor {
+				return nil, fakemodule.ErrFakeFingerprintGeneric
+			}
+
+			svc.SetServiceName(svc.GetServiceName() + val)
+			return []*nspb.NetworkService{svc}, nil
+		}
+	}
 
 	tests := []struct {
 		name           string
@@ -348,13 +360,39 @@ func TestFingerprintStep(t *testing.T) {
 			}.Build(),
 		},
 		{
-			name: "when_fingerprinter_errors_it_propagates_error",
+			name: "when_fingerprinter_errors_service_is_passed_to_the_next_fingerprinter",
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
 				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
 			},
-			want:    nil,
-			wantErr: fakemodule.ErrFakeFingerprintGeneric,
+			want: rpb.FingerprintingReport_builder{
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{ServiceName: "svc1_fp2"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc2_fp2"}.Build(),
+				},
+			}.Build(),
+		},
+		{
+			name: "when_fingerprinter_errors_on_one_service_the_others_are_still_fingerprinted",
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fpFailForFn("svc1", "_fp1")),
+			},
+			want: rpb.FingerprintingReport_builder{
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+					nspb.NetworkService_builder{ServiceName: "svc2_fp1"}.Build(),
+				},
+			}.Build(),
+		},
+		{
+			name: "when_service_has_no_usable_address_it_is_dropped",
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+					return nil, netendpoint.ErrEndpointMissingAddress
+				}),
+				fakemodule.NewFakeFingerprinter("fp2", fpAppendNameFn("_fp2")),
+			},
+			want: &rpb.FingerprintingReport{},
 		},
 		{
 			name: "when_fingerprinter_returns_multiple_services_they_are_accumulated",
@@ -477,13 +515,20 @@ func TestDetectStep(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "when_detector_errors_it_propagates_error",
+			name: "when_detector_errors_the_other_detectors_still_run",
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
 				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
 			},
-			want:    nil,
-			wantErr: fakemodule.ErrFakeDetectGeneric,
+			want: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+			},
+			wantErr: nil,
 		},
 	}
 
@@ -509,6 +554,102 @@ func TestDetectStep(t *testing.T) {
 				t.Errorf("DetectStep() returned diff (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestStepsStopWhenContextIsDone(t *testing.T) {
+	portScanReport := rpb.PortScanningReport_builder{
+		NetworkServices: []*nspb.NetworkService{
+			nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+		},
+	}.Build()
+	fingerprintReport := rpb.FingerprintingReport_builder{
+		NetworkServices: []*nspb.NetworkService{
+			nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+		},
+	}.Build()
+
+	tests := []struct {
+		name string
+		step func(ctx context.Context, r *SimpleRunner) error
+	}{
+		{
+			name: "when_context_is_done_fingerprinting_stops",
+			step: func(ctx context.Context, r *SimpleRunner) error {
+				_, err := r.FingerprintStep(ctx, portScanReport)
+				return err
+			},
+		},
+		{
+			name: "when_context_is_done_detection_stops",
+			step: func(ctx context.Context, r *SimpleRunner) error {
+				_, err := r.DetectStep(ctx, fingerprintReport)
+				return err
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := New(config.Default())
+			if err != nil {
+				t.Fatalf("New() returned error %v, want nil", err)
+			}
+
+			fp := fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing)
+			dt := fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings)
+			r.fingerprinters = []module.Fingerprinter{fp}
+			r.detectors = []module.VulnDetector{dt}
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			if err := tc.step(ctx, r); !errors.Is(err, context.Canceled) {
+				t.Fatalf("step error = %v, want %v", err, context.Canceled)
+			}
+
+			if calls := fp.CountCalls() + dt.CountCalls(); calls != 0 {
+				t.Errorf("modules were called %d times, want 0", calls)
+			}
+		})
+	}
+}
+
+func TestFingerprintStepStopsWhenAModuleCancelsTheScan(t *testing.T) {
+	portScanReport := rpb.PortScanningReport_builder{
+		NetworkServices: []*nspb.NetworkService{
+			nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+		},
+	}.Build()
+
+	r, err := New(config.Default())
+	if err != nil {
+		t.Fatalf("New() returned error %v, want nil", err)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	// The first fingerprinter both fails and ends the scan. These are two
+	// separate things: the failure alone would let the pipeline carry on, and
+	// the cancellation alone would stop it just the same.
+	canceling := fakemodule.NewFakeFingerprinter("fp1", func(ctx context.Context, svc *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+		cancel()
+		return nil, fakemodule.ErrFakeFingerprintGeneric
+	})
+	next := fakemodule.NewFakeFingerprinter("fp2", fakemodule.FakeFingerprintFnDoNothing)
+	r.fingerprinters = []module.Fingerprinter{canceling, next}
+
+	if _, err := r.FingerprintStep(ctx, portScanReport); !errors.Is(err, context.Canceled) {
+		t.Fatalf("FingerprintStep() error = %v, want %v", err, context.Canceled)
+	}
+
+	if next.CountCalls() != 0 {
+		t.Errorf("fp2 was called %d times, want 0", next.CountCalls())
+	}
+
+	// The failure is still accounted for as what it is: a module failure.
+	if !r.degraded.Load() {
+		t.Errorf("degraded = false, want the fp1 failure to be recorded")
 	}
 }
 
@@ -628,15 +769,39 @@ func TestRun(t *testing.T) {
 			wantErr:     fakemodule.ErrFakePortScanGeneric,
 		},
 		{
-			name:        "when_fingerprinting_fails_returns_error",
+			name:        "when_fingerprinting_fails_scan_is_partially_succeeded",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors),
 			},
-			wantErr: fakemodule.ErrFakeFingerprintGeneric,
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				ScanStatus:           srpb.ScanStatus_PARTIALLY_SUCCEEDED,
+				TargetAlive:          true,
+				FullDetectionReports: &srpb.FullDetectionReports{},
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: rpb.TargetInfo_builder{
+						NetworkEndpoints: []*npb.NetworkEndpoint{
+							npb.NetworkEndpoint_builder{
+								Type: npb.NetworkEndpoint_IP,
+								IpAddress: npb.IpAddress_builder{
+									AddressFamily: npb.AddressFamily_IPV4,
+									Address:       "1.1.1.1",
+								}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+					// The fingerprinter could not enrich them, but the services
+					// themselves survive.
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
 		},
 		{
-			name:        "when_detector_fails_returns_error",
+			name:        "when_detector_fails_scan_is_partially_succeeded",
 			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
 			fingerprinters: []module.Fingerprinter{
 				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
@@ -644,7 +809,29 @@ func TestRun(t *testing.T) {
 			detectors: []module.VulnDetector{
 				fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors),
 			},
-			wantErr: fakemodule.ErrFakeDetectGeneric,
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				ScanStatus:           srpb.ScanStatus_PARTIALLY_SUCCEEDED,
+				TargetAlive:          true,
+				FullDetectionReports: &srpb.FullDetectionReports{},
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: rpb.TargetInfo_builder{
+						NetworkEndpoints: []*npb.NetworkEndpoint{
+							npb.NetworkEndpoint_builder{
+								Type: npb.NetworkEndpoint_IP,
+								IpAddress: npb.IpAddress_builder{
+									AddressFamily: npb.AddressFamily_IPV4,
+									Address:       "1.1.1.1",
+								}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
 		},
 		{
 			name:        "when_scan_succeeds_returns_report",

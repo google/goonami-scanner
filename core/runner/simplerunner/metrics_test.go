@@ -147,26 +147,24 @@ func TestRunRecordsPhaseMetrics(t *testing.T) {
 			},
 		},
 		{
-			name:           "when_fingerprinting_fails_only_the_port_scan_phase_is_timed",
+			name:           "when_fingerprinting_fails_every_phase_is_still_timed",
 			portScanner:    fakemodule.NewFakePortScanner("ps1", scanReport("svc1")),
 			fingerprinters: []module.Fingerprinter{fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors)},
-			wantErr:        fakemodule.ErrFakeFingerprintGeneric,
-			wantTimed:      []*metrics.Distribution{metrics.PortScanDuration},
-			wantNotTimed: []*metrics.Distribution{
-				metrics.FingerprintDuration, metrics.DetectDuration,
+			wantTimed: []*metrics.Distribution{
+				metrics.PortScanDuration, metrics.FingerprintDuration, metrics.DetectDuration,
 			},
+			wantTotal:              true,
 			wantServicesDiscovered: 1,
 		},
 		{
-			name:           "when_detection_fails_the_whole_scan_is_not_timed",
+			name:           "when_detection_fails_every_phase_is_still_timed",
 			portScanner:    fakemodule.NewFakePortScanner("ps1", scanReport("svc1")),
 			fingerprinters: []module.Fingerprinter{fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing)},
 			detectors:      []module.VulnDetector{fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors)},
-			wantErr:        fakemodule.ErrFakeDetectGeneric,
-			wantTimed:      []*metrics.Distribution{metrics.PortScanDuration, metrics.FingerprintDuration},
-			wantNotTimed: []*metrics.Distribution{
-				metrics.DetectDuration,
+			wantTimed: []*metrics.Distribution{
+				metrics.PortScanDuration, metrics.FingerprintDuration, metrics.DetectDuration,
 			},
+			wantTotal:              true,
 			wantServicesDiscovered: 1,
 		},
 	}
@@ -233,19 +231,31 @@ func TestRunRecordsModuleMetrics(t *testing.T) {
 			portScanner: fakemodule.NewFakePortScanner("ps1", fakemodule.FakePortScanFnErrors),
 			wantErr:     fakemodule.ErrFakePortScanGeneric,
 			wantRuns: map[string]moduleExpectation{
-				"ps1": {runs: 1, errs: 1},
+				"ps1": {runs: 1, errs: 1, failure: fakemodule.ErrFakePortScanGeneric},
 			},
 		},
 		{
-			name:           "when_a_detector_fails_the_error_is_counted",
+			name:           "when_a_fingerprinter_fails_the_error_is_counted_and_the_scan_goes_on",
+			portScanner:    fakemodule.NewFakePortScanner("ps1", scanReport("svc1")),
+			fingerprinters: []module.Fingerprinter{fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnErrors)},
+			detectors:      []module.VulnDetector{fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnNoFindings)},
+			wantRuns: map[string]moduleExpectation{
+				"ps1": {runs: 1},
+				"fp1": {runs: 1, errs: 1, failure: fakemodule.ErrFakeFingerprintGeneric},
+				// The service survived the failing fingerprinter, so the
+				// detector still had something to run against.
+				"d1": {runs: 1},
+			},
+		},
+		{
+			name:           "when_a_detector_fails_the_error_is_counted_and_the_scan_goes_on",
 			portScanner:    fakemodule.NewFakePortScanner("ps1", scanReport("svc1")),
 			fingerprinters: []module.Fingerprinter{fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing)},
 			detectors:      []module.VulnDetector{fakemodule.NewFakeVulnDetector("d1", fakemodule.FakeDetectFnErrors)},
-			wantErr:        fakemodule.ErrFakeDetectGeneric,
 			wantRuns: map[string]moduleExpectation{
 				"ps1": {runs: 1},
 				"fp1": {runs: 1},
-				"d1":  {runs: 1, errs: 1},
+				"d1":  {runs: 1, errs: 1, failure: fakemodule.ErrFakeDetectGeneric},
 			},
 		},
 		{
@@ -290,7 +300,7 @@ func TestRunRecordsModuleMetrics(t *testing.T) {
 
 				// Errors are only recorded for the runs that failed, and always
 				// with a bounded class rather than the error message.
-				got := collector.Value(t.Context(), metrics.ModuleErrors, moduleLabel, metrics.ErrorClass(tc.wantErr))
+				got := collector.Value(t.Context(), metrics.ModuleErrors, moduleLabel, metrics.ErrorClass(want.failure))
 				if want.errs == 0 {
 					got = totalModuleErrors(collector, name)
 				}
@@ -311,6 +321,10 @@ func TestRunRecordsModuleMetrics(t *testing.T) {
 type moduleExpectation struct {
 	runs int64
 	errs int64
+
+	// failure is the error the module returned. It is only read when errs is
+	// non-zero, to look up the series of the matching error class.
+	failure error
 }
 
 // totalModuleErrors sums every module/errors series belonging to a module,
