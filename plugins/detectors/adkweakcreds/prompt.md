@@ -198,8 +198,12 @@ response of a successful login.
 
 -   httpclient: Performs an HTTP request against the service. The arguments
     are the method (e.g. `GET`, `POST`), the URI which starts with a `/` and is
-    the absolute path to the resource to query, the headers if you need to add
-    additional headers and finally the data to add to the body if needed.
+    the absolute path to the resource to query, optional headers as a list of
+    `name` and `value` pairs
+    (e.g. `[{"name": "Content-Type", "value": "application/json"}]`), and
+    finally the data to add to the body if needed. Only specify headers
+    strictly required by the endpoint (such as `Content-Type`). Do not invent
+    placeholder or dummy headers.
     The tool returns `status_code`, high-signal `headers` (`Content-Type`,
     `Location`, `Www-Authenticate`), and response `content`.
     The tool automatically follows redirects within the target service, but
