@@ -122,7 +122,6 @@ func TestScan(t *testing.T) {
 		name         string
 		serverAddr   string
 		port         uint32
-		timeoutSec   int32
 		wantServices bool
 	}{
 		{
@@ -143,7 +142,6 @@ func TestScan(t *testing.T) {
 		{
 			name:         "when_request_times_out_returns_no_service",
 			serverAddr:   sleepServer.Listener.Addr().String(),
-			timeoutSec:   1,
 			wantServices: false,
 		},
 	}
@@ -160,16 +158,11 @@ func TestScan(t *testing.T) {
 				t.Fatalf("failed parsing port %q: %v", pStr, err)
 			}
 
-			timeout := int32(5)
-			if tc.timeoutSec > 0 {
-				timeout = tc.timeoutSec
-			}
-
 			cfgProto := cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					PortsToScan: []uint32{uint32(port)},
 					Performance: cpb.GlobalConfig_Performance_builder{
-						TimeoutPerRequestSeconds: proto.Int32(timeout),
+						TimeoutPerRequestSeconds: proto.Int32(1),
 						MaxConcurrency:           proto.Int32(10),
 					}.Build(),
 				}.Build(),

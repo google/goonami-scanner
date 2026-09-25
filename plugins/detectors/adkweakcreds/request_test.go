@@ -177,7 +177,7 @@ func TestRequest_Do(t *testing.T) {
 		t.Fatalf("NewClient failed: %v", err)
 	}
 
-	resp, err := req.do(t.Context(), cfg, service, client, nil)
+	resp, err := req.do(t.Context(), service, client, nil)
 	if err != nil {
 		t.Fatalf("do() failed: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestRequest_Do_NoMatch(t *testing.T) {
 		t.Fatalf("NewClient() failed: %v", err)
 	}
 
-	resp, err := req.do(t.Context(), cfg, service, client, nil)
+	resp, err := req.do(t.Context(), service, client, nil)
 	if err != nil {
 		t.Fatalf("do() failed: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestRequest_Do_EmptyResponseMatching(t *testing.T) {
 				t.Fatalf("NewClient failed: %v", err)
 			}
 
-			resp, err := req.do(t.Context(), cfg, service, client, nil)
+			resp, err := req.do(t.Context(), service, client, nil)
 			if err != nil {
 				t.Fatalf("do() failed: %v", err)
 			}

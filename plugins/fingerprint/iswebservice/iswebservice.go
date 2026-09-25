@@ -62,9 +62,6 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, m.config.TimeoutPerRequest())
-	defer cancel()
-
 	req, err := http.NewRequestWithContext(ctx, "GET", webroot, nil)
 	if err != nil {
 		return nil, err

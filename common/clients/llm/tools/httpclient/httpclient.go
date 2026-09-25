@@ -203,8 +203,6 @@ func (h *Tool) getClient(maintainSession bool) goohttp.Client {
 func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	uri := toolreq.URI
 	ctx := log.ContextForModuleAndService(context.Background(), "clients/llm/httpclient", h.service)
-	ctx, cancel := context.WithTimeout(ctx, h.coreConfig.TimeoutPerRequest())
-	defer cancel()
 
 	req, err := h.prepareRequest(ctx, toolreq, uri)
 	if err != nil {

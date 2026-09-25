@@ -163,9 +163,6 @@ func (m *Module) scanPortWorker(ctx context.Context, endpoint *npb.NetworkEndpoi
 }
 
 func (m *Module) scanPort(ctx context.Context, service *nspb.NetworkService_builder) (*nspb.NetworkService, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.coreConfig.TimeoutPerRequest())
-	defer cancel()
-
 	webroot, err := netservice.BuildWebRoot(service.Build())
 	if err != nil {
 		return nil, err

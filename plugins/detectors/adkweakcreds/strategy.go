@@ -251,12 +251,12 @@ func shiftAlphaNumeric(s string) string {
 
 // fetchCSRFToken executes the CSRF request (if defined) to retrieve the token.
 // It returns an error if the request fails or if the extraction regex matches nothing.
-func (a *authStrategy) fetchCSRFToken(ctx context.Context, cfg *config.Config, service *nspb.NetworkService, client goohttp.Client) (string, error) {
+func (a *authStrategy) fetchCSRFToken(ctx context.Context, service *nspb.NetworkService, client goohttp.Client) (string, error) {
 	if a.AuthDetails == nil || a.AuthDetails.CsrfRequest == nil {
 		return "", nil
 	}
 
-	resp, err := a.AuthDetails.CsrfRequest.do(ctx, cfg, service, client, nil)
+	resp, err := a.AuthDetails.CsrfRequest.do(ctx, service, client, nil)
 	if err != nil {
 		return "", fmt.Errorf("csrf_request failed: %w", err)
 	}
@@ -294,7 +294,7 @@ func (a *authStrategy) login(ctx context.Context, cfg *config.Config, service *n
 
 	// Fetch the CSRF token if needed and add it to the substitutions.
 	if a.AuthDetails.CsrfRequest != nil {
-		token, err := a.fetchCSRFToken(ctx, cfg, service, client)
+		token, err := a.fetchCSRFToken(ctx, service, client)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +303,7 @@ func (a *authStrategy) login(ctx context.Context, cfg *config.Config, service *n
 	}
 
 	// Attempt the login with the provided credentials.
-	resp, err := a.AuthDetails.LoginRequest.do(ctx, cfg, service, client, substitutions)
+	resp, err := a.AuthDetails.LoginRequest.do(ctx, service, client, substitutions)
 	if err != nil {
 		return nil, err
 	}

@@ -98,9 +98,6 @@ func (r *HTTPActionRunner) runWithURI(ctx context.Context, service *nspb.Network
 		return fmt.Errorf("%w: %q: missing HTTP method", ErrInvalidAction, name)
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, r.cfg.TimeoutPerRequest())
-	defer cancel()
-
 	req, err := http.NewRequestWithContext(ctx, method, targetURL, nil)
 	if err != nil {
 		return fmt.Errorf("%w: %q: failed to create request: %v", ErrActionFailed, name, err)

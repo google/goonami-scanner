@@ -166,6 +166,10 @@ func TestNew(t *testing.T) {
 				t.Errorf("New() client.Jar is not nil, want no cookie jar")
 			}
 
+			if c.client.Timeout != tt.cfg.TimeoutPerRequest() {
+				t.Errorf("New() client.Timeout = %v, want %v", c.client.Timeout, tt.cfg.TimeoutPerRequest())
+			}
+
 			transport, ok := c.client.Transport.(*http.Transport)
 			if !ok {
 				t.Fatalf("New() client.Transport is not an *http.Transport")

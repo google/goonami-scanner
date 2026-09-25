@@ -27,7 +27,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 
@@ -122,10 +121,7 @@ type response struct {
 
 // do executes the request and performs the extraction specified in the ExtractionRegex.
 // The provided substitutions are used to replace placeholders in both the body and path.
-func (r *request) do(ctx context.Context, cfg *config.Config, service *nspb.NetworkService, client goohttp.Client, substitutions map[string]string) (*response, error) {
-	ctx, cancel := context.WithTimeout(ctx, cfg.TimeoutPerRequest())
-	defer cancel()
-
+func (r *request) do(ctx context.Context, service *nspb.NetworkService, client goohttp.Client, substitutions map[string]string) (*response, error) {
 	req, err := r.buildHTTPRequest(ctx, service, substitutions)
 	if err != nil {
 		return nil, err

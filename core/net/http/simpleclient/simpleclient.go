@@ -66,6 +66,7 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 	}
 
 	client := &http.Client{
+		Timeout: cfg.TimeoutPerRequest(),
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: !options.EnforceTLSCertVerification,

@@ -98,7 +98,7 @@ func (idx *Index) Add(ctx context.Context, cfg *config.Config, service *nspb.Net
 		return fmt.Errorf("creating http client: %w", err)
 	}
 
-	hash, err := fetchAndHashPage(ctx, cfg, client, service, path)
+	hash, err := fetchAndHashPage(ctx, client, service, path)
 	if err != nil {
 		return fmt.Errorf("can't hash page: %w", err)
 	}
@@ -160,7 +160,7 @@ func (idx *Index) FindForService(ctx context.Context, cfg *config.Config, servic
 		}
 
 		// Otherwise we have to resort to fetching and hashing the path.
-		gotHash, err := fetchAndHashPage(ctx, cfg, client, service, path)
+		gotHash, err := fetchAndHashPage(ctx, client, service, path)
 		if err != nil {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "failed to fetch %s for cache check: %v", path, err)
 			continue
@@ -208,13 +208,10 @@ func (idx *Index) saveStrategy(hash string, strategy []byte) error {
 	return os.WriteFile(path, strategy, 0644)
 }
 
-func fetchAndHashPage(ctx context.Context, cfg *config.Config, client goohttp.Client, service *nspb.NetworkService, path string) (string, error) {
+func fetchAndHashPage(ctx context.Context, client goohttp.Client, service *nspb.NetworkService, path string) (string, error) {
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, cfg.TimeoutPerRequest())
-	defer cancel()
 
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {

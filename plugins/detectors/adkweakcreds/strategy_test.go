@@ -891,7 +891,7 @@ func TestAuthStrategy_FetchCSRFToken(t *testing.T) {
 				t.Fatalf("NewClient failed: %v", err)
 			}
 
-			got, err := tc.auth.fetchCSRFToken(t.Context(), cfg, service, client)
+			got, err := tc.auth.fetchCSRFToken(t.Context(), service, client)
 
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("FetchCSRFToken() error = %v, wantErr %v", err, tc.wantErr)

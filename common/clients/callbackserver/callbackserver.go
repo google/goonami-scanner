@@ -155,9 +155,6 @@ func (c *Client) poll(ctx context.Context, secret string) (*ppb.PollingResult, e
 	pollingURL := strings.TrimSuffix(c.config.GetHttpPollConfig().GetPublicUri(), "/")
 	url := fmt.Sprintf("%s/?secret=%s", pollingURL, secret)
 
-	ctx, cancel := context.WithTimeout(ctx, c.coreConfig.TimeoutPerRequest())
-	defer cancel()
-
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrPollingRequest, err)

@@ -167,9 +167,6 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return ctx.Err()
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, c.coreConfig.TimeoutPerRequest())
-	defer cancel()
-
 	req, err := http.NewRequestWithContext(ctx, "GET", page.URL, nil)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrCrawlRequest, err)
