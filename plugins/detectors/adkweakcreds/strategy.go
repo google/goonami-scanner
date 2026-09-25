@@ -34,7 +34,6 @@ import (
 
 var (
 	errRegexpTooWeak = errors.New("regexp was not robust enough: it failed to extract the error message from the HTTP response for an unknown username and invalid password; this caused the system to falsely believe the login was successful; please ensure the regex matches generic invalid login errors")
-	errRateLimited   = errors.New("login endpoint returned 429 Too Many Requests")
 )
 
 type confidenceLevel int
@@ -137,7 +136,7 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 	for _, cred := range a.AuthDetails.CredentialsToTest {
 		valid, confidence, err := a.validateCredential(ctx, cfg, service, cred)
 		if err != nil {
-			if errors.Is(err, errRateLimited) {
+			if errors.Is(err, goohttp.ErrRateLimited) {
 				log.WarnContextf(ctx, "rate limit reached testing credential %v; stopping brute force early", cred)
 				break
 			}
@@ -281,7 +280,8 @@ func (a *authStrategy) login(ctx context.Context, cfg *config.Config, service *n
 	// Initialize HTTP client. Store cookies for all login attempts so redirect chains
 	// preserve session state, isolated per credential attempt.
 	opts := &goohttp.ClientOptions{
-		StoreCookies: true,
+		StoreCookies:     true,
+		RetryOnRateLimit: true,
 	}
 	if err := opts.LoadAuthorities(service); err != nil {
 		return nil, err
@@ -303,12 +303,5 @@ func (a *authStrategy) login(ctx context.Context, cfg *config.Config, service *n
 	}
 
 	// Attempt the login with the provided credentials.
-	resp, err := a.AuthDetails.LoginRequest.do(ctx, service, client, substitutions)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, errRateLimited
-	}
-	return resp, nil
+	return a.AuthDetails.LoginRequest.do(ctx, service, client, substitutions)
 }

@@ -817,16 +817,19 @@ func (b0 WorkflowConfiguration_ModuleFilter_builder) Build() *WorkflowConfigurat
 }
 
 type GlobalConfig_Performance struct {
-	state                               protoimpl.MessageState `protogen:"opaque.v1"`
-	xxx_hidden_MaxConcurrency           int32                  `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof"`
-	xxx_hidden_TimeoutPerRequestSeconds int32                  `protobuf:"varint,2,opt,name=timeout_per_request_seconds,json=timeoutPerRequestSeconds,proto3,oneof"`
-	xxx_hidden_MaxPacketsPerSecond      int32                  `protobuf:"varint,3,opt,name=max_packets_per_second,json=maxPacketsPerSecond,proto3,oneof"`
-	xxx_hidden_MaxHttpRequestsPerSecond int32                  `protobuf:"varint,4,opt,name=max_http_requests_per_second,json=maxHttpRequestsPerSecond,proto3,oneof"`
-	xxx_hidden_MaxHttpRedirects         int32                  `protobuf:"varint,5,opt,name=max_http_redirects,json=maxHttpRedirects,proto3,oneof"`
-	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
-	XXX_presence                        [1]uint32
-	unknownFields                       protoimpl.UnknownFields
-	sizeCache                           protoimpl.SizeCache
+	state                                     protoimpl.MessageState `protogen:"opaque.v1"`
+	xxx_hidden_MaxConcurrency                 int32                  `protobuf:"varint,1,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof"`
+	xxx_hidden_TimeoutPerRequestSeconds       int32                  `protobuf:"varint,2,opt,name=timeout_per_request_seconds,json=timeoutPerRequestSeconds,proto3,oneof"`
+	xxx_hidden_MaxPacketsPerSecond            int32                  `protobuf:"varint,3,opt,name=max_packets_per_second,json=maxPacketsPerSecond,proto3,oneof"`
+	xxx_hidden_MaxHttpRequestsPerSecond       int32                  `protobuf:"varint,4,opt,name=max_http_requests_per_second,json=maxHttpRequestsPerSecond,proto3,oneof"`
+	xxx_hidden_MaxHttpRedirects               int32                  `protobuf:"varint,5,opt,name=max_http_redirects,json=maxHttpRedirects,proto3,oneof"`
+	xxx_hidden_MaxHttpAttemptsWhenRatelimit   int32                  `protobuf:"varint,6,opt,name=max_http_attempts_when_ratelimit,json=maxHttpAttemptsWhenRatelimit,proto3,oneof"`
+	xxx_hidden_HttpRetryInitialBackoffSeconds int32                  `protobuf:"varint,7,opt,name=http_retry_initial_backoff_seconds,json=httpRetryInitialBackoffSeconds,proto3,oneof"`
+	xxx_hidden_MaxHttpRetryAfterSeconds       int32                  `protobuf:"varint,8,opt,name=max_http_retry_after_seconds,json=maxHttpRetryAfterSeconds,proto3,oneof"`
+	XXX_raceDetectHookData                    protoimpl.RaceDetectHookData
+	XXX_presence                              [1]uint32
+	unknownFields                             protoimpl.UnknownFields
+	sizeCache                                 protoimpl.SizeCache
 }
 
 func (x *GlobalConfig_Performance) Reset() {
@@ -889,29 +892,65 @@ func (x *GlobalConfig_Performance) GetMaxHttpRedirects() int32 {
 	return 0
 }
 
+func (x *GlobalConfig_Performance) GetMaxHttpAttemptsWhenRatelimit() int32 {
+	if x != nil {
+		return x.xxx_hidden_MaxHttpAttemptsWhenRatelimit
+	}
+	return 0
+}
+
+func (x *GlobalConfig_Performance) GetHttpRetryInitialBackoffSeconds() int32 {
+	if x != nil {
+		return x.xxx_hidden_HttpRetryInitialBackoffSeconds
+	}
+	return 0
+}
+
+func (x *GlobalConfig_Performance) GetMaxHttpRetryAfterSeconds() int32 {
+	if x != nil {
+		return x.xxx_hidden_MaxHttpRetryAfterSeconds
+	}
+	return 0
+}
+
 func (x *GlobalConfig_Performance) SetMaxConcurrency(v int32) {
 	x.xxx_hidden_MaxConcurrency = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *GlobalConfig_Performance) SetTimeoutPerRequestSeconds(v int32) {
 	x.xxx_hidden_TimeoutPerRequestSeconds = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *GlobalConfig_Performance) SetMaxPacketsPerSecond(v int32) {
 	x.xxx_hidden_MaxPacketsPerSecond = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *GlobalConfig_Performance) SetMaxHttpRequestsPerSecond(v int32) {
 	x.xxx_hidden_MaxHttpRequestsPerSecond = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 8)
 }
 
 func (x *GlobalConfig_Performance) SetMaxHttpRedirects(v int32) {
 	x.xxx_hidden_MaxHttpRedirects = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
+}
+
+func (x *GlobalConfig_Performance) SetMaxHttpAttemptsWhenRatelimit(v int32) {
+	x.xxx_hidden_MaxHttpAttemptsWhenRatelimit = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
+}
+
+func (x *GlobalConfig_Performance) SetHttpRetryInitialBackoffSeconds(v int32) {
+	x.xxx_hidden_HttpRetryInitialBackoffSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *GlobalConfig_Performance) SetMaxHttpRetryAfterSeconds(v int32) {
+	x.xxx_hidden_MaxHttpRetryAfterSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *GlobalConfig_Performance) HasMaxConcurrency() bool {
@@ -949,6 +988,27 @@ func (x *GlobalConfig_Performance) HasMaxHttpRedirects() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
 }
 
+func (x *GlobalConfig_Performance) HasMaxHttpAttemptsWhenRatelimit() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 5)
+}
+
+func (x *GlobalConfig_Performance) HasHttpRetryInitialBackoffSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
+}
+
+func (x *GlobalConfig_Performance) HasMaxHttpRetryAfterSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
 func (x *GlobalConfig_Performance) ClearMaxConcurrency() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_MaxConcurrency = 0
@@ -974,6 +1034,21 @@ func (x *GlobalConfig_Performance) ClearMaxHttpRedirects() {
 	x.xxx_hidden_MaxHttpRedirects = 0
 }
 
+func (x *GlobalConfig_Performance) ClearMaxHttpAttemptsWhenRatelimit() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 5)
+	x.xxx_hidden_MaxHttpAttemptsWhenRatelimit = 0
+}
+
+func (x *GlobalConfig_Performance) ClearHttpRetryInitialBackoffSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 6)
+	x.xxx_hidden_HttpRetryInitialBackoffSeconds = 0
+}
+
+func (x *GlobalConfig_Performance) ClearMaxHttpRetryAfterSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_MaxHttpRetryAfterSeconds = 0
+}
+
 type GlobalConfig_Performance_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -995,6 +1070,19 @@ type GlobalConfig_Performance_builder struct {
 	// Maximum number of HTTP redirects to follow.
 	// Default: 10
 	MaxHttpRedirects *int32
+	// Maximum number of attempts for an HTTP request when rate-limited
+	// (HTTP 429) if rate-limit retry is enabled on the HTTP client.
+	// Default: 3
+	MaxHttpAttemptsWhenRatelimit *int32
+	// Initial backoff in seconds before retrying a rate-limited (HTTP 429)
+	// request when no Retry-After header is present. Doubles on each retry.
+	// Default: 2
+	HttpRetryInitialBackoffSeconds *int32
+	// Maximum Retry-After duration in seconds that the HTTP client will wait
+	// when rate-limited (HTTP 429). If a server requests a longer delay, the
+	// client aborts retrying immediately.
+	// Default: 15
+	MaxHttpRetryAfterSeconds *int32
 }
 
 func (b0 GlobalConfig_Performance_builder) Build() *GlobalConfig_Performance {
@@ -1002,24 +1090,36 @@ func (b0 GlobalConfig_Performance_builder) Build() *GlobalConfig_Performance {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.MaxConcurrency != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_MaxConcurrency = *b.MaxConcurrency
 	}
 	if b.TimeoutPerRequestSeconds != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_TimeoutPerRequestSeconds = *b.TimeoutPerRequestSeconds
 	}
 	if b.MaxPacketsPerSecond != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_MaxPacketsPerSecond = *b.MaxPacketsPerSecond
 	}
 	if b.MaxHttpRequestsPerSecond != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 8)
 		x.xxx_hidden_MaxHttpRequestsPerSecond = *b.MaxHttpRequestsPerSecond
 	}
 	if b.MaxHttpRedirects != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_MaxHttpRedirects = *b.MaxHttpRedirects
+	}
+	if b.MaxHttpAttemptsWhenRatelimit != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
+		x.xxx_hidden_MaxHttpAttemptsWhenRatelimit = *b.MaxHttpAttemptsWhenRatelimit
+	}
+	if b.HttpRetryInitialBackoffSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
+		x.xxx_hidden_HttpRetryInitialBackoffSeconds = *b.HttpRetryInitialBackoffSeconds
+	}
+	if b.MaxHttpRetryAfterSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_MaxHttpRetryAfterSeconds = *b.MaxHttpRetryAfterSeconds
 	}
 	return m0
 }
@@ -1028,41 +1128,47 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\"\xfb\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
-	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\x12F\n" +
-	"\vworkflowcfg\x18\x04 \x01(\v2$.goonami.proto.WorkflowConfigurationR\vworkflowcfg\"\xde\x02\n" +
+	"\aplugins\x18\x03 \x01(\v2\x1c.goonami.proto.PluginsConfigR\aplugins\x12D\n" +
+	"\vworkflowcfg\x18\x04 \x01(\v2\".goonami.proto.WorkflowConfigurationR\vworkflowcfg\"\xd8\x01\n" +
 	"\x15WorkflowConfiguration\x12\x1f\n" +
-	"\bportscan\x18\x01 \x01(\tH\x00R\bportscan\x88\x01\x01\x12^\n" +
-	"\x0efingerprinters\x18\x02 \x01(\v21.goonami.proto.WorkflowConfiguration.ModuleFilterH\x01R\x0efingerprinters\x88\x01\x01\x12T\n" +
-	"\tdetectors\x18\x03 \x01(\v21.goonami.proto.WorkflowConfiguration.ModuleFilterH\x02R\tdetectors\x88\x01\x01\x1a@\n" +
+	"\bportscan\x18\x01 \x01(\tH\x00R\bportscan\x88\x01\x01\x12\\\n" +
+	"\x0efingerprinters\x18\x02 \x01(\v2/.goonami.proto.WorkflowConfiguration.ModuleFilterH\x01R\x0efingerprinters\x88\x01\x01\x12R\n" +
+	"\tdetectors\x18\x03 \x01(\v2/.goonami.proto.WorkflowConfiguration.ModuleFilterH\x02R\tdetectors\x88\x01\x01\x1a@\n" +
 	"\fModuleFilter\x12\x18\n" +
 	"\arequire\x18\x01 \x03(\tR\arequire\x12\x16\n" +
 	"\x06ignore\x18\x02 \x03(\tR\x06ignoreB\v\n" +
 	"\t_portscanB\x11\n" +
 	"\x0f_fingerprintersB\f\n" +
 	"\n" +
-	"_detectors\"\xb6\x05\n" +
+	"_detectors\"\xe9\a\n" +
 	"\fGlobalConfig\x12N\n" +
 	"\vperformance\x18\x01 \x01(\v2'.goonami.proto.GlobalConfig.PerformanceH\x00R\vperformance\x88\x01\x01\x12\"\n" +
 	"\rports_to_scan\x18\x02 \x03(\rR\vportsToScan\x12\"\n" +
 	"\n" +
 	"user_agent\x18\x03 \x01(\tH\x01R\tuserAgent\x88\x01\x01\x12$\n" +
 	"\vhttp_client\x18\x04 \x01(\tH\x02R\n" +
-	"httpClient\x88\x01\x01\x1a\xb8\x03\n" +
+	"httpClient\x88\x01\x01\x1a\xeb\x05\n" +
 	"\vPerformance\x12,\n" +
 	"\x0fmax_concurrency\x18\x01 \x01(\x05H\x00R\x0emaxConcurrency\x88\x01\x01\x12B\n" +
 	"\x1btimeout_per_request_seconds\x18\x02 \x01(\x05H\x01R\x18timeoutPerRequestSeconds\x88\x01\x01\x128\n" +
 	"\x16max_packets_per_second\x18\x03 \x01(\x05H\x02R\x13maxPacketsPerSecond\x88\x01\x01\x12C\n" +
 	"\x1cmax_http_requests_per_second\x18\x04 \x01(\x05H\x03R\x18maxHttpRequestsPerSecond\x88\x01\x01\x121\n" +
-	"\x12max_http_redirects\x18\x05 \x01(\x05H\x04R\x10maxHttpRedirects\x88\x01\x01B\x12\n" +
+	"\x12max_http_redirects\x18\x05 \x01(\x05H\x04R\x10maxHttpRedirects\x88\x01\x01\x12K\n" +
+	" max_http_attempts_when_ratelimit\x18\x06 \x01(\x05H\x05R\x1cmaxHttpAttemptsWhenRatelimit\x88\x01\x01\x12O\n" +
+	"\"http_retry_initial_backoff_seconds\x18\a \x01(\x05H\x06R\x1ehttpRetryInitialBackoffSeconds\x88\x01\x01\x12C\n" +
+	"\x1cmax_http_retry_after_seconds\x18\b \x01(\x05H\aR\x18maxHttpRetryAfterSeconds\x88\x01\x01B\x12\n" +
 	"\x10_max_concurrencyB\x1e\n" +
 	"\x1c_timeout_per_request_secondsB\x19\n" +
 	"\x17_max_packets_per_secondB\x1f\n" +
 	"\x1d_max_http_requests_per_secondB\x15\n" +
-	"\x13_max_http_redirectsB\x0e\n" +
+	"\x13_max_http_redirectsB#\n" +
+	"!_max_http_attempts_when_ratelimitB%\n" +
+	"#_http_retry_initial_backoff_secondsB\x1f\n" +
+	"\x1d_max_http_retry_after_secondsB\x0e\n" +
 	"\f_performanceB\r\n" +
 	"\v_user_agentB\x0e\n" +
 	"\f_http_client\"\xc8\x02\n" +

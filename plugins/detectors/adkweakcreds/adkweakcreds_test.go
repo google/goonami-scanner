@@ -277,6 +277,11 @@ func TestDetect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
 			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						HttpRetryInitialBackoffSeconds: proto.Int32(0),
+					}.Build(),
+				}.Build(),
 				Clients: cpb.ClientsConfig_builder{
 					Llm: lccpb.LlmClientConfig_builder{
 						MaxAttempts: proto.Int32(1),

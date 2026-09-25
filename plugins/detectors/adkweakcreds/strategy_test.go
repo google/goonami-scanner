@@ -29,6 +29,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -56,7 +57,13 @@ func setupMockServer(t *testing.T, handler http.HandlerFunc) (*config.Config, *n
 		}.Build(),
 	}.Build()
 
-	cfg := config.FromProto(cpb.Config_builder{}.Build())
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				HttpRetryInitialBackoffSeconds: proto.Int32(0),
+			}.Build(),
+		}.Build(),
+	}.Build())
 	return cfg, service
 }
 
@@ -706,7 +713,7 @@ func TestAuthStrategy_Login(t *testing.T) {
 		{
 			name:    "when_rate_limited_returns_errRateLimited",
 			cred:    &credential{Username: "admin", Password: "rate"},
-			wantErr: errRateLimited,
+			wantErr: goohttp.ErrRateLimited,
 		},
 	}
 

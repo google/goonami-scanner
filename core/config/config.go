@@ -93,11 +93,14 @@ func DefaultProto() *cpb.Config {
 	return cpb.Config_builder{
 		Globalcfg: cpb.GlobalConfig_builder{
 			Performance: cpb.GlobalConfig_Performance_builder{
-				MaxConcurrency:           proto.Int32(5),
-				TimeoutPerRequestSeconds: proto.Int32(10),
-				MaxPacketsPerSecond:      proto.Int32(0),
-				MaxHttpRequestsPerSecond: proto.Int32(0),
-				MaxHttpRedirects:         proto.Int32(10),
+				MaxConcurrency:                 proto.Int32(5),
+				TimeoutPerRequestSeconds:       proto.Int32(10),
+				MaxPacketsPerSecond:            proto.Int32(0),
+				MaxHttpRequestsPerSecond:       proto.Int32(0),
+				MaxHttpRedirects:               proto.Int32(10),
+				MaxHttpAttemptsWhenRatelimit:   proto.Int32(3),
+				HttpRetryInitialBackoffSeconds: proto.Int32(2),
+				MaxHttpRetryAfterSeconds:       proto.Int32(15),
 			}.Build(),
 		}.Build(),
 	}.Build()

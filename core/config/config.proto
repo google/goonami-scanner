@@ -97,6 +97,22 @@ message GlobalConfig {
     // Maximum number of HTTP redirects to follow.
     // Default: 10
     optional int32 max_http_redirects = 5;
+
+    // Maximum number of attempts for an HTTP request when rate-limited
+    // (HTTP 429) if rate-limit retry is enabled on the HTTP client.
+    // Default: 3
+    optional int32 max_http_attempts_when_ratelimit = 6;
+
+    // Initial backoff in seconds before retrying a rate-limited (HTTP 429)
+    // request when no Retry-After header is present. Doubles on each retry.
+    // Default: 2
+    optional int32 http_retry_initial_backoff_seconds = 7;
+
+    // Maximum Retry-After duration in seconds that the HTTP client will wait
+    // when rate-limited (HTTP 429). If a server requests a longer delay, the
+    // client aborts retrying immediately.
+    // Default: 15
+    optional int32 max_http_retry_after_seconds = 8;
   }
 
   // Performance related configurations.

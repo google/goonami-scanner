@@ -75,7 +75,15 @@ func NewClient(cfg *config.Config, options *ClientOptions) (Client, error) {
 		return nil, err
 	}
 
-	return &metricsClient{wrapped: client}, nil
+	mc := &metricsClient{wrapped: client}
+	if options == nil || !options.RetryOnRateLimit {
+		return mc, nil
+	}
+
+	return &retriableClient{
+		wrapped: mc,
+		cfg:     cfg,
+	}, nil
 }
 
 // SharedClient returns a shared HTTP Client configured by the global configuration with default

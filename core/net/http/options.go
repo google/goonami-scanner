@@ -43,6 +43,12 @@ type ClientOptions struct {
 	// AllowedAuthorities restricts redirects to only targets whose authority (host:port or host)
 	// is in this list. If empty, all redirects are allowed (unless DisableFollowRedirects is true).
 	AllowedAuthorities []string
+
+	// RetryOnRateLimit indicates whether the client should automatically retry HTTP 429 Too Many
+	// Requests responses using exponential backoff and Retry-After headers configured in
+	// GlobalConfig.Performance. When retries are exhausted or Retry-After exceeds the configured
+	// cap, `Do()` returns ErrRateLimited.
+	RetryOnRateLimit bool
 }
 
 // DefaultClientOptions returns the default client options.
@@ -52,6 +58,7 @@ func DefaultClientOptions() *ClientOptions {
 		EnforceTLSCertVerification: false,
 		DisableFollowRedirects:     false,
 		AllowedAuthorities:         nil,
+		RetryOnRateLimit:           false,
 	}
 }
 
