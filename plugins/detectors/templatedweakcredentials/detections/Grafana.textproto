@@ -1,0 +1,116 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "GrafanaTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_GRAFANA"
+  }
+  severity: CRITICAL
+  title: "Weak 'grafana' service credential"
+  description: "Well known or weak credentials are detected for 'grafana' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "admin" password: "admin" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_grafana_health"
+  http_request: {
+    method: GET
+    uri: "/api/health"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"database\"" },
+          { body: {} contains: "\"version\"" },
+          { body: {} contains: "\"commit\"" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/login"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"user\":\"{{ T_USERNAME }}\",\"password\":\"{{ T_PASSWORD }}\"}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "Logged in" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_header: { name: "Set-Cookie" }
+            regexp: "grafana_session=([^;]+)"
+            variable_name: "grafana_session"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_login"
+  http_request: {
+    method: GET
+    uri: "/api/user"
+    headers: [
+      { name: "Cookie" value: "grafana_session={{ grafana_session }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"isGrafanaAdmin\"" },
+          { body: {} contains: "\"email\"" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_grafana_health",
+    "attempt_login",
+    "verify_login"
+  ]
+}

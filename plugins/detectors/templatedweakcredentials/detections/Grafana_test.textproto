@@ -1,0 +1,127 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "GrafanaTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status: 200
+        body_content: "{\"database\":\"ok\",\"version\":\"10.0.0\",\"commit\":\"81d85ce802\"}"
+      },
+      {
+        uri: "/login"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "grafana_session=test_session_token; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/json" }
+          ]
+          body_content: [
+            "\"user\":\"admin\"",
+            "\"password\":\"admin\""
+          ]
+        }
+        body_content: "{\"message\":\"Logged in\",\"redirectUrl\":\"/\"}"
+      },
+      {
+        uri: "/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"statusCode\":401,\"messageId\":\"password-auth.failed\",\"message\":\"Invalid username or password\"}"
+      },
+      {
+        uri: "/api/user"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Cookie" value: "grafana_session=test_session_token" }
+          ]
+        }
+        body_content: "{\"id\":1,\"email\":\"admin@localhost\",\"login\":\"admin\",\"isGrafanaAdmin\":true}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status: 200
+        body_content: "{\"database\":\"ok\",\"version\":\"10.0.0\",\"commit\":\"81d85ce802\"}"
+      },
+      {
+        uri: "/login"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "grafana_session=test_session_token; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"message\":\"Logged in\",\"redirectUrl\":\"/\"}"
+      },
+      {
+        uri: "/api/user"
+        status: 401
+        body_content: "{\"statusCode\":401,\"message\":\"Unauthorized\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status: 200
+        body_content: "{\"database\":\"ok\",\"version\":\"10.0.0\",\"commit\":\"81d85ce802\"}"
+      },
+      {
+        uri: "/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"statusCode\":401,\"messageId\":\"password-auth.failed\",\"message\":\"Invalid username or password\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_grafana_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
