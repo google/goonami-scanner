@@ -140,10 +140,18 @@ var (
 	}
 )
 
+func clientConfig(config *config.Config) *genai.ClientConfig {
+	return &genai.ClientConfig{
+		HTTPOptions: genai.HTTPOptions{
+			Timeout: genai.Ptr(config.TimeoutPerRequest()),
+		},
+	}
+}
+
 // buildAgent initializes and returns the LLM agent used for authentication strategy discovery.
 func buildAgent(ctx context.Context, config *config.Config, service *nspb.NetworkService) (agent.Agent, error) {
 	modelName := llm.GetModel(config, llmModelTier)
-	model, err := gemini.NewModel(ctx, modelName, &genai.ClientConfig{})
+	model, err := gemini.NewModel(ctx, modelName, clientConfig(config))
 	if err != nil {
 		return nil, err
 	}

@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
@@ -810,6 +811,43 @@ func TestAssertStrategyQuality(t *testing.T) {
 			err := mod.assertStrategyQuality(ctx, service, tc.strategy)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("assertStrategyQuality() error = %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestClientConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         *config.Config
+		wantTimeout time.Duration
+	}{
+		{
+			name: "when_timeout_per_request_is_configured_sets_http_options_timeout",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						TimeoutPerRequestSeconds: proto.Int32(15),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			wantTimeout: 15 * time.Second,
+		},
+		{
+			name:        "when_default_config_sets_default_http_options_timeout",
+			cfg:         config.FromProto(cpb.Config_builder{}.Build()),
+			wantTimeout: config.FromProto(cpb.Config_builder{}.Build()).TimeoutPerRequest(),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := clientConfig(tc.cfg)
+			if got.HTTPOptions.Timeout == nil {
+				t.Fatalf("clientConfig().HTTPOptions.Timeout = nil, want %v", tc.wantTimeout)
+			}
+			if *got.HTTPOptions.Timeout != tc.wantTimeout {
+				t.Errorf("clientConfig().HTTPOptions.Timeout = %v, want %v", *got.HTTPOptions.Timeout, tc.wantTimeout)
 			}
 		})
 	}
