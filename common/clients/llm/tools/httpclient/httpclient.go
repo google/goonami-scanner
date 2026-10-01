@@ -201,8 +201,16 @@ func (h *Tool) getClient(maintainSession bool) goohttp.Client {
 
 // Do performs an HTTP request against the service.
 func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
+	var baseCtx context.Context = toolctx
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+	if err := baseCtx.Err(); err != nil {
+		return nil, err
+	}
+
 	uri := toolreq.URI
-	ctx := log.ContextForModuleAndService(context.Background(), "clients/llm/httpclient", h.service)
+	ctx := log.ContextForModuleAndService(baseCtx, "clients/llm/httpclient", h.service)
 
 	req, err := h.prepareRequest(ctx, toolreq, uri)
 	if err != nil {

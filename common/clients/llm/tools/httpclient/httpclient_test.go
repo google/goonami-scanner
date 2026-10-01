@@ -17,6 +17,7 @@
 package httpclient
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -26,12 +27,14 @@ import (
 	"net/url"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/protobuf/proto"
 
 	llmcpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
@@ -39,6 +42,16 @@ import (
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
+
+type fakeToolContext struct {
+	agent.Context
+	ctx context.Context
+}
+
+func (f *fakeToolContext) Deadline() (time.Time, bool) { return f.ctx.Deadline() }
+func (f *fakeToolContext) Done() <-chan struct{}       { return f.ctx.Done() }
+func (f *fakeToolContext) Err() error                  { return f.ctx.Err() }
+func (f *fakeToolContext) Value(key any) any           { return f.ctx.Value(key) }
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
@@ -150,6 +163,7 @@ func makeService(t *testing.T, svrURL string) *nspb.NetworkService {
 func TestDo(t *testing.T) {
 	tests := []struct {
 		name       string
+		toolCtx    func(t *testing.T) agent.Context
 		req        *Request
 		handler    http.HandlerFunc
 		cfg        *llmcpb.HttpClientConfig
@@ -312,6 +326,40 @@ func TestDo(t *testing.T) {
 			}.Build(),
 			wantErr: goohttp.ErrPageTooBig,
 		},
+		{
+			name: "when_tool_context_is_canceled_returns_error",
+			toolCtx: func(t *testing.T) agent.Context {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+				return &fakeToolContext{ctx: ctx}
+			},
+			req: &Request{
+				Method: "GET",
+				URI:    "/",
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				t.Errorf("handler should not be called when context is already canceled")
+			},
+			cfg:     DefaultConfig(),
+			wantErr: context.Canceled,
+		},
+		{
+			name: "when_tool_context_times_out_during_request_returns_error",
+			toolCtx: func(t *testing.T) agent.Context {
+				ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+				t.Cleanup(cancel)
+				return &fakeToolContext{ctx: ctx}
+			},
+			req: &Request{
+				Method: "GET",
+				URI:    "/",
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				<-r.Context().Done()
+			},
+			cfg:     DefaultConfig(),
+			wantErr: context.DeadlineExceeded,
+		},
 	}
 
 	for _, tc := range tests {
@@ -342,7 +390,11 @@ func TestDo(t *testing.T) {
 			}
 			tool.countRequests = tc.presetReqs
 
-			got, err := tool.Do(nil, tc.req)
+			var toolCtx agent.Context
+			if tc.toolCtx != nil {
+				toolCtx = tc.toolCtx(t)
+			}
+			got, err := tool.Do(toolCtx, tc.req)
 
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Do() error = %v, want %v", err, tc.wantErr)
