@@ -194,6 +194,11 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 
 	retryDelay := time.Duration(c.config.GetRetryDelaySeconds()) * time.Second
 	maxAttempts := int(c.config.GetMaxAttempts())
+	turnTimeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
+
+	loopTimeout := time.Duration(maxAttempts)*turnTimeout + time.Duration(max(0, maxAttempts-1))*retryDelay
+	ctx, cancel := context.WithTimeout(ctx, loopTimeout)
+	defer cancel()
 
 	var sessionID string
 	turnContent := content
@@ -205,7 +210,11 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 
 		if attempt > 1 {
 			log.DebugContextf(ctx, log.DebugLevelService, "waiting %v before next attempt", retryDelay)
-			time.Sleep(retryDelay)
+			select {
+			case <-time.After(retryDelay):
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
 		}
 
 		nextSessionID, resp, err := c.runTurn(ctx, sessionID, turnContent)

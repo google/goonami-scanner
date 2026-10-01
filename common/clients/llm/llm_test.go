@@ -402,6 +402,7 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 
 	t.Run("when_context_is_canceled_during_backoff_returns_context_canceled", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
+			start := time.Now()
 			ctx, cancel := context.WithCancel(t.Context())
 			time.AfterFunc(1*time.Second, cancel)
 			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
@@ -412,6 +413,29 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 			_, err := c.RunWithFeedbackLoop(ctx, userContent("prompt"), nil)
 			if !errors.Is(err, context.Canceled) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want context.Canceled", err)
+			}
+			if elapsed := time.Since(start); elapsed != 1*time.Second {
+				t.Errorf("elapsed = %v, want 1s", elapsed)
+			}
+		})
+	})
+
+	t.Run("when_overall_feedback_loop_timeout_expires_stops_retrying_and_returns_deadline_exceeded", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var invocations int
+			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+				invocations++
+				time.Sleep(100 * time.Second)
+				return nil, errors.New("stalled attempt failed")
+			})
+
+			c := New(makeTestConfig(3, 10), ag)
+			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("RunWithFeedbackLoop() error = %v, want context.DeadlineExceeded", err)
+			}
+			if invocations != 1 {
+				t.Errorf("invocations = %d, want 1", invocations)
 			}
 		})
 	})
