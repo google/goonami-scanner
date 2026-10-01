@@ -32,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/goonami-scanner/common/clients/llm"
 	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
@@ -190,9 +191,9 @@ func TestDetect(t *testing.T) {
 			wantFindings: false,
 		},
 		{
-			name:         "when_regexp_too_weak_returns_no_findings",
+			name:         "when_regexp_too_weak_returns_error",
 			testdataFile: "weak_regexp.json",
-			wantErr:      nil,
+			wantErr:      llm.ErrMaxAttemptsReached,
 			wantFindings: false,
 		},
 		{
@@ -219,9 +220,9 @@ func TestDetect(t *testing.T) {
 			wantFindings: false,
 		},
 		{
-			name:         "when_csrf_request_fails_returns_no_findings",
+			name:         "when_csrf_request_fails_returns_error",
 			testdataFile: "csrf_fail.json",
-			wantErr:      nil,
+			wantErr:      llm.ErrMaxAttemptsReached,
 			wantFindings: false,
 		},
 		{
@@ -238,21 +239,21 @@ func TestDetect(t *testing.T) {
 			wantFindings: false,
 		},
 		{
-			name:         "when_login_request_fails_returns_no_findings",
+			name:         "when_login_request_fails_returns_error",
 			testdataFile: "login_fail.json",
-			wantErr:      nil,
+			wantErr:      llm.ErrMaxAttemptsReached,
 			wantFindings: false,
 		},
 		{
-			name:         "when_rate_limited_returns_no_findings",
+			name:         "when_rate_limited_returns_error",
 			testdataFile: "login_rate_limited.json",
-			wantErr:      nil,
+			wantErr:      llm.ErrMaxAttemptsReached,
 			wantFindings: false,
 		},
 		{
-			name:         "when_strategy_quality_negative_validation_fails_returns_no_findings",
+			name:         "when_strategy_quality_negative_validation_fails_returns_error",
 			testdataFile: "negative_validation_fail.json",
-			wantErr:      nil,
+			wantErr:      llm.ErrMaxAttemptsReached,
 			wantFindings: false,
 		},
 		{
@@ -376,8 +377,8 @@ func TestDetect_AgentError(t *testing.T) {
 	}
 
 	reports, err := module.Detect(ctx, service)
-	if !errors.Is(err, nil) {
-		t.Errorf("Detect() returned error %v, want nil (as per implementation which swallows agent errors)", err)
+	if !errors.Is(err, llm.ErrMaxAttemptsReached) {
+		t.Errorf("Detect() returned error %v, want %v", err, llm.ErrMaxAttemptsReached)
 	}
 	if reports != nil && len(reports.GetDetectionReports()) > 0 {
 		t.Errorf("Detect() returned reports, want none")

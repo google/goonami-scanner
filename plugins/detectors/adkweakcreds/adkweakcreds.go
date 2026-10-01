@@ -136,9 +136,7 @@ func (m *Module) getStrategy(ctx context.Context, service *nspb.NetworkService) 
 	}
 	result, err := client.RunWithFeedbackLoop(ctx, content, verifier)
 	if err != nil {
-		// Note: we do not propagate model related errors as we do not want them to stop Goonami
-		// altogether.
-		return nil, nil
+		return nil, fmt.Errorf("failed to get authentication strategy: %w", err)
 	}
 
 	strategy, err := strategyFromJSON(result)
