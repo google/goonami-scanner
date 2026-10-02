@@ -278,13 +278,20 @@ func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.C
 			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
 		}
 
+		// Retrieve and process potential context cancellations.
+		err = ctx.Err()
+
 		// Partial events repeat the usage of the turn they belong to: the runner
 		// forwards them verbatim and only the final event is authoritative.
 		// Counting them would multiply every token metric by the chunk count.
-		if event.UsageMetadata != nil && !event.Partial {
+		if (err != nil || !event.Partial) && event.UsageMetadata != nil {
 			c.totalTokenCount += event.UsageMetadata.TotalTokenCount
 			c.cachedContentTokenCount += event.UsageMetadata.CachedContentTokenCount
 			recordTokens(ctx, event.UsageMetadata, event.ModelVersion)
+		}
+
+		if err != nil {
+			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
 		}
 
 		if event.Content == nil {

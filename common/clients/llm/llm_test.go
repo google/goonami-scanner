@@ -440,6 +440,88 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 		})
 	})
 
+	t.Run("when_turn_context_expires_during_event_stream_stops_iteration_immediately", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			var stepsExecuted int
+			ag, err := agent.New(agent.Config{
+				Name: "multi-step-agent",
+				Run: func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
+					return func(yield func(*session.Event, error) bool) {
+						stepsExecuted++
+						// Simulate a tool call that stalls past the 5s per-turn timeout and
+						// still yields a function-response event instead of returning a Go error.
+						time.Sleep(6 * time.Second)
+						if !yield(textEvent("tool-response-event"), nil) {
+							return
+						}
+						// If runTurn did not break out of the event loop on ctx.Err(),
+						// ADK would proceed to the next step and call the LLM again.
+						stepsExecuted++
+						yield(textEvent("final-answer"), nil)
+					}
+				},
+			})
+			if err != nil {
+				t.Fatalf("agent.New() error = %v", err)
+			}
+
+			c := New(makeTestConfig(1, 0), ag)
+			_, err = c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			if !errors.Is(err, ErrMaxAttemptsReached) {
+				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
+			}
+			if stepsExecuted != 1 {
+				t.Errorf("stepsExecuted = %d, want 1 (should stop before next step)", stepsExecuted)
+			}
+		})
+	})
+
+	t.Run("when_turn_context_expires_on_partial_event_token_usage_is_recorded", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			collector := installCollector(t)
+
+			ag, err := agent.New(agent.Config{
+				Name: "partial-timeout-agent",
+				Run: func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
+					return func(yield func(*session.Event, error) bool) {
+						time.Sleep(6 * time.Second)
+						event := &session.Event{
+							LLMResponse: model.LLMResponse{
+								ModelVersion: "gemini-3.6-flash",
+								Partial:      true,
+								UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
+									TotalTokenCount:         50,
+									CachedContentTokenCount: 15,
+								},
+							},
+						}
+						yield(event, nil)
+					}
+				},
+			})
+			if err != nil {
+				t.Fatalf("agent.New() error = %v", err)
+			}
+
+			c := New(makeTestConfig(1, 0), ag)
+			_, err = c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			if !errors.Is(err, ErrMaxAttemptsReached) {
+				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
+			}
+			if c.totalTokenCount != 50 || c.cachedContentTokenCount != 15 {
+				t.Errorf("token usage = (total: %d, cached: %d), want (50, 15)", c.totalTokenCount, c.cachedContentTokenCount)
+			}
+
+			label := metrics.LLMModel("gemini-3.6-flash")
+			if got := collector.Value(t.Context(), metrics.LLMTokens, label); got != 50 {
+				t.Errorf("%s[%s] = %d, want 50", metrics.LLMTokens.Name(), "gemini-3.6-flash", got)
+			}
+			if got := collector.Value(t.Context(), metrics.LLMCachedTokens, label); got != 15 {
+				t.Errorf("%s[%s] = %d, want 15", metrics.LLMCachedTokens.Name(), "gemini-3.6-flash", got)
+			}
+		})
+	})
+
 	t.Run("when_custom_user_id_is_configured_it_is_passed_to_session", func(t *testing.T) {
 		var capturedUserID string
 		ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
