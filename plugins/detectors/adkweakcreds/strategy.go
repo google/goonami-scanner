@@ -136,11 +136,13 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 	for _, cred := range a.AuthDetails.CredentialsToTest {
 		valid, confidence, err := a.validateCredential(ctx, cfg, service, cred)
 		if err != nil {
-			if errors.Is(err, goohttp.ErrRateLimited) {
-				log.WarnContextf(ctx, "rate limit reached testing credential %v; stopping brute force early", cred)
-				break
+			// Credentials that were already confirmed must never be discarded because a later
+			// attempt failed.
+			if len(validCreds) == 0 {
+				return nil, err
 			}
-			return nil, err
+			log.WarnContextf(ctx, "stopping brute force early: %v", err)
+			break
 		}
 
 		if valid {

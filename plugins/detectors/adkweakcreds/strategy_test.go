@@ -1006,6 +1006,24 @@ func TestAuthStrategy_Bruteforce(t *testing.T) {
 		case "/login_immediate_429":
 			w.WriteHeader(http.StatusTooManyRequests)
 			w.Write([]byte("too many requests"))
+		case "/login_fails_on_root":
+			user := r.FormValue("username")
+			pass := r.FormValue("password")
+			if user == "root" {
+				// Drop the connection without a response to produce a transport error.
+				conn, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Errorf("Hijack() error = %v", err)
+					return
+				}
+				conn.Close()
+				return
+			}
+			if (user == "admin" && pass == "admin") || (user == "guest" && pass == "guest") {
+				w.Write([]byte("welcome " + user))
+				return
+			}
+			w.Write([]byte("invalid credentials"))
 		case "/csrf_fail":
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("csrf server error"))
@@ -1221,7 +1239,7 @@ func TestAuthStrategy_Bruteforce(t *testing.T) {
 			},
 		},
 		{
-			name: "when_rate_limited_before_any_valid_credentials_returns_nil",
+			name: "when_rate_limited_before_any_valid_credentials_returns_error",
 			auth: &authStrategy{
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
@@ -1239,7 +1257,33 @@ func TestAuthStrategy_Bruteforce(t *testing.T) {
 					},
 				},
 			},
-			wantFinding: false,
+			wantErr: true,
+		},
+		{
+			name: "when_error_after_valid_credentials_halts_and_preserves_findings",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_fails_on_root",
+						Body:            "username=[[username]]&password=[[password]]",
+						ExtractionRegex: "invalid (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "admin"},
+						{Username: "root", Password: "root"},
+						{Username: "guest", Password: "guest"},
+					},
+				},
+			},
+			wantFinding: true,
+			wantCreds: []*credential{
+				{Username: "admin", Password: "admin"},
+			},
 		},
 	}
 
