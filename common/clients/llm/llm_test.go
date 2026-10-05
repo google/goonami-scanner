@@ -889,6 +889,43 @@ func TestGetModel(t *testing.T) {
 	}
 }
 
+func TestTimeoutPerRequest(t *testing.T) {
+	testCases := []struct {
+		name      string
+		llmConfig *lccpb.LlmClientConfig
+		want      time.Duration
+	}{
+		{
+			name:      "when_config_is_empty_returns_default",
+			llmConfig: nil,
+			want:      240 * time.Second,
+		},
+		{
+			name: "when_llm_config_has_timeout_returns_configured_timeout",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				TimeoutPerRequestSeconds: proto.Int32(90),
+			}.Build(),
+			want: 90 * time.Second,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfgBuilder := cpb.Config_builder{}
+			if tc.llmConfig != nil {
+				cfgBuilder.Clients = cpb.ClientsConfig_builder{
+					Llm: tc.llmConfig,
+				}.Build()
+			}
+			cfg := config.FromProto(cfgBuilder.Build())
+
+			if got := TimeoutPerRequest(cfg); got != tc.want {
+				t.Errorf("TimeoutPerRequest() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func userContent(text string) *genai.Content {
 	return &genai.Content{
 		Role:  "user",

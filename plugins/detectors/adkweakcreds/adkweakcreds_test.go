@@ -824,7 +824,23 @@ func TestClientConfig(t *testing.T) {
 		wantTimeout time.Duration
 	}{
 		{
-			name: "when_timeout_per_request_is_configured_sets_http_options_timeout",
+			name: "when_llm_timeout_per_request_is_configured_sets_http_options_timeout",
+			cfg: config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						TimeoutPerRequestSeconds: proto.Int32(15),
+					}.Build(),
+				}.Build(),
+				Clients: cpb.ClientsConfig_builder{
+					Llm: lccpb.LlmClientConfig_builder{
+						TimeoutPerRequestSeconds: proto.Int32(120),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			wantTimeout: 120 * time.Second,
+		},
+		{
+			name: "when_default_config_sets_default_llm_timeout",
 			cfg: config.FromProto(cpb.Config_builder{
 				Globalcfg: cpb.GlobalConfig_builder{
 					Performance: cpb.GlobalConfig_Performance_builder{
@@ -832,12 +848,7 @@ func TestClientConfig(t *testing.T) {
 					}.Build(),
 				}.Build(),
 			}.Build()),
-			wantTimeout: 15 * time.Second,
-		},
-		{
-			name:        "when_default_config_sets_default_http_options_timeout",
-			cfg:         config.FromProto(cpb.Config_builder{}.Build()),
-			wantTimeout: config.FromProto(cpb.Config_builder{}.Build()).TimeoutPerRequest(),
+			wantTimeout: 240 * time.Second,
 		},
 	}
 

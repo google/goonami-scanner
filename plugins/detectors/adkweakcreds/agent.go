@@ -143,7 +143,7 @@ var (
 func clientConfig(config *config.Config) *genai.ClientConfig {
 	return &genai.ClientConfig{
 		HTTPOptions: genai.HTTPOptions{
-			Timeout: genai.Ptr(config.TimeoutPerRequest()),
+			Timeout: genai.Ptr(llm.TimeoutPerRequest(config)),
 		},
 	}
 }

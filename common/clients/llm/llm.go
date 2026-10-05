@@ -125,6 +125,16 @@ func GetModel(config *config.Config, tier ModelTier) string {
 	}
 }
 
+// TimeoutPerRequest returns the per-request timeout for the LLM client from the configuration.
+func TimeoutPerRequest(config *config.Config) time.Duration {
+	clientConfig := DefaultConfig()
+	if config.ClientsConfig().HasLlm() {
+		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
+	}
+
+	return time.Duration(clientConfig.GetTimeoutPerRequestSeconds()) * time.Second
+}
+
 // New creates a new LLM client.
 func New(config *config.Config, ag agent.Agent) *Client {
 	clientConfig := DefaultConfig()
