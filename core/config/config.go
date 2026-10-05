@@ -98,7 +98,7 @@ func DefaultProto() *cpb.Config {
 				MaxPacketsPerSecond:            proto.Int32(0),
 				MaxHttpRequestsPerSecond:       proto.Int32(0),
 				MaxHttpRedirects:               proto.Int32(10),
-				MaxHttpAttemptsWhenRatelimit:   proto.Int32(3),
+				MaxHttpRetriesWhenRatelimit:    proto.Int32(2),
 				HttpRetryInitialBackoffSeconds: proto.Int32(2),
 				MaxHttpRetryAfterSeconds:       proto.Int32(15),
 			}.Build(),

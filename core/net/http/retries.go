@@ -27,12 +27,12 @@ import (
 )
 
 // ErrRateLimited is returned when RetryOnRateLimit is enabled and the server responds with
-// HTTP 429 Too Many Requests across all retry attempts or with a Retry-After header that
+// HTTP 429 Too Many Requests across all retries or with a Retry-After header that
 // exceeds the configured maximum.
 var ErrRateLimited = errors.New("rate limited by server (HTTP 429)")
 
 // retriableClient wraps a Client and retries HTTP 429 Too Many Requests responses using
-// Retry-After headers or exponential backoff up to the configured maximum attempts.
+// Retry-After headers or exponential backoff up to the configured maximum retries.
 type retriableClient struct {
 	wrapped Client
 	cfg     *config.Config
@@ -41,19 +41,19 @@ type retriableClient struct {
 // Do executes the HTTP request and retries on HTTP 429 Too Many Requests responses.
 func (c *retriableClient) Do(req *http.Request) (*http.Response, error) {
 	perf := c.cfg.GlobalConfig().GetPerformance()
-	maxAttempts := int(perf.GetMaxHttpAttemptsWhenRatelimit())
+	maxRetries := int(perf.GetMaxHttpRetriesWhenRatelimit())
 	maxRetryAfter := time.Duration(perf.GetMaxHttpRetryAfterSeconds()) * time.Second
 	backoff := time.Duration(perf.GetHttpRetryInitialBackoffSeconds()) * time.Second
 
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
+	for retry := 0; ; retry++ {
 		resp, err := c.wrapped.Do(req)
 		if err != nil || resp.StatusCode != http.StatusTooManyRequests {
 			return resp, err
 		}
 		resp.Body.Close()
 
-		if attempt == maxAttempts {
-			break
+		if retry >= maxRetries {
+			return nil, ErrRateLimited
 		}
 
 		if err := resetRequestBody(req); err != nil {
@@ -67,7 +67,6 @@ func (c *retriableClient) Do(req *http.Request) (*http.Response, error) {
 		time.Sleep(sleepDuration)
 		backoff *= 2
 	}
-	return nil, ErrRateLimited
 }
 
 // resetRequestBody closes the consumed request body and replaces it with a fresh reader for retry.

@@ -37,16 +37,11 @@ type clientFunc func(*http.Request) (*http.Response, error)
 func (f clientFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
 
 func TestRetriableClient_Do(t *testing.T) {
-	cfg := config.FromProto(cpb.Config_builder{
-		Globalcfg: cpb.GlobalConfig_builder{
-			HttpClient: proto.String("retry-test"),
-		}.Build(),
-	}.Build())
-
 	errGetBody := errors.New("get body failed")
 	tests := []struct {
 		name         string
 		method       string
+		perf         cpb.GlobalConfig_Performance_builder
 		disableRetry bool
 		responses    []int
 		retryAfter   string
@@ -101,11 +96,20 @@ func TestRetriableClient_Do(t *testing.T) {
 			wantErr:      ErrRateLimited,
 		},
 		{
-			name:         "when_429_exceeds_max_attempts_returns_rate_limited_error",
+			name:         "when_429_exceeds_max_retries_returns_rate_limited_error",
 			responses:    []int{http.StatusTooManyRequests, http.StatusTooManyRequests, http.StatusTooManyRequests},
 			wantAttempts: 3,
 			wantErr:      ErrRateLimited,
 			wantDuration: 6 * time.Second,
+		},
+		{
+			name: "when_max_retries_is_zero_returns_rate_limited_without_retry",
+			perf: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRetriesWhenRatelimit: proto.Int32(0),
+			},
+			responses:    []int{http.StatusTooManyRequests, http.StatusOK},
+			wantAttempts: 1,
+			wantErr:      ErrRateLimited,
 		},
 		{
 			name:         "when_get_body_fails_returns_error",
@@ -122,6 +126,13 @@ func TestRetriableClient_Do(t *testing.T) {
 				collector := metrics.NewCollector()
 				metrics.SetRecorder(collector)
 				t.Cleanup(func() { metrics.SetRecorder(nil) })
+
+				cfg := config.FromProto(cpb.Config_builder{
+					Globalcfg: cpb.GlobalConfig_builder{
+						HttpClient:  proto.String("retry-test"),
+						Performance: tc.perf.Build(),
+					}.Build(),
+				}.Build())
 
 				const wantPayload = "user=admin&pass=secret"
 				var attempts int
