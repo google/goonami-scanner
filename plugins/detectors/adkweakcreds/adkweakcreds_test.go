@@ -247,7 +247,7 @@ func TestDetect(t *testing.T) {
 		{
 			name:         "when_rate_limited_returns_error",
 			testdataFile: "login_rate_limited.json",
-			wantErr:      llm.ErrMaxAttemptsReached,
+			wantErr:      llm.ErrAbort,
 			wantFindings: false,
 		},
 		{
@@ -777,6 +777,25 @@ func TestAssertStrategyQuality(t *testing.T) {
 			}`,
 			wantErr: nil,
 		},
+		{
+			name:       "when_rate_limited_aborts_feedback_loop",
+			statusCode: http.StatusTooManyRequests,
+			strategy: `{
+				"supports_authentication": true,
+				"authentication_details": {
+					"login_request": {
+						"method": "POST",
+						"path": "/login",
+						"body": "user=[[username]]&pass=[[password]]",
+						"extraction_regex": "Bad Credentials"
+					},
+					"credentials_to_test": [
+						{"username": "admin", "password": "password"}
+					]
+				}
+			}`,
+			wantErr: llm.ErrAbort,
+		},
 	}
 
 	for _, tc := range tests {
@@ -805,7 +824,13 @@ func TestAssertStrategyQuality(t *testing.T) {
 				}.Build(),
 			}.Build()
 
-			cfg := config.FromProto(cpb.Config_builder{}.Build())
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						HttpRetryInitialBackoffSeconds: proto.Int32(0),
+					}.Build(),
+				}.Build(),
+			}.Build())
 			m, _ := New(ctx, cfg)
 			mod := m.(*Module)
 

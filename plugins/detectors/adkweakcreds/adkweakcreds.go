@@ -20,12 +20,14 @@ package adkweakcreds
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/goonami-scanner/common/clients/llm"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"github.com/google/goonami-scanner/plugins/detectors/adkweakcreds/cache"
 	"google.golang.org/adk/v2/agent"
@@ -171,6 +173,9 @@ func (m *Module) assertStrategyQuality(ctx context.Context, service *nspb.Networ
 	// Perform an invalid login attempt to confirm that the strategy correctly detects authentication failures.
 	invalidCred := strategy.getInvalidCredential()
 	resp, err := strategy.login(ctx, m.coreConfig, service, invalidCred)
+	if errors.Is(err, goohttp.ErrRateLimited) {
+		return fmt.Errorf("%w: %w", llm.ErrAbort, err)
+	}
 	if err != nil {
 		return err
 	}

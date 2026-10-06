@@ -149,6 +149,27 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 			wantErr:  ErrMaxAttemptsReached,
 		},
 		{
+			name: "when_verifier_aborts_no_further_attempt_is_made",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				TimeoutPerRequestSeconds: proto.Int32(1),
+				RetryDelaySeconds:        proto.Int32(0),
+				MaxAttempts:              proto.Int32(2),
+			}.Build(),
+			agent:   fakellmagent.NewWithSimpleAnswer("answer"),
+			content: defaultContent,
+			verifier: func() AgentResultVerifier {
+				calls := 0
+				return func(ctx context.Context, result string) error {
+					calls++
+					if calls == 1 {
+						return fmt.Errorf("%w: target is rate limiting", ErrAbort)
+					}
+					return nil
+				}
+			}(),
+			wantErr: ErrAbort,
+		},
+		{
 			name:          "when_context_is_cancelled_error_is_returned",
 			agent:         fakellmagent.New(nil, nil),
 			content:       defaultContent,

@@ -66,6 +66,11 @@ var (
 	// ErrContentRequired is returned when the content is required.
 	ErrContentRequired = errors.New("content is required (and must have a role)")
 
+	// ErrAbort can be wrapped by an AgentResultVerifier to stop RunWithFeedbackLoop immediately
+	// instead of asking the model to correct its answer. Use it for failures the model cannot fix,
+	// such as the target rate limiting the verification requests.
+	ErrAbort = errors.New("agent run aborted by verifier")
+
 	// For most of Goonami's use cases, the in-memory session service is sufficient.
 	defaultSessionService session.Service = session.InMemoryService()
 )
@@ -189,6 +194,7 @@ type AgentResultVerifier func(ctx context.Context, result string) error
 // When response verification fails, the active session is preserved and the verifier's diagnostic error
 // is fed back to the model as the subsequent user turn for conversational refinement.
 // Hard agent execution failures reset the session and restart from the initial prompt.
+// Verifier errors wrapping ErrAbort end the run immediately and are returned as is.
 func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content, verifier AgentResultVerifier) (result string, err error) {
 	ctx = log.ContextForModule(ctx, llmMetricsModule)
 
@@ -237,6 +243,9 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 
 		if verifier != nil {
 			if err := verifier(ctx, resp); err != nil {
+				if errors.Is(err, ErrAbort) {
+					return "", err
+				}
 				log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) agent's response verification failed: %v", attempt, maxAttempts, err)
 				sessionID = nextSessionID
 				turnContent = feedbackContent(err)
