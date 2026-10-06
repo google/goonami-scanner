@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/proto"
@@ -472,6 +473,10 @@ func TestDo_MaxRedirects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			collector := metrics.NewCollector()
+			metrics.SetRecorder(collector)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
 			redirectCount = 0
 
 			perfBuilder := cpb.GlobalConfig_Performance_builder{
@@ -511,6 +516,12 @@ func TestDo_MaxRedirects(t *testing.T) {
 
 			if redirectCount != tt.expectedCount {
 				t.Errorf("redirectCount = %d, want %d", redirectCount, tt.expectedCount)
+			}
+
+			if got := collector.Value(t.Context(), metrics.BudgetExhausted,
+				metrics.Module("simpleclient"),
+				metrics.LimitName(metrics.LimitMaxHTTPRedirects)); got != 1 {
+				t.Errorf("budget/exhausted = %d, want 1", got)
 			}
 		})
 	}

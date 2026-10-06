@@ -32,6 +32,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/adk/v2/agent"
@@ -162,14 +163,15 @@ func makeService(t *testing.T, svrURL string) *nspb.NetworkService {
 
 func TestDo(t *testing.T) {
 	tests := []struct {
-		name       string
-		toolCtx    func(t *testing.T) agent.Context
-		req        *Request
-		handler    http.HandlerFunc
-		cfg        *llmcpb.HttpClientConfig
-		presetReqs int // to preset request count for testing limits
-		want       *Response
-		wantErr    error
+		name                string
+		toolCtx             func(t *testing.T) agent.Context
+		req                 *Request
+		handler             http.HandlerFunc
+		cfg                 *llmcpb.HttpClientConfig
+		presetReqs          int // to preset request count for testing limits
+		want                *Response
+		wantErr             error
+		wantBudgetExhausted int64
 	}{
 		{
 			name: "when_simple_get_returns_response",
@@ -306,8 +308,9 @@ func TestDo(t *testing.T) {
 				MaxRequestsPerService: proto.Int32(1),
 				ForbiddenPaths:        []string{},
 			}.Build(),
-			presetReqs: 1,
-			wantErr:    ErrTooManyRequests,
+			presetReqs:          1,
+			wantErr:             ErrTooManyRequests,
+			wantBudgetExhausted: 1,
 		},
 		{
 			name: "when_response_is_too_large_returns_error",
@@ -364,6 +367,10 @@ func TestDo(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			collector := metrics.NewCollector()
+			metrics.SetRecorder(collector)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
 			svr := httptest.NewServer(tc.handler)
 			defer svr.Close()
 
@@ -398,6 +405,13 @@ func TestDo(t *testing.T) {
 
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("Do() error = %v, want %v", err, tc.wantErr)
+			}
+
+			gotBudget := collector.Value(t.Context(), metrics.BudgetExhausted,
+				metrics.Module("clients/llm/httpclient"),
+				metrics.LimitName(metrics.LimitMaxRequestsPerService))
+			if gotBudget != tc.wantBudgetExhausted {
+				t.Errorf("budget/exhausted = %d, want %d", gotBudget, tc.wantBudgetExhausted)
 			}
 
 			if tc.wantErr != nil {

@@ -29,6 +29,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"google.golang.org/adk/v2/agent"
@@ -257,6 +258,9 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 	}
 
 	if h.numberOfRequests() >= int(h.config.GetMaxRequestsPerService()) {
+		metrics.BudgetExhausted.Add(ctx, 1,
+			metrics.Module("clients/llm/httpclient"),
+			metrics.LimitName(metrics.LimitMaxRequestsPerService))
 		log.DebugContextf(ctx, log.DebugLevelRequest, "too many requests for %q: %q", toolreq.Method, uri)
 		return nil, ErrTooManyRequests
 	}

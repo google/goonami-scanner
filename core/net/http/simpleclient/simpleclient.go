@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"golang.org/x/time/rate"
 )
@@ -93,6 +94,9 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 		}
 
 		if len(via) >= maxRedirects {
+			metrics.BudgetExhausted.Add(req.Context(), 1,
+				metrics.Module("simpleclient"),
+				metrics.LimitName(metrics.LimitMaxHTTPRedirects))
 			return ErrTooManyRedirects
 		}
 
