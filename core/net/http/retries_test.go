@@ -17,6 +17,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -48,6 +49,7 @@ func TestRetriableClient_Do(t *testing.T) {
 		name         string
 		method       string
 		disableRetry bool
+		ctxTimeout   time.Duration
 		responses    []int
 		retryAfter   string
 		getBodyErr   error
@@ -114,6 +116,14 @@ func TestRetriableClient_Do(t *testing.T) {
 			wantAttempts: 1,
 			wantErr:      errGetBody,
 		},
+		{
+			name:         "when_context_times_out_during_backoff_returns_deadline_exceeded",
+			ctxTimeout:   time.Second,
+			responses:    []int{http.StatusTooManyRequests, http.StatusOK},
+			wantAttempts: 1,
+			wantErr:      context.DeadlineExceeded,
+			wantDuration: time.Second,
+		},
 	}
 
 	for _, tc := range tests {
@@ -164,7 +174,13 @@ func TestRetriableClient_Do(t *testing.T) {
 				} else if method == "" {
 					method = http.MethodPost
 				}
-				req, err := http.NewRequestWithContext(t.Context(), method, "http://example.com/login", reqBody)
+				ctx := t.Context()
+				if tc.ctxTimeout > 0 {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, tc.ctxTimeout)
+					defer cancel()
+				}
+				req, err := http.NewRequestWithContext(ctx, method, "http://example.com/login", reqBody)
 				if err != nil {
 					t.Fatalf("http.NewRequestWithContext() error = %v", err)
 				}

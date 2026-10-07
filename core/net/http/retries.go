@@ -64,7 +64,11 @@ func (c *retriableClient) Do(req *http.Request) (*http.Response, error) {
 		if err != nil {
 			return nil, err
 		}
-		time.Sleep(sleepDuration)
+		select {
+		case <-time.After(sleepDuration):
+		case <-req.Context().Done():
+			return nil, req.Context().Err()
+		}
 		backoff *= 2
 	}
 	return nil, ErrRateLimited
