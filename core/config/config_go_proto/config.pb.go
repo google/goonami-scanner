@@ -1072,6 +1072,7 @@ type GlobalConfig_Performance_builder struct {
 	MaxHttpRedirects *int32
 	// Maximum number of attempts for an HTTP request when rate-limited
 	// (HTTP 429) if rate-limit retry is enabled on the HTTP client.
+	// Must be >= 1.
 	// Default: 3
 	MaxHttpAttemptsWhenRatelimit *int32
 	// Initial backoff in seconds before retrying a rate-limited (HTTP 429)

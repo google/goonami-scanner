@@ -100,6 +100,7 @@ message GlobalConfig {
 
     // Maximum number of attempts for an HTTP request when rate-limited
     // (HTTP 429) if rate-limit retry is enabled on the HTTP client.
+    // Must be >= 1.
     // Default: 3
     optional int32 max_http_attempts_when_ratelimit = 6;
 

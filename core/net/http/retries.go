@@ -41,7 +41,7 @@ type retriableClient struct {
 // Do executes the HTTP request and retries on HTTP 429 Too Many Requests responses.
 func (c *retriableClient) Do(req *http.Request) (*http.Response, error) {
 	perf := c.cfg.GlobalConfig().GetPerformance()
-	maxAttempts := int(perf.GetMaxHttpAttemptsWhenRatelimit())
+	maxAttempts := max(int(perf.GetMaxHttpAttemptsWhenRatelimit()), 1)
 	maxRetryAfter := time.Duration(perf.GetMaxHttpRetryAfterSeconds()) * time.Second
 	backoff := time.Duration(perf.GetHttpRetryInitialBackoffSeconds()) * time.Second
 
