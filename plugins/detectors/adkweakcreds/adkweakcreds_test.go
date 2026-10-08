@@ -43,7 +43,6 @@ import (
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
@@ -599,42 +598,6 @@ func TestDetect_NoCachePath_SkipsCache(t *testing.T) {
 	}
 }
 
-func TestDetermineStatus(t *testing.T) {
-	tests := []struct {
-		name    string
-		finding finding
-		want    dpb.DetectionStatus
-	}{
-		{
-			name: "when_confidence_is_present_returns_present",
-			finding: finding{
-				ValidCredentials: []*validCredential{
-					{Confidence: confidenceLow},
-				},
-			},
-			want: dpb.DetectionStatus_VULNERABILITY_PRESENT,
-		},
-		{
-			name: "when_confidence_is_verified_returns_verified",
-			finding: finding{
-				ValidCredentials: []*validCredential{
-					{Confidence: confidenceLow},
-					{Confidence: confidenceHigh},
-				},
-			},
-			want: dpb.DetectionStatus_VULNERABILITY_VERIFIED,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := determineStatus(tc.finding); got != tc.want {
-				t.Errorf("determineStatus() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
-
 type capturingAgent struct {
 	*fakellmagent.FakeAgent
 	onRun func(string)
@@ -892,5 +855,18 @@ func TestClientConfig(t *testing.T) {
 				t.Errorf("clientConfig().HTTPOptions.Timeout = %v, want %v", *got.HTTPOptions.Timeout, tc.wantTimeout)
 			}
 		})
+	}
+}
+
+func TestBuildJudgeAgent(t *testing.T) {
+	t.Setenv("GEMINI_API_KEY", "test-api-key")
+	t.Setenv("GOOGLE_API_KEY", "")
+
+	got, err := buildJudgeAgent(t.Context(), config.Default())
+	if err != nil {
+		t.Fatalf("buildJudgeAgent() unexpected error: %v", err)
+	}
+	if got.Name() != judgeName {
+		t.Errorf("buildJudgeAgent().Name() = %q, want %q", got.Name(), judgeName)
 	}
 }

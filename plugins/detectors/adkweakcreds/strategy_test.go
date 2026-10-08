@@ -26,11 +26,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/protobuf/proto"
 
+	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -61,6 +64,11 @@ func setupMockServer(t *testing.T, handler http.HandlerFunc) (*config.Config, *n
 		Globalcfg: cpb.GlobalConfig_builder{
 			Performance: cpb.GlobalConfig_Performance_builder{
 				HttpRetryInitialBackoffSeconds: proto.Int32(0),
+			}.Build(),
+		}.Build(),
+		Clients: cpb.ClientsConfig_builder{
+			Llm: lccpb.LlmClientConfig_builder{
+				MaxAttempts: proto.Int32(1),
 			}.Build(),
 		}.Build(),
 	}.Build())
@@ -286,12 +294,14 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 	})
 
 	tests := []struct {
-		name      string
-		auth      *authStrategy
-		cred      *credential
-		wantValid bool
-		wantConf  confidenceLevel
-		wantErr   bool
+		name                string
+		auth                *authStrategy
+		cred                *credential
+		judgeAnswer         string
+		judgeErr            error
+		wantJudgePromptSubs []string
+		wantValid           bool
+		wantErr             bool
 	}{
 		{
 			name: "when_valid_credentials_returns_true",
@@ -311,7 +321,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_invalid_credentials_returns_false",
@@ -331,7 +340,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
 			name: "when_csrf_required_and_valid_returns_true",
@@ -359,7 +367,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_identifier_has_no_capturing_group_returns_false",
@@ -380,7 +387,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
 			name: "when_identifier_has_no_capturing_group_returns_true",
@@ -401,7 +407,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_csrf_requires_cookie_login_succeeds",
@@ -429,10 +434,9 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
-			name: "when_status_500_returns_auth_present",
+			name: "when_status_500_and_judge_confirms_returns_true",
 			auth: &authStrategy{
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
@@ -447,9 +451,18 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					},
 				},
 			},
-			cred:      &credential{Username: "admin", Password: "password"},
+			cred:        &credential{Username: "admin", Password: "password"},
+			judgeAnswer: `{"authenticated": true}`,
+			wantJudgePromptSubs: []string{
+				`Login request: POST /login_present`,
+				`Candidate credential: username="admin", password="password"`,
+				`Negative baseline credential (known-invalid): username="admin", password="cnffjbeq"`,
+				`--- Negative Baseline Response (HTTP 200) ---`,
+				"<baseline_response_body>\nerror: invalid credentials\n</baseline_response_body>",
+				`--- Candidate Response (HTTP 500) ---`,
+				"<candidate_response_body>\nsuccess_but_500\n</candidate_response_body>",
+			},
 			wantValid: true,
-			wantConf:  confidenceLow,
 		},
 		{
 			name: "when_form_auth_with_status_401_returns_failure",
@@ -469,7 +482,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
 			name: "when_form_auth_with_status_403_returns_failure",
@@ -489,10 +501,29 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
-			name: "when_form_persists_with_status_200_returns_auth_present",
+			name: "when_form_persists_with_status_200_and_judge_rejects_returns_false",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_form_persisting",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:        &credential{Username: "admin", Password: "password"},
+			judgeAnswer: `{"authenticated": false}`,
+			wantValid:   false,
+		},
+		{
+			name: "when_form_persists_and_judge_errors_returns_false_without_error",
 			auth: &authStrategy{
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
@@ -508,8 +539,27 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				},
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
-			wantValid: true,
-			wantConf:  confidenceLow,
+			judgeErr:  errors.New("judge failure"),
+			wantValid: false,
+		},
+		{
+			name: "when_form_persists_and_default_judge_builder_fails_returns_false_without_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_form_persisting",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:      &credential{Username: "admin", Password: "password"},
+			wantValid: false,
 		},
 		{
 			name: "when_non_csrf_login_redirects_with_cookie_preserves_session",
@@ -529,7 +579,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "password"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_non_csrf_login_redirects_with_cookie_invalid_password_returns_false",
@@ -549,7 +598,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
 			name: "when_basic_auth_valid_credentials_succeeds",
@@ -568,7 +616,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "secret"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_basic_auth_invalid_credentials_fails",
@@ -587,7 +634,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 		{
 			name: "when_basic_auth_with_empty_failure_response_valid_credentials_succeeds",
@@ -606,7 +652,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "secret"},
 			wantValid: true,
-			wantConf:  confidenceHigh,
 		},
 		{
 			name: "when_basic_auth_with_empty_failure_response_invalid_credentials_fails",
@@ -625,7 +670,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
-			wantConf:  confidenceNone,
 		},
 	}
 
@@ -638,15 +682,30 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				}
 			}
 
-			gotValid, gotConf, err := tc.auth.validateCredential(t.Context(), cfg, service, tc.cred)
+			var gotJudgePrompt string
+			if tc.judgeAnswer != "" || tc.judgeErr != nil {
+				tc.auth.judgeBuilder = func(ctx context.Context, cfg *config.Config) (agent.Agent, error) {
+					if tc.judgeErr != nil {
+						return fakellmagent.NewWithError(tc.judgeErr), nil
+					}
+					return &capturingAgent{
+						FakeAgent: fakellmagent.NewWithSimpleAnswer(tc.judgeAnswer),
+						onRun:     func(prompt string) { gotJudgePrompt = prompt },
+					}, nil
+				}
+			}
+
+			gotValid, err := tc.auth.validateCredential(t.Context(), cfg, service, tc.cred)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("validateCredential() error = %v, wantErr %v", err, tc.wantErr)
 			}
 			if gotValid != tc.wantValid {
 				t.Errorf("validateCredential() valid = %v, want %v", gotValid, tc.wantValid)
 			}
-			if gotConf != tc.wantConf {
-				t.Errorf("validateCredential() conf = %v, want %v", gotConf, tc.wantConf)
+			for _, wantSub := range tc.wantJudgePromptSubs {
+				if !strings.Contains(gotJudgePrompt, wantSub) {
+					t.Errorf("validateCredential() judge prompt = %q, want substring %q", gotJudgePrompt, wantSub)
+				}
 			}
 		})
 	}
@@ -1321,7 +1380,7 @@ func TestAuthStrategy_Bruteforce(t *testing.T) {
 			}
 
 			for i, want := range tc.wantCreds {
-				got := finding.ValidCredentials[i].credential
+				got := finding.ValidCredentials[i]
 				if got.Username != want.Username || got.Password != want.Password {
 					t.Errorf("ValidCredentials[%d] = %v:%v, want %v:%v", i, got.Username, got.Password, want.Username, want.Password)
 				}
