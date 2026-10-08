@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	errRegexpTooWeak = errors.New("regexp was not robust enough: it failed to extract the error message from the HTTP response for an unknown username and invalid password; this caused the system to falsely believe the login was successful; please ensure the regex matches generic invalid login errors")
+	errRegexpTooWeak = errors.New("regexp was not robust enough: it failed to extract the error message from the HTTP response for an invalid login attempt; this caused the system to falsely believe the login was successful; please ensure the regex matches both wrong-password and unknown-username login rejection errors without matching exclusively on unknown-user messages")
 )
 
 type confidenceLevel int

@@ -149,9 +149,16 @@ a failed attempt was performed. This is usually an error message indicating to
 the user that the credentials were invalid.
 
 **Distinguishing Credential Rejection from Input/Schema Errors:**
-The `extraction_regex` MUST match authentication and credential verification
-rejections (such as `Invalid credentials`, `Incorrect username or password`,
-`Authentication failed`, `User not found`, or `Bad credentials`).
+The `extraction_regex` MUST match authentication and password/credential
+verification rejections (such as `Invalid credentials`, `Incorrect username or
+password`, `Authentication failed`, or `Bad credentials`).
+Never match exclusively on unknown-user errors (such as `User not found` or
+`Unknown user`), because valid usernames tested with an incorrect password
+will return a password-rejection message (`Incorrect password`, `Invalid
+credentials`) instead. If the service returns distinct messages for unknown
+usernames versus wrong passwords, use a case-insensitive alternation that
+matches both (e.g.,
+`(?i)(invalid credentials|incorrect password|authentication failed|user not found)`).
 It MUST NEVER match input syntax or schema-level validation errors (such
 as `value is not a valid email address`, `invalid email format`,
 `field required`, `string too short`, `malformed json`).
