@@ -185,6 +185,7 @@ func TestDo(t *testing.T) {
 			cfg: DefaultConfig(),
 			want: &Response{
 				StatusCode: 200,
+				FinalURI:   "/",
 				Content:    "ok",
 			},
 		},
@@ -220,6 +221,7 @@ func TestDo(t *testing.T) {
 			cfg: DefaultConfig(),
 			want: &Response{
 				StatusCode: 200,
+				FinalURI:   "/post",
 				Content:    "received:data",
 			},
 		},
@@ -241,6 +243,7 @@ func TestDo(t *testing.T) {
 			cfg: DefaultConfig(),
 			want: &Response{
 				StatusCode: 200,
+				FinalURI:   "/",
 				Content:    "ok",
 			},
 		},
@@ -603,6 +606,7 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 		name                string
 		req                 *Request
 		wantStatus          int32
+		wantFinalURI        string
 		wantContent         string
 		wantExternalVisited bool
 	}{
@@ -613,6 +617,7 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 				URI:    "/redirect_in_scope",
 			},
 			wantStatus:          http.StatusOK,
+			wantFinalURI:        "/destination",
 			wantContent:         "in-scope destination",
 			wantExternalVisited: false,
 		},
@@ -623,6 +628,7 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 				URI:    "/redirect_out_of_scope",
 			},
 			wantStatus:          http.StatusFound,
+			wantFinalURI:        "/redirect_out_of_scope",
 			wantContent:         "",
 			wantExternalVisited: false,
 		},
@@ -639,6 +645,10 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 
 			if resp.StatusCode != tt.wantStatus {
 				t.Errorf("Do() status = %d, want %d", resp.StatusCode, tt.wantStatus)
+			}
+
+			if resp.FinalURI != tt.wantFinalURI {
+				t.Errorf("Do() FinalURI = %q, want %q", resp.FinalURI, tt.wantFinalURI)
 			}
 
 			if tt.wantContent != "" && resp.Content != tt.wantContent {

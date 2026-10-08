@@ -89,6 +89,7 @@ type Request struct {
 // Response is the response from an HTTP request.
 type Response struct {
 	StatusCode int32             `json:"status_code" jsonschema:"HTTP status code returned by the server."`
+	FinalURI   string            `json:"final_uri" jsonschema:"Final request URI after following any in-scope redirects (e.g. '/login')."`
 	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Www-Authenticate)."`
 	Content    string            `json:"content" jsonschema:"Raw body content returned by the server."`
 }
@@ -238,8 +239,14 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 		return nil, err
 	}
 
+	finalURI := uri
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalURI = resp.Request.URL.RequestURI()
+	}
+
 	return &Response{
 		StatusCode: int32(resp.StatusCode),
+		FinalURI:   finalURI,
 		Headers:    extractRelevantHeaders(resp.Header),
 		Content:    string(content),
 	}, nil

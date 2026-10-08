@@ -61,17 +61,19 @@ codes and response headers:
   fallback, but continue searching for a dedicated form-based or API-based login
   endpoint (such as `/login`, `/admin`, or `/auth`) before defaulting to Basic
   Authentication. Only use Basic Authentication if no other login endpoint is found.
-- **3xx Redirects / `Location`**: The tool automatically follows in-scope
-  redirects within the target service. If you receive a 3xx response, it
-  indicates that the redirect points to an external host (indicated by the
-  `Location` header). If `/` redirects to an external site or third-party identity
-  provider (e.g. `accounts.google.com`, `okta.com`, `login.microsoftonline.com`),
-  do not immediately give up. Many platforms (such as Jenkins, Grafana, GitLab,
-  or appliance consoles) retain local password login endpoints (e.g. `/login`,
-  `/admin`, or `/login?local=true`) for break-glass or administrative access.
-  Check common local login paths before concluding the service is out of scope.
-  Only report `supports_authentication: false` if no local secret-based login
-  mechanism can be found.
+- **3xx Redirects / `Location` / `final_uri`**: The tool automatically follows
+  in-scope redirects within the target service and reports the final destination
+  URI in `final_uri` (use `final_uri` to resolve relative or empty `<form
+  action>` attributes when a request was redirected). If you receive a 3xx
+  response, it indicates that the redirect points to an external host (indicated
+  by the `Location` header). If `/` redirects to an external site or third-party
+  identity provider (e.g. `accounts.google.com`, `okta.com`,
+  `login.microsoftonline.com`), do not immediately give up. Many platforms (such
+  as Jenkins, Grafana, GitLab, or appliance consoles) retain local password
+  login endpoints (e.g. `/login`, `/admin`, or `/login?local=true`) for
+  break-glass or administrative access. Check common local login paths before
+  concluding the service is out of scope. Only report `supports_authentication:
+  false` if no local secret-based login mechanism can be found.
 - **`Content-Type`**: Inspect the `Content-Type` header to determine whether the
   endpoint is an HTML page (`text/html`) or a JSON/REST API (`application/json`).
 
@@ -211,7 +213,8 @@ response of a successful login.
     finally the data to add to the body if needed. Only specify headers
     strictly required by the endpoint (such as `Content-Type`). Do not invent
     placeholder or dummy headers.
-    The tool returns `status_code`, high-signal `headers` (`Content-Type`,
+    The tool returns `status_code`, `final_uri` (the final request URI after
+    following any in-scope redirects), high-signal `headers` (`Content-Type`,
     `Location`, `Www-Authenticate`), and response `content`.
     The tool automatically follows redirects within the target service, but
     will NOT follow redirects to external hosts (returning a 3xx response with
