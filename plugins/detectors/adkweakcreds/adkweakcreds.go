@@ -182,7 +182,7 @@ func (m *Module) assertStrategyQuality(ctx context.Context, service *nspb.Networ
 
 	// Confirm that the extraction regex successfully matched the negative validation response.
 	if resp.Extraction == nil {
-		return errRegexpTooWeak
+		return fmt.Errorf("%w (HTTP %d, response body: %q)", errRegexpTooWeak, resp.StatusCode, string(resp.Body))
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelService, "agent's strategy verified, ready to brute force")

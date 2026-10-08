@@ -729,6 +729,7 @@ func TestAssertStrategyQuality(t *testing.T) {
 		body       string
 		strategy   string
 		wantErr    error
+		wantErrSub string
 	}{
 		{
 			name:       "when_protocol_401_with_regex_match_succeeds",
@@ -768,7 +769,8 @@ func TestAssertStrategyQuality(t *testing.T) {
 					]
 				}
 			}`,
-			wantErr: errRegexpTooWeak,
+			wantErr:    errRegexpTooWeak,
+			wantErrSub: `(HTTP 401, response body: "Unauthorized: Bad Credentials")`,
 		},
 		{
 			name: "when_supports_authentication_false_succeeds",
@@ -837,6 +839,9 @@ func TestAssertStrategyQuality(t *testing.T) {
 			err := mod.assertStrategyQuality(ctx, service, tc.strategy)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("assertStrategyQuality() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErrSub != "" && !strings.Contains(err.Error(), tc.wantErrSub) {
+				t.Errorf("assertStrategyQuality() error = %q, want substring %q", err.Error(), tc.wantErrSub)
 			}
 		})
 	}
