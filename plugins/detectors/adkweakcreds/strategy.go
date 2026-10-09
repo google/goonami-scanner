@@ -25,9 +25,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/goonami-scanner/common/clients/llm"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/genai"
 
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
@@ -36,24 +39,10 @@ var (
 	errRegexpTooWeak = errors.New("regexp was not robust enough: it failed to extract the error message from the HTTP response for an invalid login attempt; this caused the system to falsely believe the login was successful; please ensure the regex matches both wrong-password and unknown-username login rejection errors without matching exclusively on unknown-user messages")
 )
 
-type confidenceLevel int
-
-const (
-	confidenceNone confidenceLevel = iota
-	confidenceLow
-	confidenceHigh
-)
-
 // credential is a username and password pair.
 type credential struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-}
-
-// validCredential contains a valid credential and the confidence of its success.
-type validCredential struct {
-	*credential
-	Confidence confidenceLevel `json:"confidence"`
 }
 
 // authDetails contains the details required when authentication is supported.
@@ -67,6 +56,12 @@ type authDetails struct {
 type authStrategy struct {
 	SupportsAuthentication bool         `json:"supports_authentication"`
 	AuthDetails            *authDetails `json:"authentication_details"`
+
+	judgeBuilder func(context.Context, *config.Config) (agent.Agent, error)
+}
+
+type judgeResult struct {
+	Authenticated bool `json:"authenticated"`
 }
 
 // strategyFromJSON parses the LLM output into an authStrategy and validates it.
@@ -131,10 +126,10 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 		return nil, nil
 	}
 
-	var validCreds []*validCredential
+	var validCreds []*credential
 
 	for _, cred := range a.AuthDetails.CredentialsToTest {
-		valid, confidence, err := a.validateCredential(ctx, cfg, service, cred)
+		valid, err := a.validateCredential(ctx, cfg, service, cred)
 		if err != nil {
 			// Credentials that were already confirmed must never be discarded because a later
 			// attempt failed.
@@ -146,11 +141,8 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 		}
 
 		if valid {
-			log.DebugContextf(ctx, log.DebugLevelService, "valid credentials found: %v (confidence: %v)", cred, confidence)
-			validCreds = append(validCreds, &validCredential{
-				credential: cred,
-				Confidence: confidence,
-			})
+			log.DebugContextf(ctx, log.DebugLevelService, "valid credentials found: %v", cred)
+			validCreds = append(validCreds, cred)
 		}
 	}
 
@@ -172,14 +164,14 @@ func isAuthFailure(resp *response) bool {
 }
 
 // validateCredential tests a single credential and confirms it via negative validation.
-func (a *authStrategy) validateCredential(ctx context.Context, cfg *config.Config, service *nspb.NetworkService, cred *credential) (bool, confidenceLevel, error) {
+func (a *authStrategy) validateCredential(ctx context.Context, cfg *config.Config, service *nspb.NetworkService, cred *credential) (bool, error) {
 	resp, err := a.login(ctx, cfg, service, cred)
 	if err != nil {
-		return false, confidenceNone, fmt.Errorf("failed to test credentials %v: %w", cred, err)
+		return false, fmt.Errorf("failed to test credentials %v: %w", cred, err)
 	}
 
 	if isAuthFailure(resp) {
-		return false, confidenceNone, nil
+		return false, nil
 	}
 
 	// Validate that the username with an invalid password does not authenticate.
@@ -189,18 +181,63 @@ func (a *authStrategy) validateCredential(ctx context.Context, cfg *config.Confi
 	}
 	invalidCredResp, err := a.login(ctx, cfg, service, invalidCred)
 	if err != nil {
-		return false, confidenceNone, fmt.Errorf("failed negative validation for %v: %w", cred, err)
+		return false, fmt.Errorf("failed negative validation for %v: %w", cred, err)
 	}
 	if !isAuthFailure(invalidCredResp) {
 		log.DebugContextf(ctx, log.DebugLevelService, "Credentials %v appeared valid but failed negative validation test", cred)
-		return false, confidenceNone, nil
+		return false, nil
 	}
 
-	// If login form persists or status is an error, mark confidenceLow.
 	if isLoginFormPersisting(resp.Body) || resp.StatusCode >= 400 {
-		return true, confidenceLow, nil
+		ok, err := a.judgeCredential(ctx, cfg, cred, invalidCred, resp, invalidCredResp)
+		if err != nil {
+			log.WarnContextf(ctx, "failed to judge ambiguous credential %v, rejecting: %v", cred, err)
+			return false, nil
+		}
+		return ok, nil
 	}
-	return true, confidenceHigh, nil
+	return true, nil
+}
+
+func (a *authStrategy) judgeCredential(ctx context.Context, cfg *config.Config, cred, invalidCred *credential, candidate, baseline *response) (bool, error) {
+	builder := a.judgeBuilder
+	if builder == nil {
+		builder = buildJudgeAgent
+	}
+	ag, err := builder(ctx, cfg)
+	if err != nil {
+		return false, err
+	}
+
+	client := llm.New(cfg, ag)
+	var parsed judgeResult
+	verifier := func(ctx context.Context, result string) error {
+		return json.Unmarshal([]byte(result), &parsed)
+	}
+
+	loginReq := a.AuthDetails.LoginRequest
+	prompt := fmt.Sprintf(
+		"Login request: %s %s\n"+
+			"Candidate credential: username=%q, password=%q\n"+
+			"Negative baseline credential (known-invalid): username=%q, password=%q\n\n"+
+			"--- Negative Baseline Response (HTTP %d) ---\n"+
+			"<baseline_response_body>\n%s\n</baseline_response_body>\n\n"+
+			"--- Candidate Response (HTTP %d) ---\n"+
+			"<candidate_response_body>\n%s\n</candidate_response_body>\n",
+		loginReq.Method, loginReq.Path,
+		cred.Username, cred.Password,
+		invalidCred.Username, invalidCred.Password,
+		baseline.StatusCode, string(baseline.Body),
+		candidate.StatusCode, string(candidate.Body),
+	)
+	content := &genai.Content{
+		Role:  "user",
+		Parts: []*genai.Part{{Text: prompt}},
+	}
+	if _, err := client.RunWithFeedbackLoop(ctx, content, verifier); err != nil {
+		return false, err
+	}
+	return parsed.Authenticated, nil
 }
 
 // getInvalidCredential returns a credential for negative validation. If candidate credentials

@@ -47,9 +47,9 @@ const (
 
 // finding contains the valid credentials discovered and the requests used.
 type finding struct {
-	ValidCredentials []*validCredential `json:"valid_credentials"`
-	LoginRequest     *request           `json:"login_request"`
-	CsrfRequest      *request           `json:"csrf_request"`
+	ValidCredentials []*credential `json:"valid_credentials"`
+	LoginRequest     *request      `json:"login_request"`
+	CsrfRequest      *request      `json:"csrf_request"`
 }
 
 // Module is the main structure of the module.
@@ -206,7 +206,7 @@ func (m *Module) buildDetectionReport(ctx context.Context, service *nspb.Network
 				}.Build(),
 				NetworkService:     service,
 				DetectionTimestamp: tpb.Now(),
-				DetectionStatus:    determineStatus(finding),
+				DetectionStatus:    dpb.DetectionStatus_VULNERABILITY_VERIFIED,
 				Vulnerability: vpb.Vulnerability_builder{
 					Title:          "Web-service with weak credentials",
 					Severity:       vpb.Severity_HIGH,
@@ -227,15 +227,4 @@ func (m *Module) buildDetectionReport(ctx context.Context, service *nspb.Network
 			}.Build(),
 		},
 	}.Build(), nil
-}
-
-func determineStatus(finding finding) dpb.DetectionStatus {
-	status := dpb.DetectionStatus_VULNERABILITY_PRESENT
-	for _, cred := range finding.ValidCredentials {
-		if cred.Confidence == confidenceHigh {
-			status = dpb.DetectionStatus_VULNERABILITY_VERIFIED
-			break
-		}
-	}
-	return status
 }
