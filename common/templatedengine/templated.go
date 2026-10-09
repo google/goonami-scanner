@@ -97,14 +97,29 @@ func (d *TemplatedDetector) Validate() error {
 	}
 
 	for _, workflow := range d.proto.GetWorkflows() {
+		var currentPhase tpb.PluginAction_ActionPhase
 		for _, actionName := range workflow.GetActions() {
-			if _, ok := d.knownActions[actionName]; !ok {
+			action, ok := d.knownActions[actionName]
+			if !ok {
 				return fmt.Errorf("%w: %q", actions.ErrActionNotFound, actionName)
 			}
+
+			phase := actionPhase(action)
+			if phase < currentPhase {
+				return fmt.Errorf("%w: action %q has phase %v after %v", actions.ErrInvalidAction, actionName, phase, currentPhase)
+			}
+			currentPhase = phase
 		}
 	}
 
 	return nil
+}
+
+func actionPhase(action *tpb.PluginAction) tpb.PluginAction_ActionPhase {
+	if action.GetActionPhase() == tpb.PluginAction_ACTION_PHASE_UNDEFINED {
+		return tpb.PluginAction_ACTION_PHASE_DETECTION
+	}
+	return action.GetActionPhase()
 }
 
 // NewForTesting creates a new TemplatedDetector for testing, forcing it to use the specified
@@ -152,12 +167,23 @@ func (d *TemplatedDetector) Detect(ctx context.Context, service *nspb.NetworkSer
 //
 // Caller is responsible for handling errors.
 func (d *TemplatedDetector) DetectWithVariables(ctx context.Context, service *nspb.NetworkService, extraVars map[string]string) (*dpb.DetectionReportList, error) {
+	return d.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_UNDEFINED, extraVars)
+}
+
+// DetectForPhase performs the vulnerability detection for a specific action phase and allows
+// injecting extra variables. Actions with a lower phase than targetPhase are ignored, and
+// execution stops with success once an action with a higher phase is reached. If targetPhase is
+// ACTION_PHASE_UNDEFINED, all actions in the workflow are executed regardless of phase.
+// extraVars are injected into the environment before evaluating the workflow variables.
+//
+// Caller is responsible for handling errors.
+func (d *TemplatedDetector) DetectForPhase(ctx context.Context, service *nspb.NetworkService, targetPhase tpb.PluginAction_ActionPhase, extraVars map[string]string) (*dpb.DetectionReportList, error) {
 	for _, workflow := range d.proto.GetWorkflows() {
 		if !d.workflowMeetsConditions(ctx, workflow) {
 			continue
 		}
 
-		return d.runWorkflowForService(ctx, service, workflow, extraVars)
+		return d.runWorkflowForService(ctx, service, workflow, targetPhase, extraVars)
 	}
 
 	return nil, ErrNoCompatibleWorkflow
@@ -201,7 +227,7 @@ func (d *TemplatedDetector) dispatchAction(ctx context.Context, service *nspb.Ne
 	return runner.Run(ctx, service, action, env)
 }
 
-func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow, extraVars map[string]string) (*dpb.DetectionReportList, error) {
+func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *nspb.NetworkService, workflow *tpb.PluginWorkflow, targetPhase tpb.PluginAction_ActionPhase, extraVars map[string]string) (*dpb.DetectionReportList, error) {
 	env := environment.New(d.cfg)
 	if err := env.InitializeFor(ctx, service); err != nil {
 		return nil, err
@@ -222,6 +248,16 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 	}
 
 	for _, actionName := range workflow.GetActions() {
+		phase := actionPhase(d.knownActions[actionName])
+		if targetPhase != tpb.PluginAction_ACTION_PHASE_UNDEFINED {
+			if phase < targetPhase {
+				continue
+			}
+			if phase > targetPhase {
+				return nil, nil
+			}
+		}
+
 		cleanups, err := d.runActionFromName(ctx, service, actionName, env)
 		if err != nil {
 			return nil, err

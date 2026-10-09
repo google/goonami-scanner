@@ -61,6 +61,51 @@ func TestTNew(t *testing.T) {
 			proto:   loadProto(t, "testdata/cleanup_not_found.textproto"),
 			wantErr: actions.ErrActionNotFound,
 		},
+		{
+			name: "when_fingerprint_action_follows_detection_action_returns_error",
+			proto: tpb.TemplatedPlugin_builder{
+				Actions: []*tpb.PluginAction{
+					tpb.PluginAction_builder{
+						Name:        "detect_action",
+						ActionPhase: tpb.PluginAction_ACTION_PHASE_DETECTION,
+						Utility:     &tpb.UtilityAction{},
+					}.Build(),
+					tpb.PluginAction_builder{
+						Name:        "fingerprint_action",
+						ActionPhase: tpb.PluginAction_ACTION_PHASE_FINGERPRINT,
+						Utility:     &tpb.UtilityAction{},
+					}.Build(),
+				},
+				Workflows: []*tpb.PluginWorkflow{
+					tpb.PluginWorkflow_builder{
+						Actions: []string{"detect_action", "fingerprint_action"},
+					}.Build(),
+				},
+			}.Build(),
+			wantErr: actions.ErrInvalidAction,
+		},
+		{
+			name: "when_fingerprint_action_follows_undefined_phase_action_returns_error",
+			proto: tpb.TemplatedPlugin_builder{
+				Actions: []*tpb.PluginAction{
+					tpb.PluginAction_builder{
+						Name:    "default_phase_action",
+						Utility: &tpb.UtilityAction{},
+					}.Build(),
+					tpb.PluginAction_builder{
+						Name:        "fingerprint_action",
+						ActionPhase: tpb.PluginAction_ACTION_PHASE_FINGERPRINT,
+						Utility:     &tpb.UtilityAction{},
+					}.Build(),
+				},
+				Workflows: []*tpb.PluginWorkflow{
+					tpb.PluginWorkflow_builder{
+						Actions: []string{"default_phase_action", "fingerprint_action"},
+					}.Build(),
+				},
+			}.Build(),
+			wantErr: actions.ErrInvalidAction,
+		},
 	}
 
 	for _, tc := range tests {
@@ -361,6 +406,228 @@ func TestTemplatedDetector_Detect_NonWebService(t *testing.T) {
 
 			if len(reports.GetDetectionReports()) > 0 {
 				t.Errorf("Detect() returned reports for non-web service, want none")
+			}
+		})
+	}
+}
+
+func TestTemplatedDetector_DetectForPhase(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/OK" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatalf("url.Parse(%q) failed: %v", ts.URL, err)
+	}
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		t.Fatalf("strconv.Atoi(%q) failed: %v", u.Port(), err)
+	}
+
+	service := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Hostname: npb.Hostname_builder{Name: u.Hostname()}.Build(),
+			Port:     npb.Port_builder{PortNumber: uint32(port)}.Build(),
+		}.Build(),
+		SupportedHttpMethods: []string{"GET"},
+	}.Build()
+
+	tests := []struct {
+		name            string
+		pluginProtoText string
+		targetPhase     tpb.PluginAction_ActionPhase
+		wantDetection   bool
+		wantErr         error
+	}{
+		{
+			name:        "when_target_phase_is_fingerprint_runs_only_fingerprint_actions_and_stops_before_detection",
+			targetPhase: tpb.PluginAction_ACTION_PHASE_FINGERPRINT,
+			pluginProtoText: `
+				actions {
+					name: "fingerprint_action"
+					action_phase: ACTION_PHASE_FINGERPRINT
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "detect_action"
+					action_phase: ACTION_PHASE_DETECTION
+					http_request {
+						method: GET
+						uri: "/NOTFOUND"
+						response { http_status: 200 }
+					}
+				}
+				workflows {
+					actions: "fingerprint_action"
+					actions: "detect_action"
+				}
+			`,
+			wantDetection: false,
+		},
+		{
+			name:        "when_target_phase_is_fingerprint_and_fingerprint_action_fails_returns_action_failed_error",
+			targetPhase: tpb.PluginAction_ACTION_PHASE_FINGERPRINT,
+			pluginProtoText: `
+				actions {
+					name: "fingerprint_action"
+					action_phase: ACTION_PHASE_FINGERPRINT
+					http_request {
+						method: GET
+						uri: "/NOTFOUND"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "detect_action"
+					action_phase: ACTION_PHASE_DETECTION
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				workflows {
+					actions: "fingerprint_action"
+					actions: "detect_action"
+				}
+			`,
+			wantErr: actions.ErrActionFailed,
+		},
+		{
+			name:        "when_target_phase_is_detection_skips_fingerprint_actions_and_runs_detection_actions",
+			targetPhase: tpb.PluginAction_ACTION_PHASE_DETECTION,
+			pluginProtoText: `
+				actions {
+					name: "fingerprint_action"
+					action_phase: ACTION_PHASE_FINGERPRINT
+					http_request {
+						method: GET
+						uri: "/NOTFOUND"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "detect_action"
+					action_phase: ACTION_PHASE_DETECTION
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "default_phase_action"
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				workflows {
+					actions: "fingerprint_action"
+					actions: "detect_action"
+					actions: "default_phase_action"
+				}
+			`,
+			wantDetection: true,
+		},
+		{
+			name:        "when_target_phase_is_detection_and_detection_action_fails_returns_action_failed_error",
+			targetPhase: tpb.PluginAction_ACTION_PHASE_DETECTION,
+			pluginProtoText: `
+				actions {
+					name: "fingerprint_action"
+					action_phase: ACTION_PHASE_FINGERPRINT
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "detect_action"
+					action_phase: ACTION_PHASE_DETECTION
+					http_request {
+						method: GET
+						uri: "/NOTFOUND"
+						response { http_status: 200 }
+					}
+				}
+				workflows {
+					actions: "fingerprint_action"
+					actions: "detect_action"
+				}
+			`,
+			wantErr: actions.ErrActionFailed,
+		},
+		{
+			name:        "when_target_phase_is_undefined_runs_all_actions_and_returns_findings",
+			targetPhase: tpb.PluginAction_ACTION_PHASE_UNDEFINED,
+			pluginProtoText: `
+				actions {
+					name: "fingerprint_action"
+					action_phase: ACTION_PHASE_FINGERPRINT
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				actions {
+					name: "detect_action"
+					http_request {
+						method: GET
+						uri: "/OK"
+						response { http_status: 200 }
+					}
+				}
+				workflows {
+					actions: "fingerprint_action"
+					actions: "detect_action"
+				}
+			`,
+			wantDetection: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.Default()
+			if err := callbackserver.Initialize(t.Context(), cfg); err != nil {
+				t.Fatalf("callbackserver.Initialize() failed: %v", err)
+			}
+
+			proto := &tpb.TemplatedPlugin{}
+			if err := prototext.Unmarshal([]byte(tc.pluginProtoText), proto); err != nil {
+				t.Fatalf("prototext.Unmarshal() failed: %v", err)
+			}
+
+			detector, err := New(t.Context(), cfg, proto)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			reports, err := detector.DetectForPhase(t.Context(), service, tc.targetPhase, nil)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("DetectForPhase() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+
+			hasReports := len(reports.GetDetectionReports()) > 0
+			if hasReports != tc.wantDetection {
+				t.Errorf("DetectForPhase() hasReports = %v, want %v", hasReports, tc.wantDetection)
 			}
 		})
 	}
