@@ -166,6 +166,9 @@ func (d *TemplatedDetector) DetectWithVariables(ctx context.Context, service *ns
 func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflow *tpb.PluginWorkflow) bool {
 	switch workflow.GetCondition() {
 	case tpb.PluginWorkflow_REQUIRES_CALLBACK_SERVER:
+		if d.cfg == nil || !d.cfg.ClientsConfig().HasCallbackServer() {
+			return false
+		}
 		return callbackserver.DefaultClient().IsCallbackServerEnabled()
 	default:
 		return true

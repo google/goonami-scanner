@@ -91,6 +91,10 @@ func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkSe
 }
 
 func (e *Environment) callbackServerInitialization(ctx context.Context) error {
+	if e.cfg == nil || !e.cfg.ClientsConfig().HasCallbackServer() {
+		return nil
+	}
+
 	client := callbackserver.DefaultClient()
 	if !client.IsCallbackServerEnabled() {
 		return nil

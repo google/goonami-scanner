@@ -98,6 +98,12 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 	defer cbs.Close()
 	cbsURL, _ := url.Parse(cbs.URL)
 
+	t.Cleanup(func() {
+		if err := callbackserver.Initialize(t.Context(), config.Default()); err != nil {
+			t.Errorf("Failed to reset callback server client: %v", err)
+		}
+	})
+
 	service := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
 			Hostname: npb.Hostname_builder{Name: u.Hostname()}.Build(),
@@ -181,6 +187,11 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 			if err := callbackserver.Initialize(t.Context(), cfg); err != nil {
 				t.Fatalf("Failed to initialize HTTP client: %v", err)
 			}
+			t.Cleanup(func() {
+				if err := callbackserver.Initialize(t.Context(), config.Default()); err != nil {
+					t.Errorf("Failed to reset callback server client: %v", err)
+				}
+			})
 
 			proto := loadProto(t, tc.protoFile)
 			detector, err := New(t.Context(), cfg, proto)
@@ -309,24 +320,48 @@ func TestLoadPluginsFromFS_InvalidPluginReturnsError(t *testing.T) {
 }
 
 func TestTemplatedDetector_Detect_NonWebService(t *testing.T) {
-	service := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Hostname: npb.Hostname_builder{Name: "localhost"}.Build(),
-			Port:     npb.Port_builder{PortNumber: 1234}.Build(),
-		}.Build(),
-		// No SupportedHttpMethods makes it a non-web service
-	}.Build()
-
-	proto := loadProto(t, "testdata/non_web_service.textproto")
-
-	cfg := config.Default()
-	detector, _ := New(t.Context(), cfg, proto)
-	reports, err := detector.Detect(t.Context(), service)
-	if err != nil {
-		t.Fatalf("Detect failed: %v", err)
+	tests := []struct {
+		name    string
+		service *nspb.NetworkService
+		proto   *tpb.TemplatedPlugin
+	}{
+		{
+			name: "when_non_web_service_returns_no_findings",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Hostname: npb.Hostname_builder{Name: "localhost"}.Build(),
+					Port:     npb.Port_builder{PortNumber: 1234}.Build(),
+				}.Build(),
+				// No SupportedHttpMethods makes it a non-web service
+			}.Build(),
+			proto: loadProto(t, "testdata/non_web_service.textproto"),
+		},
 	}
 
-	if len(reports.GetDetectionReports()) > 0 {
-		t.Errorf("Detect() returned reports for non-web service, want none")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.Default()
+			if err := callbackserver.Initialize(t.Context(), cfg); err != nil {
+				t.Fatalf("Failed to initialize callback server client: %v", err)
+			}
+			t.Cleanup(func() {
+				if err := callbackserver.Initialize(t.Context(), config.Default()); err != nil {
+					t.Errorf("Failed to reset callback server client: %v", err)
+				}
+			})
+
+			detector, err := New(t.Context(), cfg, tc.proto)
+			if err != nil {
+				t.Fatalf("Failed to create detector: %v", err)
+			}
+			reports, err := detector.Detect(t.Context(), tc.service)
+			if err != nil {
+				t.Fatalf("Detect failed: %v", err)
+			}
+
+			if len(reports.GetDetectionReports()) > 0 {
+				t.Errorf("Detect() returned reports for non-web service, want none")
+			}
+		})
 	}
 }
