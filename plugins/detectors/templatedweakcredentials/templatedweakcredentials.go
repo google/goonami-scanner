@@ -122,6 +122,20 @@ func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*d
 	maxAttempts := d.cfg.PluginsConfig().GetTemplatedweakcredentials().GetMaxAttemptsPerService()
 	log.DebugContextf(ctx, log.DebugLevelService, "%d credentials generated (max attempts: %d) and will be used against the service", d.store.Count(), maxAttempts)
 
+	if _, err := d.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_FINGERPRINT, nil); err != nil {
+		if errors.Is(err, actions.ErrActionFailed) {
+			log.DebugContextf(ctx, log.DebugLevelService, "service fingerprinting failed: %v", err)
+			return nil, nil
+		}
+
+		if errors.Is(err, templatedengine.ErrNoCompatibleWorkflow) {
+			log.WarnContextf(ctx, "no compatible workflow found for service")
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
 	var attempts int32
 
 	for _, username := range d.store.Usernames() {
@@ -145,16 +159,11 @@ func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*d
 			}
 
 			log.DebugContextf(ctx, log.DebugLevelRequest, "attempting detection with credentials %s:%s", username, password)
-			reports, err := d.baseDetector.DetectWithVariables(ctx, service, extraVars)
+			reports, err := d.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_DETECTION, extraVars)
 			if err != nil {
 				if errors.Is(err, actions.ErrActionFailed) {
 					log.DebugContextf(ctx, log.DebugLevelRequest, "attempt failed: %v", err)
 					continue
-				}
-
-				if errors.Is(err, templatedengine.ErrNoCompatibleWorkflow) {
-					log.WarnContextf(ctx, "no compatible workflow found for service")
-					return nil, nil
 				}
 
 				return nil, err

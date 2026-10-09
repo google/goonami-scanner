@@ -158,6 +158,69 @@ actions {
 }
 `
 
+const mockFingerprintedPluginTextproto = `
+info {
+	name: "MockFingerprintedWeakCreds"
+}
+config {
+	disabled: false
+}
+service_information {
+	default_credentials {
+		login: "root"
+		password: "123"
+	}
+	default_credentials {
+		login: "admin"
+		password: "password"
+	}
+}
+workflows {
+	actions: "check_health"
+	actions: "check_version"
+	actions: "attempt_login"
+}
+actions {
+	name: "check_health"
+	action_phase: ACTION_PHASE_FINGERPRINT
+	http_request {
+		method: GET
+		uri: "/health"
+		response {
+			http_status: 200
+		}
+	}
+}
+actions {
+	name: "check_version"
+	action_phase: ACTION_PHASE_FINGERPRINT
+	http_request {
+		method: GET
+		uri: "/version"
+		response {
+			http_status: 200
+		}
+	}
+}
+actions {
+	name: "attempt_login"
+	http_request {
+		method: POST
+		uri: "/login"
+		data: "user={{ T_USERNAME }}&pass={{ T_PASSWORD }}"
+		response {
+			http_status: 200
+			expect_all {
+				conditions {
+					contains: "Welcome {{ T_USERNAME }}"
+					body {}
+				}
+			}
+		}
+	}
+}
+`
+
 func serviceForMockHTTPServer(t *testing.T, httpmock *httptest.Server) *nspb.NetworkService {
 	t.Helper()
 
@@ -329,6 +392,78 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			},
 			expectVulnerability: false,
 			wantBudgetExhausted: 1,
+		},
+		{
+			name:            "when_fingerprinting_fails_exits_early_at_first_attempt",
+			pluginProtoText: mockFingerprintedPluginTextproto,
+			responseFunc: func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/health":
+					w.WriteHeader(http.StatusOK)
+				case "/version":
+					w.WriteHeader(http.StatusNotFound)
+				default:
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprint(w, "Welcome admin")
+				}
+			},
+			configSetup: func() *config.Config {
+				twcCfg := twcpb.TemplatedWeakCredentialsConfig_builder{
+					MaxAttemptsPerService: int32Ptr(1),
+				}.Build()
+				pluginsCfg := cpb.PluginsConfig_builder{
+					Templatedweakcredentials: twcCfg,
+				}.Build()
+				cfgProto := cpb.Config_builder{
+					Plugins: pluginsCfg,
+				}.Build()
+				return config.FromProto(cfgProto)
+			},
+			expectVulnerability: false,
+			wantBudgetExhausted: 0,
+		},
+		{
+			name:            "when_fingerprinting_succeeds_runs_fingerprint_once_and_detects_weak_credentials",
+			pluginProtoText: mockFingerprintedPluginTextproto,
+			responseFunc: func() func(w http.ResponseWriter, r *http.Request) {
+				var healthChecks, versionChecks int
+				return func(w http.ResponseWriter, r *http.Request) {
+					switch r.URL.Path {
+					case "/health":
+						healthChecks++
+						if healthChecks > 1 {
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						w.WriteHeader(http.StatusOK)
+					case "/version":
+						versionChecks++
+						if versionChecks > 1 {
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						w.WriteHeader(http.StatusOK)
+					case "/login":
+						if healthChecks != 1 || versionChecks != 1 {
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+						bodyBytes, _ := io.ReadAll(r.Body)
+						if strings.Contains(string(bodyBytes), "user=root&pass=123") {
+							w.WriteHeader(http.StatusOK)
+							fmt.Fprint(w, "Welcome root")
+							return
+						}
+						w.WriteHeader(http.StatusUnauthorized)
+					default:
+						w.WriteHeader(http.StatusNotFound)
+					}
+				}
+			}(),
+			configSetup: func() *config.Config {
+				return config.Default()
+			},
+			expectVulnerability: true,
 		},
 	}
 
