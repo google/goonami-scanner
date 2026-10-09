@@ -38,6 +38,7 @@ service_information: {
 
 actions: {
   name: "check_grafana_health"
+  action_phase: ACTION_PHASE_FINGERPRINT
   http_request: {
     method: GET
     uri: "/api/health"
