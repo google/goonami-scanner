@@ -354,9 +354,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 		{
 			name:            "when_workflow_condition_not_met_skips_and_produces_no_reports",
 			pluginProtoText: mockCallbackRequiredPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			},
+			responseFunc:    acceptAnyLogin,
 			configSetup: func() *config.Config {
 				return config.Default()
 			},
@@ -394,7 +392,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			wantBudgetExhausted: 1,
 		},
 		{
-			name:            "when_fingerprinting_fails_exits_early_at_first_attempt",
+			name:            "when_fingerprinting_fails_returns_no_reports_without_login_attempt",
 			pluginProtoText: mockFingerprintedPluginTextproto,
 			responseFunc: func(w http.ResponseWriter, r *http.Request) {
 				switch r.URL.Path {
@@ -403,8 +401,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				case "/version":
 					w.WriteHeader(http.StatusNotFound)
 				default:
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprint(w, "Welcome admin")
+					acceptAnyLogin(w, r)
 				}
 			},
 			configSetup: func() *config.Config {
@@ -543,6 +540,20 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			}
 		})
 	}
+}
+
+// acceptAnyLogin answers every request with the welcome message that the mock plugins expect for
+// the submitted user (form data "user=<user>&pass=<password>"), so any login attempt is a success.
+func acceptAnyLogin(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	userField, _, _ := strings.Cut(string(body), "&")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Welcome %s", strings.TrimPrefix(userField, "user="))
 }
 
 func stringPtr(s string) *string {
