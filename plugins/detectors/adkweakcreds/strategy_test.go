@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/goonami-scanner/common/clients/llm"
 	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
@@ -290,8 +291,27 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusUnauthorized)
+		case "/login_rate_limited":
+			w.WriteHeader(http.StatusTooManyRequests)
+		case "/login_baseline_rate_limited":
+			if r.FormValue("pass") == "password" {
+				w.Write([]byte("welcome"))
+				return
+			}
+			w.WriteHeader(http.StatusTooManyRequests)
+		case "/login_accepts_any_password":
+			w.Write([]byte("welcome"))
+		case "/login_not_found":
+			if r.FormValue("pass") == "password" {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("not found"))
+				return
+			}
+			w.Write([]byte("error: invalid credentials"))
 		}
 	})
+
+	errJudgeBuild := errors.New("judge build failure")
 
 	tests := []struct {
 		name                string
@@ -299,9 +319,11 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 		cred                *credential
 		judgeAnswer         string
 		judgeErr            error
+		judgeBuildErr       error
 		wantJudgePromptSubs []string
 		wantValid           bool
-		wantErr             bool
+		wantErr             error
+		wantErrSubstr       string
 	}{
 		{
 			name: "when_valid_credentials_returns_true",
@@ -541,27 +563,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			cred:      &credential{Username: "admin", Password: "password"},
 			judgeErr:  errors.New("judge failure"),
 			wantValid: false,
-			wantErr:   true,
-		},
-		{
-			name: "when_form_persists_and_default_judge_builder_fails_returns_error",
-			auth: &authStrategy{
-				SupportsAuthentication: true,
-				AuthDetails: &authDetails{
-					LoginRequest: &request{
-						Method:          "POST",
-						Path:            "/login_form_persisting",
-						Body:            "user=[[username]]&pass=[[password]]",
-						ExtractionRegex: "error: (.*)",
-						Headers: []*header{
-							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
-						},
-					},
-				},
-			},
-			cred:      &credential{Username: "admin", Password: "password"},
-			wantValid: false,
-			wantErr:   true,
+			wantErr:   llm.ErrMaxAttemptsReached,
 		},
 		{
 			name: "when_non_csrf_login_redirects_with_cookie_preserves_session",
@@ -673,6 +675,128 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			cred:      &credential{Username: "admin", Password: "wrong"},
 			wantValid: false,
 		},
+		{
+			name: "when_login_is_rate_limited_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_rate_limited",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:          &credential{Username: "admin", Password: "password"},
+			wantErr:       goohttp.ErrRateLimited,
+			wantErrSubstr: "failed to test credentials",
+		},
+		{
+			name: "when_negative_validation_is_rate_limited_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_baseline_rate_limited",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:          &credential{Username: "admin", Password: "password"},
+			wantErr:       goohttp.ErrRateLimited,
+			wantErrSubstr: "failed negative validation",
+		},
+		{
+			name: "when_mutated_password_is_also_accepted_returns_false",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_accepts_any_password",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:      &credential{Username: "admin", Password: "password"},
+			wantValid: false,
+		},
+		{
+			name: "when_judge_builder_fails_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_form_persisting",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:          &credential{Username: "admin", Password: "password"},
+			judgeBuildErr: errJudgeBuild,
+			wantErr:       errJudgeBuild,
+		},
+		{
+			name: "when_judge_answer_is_malformed_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_form_persisting",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:        &credential{Username: "admin", Password: "password"},
+			judgeAnswer: "not json",
+			wantErr:     llm.ErrMaxAttemptsReached,
+		},
+		{
+			name: "when_status_404_and_judge_confirms_returns_true",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Method:          "POST",
+						Path:            "/login_not_found",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error: (.*)",
+						Headers: []*header{
+							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+						},
+					},
+				},
+			},
+			cred:        &credential{Username: "admin", Password: "password"},
+			judgeAnswer: `{"authenticated": true}`,
+			wantJudgePromptSubs: []string{
+				`--- Candidate Response (HTTP 404) ---`,
+			},
+			wantValid: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -685,8 +809,11 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			}
 
 			var gotJudgePrompt string
-			if tc.judgeAnswer != "" || tc.judgeErr != nil {
+			if tc.judgeAnswer != "" || tc.judgeErr != nil || tc.judgeBuildErr != nil {
 				tc.auth.judgeBuilder = func(ctx context.Context, cfg *config.Config) (agent.Agent, error) {
+					if tc.judgeBuildErr != nil {
+						return nil, tc.judgeBuildErr
+					}
 					if tc.judgeErr != nil {
 						return fakellmagent.NewWithError(tc.judgeErr), nil
 					}
@@ -695,11 +822,19 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 						onRun:     func(prompt string) { gotJudgePrompt = prompt },
 					}, nil
 				}
+			} else {
+				tc.auth.judgeBuilder = func(context.Context, *config.Config) (agent.Agent, error) {
+					t.Errorf("validateCredential() called the judge, want no judge call")
+					return nil, errors.New("unexpected judge call")
+				}
 			}
 
 			gotValid, err := tc.auth.validateCredential(t.Context(), cfg, service, tc.cred)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("validateCredential() error = %v, wantErr %v", err, tc.wantErr)
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("validateCredential() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErrSubstr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErrSubstr)) {
+				t.Errorf("validateCredential() error = %v, want error containing %q", err, tc.wantErrSubstr)
 			}
 			if gotValid != tc.wantValid {
 				t.Errorf("validateCredential() valid = %v, want %v", gotValid, tc.wantValid)
@@ -710,6 +845,47 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAuthStrategy_ValidateCredential_DefaultJudgeWithoutCredentials(t *testing.T) {
+	// The default judge builder needs model credentials. Clear every variable it reads so
+	// the test never builds a real model client, whatever the environment provides.
+	for _, name := range []string{"GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI", "GOOGLE_GENAI_USE_ENTERPRISE"} {
+		t.Setenv(name, "")
+	}
+	cfg, service := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.FormValue("pass") == "password" {
+			// The login form persists, which requires the judge.
+			w.Write([]byte(`<html><body><form><input type="password" name="pass"></form></body></html>`))
+			return
+		}
+		w.Write([]byte("error: invalid credentials"))
+	})
+	auth := &authStrategy{
+		SupportsAuthentication: true,
+		AuthDetails: &authDetails{
+			LoginRequest: &request{
+				Method:          "POST",
+				Path:            "/login",
+				Body:            "user=[[username]]&pass=[[password]]",
+				ExtractionRegex: "error: (.*)",
+				Headers: []*header{
+					{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
+				},
+			},
+		},
+	}
+	if err := auth.AuthDetails.LoginRequest.compileAndValidate(); err != nil {
+		t.Fatalf("LoginRequest.compileAndValidate() failed: %v", err)
+	}
+
+	valid, err := auth.validateCredential(t.Context(), cfg, service, &credential{Username: "admin", Password: "password"})
+	if wantSub := "api key is required"; err == nil || !strings.Contains(err.Error(), wantSub) {
+		t.Errorf("validateCredential() error = %v, want error containing %q", err, wantSub)
+	}
+	if valid {
+		t.Errorf("validateCredential() valid = true, want false")
 	}
 }
 
