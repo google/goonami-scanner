@@ -166,10 +166,10 @@ func TestStorage_Release(t *testing.T) {
 			storage: &Storage{
 				enforce:     false,
 				maxSize:     100,
-				usedStorage: 0,
+				usedStorage: 50,
 			},
 			size:          10,
-			wantUsedSpace: 0,
+			wantUsedSpace: 50,
 		},
 		{
 			name: "when_enforcement_is_enabled_release_reduces_usage",
