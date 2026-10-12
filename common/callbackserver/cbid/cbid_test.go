@@ -41,14 +41,21 @@ func TestGenerate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := Generate(tt.secret); got != tt.want {
-				t.Errorf("Generate() = %v, want %v", got, tt.want)
+			got, err := Generate(tt.secret)
+			if err != nil {
+				t.Fatalf("Generate(%q) returned unexpected error: %v", tt.secret, err)
+			}
+
+			if got != tt.want {
+				t.Errorf("Generate(%q) = %v, want %v", tt.secret, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestValidate(t *testing.T) {
+	const validCBID = "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486"
+
 	tests := []struct {
 		name    string
 		cbid    string
@@ -56,11 +63,36 @@ func TestValidate(t *testing.T) {
 	}{
 		{
 			name: "when_valid_cbid_returns_nil",
-			cbid: "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+			cbid: validCBID,
 		},
 		{
 			name:    "when_invalid_cbid_returns_error",
 			cbid:    "invalid_cbid",
+			wantErr: ErrInvalidCBID,
+		},
+		{
+			name:    "when_empty_returns_error",
+			cbid:    "",
+			wantErr: ErrInvalidCBID,
+		},
+		{
+			name:    "when_one_character_too_short_returns_error",
+			cbid:    validCBID[:len(validCBID)-1],
+			wantErr: ErrInvalidCBID,
+		},
+		{
+			name:    "when_one_character_too_long_returns_error",
+			cbid:    validCBID + "0",
+			wantErr: ErrInvalidCBID,
+		},
+		{
+			name:    "when_non_hex_character_returns_error",
+			cbid:    "g" + validCBID[1:],
+			wantErr: ErrInvalidCBID,
+		},
+		{
+			name:    "when_trailing_newline_returns_error",
+			cbid:    validCBID + "\n",
 			wantErr: ErrInvalidCBID,
 		},
 	}

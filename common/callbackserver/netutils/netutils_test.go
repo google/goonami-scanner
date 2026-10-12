@@ -61,11 +61,10 @@ func TestCallbackURL(t *testing.T) {
 
 func TestCallbackDomain(t *testing.T) {
 	tests := []struct {
-		name    string
-		domain  string
-		cbid    string
-		want    string
-		wantErr error
+		name   string
+		domain string
+		cbid   string
+		want   string
 	}{
 		{
 			name:   "when_domain_returns_domain_with_cbid",
@@ -73,21 +72,23 @@ func TestCallbackDomain(t *testing.T) {
 			cbid:   "abc",
 			want:   "abc.example.com",
 		},
+		{
+			name:   "when_fqdn_with_trailing_dot_keeps_the_dot",
+			domain: "cb.example.com.",
+			cbid:   "abc",
+			want:   "abc.cb.example.com.",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := CallbackDomain(tt.domain, tt.cbid)
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("CallbackDomain() error = %v, want %v", err, tt.wantErr)
-			}
-
-			if tt.wantErr != nil {
-				return
+			if err != nil {
+				t.Fatalf("CallbackDomain(%q, %q) returned unexpected error: %v", tt.domain, tt.cbid, err)
 			}
 
 			if got != tt.want {
-				t.Errorf("CallbackDomain() = %v, want %v", got, tt.want)
+				t.Errorf("CallbackDomain(%q, %q) = %v, want %v", tt.domain, tt.cbid, got, tt.want)
 			}
 		})
 	}
@@ -129,6 +130,21 @@ func TestIdentifierFromURL(t *testing.T) {
 			name:    "when_invalid_cbid_returns_error",
 			httpURL: "http://localhost:8080/cbid",
 			wantErr: cbid.ErrInvalidCBID,
+		},
+		{
+			name:    "when_empty_url_returns_error",
+			httpURL: "",
+			wantErr: ErrInvalidURL,
+		},
+		{
+			name:    "when_url_has_query_and_fragment_returns_cbid",
+			httpURL: "http://localhost:8080/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486?a=b#frag",
+			want:    "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+		},
+		{
+			name:    "when_trailing_slash_returns_error",
+			httpURL: "http://localhost:8080/056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486/",
+			wantErr: ErrInvalidURL,
 		},
 	}
 
@@ -186,6 +202,21 @@ func TestIdentifierFromDomain(t *testing.T) {
 			name:    "when_invalid_cbid_returns_error",
 			domain:  "abc.example.com",
 			wantErr: cbid.ErrInvalidCBID,
+		},
+		{
+			name:   "when_fqdn_with_trailing_dot_returns_cbid",
+			domain: "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486.example.com.",
+			want:   "056113bf13f44a3bb49033f04dd8522205f907a0ace19669cbfce486",
+		},
+		{
+			name:    "when_empty_domain_returns_error",
+			domain:  "",
+			wantErr: ErrInvalidDomain,
+		},
+		{
+			name:    "when_dotted_ipv6_address_returns_error",
+			domain:  "::ffff:127.0.0.1",
+			wantErr: ErrInvalidDomain,
 		},
 	}
 
