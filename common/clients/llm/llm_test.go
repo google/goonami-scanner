@@ -35,54 +35,77 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
 
 func TestNew(t *testing.T) {
-	llmConfig := lccpb.LlmClientConfig_builder{
-		MaxAttempts: proto.Int32(5),
-	}.Build()
-	cfg := config.FromProto(cpb.Config_builder{
-		Clients: cpb.ClientsConfig_builder{
-			Llm: llmConfig,
-		}.Build(),
-	}.Build())
-
-	ag := fakellmagent.New(nil, nil)
-	client := New(cfg, ag)
-	if client == nil {
-		t.Fatalf("New() returned a nil client")
+	tests := []struct {
+		name       string
+		llmConfig  *lccpb.LlmClientConfig
+		wantConfig *lccpb.LlmClientConfig
+	}{
+		{
+			name: "when_llm_config_is_set_it_overrides_the_defaults",
+			llmConfig: lccpb.LlmClientConfig_builder{
+				MaxAttempts: proto.Int32(5),
+			}.Build(),
+			// The configured field overrides its default, every other field keeps its documented default.
+			wantConfig: lccpb.LlmClientConfig_builder{
+				MaxAttempts:              proto.Int32(5),
+				TimeoutPerRequestSeconds: proto.Int32(240),
+				RetryDelaySeconds:        proto.Int32(10),
+				LiteModel:                proto.String("gemini-3.5-flash-lite"),
+				FastModel:                proto.String("gemini-3.6-flash"),
+				ProModel:                 proto.String("gemini-3.1-pro-preview"),
+			}.Build(),
+		},
+		{
+			name: "when_llm_config_is_absent_the_defaults_are_used",
+			wantConfig: lccpb.LlmClientConfig_builder{
+				MaxAttempts:              proto.Int32(3),
+				TimeoutPerRequestSeconds: proto.Int32(240),
+				RetryDelaySeconds:        proto.Int32(10),
+				LiteModel:                proto.String("gemini-3.5-flash-lite"),
+				FastModel:                proto.String("gemini-3.6-flash"),
+				ProModel:                 proto.String("gemini-3.1-pro-preview"),
+			}.Build(),
+		},
 	}
 
-	// Verify that the config was merged correctly with defaults.
-	wantConfig := DefaultConfig()
-	proto.Merge(wantConfig, llmConfig)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					Llm: tc.llmConfig,
+				}.Build(),
+			}.Build())
 
-	if !proto.Equal(client.config, wantConfig) {
-		t.Errorf("New() did not merge config correctly: got %v, want %v", client.config, wantConfig)
-	}
+			ag := fakellmagent.New(nil, nil)
+			client := New(cfg, ag)
+			if client == nil {
+				t.Fatalf("New() returned a nil client")
+			}
 
-	// Double check specific fields to be explicitly sure.
-	if client.config.GetMaxAttempts() != 5 {
-		t.Errorf("client.config.MaxAttempts = %d, want 5", client.config.GetMaxAttempts())
-	}
-	if client.config.GetTimeoutPerRequestSeconds() != DefaultConfig().GetTimeoutPerRequestSeconds() {
-		t.Errorf("client.config.TimeoutPerRequestSeconds = %d, want default %d", client.config.GetTimeoutPerRequestSeconds(), DefaultConfig().GetTimeoutPerRequestSeconds())
-	}
+			if diff := cmp.Diff(tc.wantConfig, client.config, protocmp.Transform()); diff != "" {
+				t.Errorf("New() config returned unexpected diff (-want +got):\n%s", diff)
+			}
 
-	if client.ag != ag {
-		t.Errorf("New() did not set agent correctly: got %v, want %v", client.ag, ag)
-	}
-	if client.appName != DefaultAppName {
-		t.Errorf("New() did not set appName correctly: got %v, want %v", client.appName, DefaultAppName)
-	}
-	if client.userID != DefaultUserID {
-		t.Errorf("New() did not set userID correctly: got %v, want %v", client.userID, DefaultUserID)
-	}
-	if client.sessionService == nil {
-		t.Errorf("New() did not set sessionService")
+			if client.ag != ag {
+				t.Errorf("New() did not set agent correctly: got %v, want %v", client.ag, ag)
+			}
+			if client.appName != DefaultAppName {
+				t.Errorf("New() did not set appName correctly: got %v, want %v", client.appName, DefaultAppName)
+			}
+			if client.userID != DefaultUserID {
+				t.Errorf("New() did not set userID correctly: got %v, want %v", client.userID, DefaultUserID)
+			}
+			if client.sessionService != defaultSessionService {
+				t.Errorf("New() sessionService = %v, want the default in-memory session service", client.sessionService)
+			}
+		})
 	}
 }
 
