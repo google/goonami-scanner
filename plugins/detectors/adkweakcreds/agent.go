@@ -34,13 +34,29 @@ import (
 )
 
 const (
-	llmName      = "authentication-agent"
-	llmModelTier = llm.ModelTierFast
+	llmName        = "authentication-agent"
+	judgeName      = "authentication-judge-agent"
+	llmModelTier   = llm.ModelTierFast
+	judgeModelTier = llm.ModelTierPro
 )
 
 var (
 	//go:embed prompt.md
 	llmPrompt string
+
+	//go:embed judge_prompt.md
+	judgePrompt string
+
+	judgeSchema = &genai.Schema{
+		Type: genai.TypeObject,
+		Properties: map[string]*genai.Schema{
+			"authenticated": &genai.Schema{
+				Type:        genai.TypeBoolean,
+				Description: "True if and only if the candidate response compared to the negative baseline response proves that authentication succeeded.",
+			},
+		},
+		Required: []string{"authenticated"},
+	}
 
 	// schemaRequestHTTP is the schema for an HTTP request, used by the LLM to return the full answer.
 	schemaRequestHTTP = &genai.Schema{
@@ -175,4 +191,20 @@ func buildAgent(ctx context.Context, config *config.Config, service *nspb.Networ
 	}
 
 	return ag, nil
+}
+
+// buildJudgeAgent initializes and returns the stateless LLM agent used to adjudicate ambiguous login responses.
+func buildJudgeAgent(ctx context.Context, config *config.Config) (agent.Agent, error) {
+	modelName := llm.GetModel(config, judgeModelTier)
+	model, err := gemini.NewModel(ctx, modelName, clientConfig(config))
+	if err != nil {
+		return nil, err
+	}
+
+	return llmagent.New(llmagent.Config{
+		Model:        model,
+		Name:         judgeName,
+		Instruction:  judgePrompt,
+		OutputSchema: judgeSchema,
+	})
 }
