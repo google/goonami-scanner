@@ -76,11 +76,12 @@ func setupMockServer(t *testing.T, handler http.HandlerFunc) (*config.Config, *n
 	return cfg, service
 }
 
-func TestAuthStrategy_Validate(t *testing.T) {
+func TestAuthStrategy_CompileAndValidate(t *testing.T) {
 	tests := []struct {
-		name    string
-		auth    *authStrategy
-		wantErr bool
+		name          string
+		auth          *authStrategy
+		wantErr       error
+		wantErrSubstr string
 	}{
 		{
 			name: "when_valid_strategy_returns_no_error",
@@ -100,7 +101,6 @@ func TestAuthStrategy_Validate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
 		},
 		{
 			name: "when_basic_auth_strategy_without_password_placeholder_returns_no_error",
@@ -120,14 +120,12 @@ func TestAuthStrategy_Validate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: false,
 		},
 		{
 			name: "when_no_auth_returns_no_error",
 			auth: &authStrategy{
 				SupportsAuthentication: false,
 			},
-			wantErr: false,
 		},
 		{
 			name: "when_auth_supported_but_no_credentials_returns_error",
@@ -143,7 +141,7 @@ func TestAuthStrategy_Validate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true,
+			wantErrSubstr: "no credentials to test",
 		},
 		{
 			name: "when_invalid_login_request_returns_error",
@@ -151,11 +149,17 @@ func TestAuthStrategy_Validate(t *testing.T) {
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
-						Path: "http://example.com/login",
+						Path:            "http://example.com/login",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
 					},
 				},
 			},
-			wantErr: true,
+			wantErr:       errInvalidURL,
+			wantErrSubstr: "login_request is invalid",
 		},
 		{
 			name: "when_invalid_csrf_request_returns_error",
@@ -164,25 +168,188 @@ func TestAuthStrategy_Validate(t *testing.T) {
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
 						Path:            "/login",
+						Body:            "user=[[username]]&pass=[[password]]&csrf=[[csrftoken]]",
 						ExtractionRegex: "error",
 						Headers: []*header{
 							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
 						},
 					},
 					CsrfRequest: &request{
-						Path: "http://example.com/csrf",
+						Path:            "http://example.com/csrf",
+						ExtractionRegex: "csrf: (.*)",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
 					},
 				},
 			},
-			wantErr: true,
+			wantErr:       errInvalidURL,
+			wantErrSubstr: "csrf_request is invalid",
+		},
+		{
+			name: "when_valid_strategy_with_csrf_returns_no_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login",
+						Body:            "user=[[username]]&pass=[[password]]&csrf=[[csrftoken]]",
+						ExtractionRegex: "error",
+					},
+					CsrfRequest: &request{
+						Path:            "/csrf",
+						ExtractionRegex: "csrf: (.*)",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+		},
+		{
+			name: "when_password_placeholder_in_path_returns_no_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login?user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+		},
+		{
+			name: "when_password_placeholder_in_header_returns_no_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login",
+						ExtractionRegex: "error",
+						Headers: []*header{
+							{Name: "X-Password", Value: "[[password]]"},
+						},
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+		},
+		{
+			name: "when_auth_details_missing_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+			},
+			wantErrSubstr: "provided no authentication_details",
+		},
+		{
+			name: "when_login_request_missing_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+			wantErrSubstr: "provided no login_request",
+		},
+		{
+			name: "when_login_request_has_no_extraction_regex_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path: "/login",
+						Body: "user=[[username]]&pass=[[password]]",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+			wantErr:       errNoExtractionRegex,
+			wantErrSubstr: "login_request is invalid",
+		},
+		{
+			name: "when_login_request_has_no_password_placeholder_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login",
+						Body:            "user=[[username]]&pass=static",
+						ExtractionRegex: "error",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+			wantErrSubstr: "must contain the [[password]] or [[basic_auth]] placeholder",
+		},
+		{
+			name: "when_csrf_request_has_no_extraction_regex_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login",
+						Body:            "user=[[username]]&pass=[[password]]&csrf=[[csrftoken]]",
+						ExtractionRegex: "error",
+					},
+					CsrfRequest: &request{
+						Path: "/csrf",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+			wantErr:       errNoExtractionRegex,
+			wantErrSubstr: "csrf_request is invalid",
+		},
+		{
+			name: "when_csrf_request_defined_but_login_lacks_csrftoken_placeholder_returns_error",
+			auth: &authStrategy{
+				SupportsAuthentication: true,
+				AuthDetails: &authDetails{
+					LoginRequest: &request{
+						Path:            "/login",
+						Body:            "user=[[username]]&pass=[[password]]",
+						ExtractionRegex: "error",
+					},
+					CsrfRequest: &request{
+						Path:            "/csrf",
+						ExtractionRegex: "csrf: (.*)",
+					},
+					CredentialsToTest: []*credential{
+						{Username: "admin", Password: "password"},
+					},
+				},
+			},
+			wantErrSubstr: "login_request is missing the [[csrftoken]] placeholder",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.auth.compileAndValidate()
-			if (err != nil) != tc.wantErr {
-				t.Errorf("compileAndValidate() error = %v, wantErr %v", err, tc.wantErr)
+			if tc.wantErr == nil && tc.wantErrSubstr == "" {
+				if err != nil {
+					t.Errorf("compileAndValidate() error = %v, want nil", err)
+				}
+				return
+			}
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Errorf("compileAndValidate() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErrSubstr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErrSubstr)) {
+				t.Errorf("compileAndValidate() error = %v, want error containing %q", err, tc.wantErrSubstr)
 			}
 		})
 	}
@@ -241,11 +408,22 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				w.Write([]byte("error: invalid credentials"))
 			}
 		case "/login_unauthorized":
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("unauthorized"))
+			// The candidate gets a 401 that the extraction regex does not match, while the
+			// negative baseline gets a matching error: only the status code marks the failure.
+			if r.FormValue("pass") == "password" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("unauthorized"))
+				return
+			}
+			w.Write([]byte("error: invalid credentials"))
 		case "/login_forbidden":
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("forbidden"))
+			// Same as /login_unauthorized with a 403.
+			if r.FormValue("pass") == "password" {
+				w.WriteHeader(http.StatusForbidden)
+				w.Write([]byte("forbidden"))
+				return
+			}
+			w.Write([]byte("error: invalid credentials"))
 		case "/login_form_persisting":
 			user := r.FormValue("user")
 			pass := r.FormValue("pass")
@@ -502,8 +680,10 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					},
 				},
 			},
-			cred:      &credential{Username: "admin", Password: "wrong"},
-			wantValid: false,
+			cred: &credential{Username: "admin", Password: "password"},
+			// The judge would confirm the credential if the status code were ignored.
+			judgeAnswer: `{"authenticated": true}`,
+			wantValid:   false,
 		},
 		{
 			name: "when_form_auth_with_status_403_returns_failure",
@@ -521,8 +701,10 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					},
 				},
 			},
-			cred:      &credential{Username: "admin", Password: "wrong"},
-			wantValid: false,
+			cred: &credential{Username: "admin", Password: "password"},
+			// The judge would confirm the credential if the status code were ignored.
+			judgeAnswer: `{"authenticated": true}`,
+			wantValid:   false,
 		},
 		{
 			name: "when_form_persists_with_status_200_and_judge_rejects_returns_false",
@@ -801,10 +983,12 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.auth.AuthDetails != nil {
-				tc.auth.AuthDetails.LoginRequest.compileAndValidate()
-				if tc.auth.AuthDetails.CsrfRequest != nil {
-					tc.auth.AuthDetails.CsrfRequest.compileAndValidate()
+			if err := tc.auth.AuthDetails.LoginRequest.compileAndValidate(); err != nil {
+				t.Fatalf("LoginRequest.compileAndValidate() failed: %v", err)
+			}
+			if csrf := tc.auth.AuthDetails.CsrfRequest; csrf != nil {
+				if err := csrf.compileAndValidate(); err != nil {
+					t.Fatalf("CsrfRequest.compileAndValidate() failed: %v", err)
 				}
 			}
 
