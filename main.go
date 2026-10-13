@@ -46,6 +46,7 @@ import (
 
 	// detectors
 	_ "github.com/google/goonami-scanner/plugins/detectors/adkweakcreds"
+	_ "github.com/google/goonami-scanner/plugins/detectors/sshbruteforce"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 

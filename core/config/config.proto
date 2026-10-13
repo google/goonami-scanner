@@ -19,7 +19,6 @@ syntax = "proto3";
 package goonami.proto;
 
 option go_package = "github.com/google/goonami-scanner/core/config/config_go_proto";
-
 option java_multiple_files = true;
 option java_outer_classname = "ConfigOuterClass";
 option java_package = "com.google.goonami.proto";
@@ -29,6 +28,7 @@ option java_package = "com.google.goonami.proto";
 import "common/clients/httpcrawler/httpcrawler_client_config.proto";
 import "common/clients/llm/llm_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
+import "common/clients/sshclient/ssh_client_config.proto";
 import "tools/callbackserver/callbackserver_config.proto";
 
 // portscan config
@@ -37,8 +37,9 @@ import "plugins/portscan/httpscan/httpscan_portscan_config.proto";
 
 // fingerprinters config
 // these configs are in the `goonami.proto.configs.fingerprinters` namespace.
-import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
+import "plugins/detectors/sshbruteforce/sshbruteforce_config.proto";
 import "plugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto";
+import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
 
 message Config {
   GlobalConfig globalcfg = 1;
@@ -138,11 +139,14 @@ message ClientsConfig {
   goonami.proto.configs.clients.HttpCrawlerClientConfig http_crawler = 2;
   goonami.proto.configs.clients.LlmClientConfig llm = 3;
   goonami.callbackserver.CallbackserverConfig callback_server = 4;
+  goonami.proto.configs.clients.SSHClientConfig ssh = 5;
 }
 
 // PluginsConfig contains configuration for plugin.
 message PluginsConfig {
   goonami.proto.configs.fingerprinters.WebIdentityFpConfig webidentity = 1;
   goonami.proto.configs.portscan.HttpScanPluginConfig httpscan = 2;
-  goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig templatedweakcredentials = 3;
+  goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
+      templatedweakcredentials = 3;
+  goonami.proto.configs.detectors.SshBruteForceConfig sshbruteforce = 4;
 }

@@ -121,6 +121,10 @@ clients: {
       }
     }
   }
+
+  ssh: {
+    timeout_seconds: 5
+  }
 }
 
 plugins: {
