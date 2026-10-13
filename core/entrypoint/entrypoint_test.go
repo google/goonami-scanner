@@ -24,10 +24,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/goonami-scanner/common/testfakes/fakelog"
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
+	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
@@ -406,6 +408,54 @@ func TestNewInstallsRecorder(t *testing.T) {
 
 			if got, want := metrics.CurrentRecorder() == metrics.Recorder(collector), tc.withRecorder; got != want {
 				t.Errorf("the collector is installed = %t, want %t", got, want)
+			}
+		})
+	}
+}
+
+func TestNewInstallsLogger(t *testing.T) {
+	testCases := []struct {
+		name       string
+		withLogger bool
+	}{
+		{
+			name:       "when_a_logger_is_provided_it_receives_logs",
+			withLogger: true,
+		},
+		{
+			name:       "when_no_logger_is_provided_custom_logger_is_not_used",
+			withLogger: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			log.SetLogger(&log.DefaultLogger{})
+			t.Cleanup(func() { log.SetLogger(&log.DefaultLogger{}) })
+
+			module.ClearRegistry()
+			module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Portscan: proto.String("ps1"),
+				}.Build(),
+			}.Build())
+			cfg.CreateDirectories(t.TempDir())
+			defer cfg.Close(t.Context())
+
+			opts := &Options{Config: cfg}
+			logger := fakelog.New()
+			if tc.withLogger {
+				opts.Logger = logger
+			}
+
+			if _, err := New(t.Context(), opts); err != nil {
+				t.Fatalf("New() returned unexpected error: %v", err)
+			}
+
+			if got, want := len(logger.Infos()) > 0, tc.withLogger; got != want {
+				t.Errorf("logger received info messages = %t, want %t", got, want)
 			}
 		})
 	}
