@@ -17,12 +17,14 @@
 package fakellmagent
 
 import (
+	"context"
 	"errors"
 	"iter"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -47,20 +49,19 @@ func collectResults(seq iter.Seq2[*session.Event, error]) []result {
 	return results
 }
 
+type fakeInvocationContext struct {
+	agent.InvocationContext
+	content *genai.Content
+}
+
+func (f *fakeInvocationContext) UserContent() *genai.Content {
+	return f.content
+}
+
 func TestFakeAgent(t *testing.T) {
 	err := errors.New("fake error")
 	answer := "fake answer"
-	event := &session.Event{
-		LLMResponse: model.LLMResponse{
-			Content: &genai.Content{
-				Parts: []*genai.Part{
-					&genai.Part{
-						Text: answer,
-					},
-				},
-			},
-		},
-	}
+	event := TextEvent(answer)
 
 	testCases := []struct {
 		name string
@@ -81,6 +82,22 @@ func TestFakeAgent(t *testing.T) {
 			name: "when_new_returns_events_and_errors",
 			ag:   New([]*session.Event{event, nil}, []error{nil, err}),
 			want: []result{{Event: event, Err: nil}, {Event: nil, Err: err}},
+		},
+		{
+			name: "when_new_with_func_returns_func_result",
+			ag: NewWithFunc(func(ctx agent.InvocationContext) (*session.Event, error) {
+				return event, nil
+			}),
+			want: []result{{Event: event, Err: nil}},
+		},
+		{
+			name: "when_new_with_seq_returns_seq_results",
+			ag: NewWithSeq(func(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
+				return func(yield func(*session.Event, error) bool) {
+					yield(event, nil)
+				}
+			}),
+			want: []result{{Event: event, Err: nil}},
 		},
 	}
 
@@ -115,6 +132,42 @@ func TestFakeAgent(t *testing.T) {
 	}
 }
 
+func TestFakeAgentWithOnPrompt(t *testing.T) {
+	tests := []struct {
+		name       string
+		ctx        agent.InvocationContext
+		wantPrompt string
+	}{
+		{
+			name: "when_user_content_has_text_captures_prompt",
+			ctx: &fakeInvocationContext{
+				content: &genai.Content{
+					Parts: []*genai.Part{{Text: "hello prompt"}},
+				},
+			},
+			wantPrompt: "hello prompt",
+		},
+		{
+			name:       "when_invocation_context_is_nil_does_not_call_callback",
+			ctx:        nil,
+			wantPrompt: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPrompt string
+			ag := NewWithSimpleAnswer("ok").WithOnPrompt(func(prompt string) {
+				gotPrompt = prompt
+			})
+			_ = collectResults(ag.Run(tc.ctx))
+			if gotPrompt != tc.wantPrompt {
+				t.Errorf("captured prompt = %q, want %q", gotPrompt, tc.wantPrompt)
+			}
+		})
+	}
+}
+
 func TestFakeAgentInfo(t *testing.T) {
 	ag := NewWithSimpleAnswer("test")
 	if got, want := ag.Name(), "fake-agent"; got != want {
@@ -125,5 +178,59 @@ func TestFakeAgentInfo(t *testing.T) {
 	}
 	if ag.SubAgents() != nil {
 		t.Errorf("SubAgents() got %v, want nil", ag.SubAgents())
+	}
+}
+
+func TestFakeContext(t *testing.T) {
+	type ctxKey string
+	tests := []struct {
+		name         string
+		setupCtx     func(t *testing.T) context.Context
+		wantDeadline bool
+		wantErr      error
+		wantVal      any
+	}{
+		{
+			name: "when_context_is_canceled_delegates_done_and_err",
+			setupCtx: func(t *testing.T) context.Context {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+				return ctx
+			},
+			wantErr: context.Canceled,
+		},
+		{
+			name: "when_context_has_deadline_and_value_delegates_both",
+			setupCtx: func(t *testing.T) context.Context {
+				ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+				t.Cleanup(cancel)
+				return context.WithValue(ctx, ctxKey("k"), "v")
+			},
+			wantDeadline: true,
+			wantVal:      "v",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fc := NewContext(tc.setupCtx(t))
+			_, hasDeadline := fc.Deadline()
+			if hasDeadline != tc.wantDeadline {
+				t.Errorf("Deadline() ok = %v, want %v", hasDeadline, tc.wantDeadline)
+			}
+			if !errors.Is(fc.Err(), tc.wantErr) {
+				t.Errorf("Err() = %v, want %v", fc.Err(), tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				select {
+				case <-fc.Done():
+				default:
+					t.Errorf("Done() channel not closed when Err() = %v", tc.wantErr)
+				}
+			}
+			if got := fc.Value(ctxKey("k")); got != tc.wantVal {
+				t.Errorf("Value() = %v, want %v", got, tc.wantVal)
+			}
+		})
 	}
 }

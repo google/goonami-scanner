@@ -320,13 +320,13 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_verification_fails_conversational_refinement_preserves_session", func(t *testing.T) {
 		var sessions, prompts []string
 
-		ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+		ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 			sessions = append(sessions, ic.Session().ID())
 			prompts = append(prompts, ic.UserContent().Parts[0].Text)
 			if len(sessions) > 1 {
-				return textEvent("attempt2-fixed"), nil
+				return fakellmagent.TextEvent("attempt2-fixed"), nil
 			}
-			return textEvent("attempt1"), nil
+			return fakellmagent.TextEvent("attempt1"), nil
 		})
 
 		c := New(makeTestConfig(3, 0), ag)
@@ -356,16 +356,16 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_hard_failure_occurs_session_is_reset_and_prompt_restored", func(t *testing.T) {
 		var sessions, prompts []string
 
-		ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+		ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 			sessions = append(sessions, ic.Session().ID())
 			prompts = append(prompts, ic.UserContent().Parts[0].Text)
 			switch len(sessions) {
 			case 1:
-				return textEvent("attempt1"), nil
+				return fakellmagent.TextEvent("attempt1"), nil
 			case 2:
 				return nil, errors.New("hard agent crash")
 			default:
-				return textEvent("recovered"), nil
+				return fakellmagent.TextEvent("recovered"), nil
 			}
 		})
 
@@ -402,12 +402,12 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_attempt_fails_transiently_backoff_is_applied_between_attempts", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var timestamps []time.Time
-			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+			ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 				timestamps = append(timestamps, time.Now())
 				if len(timestamps) == 1 {
 					return nil, errors.New("transient error")
 				}
-				return textEvent("success"), nil
+				return fakellmagent.TextEvent("success"), nil
 			})
 
 			retryDelay := 10 * time.Second
@@ -431,7 +431,7 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_context_is_canceled_during_agent_run_returns_context_canceled", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
-			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+			ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 				cancel()
 				return nil, errors.New("agent failed")
 			})
@@ -449,7 +449,7 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 			start := time.Now()
 			ctx, cancel := context.WithCancel(t.Context())
 			time.AfterFunc(1*time.Second, cancel)
-			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+			ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 				return nil, errors.New("hard error")
 			})
 
@@ -467,7 +467,7 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_overall_feedback_loop_timeout_expires_stops_retrying_and_returns_deadline_exceeded", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var invocations int
-			ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+			ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 				invocations++
 				time.Sleep(100 * time.Second)
 				return nil, errors.New("stalled attempt failed")
@@ -487,30 +487,24 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_turn_context_expires_during_event_stream_stops_iteration_immediately", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			var stepsExecuted int
-			ag, err := agent.New(agent.Config{
-				Name: "multi-step-agent",
-				Run: func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
-					return func(yield func(*session.Event, error) bool) {
-						stepsExecuted++
-						// Simulate a tool call that stalls past the 5s per-turn timeout and
-						// still yields a function-response event instead of returning a Go error.
-						time.Sleep(6 * time.Second)
-						if !yield(textEvent("tool-response-event"), nil) {
-							return
-						}
-						// If runTurn did not break out of the event loop on ctx.Err(),
-						// ADK would proceed to the next step and call the LLM again.
-						stepsExecuted++
-						yield(textEvent("final-answer"), nil)
+			ag := fakellmagent.NewWithSeq(func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
+				return func(yield func(*session.Event, error) bool) {
+					stepsExecuted++
+					// Simulate a tool call that stalls past the 5s per-turn timeout and
+					// still yields a function-response event instead of returning a Go error.
+					time.Sleep(6 * time.Second)
+					if !yield(fakellmagent.TextEvent("tool-response-event"), nil) {
+						return
 					}
-				},
+					// If runTurn did not break out of the event loop on ctx.Err(),
+					// ADK would proceed to the next step and call the LLM again.
+					stepsExecuted++
+					yield(fakellmagent.TextEvent("final-answer"), nil)
+				}
 			})
-			if err != nil {
-				t.Fatalf("agent.New() error = %v", err)
-			}
 
 			c := New(makeTestConfig(1, 0), ag)
-			_, err = c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
 			if !errors.Is(err, ErrMaxAttemptsReached) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
 			}
@@ -524,31 +518,25 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			collector := installCollector(t)
 
-			ag, err := agent.New(agent.Config{
-				Name: "partial-timeout-agent",
-				Run: func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
-					return func(yield func(*session.Event, error) bool) {
-						time.Sleep(6 * time.Second)
-						event := &session.Event{
-							LLMResponse: model.LLMResponse{
-								ModelVersion: "gemini-3.6-flash",
-								Partial:      true,
-								UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
-									TotalTokenCount:         50,
-									CachedContentTokenCount: 15,
-								},
+			ag := fakellmagent.NewWithSeq(func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
+				return func(yield func(*session.Event, error) bool) {
+					time.Sleep(6 * time.Second)
+					event := &session.Event{
+						LLMResponse: model.LLMResponse{
+							ModelVersion: "gemini-3.6-flash",
+							Partial:      true,
+							UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
+								TotalTokenCount:         50,
+								CachedContentTokenCount: 15,
 							},
-						}
-						yield(event, nil)
+						},
 					}
-				},
+					yield(event, nil)
+				}
 			})
-			if err != nil {
-				t.Fatalf("agent.New() error = %v", err)
-			}
 
 			c := New(makeTestConfig(1, 0), ag)
-			_, err = c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
 			if !errors.Is(err, ErrMaxAttemptsReached) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
 			}
@@ -568,9 +556,9 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 
 	t.Run("when_custom_user_id_is_configured_it_is_passed_to_session", func(t *testing.T) {
 		var capturedUserID string
-		ag := testAgent(t, func(ic agent.InvocationContext) (*session.Event, error) {
+		ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 			capturedUserID = ic.Session().UserID()
-			return textEvent("ok"), nil
+			return fakellmagent.TextEvent("ok"), nil
 		})
 
 		c := New(makeTestConfig(1, 0), ag)
@@ -623,7 +611,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 						TotalTokenCount:         42,
 						CachedContentTokenCount: 10,
 					}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil}),
 			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {total: 42, cached: 10}},
@@ -643,7 +631,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 						ToolUsePromptTokenCount: 5,
 						TotalTokenCount:         155,
 					}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil}),
 			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {
@@ -663,7 +651,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 						TotalTokenCount:  11,
 						PromptTokenCount: 7,
 					}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil, nil}),
 			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {total: 11, input: 7}},
@@ -680,7 +668,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 					usageEvent("gemini-3.1-pro-preview", &genai.GenerateContentResponseUsageMetadata{
 						TotalTokenCount: 100,
 					}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil, nil}),
 			wantTokens: map[string]tokenCounts{
@@ -701,7 +689,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 						TotalTokenCount:         8,
 						CachedContentTokenCount: 2,
 					}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil, nil}),
 			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {total: 15, cached: 3}},
@@ -712,7 +700,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 			agent: fakellmagent.New(
 				[]*session.Event{
 					usageEvent("", &genai.GenerateContentResponseUsageMetadata{TotalTokenCount: 12}),
-					textEvent("done"),
+					fakellmagent.TextEvent("done"),
 				},
 				[]error{nil, nil}),
 			wantTokens: map[string]tokenCounts{"unknown": {total: 12}},
@@ -732,7 +720,7 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 						TotalTokenCount:         5,
 						CachedContentTokenCount: 1,
 					}),
-					textEvent("bad"),
+					fakellmagent.TextEvent("bad"),
 				},
 				[]error{nil, nil}),
 			verifier:   rejectAll,
@@ -987,29 +975,4 @@ func makeTestConfig(maxAttempts, retryDelaySeconds int32) *config.Config {
 			}.Build(),
 		}.Build(),
 	}.Build())
-}
-
-func testAgent(t *testing.T, run func(ic agent.InvocationContext) (*session.Event, error)) agent.Agent {
-	t.Helper()
-	ag, err := agent.New(agent.Config{
-		Name: "test-agent",
-		Run: func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
-			return func(yield func(*session.Event, error) bool) {
-				ev, err := run(ic)
-				yield(ev, err)
-			}
-		},
-	})
-	if err != nil {
-		t.Fatalf("agent.New() error = %v", err)
-	}
-	return ag
-}
-
-func textEvent(text string) *session.Event {
-	return &session.Event{
-		LLMResponse: model.LLMResponse{
-			Content: &genai.Content{Parts: []*genai.Part{{Text: text}}},
-		},
-	}
 }

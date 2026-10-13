@@ -31,6 +31,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
@@ -43,16 +44,6 @@ import (
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
-
-type fakeToolContext struct {
-	agent.Context
-	ctx context.Context
-}
-
-func (f *fakeToolContext) Deadline() (time.Time, bool) { return f.ctx.Deadline() }
-func (f *fakeToolContext) Done() <-chan struct{}       { return f.ctx.Done() }
-func (f *fakeToolContext) Err() error                  { return f.ctx.Err() }
-func (f *fakeToolContext) Value(key any) any           { return f.ctx.Value(key) }
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
@@ -337,7 +328,7 @@ func TestDo(t *testing.T) {
 			toolCtx: func(t *testing.T) agent.Context {
 				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
-				return &fakeToolContext{ctx: ctx}
+				return fakellmagent.NewContext(ctx)
 			},
 			req: &Request{
 				Method: "GET",
@@ -354,7 +345,7 @@ func TestDo(t *testing.T) {
 			toolCtx: func(t *testing.T) agent.Context {
 				ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 				t.Cleanup(cancel)
-				return &fakeToolContext{ctx: ctx}
+				return fakellmagent.NewContext(ctx)
 			},
 			req: &Request{
 				Method: "GET",

@@ -1001,10 +1001,9 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					if tc.judgeErr != nil {
 						return fakellmagent.NewWithError(tc.judgeErr), nil
 					}
-					return &capturingAgent{
-						FakeAgent: fakellmagent.NewWithSimpleAnswer(tc.judgeAnswer),
-						onRun:     func(prompt string) { gotJudgePrompt = prompt },
-					}, nil
+					return fakellmagent.NewWithSimpleAnswer(tc.judgeAnswer).WithOnPrompt(func(prompt string) {
+						gotJudgePrompt = prompt
+					}), nil
 				}
 			} else {
 				tc.auth.judgeBuilder = func(context.Context, *config.Config) (agent.Agent, error) {

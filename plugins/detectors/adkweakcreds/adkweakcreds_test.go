@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"iter"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -38,7 +37,6 @@ import (
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"github.com/google/goonami-scanner/plugins/detectors/adkweakcreds/cache"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/session"
 	"google.golang.org/protobuf/proto"
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
@@ -598,18 +596,6 @@ func TestDetect_NoCachePath_SkipsCache(t *testing.T) {
 	}
 }
 
-type capturingAgent struct {
-	*fakellmagent.FakeAgent
-	onRun func(string)
-}
-
-func (c *capturingAgent) Run(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
-	if c.onRun != nil && ctx.UserContent() != nil && len(ctx.UserContent().Parts) > 0 {
-		c.onRun(ctx.UserContent().Parts[0].Text)
-	}
-	return c.FakeAgent.Run(ctx)
-}
-
 func TestDetect_PromptEnrichment(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -669,12 +655,9 @@ func TestDetect_PromptEnrichment(t *testing.T) {
 			m, _ := New(ctx, cfg)
 			module := m.(*Module)
 			module.agentBuilder = func(ctx context.Context, config *config.Config, service *nspb.NetworkService) (agent.Agent, error) {
-				return &capturingAgent{
-					FakeAgent: fakellmagent.New(nil, nil),
-					onRun: func(prompt string) {
-						capturedPrompt = prompt
-					},
-				}, nil
+				return fakellmagent.New(nil, nil).WithOnPrompt(func(prompt string) {
+					capturedPrompt = prompt
+				}), nil
 			}
 
 			_, _ = module.Detect(ctx, tc.service)
