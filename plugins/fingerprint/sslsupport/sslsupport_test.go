@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -64,8 +63,8 @@ func TestFingerprint_Connection(t *testing.T) {
 			dispatch: func(conn net.Conn) {},
 		},
 		{
-			// note: if timeout are not set correctly, this test will hang. We register a watcher
-			// goroutine below to catch this case.
+			// note: if timeouts are not enforced, Fingerprint only returns when the guard context
+			// below expires, and the elapsed time check fails.
 			name:     "when_connection_times_out_returns_no_ssl_versions",
 			server:   hangingServer,
 			dispatch: func(_ net.Conn) { time.Sleep(time.Hour * 3) },
@@ -106,13 +105,16 @@ func TestFingerprint_Connection(t *testing.T) {
 				t.Fatalf("New failed: %v", err)
 			}
 
-			// watcher goroutine: tries to catch setup that does not handle timeouts carefully.
-			go func() {
-				time.Sleep(time.Second * 5)
-				log.Fatalf("[watcher] test killed: maybe timeout handling is broken?")
-			}()
+			// The module enforces its own 1s timeout. The guard context only keeps a broken timeout from
+			// hanging the test: Fingerprint would then return after 5s and fail the elapsed time check.
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			defer cancel()
 
-			gotServices, err := mod.Fingerprint(t.Context(), service)
+			start := time.Now()
+			gotServices, err := mod.Fingerprint(ctx, service)
+			if elapsed := time.Since(start); elapsed > 3*time.Second {
+				t.Errorf("Fingerprint() took %v, want less than 3s (per-request timeout not enforced)", elapsed)
+			}
 			if err != nil {
 				t.Errorf("Fingerprint() error = %v, want nil", err)
 				return
