@@ -31,13 +31,12 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
+	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -129,24 +128,12 @@ func loadPluginsAndTests(t *testing.T) (map[string]*tpb.TemplatedPlugin, map[str
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
 	cfgProto := config.DefaultProto()
-	tcsmock := callbackServerMock(t, tc)
+	mockCBS := tc.GetMockCallbackServer()
+	tcsmock := fakecallbackserver.NewServer(mockCBS.GetEnabled(), mockCBS.GetHasInteraction(), false)
 	defer tcsmock.Close()
 
-	if tc.GetMockCallbackServer().GetEnabled() {
-		clicfg := cpb.ClientsConfig_builder{
-			CallbackServer: cbpb.CallbackserverConfig_builder{
-				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: tcsmock.URL,
-				}.Build(),
-				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: tcsmock.URL,
-				}.Build(),
-				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
-				}.Build(),
-			}.Build(),
-		}.Build()
-		cfgProto.SetClients(clicfg)
+	if mockCBS.GetEnabled() {
+		cfgProto.SetClients(tcsmock.ClientsConfig())
 	}
 
 	cfg := config.FromProto(cfgProto)
@@ -185,25 +172,6 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	if hasVulnerability != tc.GetExpectVulnerability() {
 		t.Errorf("Detect() hasVulnerability = %v, want %v", hasVulnerability, tc.GetExpectVulnerability())
 	}
-}
-
-func callbackServerMock(t *testing.T, tc *ttpb.TemplatedPluginTests_Test) *httptest.Server {
-	t.Helper()
-
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !tc.GetMockCallbackServer().GetEnabled() {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		if !tc.GetMockCallbackServer().GetHasInteraction() {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "{\"hasHttpInteraction\": true}")
-	}))
 }
 
 func httpMockServer(t *testing.T, tc *ttpb.TemplatedPluginTests_Test, env *environment.Environment) *httptest.Server {

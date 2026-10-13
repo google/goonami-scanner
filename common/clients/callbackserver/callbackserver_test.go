@@ -18,11 +18,10 @@ package callbackserver
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
+	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 
@@ -329,28 +328,12 @@ func TestClient_Interaction(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Query().Get("secret") != tc.secret {
-					t.Errorf("expected secret %q, got %q", tc.secret, r.URL.Query().Get("secret"))
-				}
-				w.WriteHeader(tc.status)
-				fmt.Fprint(w, tc.serverResponse)
-			}))
+			server := fakecallbackserver.NewServerWithResponse(true, tc.status, tc.serverResponse)
 			defer server.Close()
 
 			serverConfig := tc.config
 			if serverConfig == nil {
-				serverConfig = cbpb.CallbackserverConfig_builder{
-					HttpPollConfig: cbpb.EndpointConfig_builder{
-						PublicUri: server.URL,
-					}.Build(),
-					HttpRecordConfig: cbpb.EndpointConfig_builder{
-						PublicUri: "http://irrelevant:8080",
-					}.Build(),
-					DnsRecordConfig: cbpb.EndpointConfig_builder{
-						PublicUri: "cb.localhost.lan",
-					}.Build(),
-				}.Build()
+				serverConfig = server.ClientConfig()
 			}
 
 			cfg := config.FromProto(cpb.Config_builder{
@@ -369,6 +352,10 @@ func TestClient_Interaction(t *testing.T) {
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("HasInteraction() error = %v, wantErr %v", err, tc.wantErr)
 				return
+			}
+
+			if tc.config == nil && server.LastSecret() != tc.secret {
+				t.Errorf("expected secret %q, got %q", tc.secret, server.LastSecret())
 			}
 
 			if tc.wantErr != nil {

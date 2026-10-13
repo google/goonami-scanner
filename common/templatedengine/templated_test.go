@@ -29,12 +29,11 @@ import (
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
+	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -136,12 +135,8 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 	u, _ := url.Parse(ts.URL)
 	port, _ := strconv.Atoi(u.Port())
 
-	cbs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"hasHttpInteraction": true}`)
-	}))
+	cbs := fakecallbackserver.NewServer(true, true, false)
 	defer cbs.Close()
-	cbsURL, _ := url.Parse(cbs.URL)
 
 	t.Cleanup(func() {
 		if err := callbackserver.Initialize(t.Context(), config.Default()); err != nil {
@@ -212,20 +207,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfgProto := config.DefaultProto()
 			if tc.enableCBS {
-				clicfg := cpb.ClientsConfig_builder{
-					CallbackServer: cbpb.CallbackserverConfig_builder{
-						HttpPollConfig: cbpb.EndpointConfig_builder{
-							PublicUri: cbsURL.String(),
-						}.Build(),
-						HttpRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: cbsURL.String(),
-						}.Build(),
-						DnsRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "cb.localhost.lan",
-						}.Build(),
-					}.Build(),
-				}.Build()
-				cfgProto.SetClients(clicfg)
+				cfgProto.SetClients(cbs.ClientsConfig())
 			}
 			cfg := config.FromProto(cfgProto)
 
