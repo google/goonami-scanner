@@ -19,32 +19,28 @@ package entrypoint
 import (
 	"context"
 	"errors"
-	"io"
-	"net/http"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/goonami-scanner/common/testfakes/fakehttp"
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/common/testfakes/fakerunner"
 	"github.com/google/goonami-scanner/core/config"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
-	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
 )
 
-type fakeHTTPClient struct{}
-
-func (m *fakeHTTPClient) Get(url string) (*http.Response, error)  { return nil, nil }
-func (m *fakeHTTPClient) Head(url string) (*http.Response, error) { return nil, nil }
-func (m *fakeHTTPClient) Post(url string, contentType string, body io.Reader) (*http.Response, error) {
-	return nil, nil
+func init() {
+	goohttp.Register("simpleclient", func(cfg *config.Config, options *goohttp.ClientOptions) (goohttp.Client, error) {
+		return fakehttp.New(0, nil), nil
+	})
 }
-func (m *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) { return nil, nil }
 
 func TestNewWhenDefaultRunner(t *testing.T) {
 	module.ClearRegistry()

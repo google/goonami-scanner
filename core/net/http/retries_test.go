@@ -26,16 +26,13 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/google/goonami-scanner/common/testfakes/fakehttp"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
-
-type clientFunc func(*http.Request) (*http.Response, error)
-
-func (f clientFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
 
 func TestRetriableClient_Do(t *testing.T) {
 	errGetBody := errors.New("get body failed")
@@ -147,7 +144,7 @@ func TestRetriableClient_Do(t *testing.T) {
 				const wantPayload = "user=admin&pass=secret"
 				var attempts int
 				Register("retry-test", func(*config.Config, *ClientOptions) (Client, error) {
-					return clientFunc(func(req *http.Request) (*http.Response, error) {
+					return fakehttp.NewWithFunc(func(req *http.Request) (*http.Response, error) {
 						attempts++
 						if tc.method != http.MethodGet {
 							if body, err := io.ReadAll(req.Body); err != nil || string(body) != wantPayload {

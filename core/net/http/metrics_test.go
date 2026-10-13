@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/goonami-scanner/common/testfakes/fakehttp"
 	"github.com/google/goonami-scanner/core/metrics"
 )
 
@@ -30,29 +31,29 @@ func TestInstrumentedClientRecordsMetrics(t *testing.T) {
 	testCases := []struct {
 		name           string
 		method         string
-		client         *fakeClient
+		client         *fakehttp.Client
 		wantErrorClass string
 		wantErr        error
 	}{
 		{
 			name:   "when_the_response_is_successful_only_the_request_is_counted",
 			method: "GET",
-			client: &fakeClient{statusCode: 200},
+			client: fakehttp.New(200, nil),
 		},
 		{
 			name:   "when_the_target_returns_a_server_error_it_is_not_an_error",
 			method: "POST",
-			client: &fakeClient{statusCode: 503},
+			client: fakehttp.New(503, nil),
 		},
 		{
 			name:   "when_the_response_is_nil_without_error_it_is_not_an_error",
 			method: "GET",
-			client: &fakeClient{},
+			client: fakehttp.New(0, nil),
 		},
 		{
 			name:           "when_the_transport_fails_the_error_class_is_recorded",
 			method:         "GET",
-			client:         &fakeClient{err: transportErr},
+			client:         fakehttp.New(0, transportErr),
 			wantErrorClass: "other",
 			wantErr:        transportErr,
 		},
@@ -100,7 +101,7 @@ func TestInstrumentedClientWhenMultipleRequestsAreAggregated(t *testing.T) {
 	metrics.SetRecorder(collector)
 	t.Cleanup(func() { metrics.SetRecorder(nil) })
 
-	client := &metricsClient{wrapped: &fakeClient{statusCode: 204}}
+	client := &metricsClient{wrapped: fakehttp.New(204, nil)}
 	for range 3 {
 		req, err := http.NewRequestWithContext(t.Context(), "GET", "http://example.com/", nil)
 		if err != nil {

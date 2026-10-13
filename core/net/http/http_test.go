@@ -17,9 +17,9 @@
 package http
 
 import (
-	"net/http"
 	"testing"
 
+	"github.com/google/goonami-scanner/common/testfakes/fakehttp"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	"google.golang.org/protobuf/proto"
@@ -35,7 +35,7 @@ func TestRegisterAndNewClient(t *testing.T) {
 	}
 
 	Register("simpleclient", func(cfg *config.Config, options *ClientOptions) (Client, error) {
-		return &fakeClient{}, nil
+		return fakehttp.New(0, nil), nil
 	})
 
 	client, err := NewClient(cfg, DefaultClientOptions())
@@ -57,7 +57,7 @@ func TestRegisterAndNewClient(t *testing.T) {
 	}
 
 	Register("custom", func(cfg *config.Config, options *ClientOptions) (Client, error) {
-		return &fakeClient{}, nil
+		return fakehttp.New(0, nil), nil
 	})
 	customCfg = config.FromProto(cpb.Config_builder{
 		Globalcfg: cpb.GlobalConfig_builder{
@@ -72,24 +72,9 @@ func TestRegisterAndNewClient(t *testing.T) {
 	if !ok {
 		t.Fatalf("NewClient(custom) returned %T, want *instrumentedClient", client)
 	}
-	if _, ok := instrumented.wrapped.(*fakeClient); !ok {
-		t.Errorf("NewClient(custom) wrapped %T, want *fakeClient", instrumented.wrapped)
+	if _, ok := instrumented.wrapped.(*fakehttp.Client); !ok {
+		t.Errorf("NewClient(custom) wrapped %T, want *fakehttp.Client", instrumented.wrapped)
 	}
-}
-
-type fakeClient struct {
-	statusCode int
-	err        error
-}
-
-func (f *fakeClient) Do(req *http.Request) (*http.Response, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	if f.statusCode == 0 {
-		return nil, nil
-	}
-	return &http.Response{StatusCode: f.statusCode}, nil
 }
 
 // totalRequestErrors sums every http/requests/error series.
