@@ -18,13 +18,6 @@ package templated
 
 import (
 	"errors"
-	"fmt"
-	"io"
-	"io/fs"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
@@ -32,15 +25,13 @@ import (
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
 	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
+	"github.com/google/goonami-scanner/common/testfakes/faketemplated"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
-	"google.golang.org/protobuf/encoding/prototext"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
-	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
-	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
 func TestDetectors(t *testing.T) {
@@ -50,9 +41,9 @@ func TestDetectors(t *testing.T) {
 	l := &log.DefaultLogger{VerboseLevel: log.DebugLevelRequest}
 	log.SetLogger(l)
 
-	plugins, tests, err := loadPluginsAndTests(t)
+	plugins, tests, err := faketemplated.LoadPluginsAndTests(pluginFilesFS)
 	if err != nil {
-		return
+		t.Fatalf("Failed to load unit tests: %v", err)
 	}
 
 	if len(tests) == 0 {
@@ -78,53 +69,6 @@ func TestDetectors(t *testing.T) {
 	}
 }
 
-func loadPluginsAndTests(t *testing.T) (map[string]*tpb.TemplatedPlugin, map[string]*ttpb.TemplatedPluginTests, error) {
-	t.Helper()
-
-	plugins := make(map[string]*tpb.TemplatedPlugin)
-	tests := make(map[string]*ttpb.TemplatedPluginTests)
-
-	err := fs.WalkDir(pluginFilesFS, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() || filepath.Ext(path) != ".textproto" {
-			return nil
-		}
-
-		content, err := pluginFilesFS.ReadFile(path)
-		if err != nil {
-			return nil
-		}
-
-		if strings.HasSuffix(path, "_test.textproto") {
-			test := &ttpb.TemplatedPluginTests{}
-			if err := prototext.Unmarshal(content, test); err != nil {
-				return err
-			}
-
-			tests[path] = test
-			return nil
-		}
-
-		plugin := &tpb.TemplatedPlugin{}
-		if err := prototext.Unmarshal(content, plugin); err != nil {
-			return err
-		}
-
-		plugins[plugin.GetInfo().GetName()] = plugin
-		return nil
-	})
-
-	if err != nil {
-		t.Fatalf("Failed to load unit tests: %v", err)
-		return nil, nil, err
-	}
-
-	return plugins, tests, nil
-}
-
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
 	cfgProto := config.DefaultProto()
@@ -143,10 +87,13 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 
 	env := environment.New(cfg)
 	env.Set(environment.VarTestingDisableSleep, "true")
-	httpmock := httpMockServer(t, tc, env)
+	httpmock := faketemplated.NewHTTPServer(ctx, tc.GetMockHttpServer(), env)
 	defer httpmock.Close()
 
-	service := serviceForMockHTTPServer(t, httpmock)
+	service, err := faketemplated.ServiceForServer(httpmock)
+	if err != nil {
+		t.Fatalf("ServiceForServer() failed: %v", err)
+	}
 	env.InitializeFor(ctx, service)
 
 	detector, err := templatedengine.NewForTesting(ctx, cfg, plugin, env)
@@ -172,108 +119,4 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	if hasVulnerability != tc.GetExpectVulnerability() {
 		t.Errorf("Detect() hasVulnerability = %v, want %v", hasVulnerability, tc.GetExpectVulnerability())
 	}
-}
-
-func httpMockServer(t *testing.T, tc *ttpb.TemplatedPluginTests_Test, env *environment.Environment) *httptest.Server {
-	t.Helper()
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := t.Context()
-		for _, mockResp := range tc.GetMockHttpServer().GetMockResponses() {
-			mockURL := env.Substitute(ctx, mockResp.GetUri())
-			// mockURL is the path, i.e. /index.php?foo=bar, so it should start with a "/". But if it is
-			// one of the magic strings, it should not have a leading "/".
-			if mockURL[0] != '/' && !strings.HasPrefix(mockURL, environment.VarTestingMagicPrefix) {
-				mockURL = "/" + mockURL
-			}
-
-			if mockURL != environment.VarTestingMagicAnyURI && r.URL.String() != mockURL && r.URL.Path != mockURL {
-				continue
-			}
-
-			if !matchesConditions(t, r, mockResp.GetCondition(), env) {
-				continue
-			}
-
-			for _, header := range mockResp.GetHeaders() {
-				w.Header().Add(header.GetName(), env.Substitute(ctx, header.GetValue()))
-			}
-
-			w.WriteHeader(int(mockResp.GetStatus()))
-			fmt.Fprint(w, env.Substitute(ctx, mockResp.GetBodyContent()))
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}))
-
-	return ts
-}
-
-func matchesConditions(t *testing.T, r *http.Request, cond *ttpb.MockHttpServer_HttpCondition, env *environment.Environment) bool {
-	t.Helper()
-
-	if cond == nil {
-		return true
-	}
-
-	ctx := t.Context()
-	for _, header := range cond.GetHeaders() {
-		if r.Header.Get(header.GetName()) != env.Substitute(ctx, header.GetValue()) {
-			return false
-		}
-	}
-
-	for _, param := range cond.GetGetParameter() {
-		if r.URL.Query().Get(param.GetName()) != env.Substitute(ctx, param.GetValue()) {
-			return false
-		}
-	}
-
-	if cond.GetRequestType() != ttpb.MockHttpServer_UNKNOWN {
-		if r.Method != cond.GetRequestType().String() {
-			return false
-		}
-	}
-
-	var bodyStr string
-	if len(cond.GetBodyContent()) > 0 {
-		body, _ := io.ReadAll(r.Body)
-		r.Body = io.NopCloser(strings.NewReader(string(body)))
-		bodyStr = string(body)
-	}
-
-	for _, content := range cond.GetBodyContent() {
-		if !strings.Contains(bodyStr, env.Substitute(ctx, content)) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func serviceForMockHTTPServer(t *testing.T, httpmock *httptest.Server) *nspb.NetworkService {
-	t.Helper()
-
-	url := strings.TrimPrefix(httpmock.URL, "http://")
-	hostPort := strings.Split(url, ":")
-
-	if len(hostPort) != 2 {
-		t.Fatalf("Failed to parse host and port from URL of mock HTTP server: %s", url)
-	}
-
-	host := hostPort[0]
-	port := 80
-	if len(hostPort) > 1 {
-		fmt.Sscanf(hostPort[1], "%d", &port)
-	}
-
-	return nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Hostname: npb.Hostname_builder{Name: host}.Build(),
-			Port:     npb.Port_builder{PortNumber: uint32(port)}.Build(),
-		}.Build(),
-		ServiceName:          "http",
-		SupportedHttpMethods: []string{"GET", "POST", "PUT", "DELETE", "HEAD"},
-	}.Build()
 }
