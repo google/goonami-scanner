@@ -90,7 +90,7 @@ type Request struct {
 type Response struct {
 	StatusCode int32             `json:"status_code" jsonschema:"HTTP status code returned by the server."`
 	FinalURI   string            `json:"final_uri" jsonschema:"Final request URI after following any in-scope redirects (e.g. '/login')."`
-	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Www-Authenticate)."`
+	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Refresh, Server, Set-Cookie, Www-Authenticate)."`
 	Content    string            `json:"content" jsonschema:"Raw body content returned by the server."`
 }
 
@@ -247,7 +247,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	return &Response{
 		StatusCode: int32(resp.StatusCode),
 		FinalURI:   finalURI,
-		Headers:    extractRelevantHeaders(resp.Header),
+		Headers:    extractRelevantHeaders(resp),
 		Content:    string(content),
 	}, nil
 }
@@ -309,18 +309,47 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 var relevantResponseHeaders = []string{
 	"Content-Type",
 	"Location",
+	"Refresh",
+	"Server",
+	"Set-Cookie",
 	"Www-Authenticate",
 }
 
-// extractRelevantHeaders filters and returns high-signal HTTP response headers.
-// Keys in http.Response.Header are guaranteed to be canonicalized by net/http,
-// enabling direct O(1) lookups without scanning or lowercasing all response headers.
-func extractRelevantHeaders(h http.Header) map[string]string {
+// extractRelevantHeaders filters and returns high-signal HTTP response headers from the final
+// response and preserves any Set-Cookie headers issued across intermediate in-scope redirect hops
+// in chronological order. Keys in http.Response.Header are guaranteed to be canonicalized by
+// net/http, enabling direct O(1) lookups without scanning or lowercasing all response headers.
+func extractRelevantHeaders(resp *http.Response) map[string]string {
 	extracted := make(map[string]string)
+	if resp == nil {
+		return extracted
+	}
 	for _, key := range relevantResponseHeaders {
-		if vals := h[key]; len(vals) > 0 {
+		if vals := resp.Header[key]; len(vals) > 0 {
 			extracted[key] = strings.Join(vals, ", ")
 		}
+	}
+
+	var chain []*http.Response
+	for cur := resp; cur != nil; {
+		chain = append(chain, cur)
+		if cur.Request == nil {
+			break
+		}
+		cur = cur.Request.Response
+	}
+	if len(chain) <= 1 {
+		return extracted
+	}
+
+	// Reverse so redirect hops are processed in chronological order (initial hop to final response).
+	slices.Reverse(chain)
+	var cookies []string
+	for _, hop := range chain {
+		cookies = append(cookies, hop.Header["Set-Cookie"]...)
+	}
+	if len(cookies) > 0 {
+		extracted["Set-Cookie"] = strings.Join(cookies, ", ")
 	}
 	return extracted
 }

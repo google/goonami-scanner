@@ -662,53 +662,86 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 func TestExtractRelevantHeaders(t *testing.T) {
 	tests := []struct {
 		name string
-		h    http.Header
+		resp *http.Response
 		want map[string]string
 	}{
 		{
 			name: "when_response_has_mixed_headers_extracts_only_relevant_canonical",
-			h: http.Header{
-				"Www-Authenticate":          []string{"Basic realm=\"admin\""},
-				"Location":                  []string{"/login"},
-				"Content-Type":              []string{"application/json"},
-				"Server":                    []string{"nginx/1.18.0"},
-				"Date":                      []string{"Fri, 28 Aug 2026 12:00:00 GMT"},
-				"ETag":                      []string{"\"xyz\""},
-				"Set-Cookie":                []string{"session=abc; Path=/"},
-				"Strict-Transport-Security": []string{"max-age=31536000"},
+			resp: &http.Response{
+				Header: http.Header{
+					"Www-Authenticate":          []string{"Basic realm=\"admin\""},
+					"Location":                  []string{"/login"},
+					"Refresh":                   []string{"0; url=/login.asp"},
+					"Content-Type":              []string{"application/json"},
+					"Server":                    []string{"nginx/1.18.0"},
+					"Date":                      []string{"Fri, 28 Aug 2026 12:00:00 GMT"},
+					"ETag":                      []string{"\"xyz\""},
+					"Set-Cookie":                []string{"session=abc; Path=/"},
+					"Strict-Transport-Security": []string{"max-age=31536000"},
+				},
 			},
 			want: map[string]string{
 				"Www-Authenticate": "Basic realm=\"admin\"",
 				"Location":         "/login",
+				"Refresh":          "0; url=/login.asp",
 				"Content-Type":     "application/json",
+				"Server":           "nginx/1.18.0",
+				"Set-Cookie":       "session=abc; Path=/",
 			},
 		},
 		{
 			name: "when_multiple_header_values_joins_with_comma",
-			h: http.Header{
-				"Www-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
+			resp: &http.Response{
+				Header: http.Header{
+					"Www-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
+					"Set-Cookie":       []string{"sid=1; Path=/", "theme=dark; Path=/"},
+				},
 			},
 			want: map[string]string{
 				"Www-Authenticate": "Negotiate, Basic realm=\"foo\"",
+				"Set-Cookie":       "sid=1; Path=/, theme=dark; Path=/",
+			},
+		},
+		{
+			name: "when_redirect_chain_sets_cookies_preserves_chronological_order",
+			resp: &http.Response{
+				Header: http.Header{
+					"Content-Type": []string{"text/html"},
+					"Set-Cookie":   []string{"final=2; Path=/"},
+				},
+				Request: &http.Request{
+					Response: &http.Response{
+						Header: http.Header{
+							"Location":   []string{"/dashboard"},
+							"Set-Cookie": []string{"hop1=1; Path=/"},
+						},
+					},
+				},
+			},
+			want: map[string]string{
+				"Content-Type": "text/html",
+				"Set-Cookie":   "hop1=1; Path=/, final=2; Path=/",
 			},
 		},
 		{
 			name: "when_header_has_empty_value_slice_omits_key",
-			h: http.Header{
-				"Content-Type": []string{},
+			resp: &http.Response{
+				Header: http.Header{
+					"Content-Type": []string{},
+				},
 			},
 			want: map[string]string{},
 		},
 		{
 			name: "when_nil_or_empty_header_returns_empty_map",
-			h:    nil,
+			resp: nil,
 			want: map[string]string{},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := extractRelevantHeaders(tc.h)
+			got := extractRelevantHeaders(tc.resp)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("extractRelevantHeaders() mismatch (-want +got):\n%s", diff)
 			}
@@ -718,15 +751,34 @@ func TestExtractRelevantHeaders(t *testing.T) {
 
 func TestTool_Do_Headers(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("WWW-Authenticate", "Basic realm=\"Router\"")
-		w.Header().Set("Server", "Embedded/1.0")
-		w.Header().Set("Date", "Fri, 28 Aug 2026 12:00:00 GMT")
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("unauthorized"))
+		switch r.URL.Path {
+		case "/redirect_login":
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "abc", Path: "/"})
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+		case "/dashboard":
+			http.SetCookie(w, &http.Cookie{Name: "prefs", Value: "1", Path: "/"})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("welcome"))
+		default:
+			w.Header().Set("WWW-Authenticate", "Basic realm=\"Router\"")
+			w.Header().Set("Refresh", "0; url=/login")
+			w.Header().Set("Server", "Embedded/1.0")
+			w.Header().Set("Date", "Fri, 28 Aug 2026 12:00:00 GMT")
+			w.Header().Set("ETag", "\"12345\"")
+			http.SetCookie(w, &http.Cookie{Name: "sid", Value: "xyz"})
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("unauthorized"))
+		}
 	}))
 	defer ts.Close()
 
-	cfg := config.FromProto(cpb.Config_builder{}.Build())
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(10),
+			}.Build(),
+		}.Build(),
+	}.Build())
 	service := makeService(t, ts.URL)
 	toolInstance, err := newTool(cfg, service)
 	if err != nil {
@@ -741,8 +793,24 @@ func TestTool_Do_Headers(t *testing.T) {
 	wantHeaders := map[string]string{
 		"Www-Authenticate": "Basic realm=\"Router\"",
 		"Content-Type":     "text/plain; charset=utf-8",
+		"Refresh":          "0; url=/login",
+		"Server":           "Embedded/1.0",
+		"Set-Cookie":       "sid=xyz",
 	}
 	if diff := cmp.Diff(wantHeaders, resp.Headers); diff != "" {
 		t.Errorf("Do() Headers mismatch (-want +got):\n%s", diff)
+	}
+
+	redirectResp, err := toolInstance.Do(nil, &Request{Method: "GET", URI: "/redirect_login"})
+	if err != nil {
+		t.Fatalf("Do() unexpected error: %v", err)
+	}
+
+	wantRedirectHeaders := map[string]string{
+		"Content-Type": "text/plain; charset=utf-8",
+		"Set-Cookie":   "session=abc; Path=/, prefs=1; Path=/",
+	}
+	if diff := cmp.Diff(wantRedirectHeaders, redirectResp.Headers); diff != "" {
+		t.Errorf("Do() redirect Headers mismatch (-want +got):\n%s", diff)
 	}
 }
