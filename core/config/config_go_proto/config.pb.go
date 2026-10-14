@@ -25,6 +25,7 @@ import (
 	httpcrawler_client_config_go_proto "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
+	ssh_client_config_go_proto "github.com/google/goonami-scanner/common/clients/sshclient/ssh_client_config_go_proto"
 	templatedweakcredentials_config_go_proto "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials/templatedweakcredentials_config_go_proto"
 	webidentity_fp_config_go_proto "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
 	httpscan_portscan_config_go_proto "github.com/google/goonami-scanner/plugins/portscan/httpscan/httpscan_portscan_config_go_proto"
@@ -484,6 +485,7 @@ type ClientsConfig struct {
 	xxx_hidden_HttpCrawler    *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig `protobuf:"bytes,2,opt,name=http_crawler,json=httpCrawler,proto3"`
 	xxx_hidden_Llm            *llm_client_config_go_proto.LlmClientConfig                 `protobuf:"bytes,3,opt,name=llm,proto3"`
 	xxx_hidden_CallbackServer *callbackserver_config_go_proto.CallbackserverConfig        `protobuf:"bytes,4,opt,name=callback_server,json=callbackServer,proto3"`
+	xxx_hidden_Ssh            *ssh_client_config_go_proto.SSHClientConfig                 `protobuf:"bytes,5,opt,name=ssh,proto3"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -541,6 +543,13 @@ func (x *ClientsConfig) GetCallbackServer() *callbackserver_config_go_proto.Call
 	return nil
 }
 
+func (x *ClientsConfig) GetSsh() *ssh_client_config_go_proto.SSHClientConfig {
+	if x != nil {
+		return x.xxx_hidden_Ssh
+	}
+	return nil
+}
+
 func (x *ClientsConfig) SetNmap(v *nmap_client_config_go_proto.NmapClientConfig) {
 	x.xxx_hidden_Nmap = v
 }
@@ -555,6 +564,10 @@ func (x *ClientsConfig) SetLlm(v *llm_client_config_go_proto.LlmClientConfig) {
 
 func (x *ClientsConfig) SetCallbackServer(v *callbackserver_config_go_proto.CallbackserverConfig) {
 	x.xxx_hidden_CallbackServer = v
+}
+
+func (x *ClientsConfig) SetSsh(v *ssh_client_config_go_proto.SSHClientConfig) {
+	x.xxx_hidden_Ssh = v
 }
 
 func (x *ClientsConfig) HasNmap() bool {
@@ -585,6 +598,13 @@ func (x *ClientsConfig) HasCallbackServer() bool {
 	return x.xxx_hidden_CallbackServer != nil
 }
 
+func (x *ClientsConfig) HasSsh() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Ssh != nil
+}
+
 func (x *ClientsConfig) ClearNmap() {
 	x.xxx_hidden_Nmap = nil
 }
@@ -601,6 +621,10 @@ func (x *ClientsConfig) ClearCallbackServer() {
 	x.xxx_hidden_CallbackServer = nil
 }
 
+func (x *ClientsConfig) ClearSsh() {
+	x.xxx_hidden_Ssh = nil
+}
+
 type ClientsConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -608,6 +632,7 @@ type ClientsConfig_builder struct {
 	HttpCrawler    *httpcrawler_client_config_go_proto.HttpCrawlerClientConfig
 	Llm            *llm_client_config_go_proto.LlmClientConfig
 	CallbackServer *callbackserver_config_go_proto.CallbackserverConfig
+	Ssh            *ssh_client_config_go_proto.SSHClientConfig
 }
 
 func (b0 ClientsConfig_builder) Build() *ClientsConfig {
@@ -618,6 +643,7 @@ func (b0 ClientsConfig_builder) Build() *ClientsConfig {
 	x.xxx_hidden_HttpCrawler = b.HttpCrawler
 	x.xxx_hidden_Llm = b.Llm
 	x.xxx_hidden_CallbackServer = b.CallbackServer
+	x.xxx_hidden_Ssh = b.Ssh
 	return m0
 }
 
@@ -1129,7 +1155,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\"\xfb\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -1172,12 +1198,13 @@ const file_config_proto_rawDesc = "" +
 	"\x1d_max_http_retry_after_secondsB\x0e\n" +
 	"\f_performanceB\r\n" +
 	"\v_user_agentB\x0e\n" +
-	"\f_http_client\"\xc8\x02\n" +
+	"\f_http_client\"\x8a\x03\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
 	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12U\n" +
-	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\"\xbb\x02\n" +
+	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\x12@\n" +
+	"\x03ssh\x18\x05 \x01(\v2..goonami.proto.configs.clients.SSHClientConfigR\x03ssh\"\xbb\x02\n" +
 	"\rPluginsConfig\x12[\n" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentity\x12P\n" +
 	"\bhttpscan\x18\x02 \x01(\v24.goonami.proto.configs.portscan.HttpScanPluginConfigR\bhttpscan\x12{\n" +
@@ -1197,9 +1224,10 @@ var file_config_proto_goTypes = []any{
 	(*httpcrawler_client_config_go_proto.HttpCrawlerClientConfig)(nil),              // 8: goonami.proto.configs.clients.HttpCrawlerClientConfig
 	(*llm_client_config_go_proto.LlmClientConfig)(nil),                              // 9: goonami.proto.configs.clients.LlmClientConfig
 	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),                     // 10: goonami.callbackserver.CallbackserverConfig
-	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),                      // 11: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),                  // 12: goonami.proto.configs.portscan.HttpScanPluginConfig
-	(*templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig)(nil), // 13: goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
+	(*ssh_client_config_go_proto.SSHClientConfig)(nil),                              // 11: goonami.proto.configs.clients.SSHClientConfig
+	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),                      // 12: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),                  // 13: goonami.proto.configs.portscan.HttpScanPluginConfig
+	(*templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig)(nil), // 14: goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
 }
 var file_config_proto_depIdxs = []int32{
 	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -1213,14 +1241,15 @@ var file_config_proto_depIdxs = []int32{
 	8,  // 8: goonami.proto.ClientsConfig.http_crawler:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig
 	9,  // 9: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
 	10, // 10: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
-	11, // 11: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	12, // 12: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
-	13, // 13: goonami.proto.PluginsConfig.templatedweakcredentials:type_name -> goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	11, // 11: goonami.proto.ClientsConfig.ssh:type_name -> goonami.proto.configs.clients.SSHClientConfig
+	12, // 12: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	13, // 13: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
+	14, // 14: goonami.proto.PluginsConfig.templatedweakcredentials:type_name -> goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
