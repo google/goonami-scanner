@@ -19,6 +19,8 @@ package http
 import (
 	"net"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/google/goonami-scanner/core/net/netendpoint"
@@ -44,6 +46,11 @@ type ClientOptions struct {
 	// is in this list. If empty, all redirects are allowed (unless DisableFollowRedirects is true).
 	AllowedAuthorities []string
 
+	// ForbiddenPaths restricts redirects so the client stops and returns the redirect response
+	// (via http.ErrUseLastResponse) if a redirect target's path or query matches any of these
+	// regular expressions.
+	ForbiddenPaths []*regexp.Regexp
+
 	// RetryOnRateLimit indicates whether the client should automatically retry HTTP 429 Too Many
 	// Requests responses using exponential backoff and Retry-After headers configured in
 	// GlobalConfig.Performance. When retries are exhausted or Retry-After exceeds the configured
@@ -58,6 +65,7 @@ func DefaultClientOptions() *ClientOptions {
 		EnforceTLSCertVerification: false,
 		DisableFollowRedirects:     false,
 		AllowedAuthorities:         nil,
+		ForbiddenPaths:             slices.Clone(defaultForbiddenPaths),
 		RetryOnRateLimit:           false,
 	}
 }
@@ -113,4 +121,13 @@ func (co *ClientOptions) IsAuthorityAllowed(targetURL *url.URL) bool {
 		}
 	}
 	return false
+}
+
+// IsRedirectAllowed reports whether following a redirect to targetURL is permitted by the client
+// options (follow-redirects enabled, target authority in scope, and target path not forbidden).
+func (co *ClientOptions) IsRedirectAllowed(targetURL *url.URL) bool {
+	if co == nil {
+		return true
+	}
+	return !co.DisableFollowRedirects && co.IsAuthorityAllowed(targetURL) && !IsURLPathForbidden(targetURL, co.ForbiddenPaths)
 }

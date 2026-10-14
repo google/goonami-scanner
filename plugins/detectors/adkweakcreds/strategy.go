@@ -313,10 +313,9 @@ func (a *authStrategy) login(ctx context.Context, cfg *config.Config, service *n
 
 	// Initialize HTTP client. Store cookies for all login attempts so redirect chains
 	// preserve session state, isolated per credential attempt.
-	opts := &goohttp.ClientOptions{
-		StoreCookies:     true,
-		RetryOnRateLimit: true,
-	}
+	opts := goohttp.DefaultClientOptions()
+	opts.StoreCookies = true
+	opts.RetryOnRateLimit = true
 	if err := opts.LoadAuthorities(service); err != nil {
 		return nil, err
 	}

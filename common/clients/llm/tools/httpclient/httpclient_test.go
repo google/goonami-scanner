@@ -59,8 +59,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.GetMaxAnswerSizeBytes() == 0 {
 		t.Errorf("DefaultConfig().GetMaxAnswerSizeBytes() is 0, want non-zero")
 	}
-	if len(cfg.GetForbiddenPaths()) == 0 {
-		t.Errorf("DefaultConfig().GetForbiddenPaths() is empty, want non-empty")
+	if diff := cmp.Diff(goohttp.DefaultForbiddenPathPatterns(), cfg.GetForbiddenPaths()); diff != "" {
+		t.Errorf("DefaultConfig().GetForbiddenPaths() mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -95,6 +95,30 @@ func TestNew(t *testing.T) {
 			},
 		},
 		{
+			name: "when_client_config_overrides_repeated_fields_replaces_defaults",
+			config: config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					Llm: llmcpb.LlmClientConfig_builder{
+						Tools: llmcpb.ToolConfig_builder{
+							HttpClientConfig: llmcpb.HttpClientConfig_builder{
+								AllowedMethods: []string{"GET"},
+								ForbiddenPaths: []string{"^/custom_forbidden$"},
+							}.Build(),
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			wantErr: nil,
+			verify: func(t *testing.T, got *Tool) {
+				if diff := cmp.Diff([]string{"GET"}, got.config.GetAllowedMethods()); diff != "" {
+					t.Errorf("AllowedMethods mismatch (-want +got):\n%s", diff)
+				}
+				if diff := cmp.Diff([]string{"^/custom_forbidden$"}, got.config.GetForbiddenPaths()); diff != "" {
+					t.Errorf("ForbiddenPaths mismatch (-want +got):\n%s", diff)
+				}
+			},
+		},
+		{
 			name:    "when_no_client_config_returns_tool_with_default_config",
 			config:  config.FromProto(cpb.Config_builder{}.Build()),
 			wantErr: nil,
@@ -104,13 +128,28 @@ func TestNew(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "when_invalid_forbidden_path_regex_returns_error",
+			config: config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					Llm: llmcpb.LlmClientConfig_builder{
+						Tools: llmcpb.ToolConfig_builder{
+							HttpClientConfig: llmcpb.HttpClientConfig_builder{
+								ForbiddenPaths: []string{"[invalid"},
+							}.Build(),
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			}.Build()),
+			wantErr: cmpopts.AnyError,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tl, err := New(tc.config, &nspb.NetworkService{})
-			if !errors.Is(err, tc.wantErr) {
-				t.Fatalf("New() error = %v, want %v", err, tc.wantErr)
+			if diff := cmp.Diff(tc.wantErr, err, cmpopts.EquateErrors()); diff != "" {
+				t.Fatalf("New() error mismatch (-want +got):\n%s", diff)
 			}
 			if tc.wantErr != nil {
 				return
@@ -287,6 +326,32 @@ func TestDo(t *testing.T) {
 			handler: func(w http.ResponseWriter, r *http.Request) {},
 			cfg:     DefaultConfig(),
 			wantErr: ErrContentDenied,
+		},
+		{
+			name: "when_path_is_forbidden_kill_returns_error",
+			req: &Request{
+				Method: "GET",
+				URI:    "/kill",
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {},
+			cfg:     DefaultConfig(),
+			wantErr: ErrContentDenied,
+		},
+		{
+			name: "when_path_contains_skill_is_allowed",
+			req: &Request{
+				Method: "GET",
+				URI:    "/skill.md",
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "skill content")
+			},
+			cfg: DefaultConfig(),
+			want: &Response{
+				StatusCode: 200,
+				FinalURI:   "/skill.md",
+				Content:    "skill content",
+			},
 		},
 		{
 			name: "when_too_many_requests_returns_error",
@@ -564,12 +629,19 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 	}))
 	defer externalServer.Close()
 
+	forbiddenVisited := false
 	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/redirect_in_scope":
 			http.Redirect(w, r, "/destination", http.StatusFound)
 		case "/redirect_out_of_scope":
 			http.Redirect(w, r, externalServer.URL+"/external", http.StatusFound)
+		case "/redirect_to_forbidden":
+			http.Redirect(w, r, "/kill", http.StatusFound)
+		case "/kill":
+			forbiddenVisited = true
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("killed"))
 		case "/destination":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("in-scope destination"))
@@ -599,6 +671,7 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 		wantStatus          int32
 		wantFinalURI        string
 		wantContent         string
+		wantLocation        string
 		wantExternalVisited bool
 	}{
 		{
@@ -621,6 +694,19 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 			wantStatus:          http.StatusFound,
 			wantFinalURI:        "/redirect_out_of_scope",
 			wantContent:         "",
+			wantLocation:        externalServer.URL + "/external",
+			wantExternalVisited: false,
+		},
+		{
+			name: "when_redirect_to_forbidden_path_stops_and_returns_redirect_response",
+			req: &Request{
+				Method: "GET",
+				URI:    "/redirect_to_forbidden",
+			},
+			wantStatus:          http.StatusFound,
+			wantFinalURI:        "/redirect_to_forbidden",
+			wantContent:         "",
+			wantLocation:        "/kill",
 			wantExternalVisited: false,
 		},
 	}
@@ -628,6 +714,7 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			externalVisited = false
+			forbiddenVisited = false
 
 			resp, err := toolInstance.Do(nil, tt.req)
 			if err != nil {
@@ -650,9 +737,13 @@ func TestTool_Do_RedirectOutOfScope(t *testing.T) {
 				t.Errorf("externalVisited = %v, want %v", externalVisited, tt.wantExternalVisited)
 			}
 
-			if tt.wantStatus == http.StatusFound {
-				if gotLoc := resp.Headers["Location"]; gotLoc != externalServer.URL+"/external" {
-					t.Errorf("Do() Headers[Location] = %q, want %q", gotLoc, externalServer.URL+"/external")
+			if forbiddenVisited {
+				t.Errorf("forbiddenVisited = true, want false")
+			}
+
+			if tt.wantLocation != "" {
+				if gotLoc := resp.Headers["Location"]; gotLoc != tt.wantLocation {
+					t.Errorf("Do() Headers[Location] = %q, want %q", gotLoc, tt.wantLocation)
 				}
 			}
 		})

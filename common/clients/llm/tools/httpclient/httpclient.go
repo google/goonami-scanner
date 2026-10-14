@@ -100,10 +100,7 @@ func DefaultConfig() *hccpb.HttpClientConfig {
 		AllowedMethods:        []string{"GET", "POST"},
 		MaxRequestsPerService: proto.Int32(50),
 		MaxAnswerSizeBytes:    proto.Int32(1 * 1024 * 1024), // 1 MB
-		ForbiddenPaths: []string{
-			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
-			".*kill.*", ".*quit.*", ".*remove.*",
-		},
+		ForbiddenPaths:        goohttp.DefaultForbiddenPathPatterns(),
 	}.Build()
 }
 
@@ -125,25 +122,29 @@ func New(config *config.Config, service *nspb.NetworkService) (tool.Tool, error)
 func newTool(config *config.Config, service *nspb.NetworkService) (*Tool, error) {
 	cfg := DefaultConfig()
 	if config.ClientsConfig().GetLlm().GetTools().HasHttpClientConfig() {
-		proto.Merge(cfg, config.ClientsConfig().GetLlm().GetTools().GetHttpClientConfig())
+		userCfg := config.ClientsConfig().GetLlm().GetTools().GetHttpClientConfig()
+		if len(userCfg.GetAllowedMethods()) > 0 {
+			cfg.SetAllowedMethods(nil)
+		}
+		if len(userCfg.GetForbiddenPaths()) > 0 {
+			cfg.SetForbiddenPaths(nil)
+		}
+		proto.Merge(cfg, userCfg)
 	}
 
 	var badPaths []*regexp.Regexp
-	for _, path := range cfg.GetForbiddenPaths() {
-		badPaths = append(badPaths, regexp.MustCompile(path))
+	for _, pattern := range cfg.GetForbiddenPaths() {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+		badPaths = append(badPaths, re)
 	}
 
-	opts := &goohttp.ClientOptions{StoreCookies: true}
-	if err := opts.LoadAuthorities(service); err != nil {
-		return nil, err
+	statelessOpts := &goohttp.ClientOptions{
+		StoreCookies:   false,
+		ForbiddenPaths: badPaths,
 	}
-
-	client, err := goohttp.NewClient(config, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	statelessOpts := &goohttp.ClientOptions{StoreCookies: false}
 	if err := statelessOpts.LoadAuthorities(service); err != nil {
 		return nil, err
 	}
@@ -153,14 +154,17 @@ func newTool(config *config.Config, service *nspb.NetworkService) (*Tool, error)
 		return nil, err
 	}
 
-	return &Tool{
+	t := &Tool{
 		config:          cfg,
 		coreConfig:      config,
 		service:         service,
 		badPaths:        badPaths,
-		client:          client,
 		statelessClient: statelessClient,
-	}, nil
+	}
+	if err := t.clearSession(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
 func (h *Tool) increaseRequestCount() {
@@ -176,7 +180,10 @@ func (h *Tool) numberOfRequests() int {
 }
 
 func (h *Tool) clearSession() error {
-	opts := &goohttp.ClientOptions{StoreCookies: true}
+	opts := &goohttp.ClientOptions{
+		StoreCookies:   true,
+		ForbiddenPaths: h.badPaths,
+	}
 	if err := opts.LoadAuthorities(h.service); err != nil {
 		return err
 	}
@@ -214,7 +221,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	uri := toolreq.URI
 	ctx := log.ContextForModuleAndService(baseCtx, "clients/llm/httpclient", h.service)
 
-	req, err := h.prepareRequest(ctx, toolreq, uri)
+	req, err := h.prepareRequest(ctx, toolreq)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +259,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	}, nil
 }
 
-func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string) (*http.Request, error) {
+func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request) (*http.Request, error) {
 	uri := toolreq.URI
 
 	if !strings.HasPrefix(uri, "/") || strings.Contains(uri, "://") || strings.Contains(uri, ":") {
@@ -272,13 +279,6 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 		return nil, ErrTooManyRequests
 	}
 
-	for _, path := range h.badPaths {
-		if path.MatchString(uri) {
-			log.DebugContextf(ctx, log.DebugLevelRequest, "%q denied by regexp: %q", toolreq.Method, uri)
-			return nil, ErrContentDenied
-		}
-	}
-
 	webroot, err := netservice.BuildWebRoot(h.service)
 	if err != nil {
 		return nil, err
@@ -293,6 +293,11 @@ func (h *Tool) prepareRequest(ctx context.Context, toolreq *Request, path string
 	req, err := http.NewRequestWithContext(ctx, toolreq.Method, url, body)
 	if err != nil {
 		return nil, err
+	}
+
+	if goohttp.IsURLPathForbidden(req.URL, h.badPaths) {
+		log.DebugContextf(ctx, log.DebugLevelRequest, "%q denied by regexp: %q", toolreq.Method, uri)
+		return nil, ErrContentDenied
 	}
 
 	for _, header := range toolreq.Headers {

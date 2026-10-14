@@ -637,3 +637,79 @@ func TestDo_AllowedAuthorities(t *testing.T) {
 		})
 	}
 }
+
+func TestDo_ForbiddenPathsRedirect(t *testing.T) {
+	forbiddenVisited := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/redirect_to_kill":
+			http.Redirect(w, r, "/kill", http.StatusFound)
+		case "/redirect_to_skill":
+			http.Redirect(w, r, "/skill.md", http.StatusFound)
+		case "/kill":
+			forbiddenVisited = true
+			w.WriteHeader(http.StatusOK)
+		case "/skill.md":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("skill doc"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+
+	cfg := config.FromProto(cpb.Config_builder{
+		Globalcfg: cpb.GlobalConfig_builder{
+			Performance: cpb.GlobalConfig_Performance_builder{
+				MaxHttpRequestsPerSecond: proto.Int32(0),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	c, err := New(cfg, goohttp.DefaultClientOptions())
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+
+	tests := []struct {
+		name                 string
+		path                 string
+		wantStatus           int
+		wantForbiddenVisited bool
+	}{
+		{
+			name:                 "when_redirect_targets_forbidden_path_stops_and_returns_redirect_response",
+			path:                 "/redirect_to_kill",
+			wantStatus:           http.StatusFound,
+			wantForbiddenVisited: false,
+		},
+		{
+			name:                 "when_redirect_targets_allowed_path_follows_redirect",
+			path:                 "/redirect_to_skill",
+			wantStatus:           http.StatusOK,
+			wantForbiddenVisited: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			forbiddenVisited = false
+			req, err := http.NewRequest("GET", ts.URL+tc.path, nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest() failed: %v", err)
+			}
+			resp, err := c.Do(req)
+			if err != nil {
+				t.Fatalf("Do() unexpected error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("Do() status = %d, want %d", resp.StatusCode, tc.wantStatus)
+			}
+			if forbiddenVisited != tc.wantForbiddenVisited {
+				t.Errorf("forbiddenVisited = %v, want %v", forbiddenVisited, tc.wantForbiddenVisited)
+			}
+		})
+	}
+}

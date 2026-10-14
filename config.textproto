@@ -82,17 +82,6 @@ clients: {
     max_page_size_bytes: 5242880  # 5 MB
     max_depth: 1
     max_requests: 200
-
-    # ensure the crawler does not perform any destructive actions.
-    exclusions: [
-      ".*abort.*",
-      ".*delete.*",
-      ".*drop.*",
-      ".*huphuphup.*",
-      ".*kill.*",
-      ".*quit.*",
-      ".*remove.*"
-    ]
   }
 
   llm: {
@@ -109,15 +98,6 @@ clients: {
         allowed_methods: ["GET", "POST"]
         max_requests_per_service: 50
         max_answer_size_bytes: 1048576  # 1 MB
-        forbidden_paths: [
-          ".*abort.*",
-          ".*delete.*",
-          ".*drop.*",
-          ".*huphuphup.*",
-          ".*kill.*",
-          ".*quit.*",
-          ".*remove.*"
-        ]
       }
     }
   }

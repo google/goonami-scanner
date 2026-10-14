@@ -101,3 +101,55 @@ func TestOptions_IsAuthorityAllowed(t *testing.T) {
 		})
 	}
 }
+
+func TestOptions_IsRedirectAllowed(t *testing.T) {
+	tests := []struct {
+		name      string
+		opts      *ClientOptions
+		targetURL string
+		want      bool
+	}{
+		{
+			name:      "when_options_nil_returns_true",
+			opts:      nil,
+			targetURL: "http://example.com/kill",
+			want:      true,
+		},
+		{
+			name:      "when_disable_follow_redirects_returns_false",
+			opts:      &ClientOptions{DisableFollowRedirects: true},
+			targetURL: "http://example.com/index.html",
+			want:      false,
+		},
+		{
+			name:      "when_authority_not_allowed_returns_false",
+			opts:      &ClientOptions{AllowedAuthorities: []string{"example.com:80"}},
+			targetURL: "http://other.com:80/index.html",
+			want:      false,
+		},
+		{
+			name:      "when_path_forbidden_returns_false",
+			opts:      DefaultClientOptions(),
+			targetURL: "http://example.com/kill",
+			want:      false,
+		},
+		{
+			name:      "when_redirect_allowed_returns_true",
+			opts:      DefaultClientOptions(),
+			targetURL: "http://example.com/skill.md",
+			want:      true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			u, err := url.Parse(tc.targetURL)
+			if err != nil {
+				t.Fatalf("url.Parse(%q) failed: %v", tc.targetURL, err)
+			}
+			if got := tc.opts.IsRedirectAllowed(u); got != tc.want {
+				t.Errorf("IsRedirectAllowed(%q) = %v, want %v", tc.targetURL, got, tc.want)
+			}
+		})
+	}
+}

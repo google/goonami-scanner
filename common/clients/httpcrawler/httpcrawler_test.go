@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/clients/httpcrawler/scope"
 	"github.com/google/goonami-scanner/core/config"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
@@ -68,15 +69,46 @@ func TestDefaultClientConfig(t *testing.T) {
 		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024),
 		MaxDepth:         proto.Int32(1),
 		MaxRequests:      proto.Int32(100),
-		Exclusions: []string{
-			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
-			".*kill.*", ".*quit.*", ".*remove.*",
-		},
-		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+		Exclusions:       goohttp.DefaultForbiddenPathPatterns(),
+		ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 	}.Build()
 	got := DefaultClientConfig()
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("DefaultClientConfig() returned diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSimpleCrawler_IsExcluded(t *testing.T) {
+	sc := NewSimpleCrawler(t.Context(), testConfig())
+
+	tests := []struct {
+		name         string
+		path         string
+		wantExcluded bool
+	}{
+		{
+			name:         "when_kill_path_excluded",
+			path:         "http://example.com/kill",
+			wantExcluded: true,
+		},
+		{
+			name:         "when_skill_md_allowed",
+			path:         "http://example.com/skill.md",
+			wantExcluded: false,
+		},
+		{
+			name:         "when_malformed_url_not_excluded",
+			path:         "://invalid",
+			wantExcluded: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sc.isExcluded(tc.path); got != tc.wantExcluded {
+				t.Errorf("isExcluded(%q) = %v, want %v", tc.path, got, tc.wantExcluded)
+			}
+		})
 	}
 }
 

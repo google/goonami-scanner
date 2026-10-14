@@ -85,11 +85,7 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 
 	maxRedirects := int(cfg.GlobalConfig().GetPerformance().GetMaxHttpRedirects())
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		if options.DisableFollowRedirects {
-			return http.ErrUseLastResponse
-		}
-
-		if !options.IsAuthorityAllowed(req.URL) {
+		if !options.IsRedirectAllowed(req.URL) {
 			return http.ErrUseLastResponse
 		}
 

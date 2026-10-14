@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sync"
 
@@ -64,11 +65,8 @@ func DefaultClientConfig() *cpb.HttpCrawlerClientConfig {
 		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024), // 1 MB
 		MaxDepth:         proto.Int32(1),
 		MaxRequests:      proto.Int32(100),
-		Exclusions: []string{
-			".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
-			".*kill.*", ".*quit.*", ".*remove.*",
-		},
-		ScopePolicy: cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+		Exclusions:       goohttp.DefaultForbiddenPathPatterns(),
+		ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 	}.Build()
 }
 
@@ -97,7 +95,11 @@ func NewSimpleCrawler(ctx context.Context, config *config.Config) *SimpleCrawler
 	ctx = log.ContextForModule(ctx, "client/httpcrawler")
 	clientConfig := DefaultClientConfig()
 	if config.ClientsConfig().HasHttpCrawler() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetHttpCrawler())
+		userCfg := config.ClientsConfig().GetHttpCrawler()
+		if len(userCfg.GetExclusions()) > 0 {
+			clientConfig.SetExclusions(nil)
+		}
+		proto.Merge(clientConfig, userCfg)
 	}
 
 	if clientConfig.GetMaxPageSizeBytes() == 0 {
@@ -245,11 +247,6 @@ func (c *SimpleCrawler) queueForCrawl(ctx context.Context, url string, depth int
 		return nil
 	}
 
-	if c.isExcluded(url) {
-		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (excluded): %q", url)
-		return nil
-	}
-
 	inScope, err := scope.MatchAnyScope(url, run.scopes)
 	if err != nil {
 		return err
@@ -257,6 +254,11 @@ func (c *SimpleCrawler) queueForCrawl(ctx context.Context, url string, depth int
 
 	if !inScope {
 		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (scope): %q", url)
+		return nil
+	}
+
+	if c.isExcluded(url) {
+		log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (excluded): %q", url)
 		return nil
 	}
 
@@ -270,14 +272,12 @@ func (c *SimpleCrawler) queueForCrawl(ctx context.Context, url string, depth int
 	return nil
 }
 
-func (c *SimpleCrawler) isExcluded(path string) bool {
-	for _, regexp := range c.exclusionRegexp {
-		if regexp.MatchString(path) {
-			return true
-		}
+func (c *SimpleCrawler) isExcluded(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
 	}
-
-	return false
+	return goohttp.IsURLPathForbidden(u, c.exclusionRegexp)
 }
 
 func (c *SimpleCrawler) checkAndIncreaseRequestCount() bool {
