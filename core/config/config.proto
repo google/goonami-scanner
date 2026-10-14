@@ -29,6 +29,7 @@ option java_package = "com.google.goonami.proto";
 import "common/clients/httpcrawler/httpcrawler_client_config.proto";
 import "common/clients/llm/llm_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
+import "common/clients/sshclient/ssh_client_config.proto";
 import "tools/callbackserver/callbackserver_config.proto";
 
 // portscan config
@@ -138,6 +139,7 @@ message ClientsConfig {
   goonami.proto.configs.clients.HttpCrawlerClientConfig http_crawler = 2;
   goonami.proto.configs.clients.LlmClientConfig llm = 3;
   goonami.callbackserver.CallbackserverConfig callback_server = 4;
+  goonami.proto.configs.clients.SSHClientConfig ssh = 5;
 }
 
 // PluginsConfig contains configuration for plugin.
