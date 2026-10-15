@@ -296,43 +296,6 @@ func TestRequest_Do_EmptyResponseMatching(t *testing.T) {
 	}
 }
 
-func TestIsLoginFormPersisting(t *testing.T) {
-	tests := []struct {
-		name string
-		body string
-		want bool
-	}{
-		{
-			name: "when_password_input_present_returns_true",
-			body: `<html><body><form><input type="text" name="user"><input type="password" name="pass"></form></body></html>`,
-			want: true,
-		},
-		{
-			name: "when_password_input_case_insensitive_returns_true",
-			body: `<input name="pwd" TYPE='PASSWORD' class="form-control">`,
-			want: true,
-		},
-		{
-			name: "when_no_password_input_returns_false",
-			body: `<html><body><h1>Welcome to Dashboard</h1><p>Logged in successfully</p></body></html>`,
-			want: false,
-		},
-		{
-			name: "when_json_response_returns_false",
-			body: `{"token":"jwt.xyz.123","status":"ok","user":"admin"}`,
-			want: false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := isLoginFormPersisting([]byte(tc.body)); got != tc.want {
-				t.Errorf("isLoginFormPersisting() = %v, want %v", got, tc.want)
-			}
-		})
-	}
-}
-
 func TestRequest_BuildHTTPRequest(t *testing.T) {
 	host := "127.0.0.1"
 	port := 8080

@@ -101,13 +101,6 @@ func (r *request) isFormURLEncoded() bool {
 	return false
 }
 
-var passwordInputRegex = regexp.MustCompile(`(?i)<input[^>]+type\s*=\s*["']?password["']?`)
-
-// isLoginFormPersisting reports whether body contains an active password input field.
-func isLoginFormPersisting(body []byte) bool {
-	return passwordInputRegex.Match(body)
-}
-
 // response represents the result of executing an HTTP request in a strategy.
 type response struct {
 	// Extraction is the substring matched by the ExtractionRegex capturing group,

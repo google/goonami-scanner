@@ -305,6 +305,9 @@ func TestDetect(t *testing.T) {
 				}
 				return fakellmagent.NewWithSimpleAnswer(agentResponse), nil
 			}
+			module.judgeBuilder = func(ctx context.Context, config *config.Config) (agent.Agent, error) {
+				return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
+			}
 
 			svc := service
 			if tc.customService != nil {
@@ -456,6 +459,9 @@ func TestDetect_CacheHit(t *testing.T) {
 		t.Fatal("agent builder should not be called when cache hits")
 		return nil, errors.New("should not be called")
 	}
+	module.judgeBuilder = func(ctx context.Context, config *config.Config) (agent.Agent, error) {
+		return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
+	}
 
 	reports, err := module.Detect(t.Context(), service)
 	if err != nil {
@@ -515,6 +521,9 @@ func TestDetect_CacheMiss_ThenWritesBack(t *testing.T) {
 	module := m.(*Module)
 	module.agentBuilder = func(ctx context.Context, config *config.Config, service *nspb.NetworkService) (agent.Agent, error) {
 		return fakellmagent.NewWithSimpleAnswer(string(strategyJSON)), nil
+	}
+	module.judgeBuilder = func(ctx context.Context, config *config.Config) (agent.Agent, error) {
+		return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
 	}
 
 	reports, err := module.Detect(t.Context(), service)
@@ -580,6 +589,9 @@ func TestDetect_NoCachePath_SkipsCache(t *testing.T) {
 	module.agentBuilder = func(ctx context.Context, config *config.Config, service *nspb.NetworkService) (agent.Agent, error) {
 		agentCalled = true
 		return fakellmagent.NewWithSimpleAnswer(string(strategyJSON)), nil
+	}
+	module.judgeBuilder = func(ctx context.Context, config *config.Config) (agent.Agent, error) {
+		return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
 	}
 
 	reports, err := module.Detect(t.Context(), service)

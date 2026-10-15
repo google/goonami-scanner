@@ -163,7 +163,7 @@ func isAuthFailure(resp *response) bool {
 	return resp.Extraction != nil || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden
 }
 
-// validateCredential tests a single credential and confirms it via negative validation.
+// validateCredential tests a single credential and confirms it via negative validation and the LLM judge.
 func (a *authStrategy) validateCredential(ctx context.Context, cfg *config.Config, service *nspb.NetworkService, cred *credential) (bool, error) {
 	resp, err := a.login(ctx, cfg, service, cred)
 	if err != nil {
@@ -188,10 +188,7 @@ func (a *authStrategy) validateCredential(ctx context.Context, cfg *config.Confi
 		return false, nil
 	}
 
-	if isLoginFormPersisting(resp.Body) || resp.StatusCode >= 400 {
-		return a.judgeCredential(ctx, cfg, cred, invalidCred, resp, invalidCredResp)
-	}
-	return true, nil
+	return a.judgeCredential(ctx, cfg, cred, invalidCred, resp, invalidCredResp)
 }
 
 func (a *authStrategy) judgeCredential(ctx context.Context, cfg *config.Config, cred, invalidCred *credential, candidate, baseline *response) (bool, error) {

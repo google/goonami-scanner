@@ -57,6 +57,7 @@ type Module struct {
 	*module.BaseModule
 	coreConfig   *config.Config
 	agentBuilder func(context.Context, *config.Config, *nspb.NetworkService) (agent.Agent, error)
+	judgeBuilder func(context.Context, *config.Config) (agent.Agent, error)
 	index        *cache.Index
 }
 
@@ -76,6 +77,7 @@ func New(ctx context.Context, config *config.Config) (module.VulnDetector, error
 		BaseModule:   module.NewBaseModule(moduleName),
 		coreConfig:   config,
 		agentBuilder: buildAgent,
+		judgeBuilder: buildJudgeAgent,
 		index:        cache.Load(ctx, cachePath),
 	}, nil
 }
@@ -95,6 +97,7 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
+	strategy.judgeBuilder = m.judgeBuilder
 	finding, err := strategy.bruteforce(ctx, m.coreConfig, service)
 	if err != nil {
 		return nil, err

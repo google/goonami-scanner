@@ -17,6 +17,7 @@
 package adkweakcreds
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"net"
@@ -424,16 +425,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				return
 			}
 			w.Write([]byte("error: invalid credentials"))
-		case "/login_form_persisting":
-			user := r.FormValue("user")
-			pass := r.FormValue("pass")
-
-			if user == "admin" && pass == "password" {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`<html><body><form><input type="text" name="user"><input type="password" name="pass"></form></body></html>`))
-			} else {
-				w.Write([]byte("error: invalid credentials"))
-			}
 		case "/login_cookie_redirect":
 			user := r.FormValue("user")
 			pass := r.FormValue("pass")
@@ -446,9 +437,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 		case "/dashboard_cookie_protected":
 			cookie, err := r.Cookie("auth_token")
 			if err != nil || cookie.Value != "valid_session" {
-				// Re-render login form if cookie is missing on redirect
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`<html><body><form><input type="password" name="pass"></form></body></html>`))
+				w.Write([]byte("error: missing session cookie"))
 				return
 			}
 			w.Write([]byte("<html><body>Welcome to Dashboard</body></html>"))
@@ -479,13 +468,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			w.WriteHeader(http.StatusTooManyRequests)
 		case "/login_accepts_any_password":
 			w.Write([]byte("welcome"))
-		case "/login_not_found":
-			if r.FormValue("pass") == "password" {
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte("not found"))
-				return
-			}
-			w.Write([]byte("error: invalid credentials"))
 		}
 	})
 
@@ -680,10 +662,8 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					},
 				},
 			},
-			cred: &credential{Username: "admin", Password: "password"},
-			// The judge would confirm the credential if the status code were ignored.
-			judgeAnswer: `{"authenticated": true}`,
-			wantValid:   false,
+			cred:      &credential{Username: "admin", Password: "password"},
+			wantValid: false,
 		},
 		{
 			name: "when_form_auth_with_status_403_returns_failure",
@@ -701,19 +681,17 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					},
 				},
 			},
-			cred: &credential{Username: "admin", Password: "password"},
-			// The judge would confirm the credential if the status code were ignored.
-			judgeAnswer: `{"authenticated": true}`,
-			wantValid:   false,
+			cred:      &credential{Username: "admin", Password: "password"},
+			wantValid: false,
 		},
 		{
-			name: "when_form_persists_with_status_200_and_judge_rejects_returns_false",
+			name: "when_status_200_and_judge_rejects_returns_false",
 			auth: &authStrategy{
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
 						Method:          "POST",
-						Path:            "/login_form_persisting",
+						Path:            "/login",
 						Body:            "user=[[username]]&pass=[[password]]",
 						ExtractionRegex: "error: (.*)",
 						Headers: []*header{
@@ -727,13 +705,13 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			wantValid:   false,
 		},
 		{
-			name: "when_form_persists_and_judge_errors_returns_error",
+			name: "when_judge_errors_returns_error",
 			auth: &authStrategy{
 				SupportsAuthentication: true,
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
 						Method:          "POST",
-						Path:            "/login_form_persisting",
+						Path:            "/login",
 						Body:            "user=[[username]]&pass=[[password]]",
 						ExtractionRegex: "error: (.*)",
 						Headers: []*header{
@@ -923,7 +901,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
 						Method:          "POST",
-						Path:            "/login_form_persisting",
+						Path:            "/login",
 						Body:            "user=[[username]]&pass=[[password]]",
 						ExtractionRegex: "error: (.*)",
 						Headers: []*header{
@@ -943,7 +921,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				AuthDetails: &authDetails{
 					LoginRequest: &request{
 						Method:          "POST",
-						Path:            "/login_form_persisting",
+						Path:            "/login",
 						Body:            "user=[[username]]&pass=[[password]]",
 						ExtractionRegex: "error: (.*)",
 						Headers: []*header{
@@ -955,29 +933,6 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			cred:        &credential{Username: "admin", Password: "password"},
 			judgeAnswer: "not json",
 			wantErr:     llm.ErrMaxAttemptsReached,
-		},
-		{
-			name: "when_status_404_and_judge_confirms_returns_true",
-			auth: &authStrategy{
-				SupportsAuthentication: true,
-				AuthDetails: &authDetails{
-					LoginRequest: &request{
-						Method:          "POST",
-						Path:            "/login_not_found",
-						Body:            "user=[[username]]&pass=[[password]]",
-						ExtractionRegex: "error: (.*)",
-						Headers: []*header{
-							{Name: "Content-Type", Value: "application/x-www-form-urlencoded"},
-						},
-					},
-				},
-			},
-			cred:        &credential{Username: "admin", Password: "password"},
-			judgeAnswer: `{"authenticated": true}`,
-			wantJudgePromptSubs: []string{
-				`--- Candidate Response (HTTP 404) ---`,
-			},
-			wantValid: true,
 		},
 	}
 
@@ -993,7 +948,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			}
 
 			var gotJudgePrompt string
-			if tc.judgeAnswer != "" || tc.judgeErr != nil || tc.judgeBuildErr != nil {
+			if tc.judgeAnswer != "" || tc.judgeErr != nil || tc.judgeBuildErr != nil || tc.wantValid {
 				tc.auth.judgeBuilder = func(ctx context.Context, cfg *config.Config) (agent.Agent, error) {
 					if tc.judgeBuildErr != nil {
 						return nil, tc.judgeBuildErr
@@ -1001,7 +956,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 					if tc.judgeErr != nil {
 						return fakellmagent.NewWithError(tc.judgeErr), nil
 					}
-					return fakellmagent.NewWithSimpleAnswer(tc.judgeAnswer).WithOnPrompt(func(prompt string) {
+					return fakellmagent.NewWithSimpleAnswer(cmp.Or(tc.judgeAnswer, `{"authenticated": true}`)).WithOnPrompt(func(prompt string) {
 						gotJudgePrompt = prompt
 					}), nil
 				}
@@ -1039,8 +994,7 @@ func TestAuthStrategy_ValidateCredential_DefaultJudgeWithoutCredentials(t *testi
 	}
 	cfg, service := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("pass") == "password" {
-			// The login form persists, which requires the judge.
-			w.Write([]byte(`<html><body><form><input type="password" name="pass"></form></body></html>`))
+			w.Write([]byte("welcome"))
 			return
 		}
 		w.Write([]byte("error: invalid credentials"))
@@ -1713,6 +1667,9 @@ func TestAuthStrategy_Bruteforce(t *testing.T) {
 				if err := tc.auth.compileAndValidate(); err != nil {
 					t.Fatalf("compileAndValidate failed: %v", err)
 				}
+			}
+			tc.auth.judgeBuilder = func(ctx context.Context, cfg *config.Config) (agent.Agent, error) {
+				return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
 			}
 
 			testCtx := t.Context()

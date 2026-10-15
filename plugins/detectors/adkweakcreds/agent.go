@@ -193,7 +193,7 @@ func buildAgent(ctx context.Context, config *config.Config, service *nspb.Networ
 	return ag, nil
 }
 
-// buildJudgeAgent initializes and returns the stateless LLM agent used to adjudicate ambiguous login responses.
+// buildJudgeAgent initializes and returns the stateless LLM agent used to adjudicate candidate login responses.
 func buildJudgeAgent(ctx context.Context, config *config.Config) (agent.Agent, error) {
 	modelName := llm.GetModel(config, judgeModelTier)
 	model, err := gemini.NewModel(ctx, modelName, clientConfig(config))
