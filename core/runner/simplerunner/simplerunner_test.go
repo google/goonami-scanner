@@ -243,6 +243,7 @@ func TestPortScanStep(t *testing.T) {
 	tests := []struct {
 		name          string
 		portScanner   module.PortScanner
+		portsToScan   []uint32
 		target        string
 		wantErr       error
 		wantReport    *rpb.PortScanningReport
@@ -254,6 +255,78 @@ func TestPortScanStep(t *testing.T) {
 			target:        "1.1.1.1",
 			wantErr:       ErrNoPortScanner,
 			wantReport:    nil,
+			wantScanCalls: 0,
+		},
+		{
+			name:        "when_port_scanner_is_nil_and_ports_to_scan_is_set_for_ip_returns_static_report",
+			portScanner: nil,
+			portsToScan: []uint32{80},
+			target:      "1.1.1.1",
+			wantErr:     nil,
+			wantReport: rpb.PortScanningReport_builder{
+				TargetInfo: rpb.TargetInfo_builder{
+					NetworkEndpoints: []*npb.NetworkEndpoint{
+						npb.NetworkEndpoint_builder{
+							Type: npb.NetworkEndpoint_IP,
+							IpAddress: npb.IpAddress_builder{
+								AddressFamily: npb.AddressFamily_IPV4,
+								Address:       "1.1.1.1",
+							}.Build(),
+						}.Build(),
+					},
+				}.Build(),
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{
+						NetworkEndpoint: npb.NetworkEndpoint_builder{
+							Type: npb.NetworkEndpoint_IP_PORT,
+							IpAddress: npb.IpAddress_builder{
+								AddressFamily: npb.AddressFamily_IPV4,
+								Address:       "1.1.1.1",
+							}.Build(),
+							Port: npb.Port_builder{
+								PortNumber: 80,
+							}.Build(),
+						}.Build(),
+						TransportProtocol: npb.TransportProtocol_TCP,
+						ServiceName:       "unknown",
+					}.Build(),
+				},
+			}.Build(),
+			wantScanCalls: 0,
+		},
+		{
+			name:        "when_port_scanner_is_nil_and_ports_to_scan_is_set_for_hostname_returns_static_report",
+			portScanner: nil,
+			portsToScan: []uint32{443},
+			target:      "example.com",
+			wantErr:     nil,
+			wantReport: rpb.PortScanningReport_builder{
+				TargetInfo: rpb.TargetInfo_builder{
+					NetworkEndpoints: []*npb.NetworkEndpoint{
+						npb.NetworkEndpoint_builder{
+							Type: npb.NetworkEndpoint_HOSTNAME,
+							Hostname: npb.Hostname_builder{
+								Name: "example.com",
+							}.Build(),
+						}.Build(),
+					},
+				}.Build(),
+				NetworkServices: []*nspb.NetworkService{
+					nspb.NetworkService_builder{
+						NetworkEndpoint: npb.NetworkEndpoint_builder{
+							Type: npb.NetworkEndpoint_HOSTNAME_PORT,
+							Hostname: npb.Hostname_builder{
+								Name: "example.com",
+							}.Build(),
+							Port: npb.Port_builder{
+								PortNumber: 443,
+							}.Build(),
+						}.Build(),
+						TransportProtocol: npb.TransportProtocol_TCP,
+						ServiceName:       "unknown",
+					}.Build(),
+				},
+			}.Build(),
 			wantScanCalls: 0,
 		},
 		{
@@ -276,7 +349,12 @@ func TestPortScanStep(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := New(config.Default())
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					PortsToScan: tc.portsToScan,
+				}.Build(),
+			}.Build())
+			r, err := New(cfg)
 			if err != nil {
 				t.Fatalf("New() returned error %v, want nil", err)
 			}

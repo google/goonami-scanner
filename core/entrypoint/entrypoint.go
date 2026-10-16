@@ -90,12 +90,16 @@ func New(ctx context.Context, options *Options) (*Entrypoint, error) {
 	log.InfoContextf(ctx, "verifying HTTP client %q", clientName)
 	_ = goohttp.SharedClient(options.Config)
 
-	portScan, err := module.GetPortScanner(ctx, options.Config)
-	if err != nil {
-		return nil, err
+	if options.Config.WorkflowConfig().GetPortscan() != "" {
+		portScan, err := module.GetPortScanner(ctx, options.Config)
+		if err != nil {
+			return nil, err
+		}
+		log.InfoContextf(ctx, "registering port scanner: %s", portScan.Name())
+		r.RegisterPortScanner(ctx, portScan)
+	} else {
+		log.InfoContextf(ctx, "no port scanner configured, skipping port scanner registration")
 	}
-	log.InfoContextf(ctx, "registering port scanner: %s", portScan.Name())
-	r.RegisterPortScanner(ctx, portScan)
 
 	activeFPs, err := module.GetFingerprinters(ctx, options.Config)
 	if err != nil {
