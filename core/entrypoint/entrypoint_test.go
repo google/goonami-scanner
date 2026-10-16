@@ -306,6 +306,22 @@ func TestNewWithWorkflowConfiguration(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "when_workflow_config_has_no_port_scanner_skips_registration",
+			setupReg: func() {
+				module.RegisterFingerprinter("fp1", fakemodule.InitFakeFingerprinter("fp1", nil, fakemodule.FakeFingerprintFnDoNothing))
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetector("d1", nil, fakemodule.FakeDetectFnNoFindings))
+			},
+			workflowcfg: cpb.WorkflowConfiguration_builder{
+				Fingerprinters: cpb.WorkflowConfiguration_ModuleFilter_builder{
+					Require: []string{"fp1"},
+				}.Build(),
+				Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+					Require: []string{"d1"},
+				}.Build(),
+			}.Build(),
+			wantErr: false,
+		},
+		{
 			name: "when_workflow_config_has_non_existent_module_it_fails",
 			setupReg: func() {
 				module.RegisterPortScanner("ps1", fakemodule.InitFakePortScanner("ps1", nil, fakemodule.FakePortScanFnDoNothing))
@@ -346,8 +362,12 @@ func TestNewWithWorkflowConfiguration(t *testing.T) {
 				return
 			}
 
-			if runner.PortScanner() == nil || runner.PortScanner().Name() != "ps1" {
-				t.Errorf("expected ps1 port scanner, got %+v", runner.PortScanner())
+			if wantPS := tc.workflowcfg.GetPortscan(); wantPS == "" {
+				if runner.PortScanner() != nil {
+					t.Errorf("expected nil port scanner, got %+v", runner.PortScanner())
+				}
+			} else if runner.PortScanner() == nil || runner.PortScanner().Name() != wantPS {
+				t.Errorf("expected %s port scanner, got %+v", wantPS, runner.PortScanner())
 			}
 			if len(runner.Fingerprinters()) != 1 || runner.Fingerprinters()[0].Name() != "fp1" {
 				t.Errorf("expected fp1 fingerprinter, got %+v", runner.Fingerprinters())

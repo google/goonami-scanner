@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
+	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
@@ -121,15 +122,51 @@ func (r *SimpleRunner) RegisterDetector(ctx context.Context, module module.VulnD
 }
 
 // PortScanStep runs the port scanner against the given target and returns the port scanning report.
+// When no port scanner is registered, it synthesizes a report from ports_to_scan if configured.
 func (r *SimpleRunner) PortScanStep(ctx context.Context, target string) (*rpb.PortScanningReport, error) {
 	if r.portScanner == nil {
-		return nil, ErrNoPortScanner
+		ports := r.config.GlobalConfig().GetPortsToScan()
+		if len(ports) == 0 {
+			return nil, ErrNoPortScanner
+		}
+		return staticPortScan(target, ports), nil
 	}
 
 	start := time.Now()
 	report, err := r.portScanner.Scan(ctx, target)
 	recordModuleRun(ctx, r.portScanner.Name(), start, err)
 	return report, err
+}
+
+func staticPortScan(target string, ports []uint32) *rpb.PortScanningReport {
+	endpoint := netendpoint.FromString(target)
+	portType := npb.NetworkEndpoint_IP_PORT
+	if endpoint.GetType() == npb.NetworkEndpoint_HOSTNAME {
+		portType = npb.NetworkEndpoint_HOSTNAME_PORT
+	}
+
+	services := make([]*nspb.NetworkService, 0, len(ports))
+	for _, p := range ports {
+		services = append(services, nspb.NetworkService_builder{
+			NetworkEndpoint: npb.NetworkEndpoint_builder{
+				Type:      portType,
+				IpAddress: endpoint.GetIpAddress(),
+				Hostname:  endpoint.GetHostname(),
+				Port: npb.Port_builder{
+					PortNumber: p,
+				}.Build(),
+			}.Build(),
+			TransportProtocol: npb.TransportProtocol_TCP,
+			ServiceName:       "unknown",
+		}.Build())
+	}
+
+	return rpb.PortScanningReport_builder{
+		TargetInfo: rpb.TargetInfo_builder{
+			NetworkEndpoints: []*npb.NetworkEndpoint{endpoint},
+		}.Build(),
+		NetworkServices: services,
+	}.Build()
 }
 
 // recordModuleRun records one module invocation: how long it took and, if it
