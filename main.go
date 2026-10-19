@@ -38,6 +38,7 @@ import (
 	// port scanner plugins
 	_ "github.com/google/goonami-scanner/plugins/portscan/httpscan"
 	_ "github.com/google/goonami-scanner/plugins/portscan/nmap"
+	_ "github.com/google/goonami-scanner/plugins/portscan/noop"
 
 	// fingerprinters
 	_ "github.com/google/goonami-scanner/plugins/fingerprint/iswebservice"
