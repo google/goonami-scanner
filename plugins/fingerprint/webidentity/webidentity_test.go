@@ -565,7 +565,7 @@ func TestFingerprintWithWrites(t *testing.T) {
 			_, _, service := serverInfo(t, server)
 			registry := hash.NewRegistry()
 			cfg := buildConfig(t, tc.config, workdir)
-			artifactsDir := filepath.Join(workdir, "artifacts")
+			artifactsDir := filepath.Join(workdir, "artifacts", moduleName)
 
 			mod, err := newWithRegistry(t.Context(), tc.config, cfg, registry)
 			if err != nil {

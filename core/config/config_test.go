@@ -379,3 +379,71 @@ func TestGetCacheForModule(t *testing.T) {
 		t.Errorf("Module cache directory %q not created: %v", gotPath, err)
 	}
 }
+
+func TestGetArtifactsForModule(t *testing.T) {
+	tests := []struct {
+		name       string
+		moduleName string
+		setup      func(t *testing.T, cfg *Config)
+		wantErr    error
+	}{
+		{
+			name:       "when_config_is_uninitialized_returns_error",
+			moduleName: "test_module",
+			setup:      func(t *testing.T, cfg *Config) {},
+			wantErr:    ErrUninitialized,
+		},
+		{
+			name:       "when_config_is_initialized_creates_and_returns_module_directory",
+			moduleName: "clients/llm",
+			setup: func(t *testing.T, cfg *Config) {
+				t.Helper()
+				if err := cfg.CreateDirectories(t.TempDir()); err != nil {
+					t.Fatalf("Failed to create directories: %v", err)
+				}
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "when_mkdir_fails_because_file_exists_returns_error",
+			moduleName: "conflict/sub",
+			setup: func(t *testing.T, cfg *Config) {
+				t.Helper()
+				if err := cfg.CreateDirectories(t.TempDir()); err != nil {
+					t.Fatalf("Failed to create directories: %v", err)
+				}
+				conflictFile := path.Join(cfg.ArtifactsDirectory(), "conflict")
+				if err := os.WriteFile(conflictFile, []byte(""), 0644); err != nil {
+					t.Fatalf("Failed to create conflict file: %v", err)
+				}
+			},
+			wantErr: ErrCreateDir,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := FromFile(validConfig)
+			if err != nil {
+				t.Fatalf("Failed to load config: %v", err)
+			}
+			tc.setup(t, cfg)
+
+			gotPath, err := cfg.ArtifactsForModule(tc.moduleName)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("GetArtifactsForModule() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+
+			wantPath := path.Join(cfg.ArtifactsDirectory(), tc.moduleName)
+			if gotPath != wantPath {
+				t.Errorf("GetArtifactsForModule() = %q, want %q", gotPath, wantPath)
+			}
+			if _, err := os.Stat(gotPath); err != nil {
+				t.Errorf("Module artifacts directory %q not created: %v", gotPath, err)
+			}
+		})
+	}
+}

@@ -221,6 +221,19 @@ func (c *Config) ArtifactsDirectory() string {
 	return c.artifactsDir
 }
 
+// ArtifactsForModule returns the path to the artifacts directory for the given module,
+// creating it if it does not exist.
+func (c *Config) ArtifactsForModule(moduleName string) (string, error) {
+	if c.artifactsDir == "" {
+		return "", ErrUninitialized
+	}
+	dir := path.Join(c.artifactsDir, moduleName)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", fmt.Errorf("%w %q: %v", ErrCreateDir, dir, err)
+	}
+	return dir, nil
+}
+
 // TimeoutPerRequest is a helper that returns the timeout set in the global configuration.
 func (c *Config) TimeoutPerRequest() time.Duration {
 	return time.Duration(c.GlobalConfig().GetPerformance().GetTimeoutPerRequestSeconds()) * time.Second

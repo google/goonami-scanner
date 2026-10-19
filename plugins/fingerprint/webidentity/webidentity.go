@@ -192,9 +192,14 @@ func (m *Module) processPage(ctx context.Context, run *runInfo, info *httpcrawle
 }
 
 func (m *Module) writeToArtifacts(ctx context.Context, info *httpcrawler.PageInfo, hexHash string, content []byte) (int64, error) {
+	artifactsDir, err := m.coreConfig.ArtifactsForModule(moduleName)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %v", ErrArtifactsWrite, err)
+	}
+
 	// Given that the filename is the hash of the content, we know that an existing file necessarily
 	// has the same content: so we can skip the write.
-	path := filepath.Join(m.coreConfig.ArtifactsDirectory(), hexHash)
+	path := filepath.Join(artifactsDir, hexHash)
 	if _, err := os.Stat(path); err == nil {
 		log.DebugContextf(ctx, log.DebugLevelRequest, "not writing (already exists) for: %q (%s)", info.URL, hexHash)
 		return 0, nil
