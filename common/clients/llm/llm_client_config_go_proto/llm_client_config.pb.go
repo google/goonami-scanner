@@ -44,6 +44,7 @@ type LlmClientConfig struct {
 	xxx_hidden_LiteModel                *string                `protobuf:"bytes,5,opt,name=lite_model,json=liteModel,proto3,oneof"`
 	xxx_hidden_FastModel                *string                `protobuf:"bytes,6,opt,name=fast_model,json=fastModel,proto3,oneof"`
 	xxx_hidden_ProModel                 *string                `protobuf:"bytes,7,opt,name=pro_model,json=proModel,proto3,oneof"`
+	xxx_hidden_DumpTrajectories         bool                   `protobuf:"varint,8,opt,name=dump_trajectories,json=dumpTrajectories,proto3,oneof"`
 	XXX_raceDetectHookData              protoimpl.RaceDetectHookData
 	XXX_presence                        [1]uint32
 	unknownFields                       protoimpl.UnknownFields
@@ -133,19 +134,26 @@ func (x *LlmClientConfig) GetProModel() string {
 	return ""
 }
 
+func (x *LlmClientConfig) GetDumpTrajectories() bool {
+	if x != nil {
+		return x.xxx_hidden_DumpTrajectories
+	}
+	return false
+}
+
 func (x *LlmClientConfig) SetTimeoutPerRequestSeconds(v int32) {
 	x.xxx_hidden_TimeoutPerRequestSeconds = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 8)
 }
 
 func (x *LlmClientConfig) SetMaxAttempts(v int32) {
 	x.xxx_hidden_MaxAttempts = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 8)
 }
 
 func (x *LlmClientConfig) SetRetryDelaySeconds(v int32) {
 	x.xxx_hidden_RetryDelaySeconds = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 8)
 }
 
 func (x *LlmClientConfig) SetTools(v *ToolConfig) {
@@ -154,17 +162,22 @@ func (x *LlmClientConfig) SetTools(v *ToolConfig) {
 
 func (x *LlmClientConfig) SetLiteModel(v string) {
 	x.xxx_hidden_LiteModel = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 8)
 }
 
 func (x *LlmClientConfig) SetFastModel(v string) {
 	x.xxx_hidden_FastModel = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 5, 8)
 }
 
 func (x *LlmClientConfig) SetProModel(v string) {
 	x.xxx_hidden_ProModel = &v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 7)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 6, 8)
+}
+
+func (x *LlmClientConfig) SetDumpTrajectories(v bool) {
+	x.xxx_hidden_DumpTrajectories = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 7, 8)
 }
 
 func (x *LlmClientConfig) HasTimeoutPerRequestSeconds() bool {
@@ -216,6 +229,13 @@ func (x *LlmClientConfig) HasProModel() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 6)
 }
 
+func (x *LlmClientConfig) HasDumpTrajectories() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 7)
+}
+
 func (x *LlmClientConfig) ClearTimeoutPerRequestSeconds() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 	x.xxx_hidden_TimeoutPerRequestSeconds = 0
@@ -250,6 +270,11 @@ func (x *LlmClientConfig) ClearProModel() {
 	x.xxx_hidden_ProModel = nil
 }
 
+func (x *LlmClientConfig) ClearDumpTrajectories() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 7)
+	x.xxx_hidden_DumpTrajectories = false
+}
+
 type LlmClientConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -273,6 +298,9 @@ type LlmClientConfig_builder struct {
 	// Abstraction for a pro model.
 	// Default: gemini-3.1-pro-preview
 	ProModel *string
+	// Whether to dump the agent's session trajectories to the artifacts directory.
+	// Default: false
+	DumpTrajectories *bool
 }
 
 func (b0 LlmClientConfig_builder) Build() *LlmClientConfig {
@@ -280,29 +308,33 @@ func (b0 LlmClientConfig_builder) Build() *LlmClientConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.TimeoutPerRequestSeconds != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 8)
 		x.xxx_hidden_TimeoutPerRequestSeconds = *b.TimeoutPerRequestSeconds
 	}
 	if b.MaxAttempts != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 8)
 		x.xxx_hidden_MaxAttempts = *b.MaxAttempts
 	}
 	if b.RetryDelaySeconds != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 8)
 		x.xxx_hidden_RetryDelaySeconds = *b.RetryDelaySeconds
 	}
 	x.xxx_hidden_Tools = b.Tools
 	if b.LiteModel != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 8)
 		x.xxx_hidden_LiteModel = b.LiteModel
 	}
 	if b.FastModel != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 5, 8)
 		x.xxx_hidden_FastModel = b.FastModel
 	}
 	if b.ProModel != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 7)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 6, 8)
 		x.xxx_hidden_ProModel = b.ProModel
+	}
+	if b.DumpTrajectories != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 7, 8)
+		x.xxx_hidden_DumpTrajectories = *b.DumpTrajectories
 	}
 	return m0
 }
@@ -525,7 +557,7 @@ var File_llm_client_config_proto protoreflect.FileDescriptor
 
 const file_llm_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xe1\x03\n" +
+	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xa9\x04\n" +
 	"\x0fLlmClientConfig\x12B\n" +
 	"\x1btimeout_per_request_seconds\x18\x01 \x01(\x05H\x00R\x18timeoutPerRequestSeconds\x88\x01\x01\x12&\n" +
 	"\fmax_attempts\x18\x02 \x01(\x05H\x01R\vmaxAttempts\x88\x01\x01\x123\n" +
@@ -535,7 +567,8 @@ const file_llm_client_config_proto_rawDesc = "" +
 	"lite_model\x18\x05 \x01(\tH\x04R\tliteModel\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"fast_model\x18\x06 \x01(\tH\x05R\tfastModel\x88\x01\x01\x12 \n" +
-	"\tpro_model\x18\a \x01(\tH\x06R\bproModel\x88\x01\x01B\x1e\n" +
+	"\tpro_model\x18\a \x01(\tH\x06R\bproModel\x88\x01\x01\x120\n" +
+	"\x11dump_trajectories\x18\b \x01(\bH\aR\x10dumpTrajectories\x88\x01\x01B\x1e\n" +
 	"\x1c_timeout_per_request_secondsB\x0f\n" +
 	"\r_max_attemptsB\x16\n" +
 	"\x14_retry_delay_secondsB\b\n" +
@@ -543,7 +576,8 @@ const file_llm_client_config_proto_rawDesc = "" +
 	"\v_lite_modelB\r\n" +
 	"\v_fast_modelB\f\n" +
 	"\n" +
-	"_pro_model\"\x87\x01\n" +
+	"_pro_modelB\x14\n" +
+	"\x12_dump_trajectories\"\x87\x01\n" +
 	"\n" +
 	"ToolConfig\x12b\n" +
 	"\x12http_client_config\x18\x01 \x01(\v2/.goonami.proto.configs.clients.HttpClientConfigH\x00R\x10httpClientConfig\x88\x01\x01B\x15\n" +

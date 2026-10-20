@@ -19,8 +19,13 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -96,6 +101,7 @@ func DefaultConfig() *lccpb.LlmClientConfig {
 		LiteModel:                proto.String("gemini-3.5-flash-lite"),
 		FastModel:                proto.String("gemini-3.6-flash"),
 		ProModel:                 proto.String("gemini-3.1-pro-preview"),
+		DumpTrajectories:         proto.Bool(false),
 	}.Build()
 }
 
@@ -275,6 +281,7 @@ func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.C
 		}
 		sessionID = id
 	}
+	defer c.dumpSession(ctx, sessionID)
 
 	r, err := runner.New(runner.Config{
 		Agent:          c.ag,
@@ -352,5 +359,59 @@ func feedbackContent(err error) *genai.Content {
 		Parts: []*genai.Part{{
 			Text: fmt.Sprintf("Verification of your previous response failed:\n%v\n\nPlease correct the issues and provide an updated response.", err),
 		}},
+	}
+}
+
+type sessionDump struct {
+	ID        string           `json:"id"`
+	AppName   string           `json:"appName"`
+	UserID    string           `json:"userId"`
+	UpdatedAt time.Time        `json:"lastUpdateTime"`
+	State     map[string]any   `json:"state,omitempty"`
+	Events    []*session.Event `json:"events"`
+}
+
+// dumpSession writes the full state and trajectory of the given session to the
+// module's artifacts directory if trajectory dumping is enabled.
+func (c *Client) dumpSession(ctx context.Context, sessionID string) {
+	if !c.config.GetDumpTrajectories() || c.coreConfig == nil || sessionID == "" || c.sessionService == nil {
+		return
+	}
+
+	artifactsDir, err := c.coreConfig.ArtifactsForModule(llmMetricsModule)
+	if err != nil {
+		log.WarnContextf(ctx, "Failed to get artifacts directory for dumping session %q: %v", sessionID, err)
+		return
+	}
+
+	resp, err := c.sessionService.Get(ctx, &session.GetRequest{
+		AppName:   c.appName,
+		UserID:    c.userID,
+		SessionID: sessionID,
+	})
+	if err != nil || resp == nil || resp.Session == nil {
+		log.WarnContextf(ctx, "Failed to retrieve session %q for dumping: %v", sessionID, err)
+		return
+	}
+
+	sess := resp.Session
+	dump := sessionDump{
+		ID:        sess.ID(),
+		AppName:   sess.AppName(),
+		UserID:    sess.UserID(),
+		UpdatedAt: sess.LastUpdateTime(),
+		State:     maps.Collect(sess.State().All()),
+		Events:    slices.Collect(sess.Events().All()),
+	}
+
+	data, err := json.MarshalIndent(dump, "", "  ")
+	if err != nil {
+		log.WarnContextf(ctx, "Failed to marshal session %q for dumping: %v", sessionID, err)
+		return
+	}
+
+	filePath := filepath.Join(artifactsDir, fmt.Sprintf("session_%s.json", sessionID))
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		log.WarnContextf(ctx, "Failed to write session dump to %q: %v", filePath, err)
 	}
 }

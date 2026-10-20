@@ -51,6 +51,10 @@ message LlmClientConfig {
   // Abstraction for a pro model.
   // Default: gemini-3.1-pro-preview
   optional string pro_model = 7;
+
+  // Whether to dump the agent's session trajectories to the artifacts directory.
+  // Default: false
+  optional bool dump_trajectories = 8;
 }
 
 message ToolConfig {
