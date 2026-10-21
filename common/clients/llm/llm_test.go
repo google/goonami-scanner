@@ -34,6 +34,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -1212,4 +1213,149 @@ func readDumpedSession(t *testing.T, fsys fs.FS) *sessionDump {
 		t.Fatalf("json.Unmarshal() failed: %v", err)
 	}
 	return &dump
+}
+
+func TestIncludeThoughts(t *testing.T) {
+	testCases := []struct {
+		name       string
+		req        *model.LLMRequest
+		wantConfig *genai.GenerateContentConfig
+	}{
+		{
+			name: "when_request_is_nil_does_not_panic",
+			req:  nil,
+		},
+		{
+			name: "when_config_is_nil_initializes_config_and_enables_include_thoughts",
+			req:  &model.LLMRequest{},
+			wantConfig: &genai.GenerateContentConfig{
+				ThinkingConfig: &genai.ThinkingConfig{
+					IncludeThoughts: true,
+				},
+			},
+		},
+		{
+			name: "when_thinking_config_is_nil_initializes_thinking_config_and_enables_include_thoughts",
+			req: &model.LLMRequest{
+				Config: &genai.GenerateContentConfig{
+					Temperature: proto.Float32(0.7),
+				},
+			},
+			wantConfig: &genai.GenerateContentConfig{
+				Temperature: proto.Float32(0.7),
+				ThinkingConfig: &genai.ThinkingConfig{
+					IncludeThoughts: true,
+				},
+			},
+		},
+		{
+			name: "when_thinking_config_exists_sets_include_thoughts_preserving_existing_fields",
+			req: &model.LLMRequest{
+				Config: &genai.GenerateContentConfig{
+					ThinkingConfig: &genai.ThinkingConfig{
+						ThinkingBudget: proto.Int32(100),
+					},
+				},
+			},
+			wantConfig: &genai.GenerateContentConfig{
+				ThinkingConfig: &genai.ThinkingConfig{
+					ThinkingBudget:  proto.Int32(100),
+					IncludeThoughts: true,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := includeThoughts(nil, tc.req)
+			if err != nil {
+				t.Fatalf("includeThoughts() error = %v, want nil", err)
+			}
+			if resp != nil {
+				t.Errorf("includeThoughts() resp = %+v, want nil", resp)
+			}
+			if tc.req != nil {
+				if diff := cmp.Diff(tc.wantConfig, tc.req.Config); diff != "" {
+					t.Errorf("includeThoughts() Config diff (-want +got):\n%s", diff)
+				}
+			}
+		})
+	}
+}
+
+func TestRunWithFeedbackLoop_DumpsChainOfThoughts(t *testing.T) {
+	cfg := config.FromProto(cpb.Config_builder{
+		Clients: cpb.ClientsConfig_builder{
+			Llm: lccpb.LlmClientConfig_builder{
+				TimeoutPerRequestSeconds: proto.Int32(5),
+				RetryDelaySeconds:        proto.Int32(0),
+				MaxAttempts:              proto.Int32(1),
+				DumpTrajectories:         proto.Bool(true),
+			}.Build(),
+		}.Build(),
+	}.Build())
+	if err := cfg.CreateDirectories(t.TempDir()); err != nil {
+		t.Fatalf("CreateDirectories() failed: %v", err)
+	}
+
+	fakeLLM := fakellmagent.NewModel(
+		[]*model.LLMResponse{
+			{
+				Content: &genai.Content{
+					Role: "model",
+					Parts: []*genai.Part{
+						{Text: "thinking step by step", Thought: true},
+						{Text: "final response"},
+					},
+				},
+			},
+		},
+		[]error{nil},
+	)
+
+	ag, err := llmagent.New(llmagent.Config{
+		Name:  "test-thought-agent",
+		Model: fakeLLM,
+	})
+	if err != nil {
+		t.Fatalf("llmagent.New() failed: %v", err)
+	}
+
+	c := New(cfg, ag)
+	got, err := c.RunWithFeedbackLoop(t.Context(), userContent("initial prompt"), nil)
+	if err != nil {
+		t.Fatalf("RunWithFeedbackLoop() failed: %v", err)
+	}
+	if got != "final response" {
+		t.Errorf("RunWithFeedbackLoop() = %q, want %q", got, "final response")
+	}
+
+	if len(fakeLLM.Requests()) != 1 {
+		t.Fatalf("fakeLLM.Requests() length = %d, want 1", len(fakeLLM.Requests()))
+	}
+	reqCfg := fakeLLM.Requests()[0].Config
+	if reqCfg == nil || reqCfg.ThinkingConfig == nil || !reqCfg.ThinkingConfig.IncludeThoughts {
+		t.Errorf("fakeLLM.Requests()[0].Config = %+v, want ThinkingConfig.IncludeThoughts = true", reqCfg)
+	}
+
+	dump := readDumpedSession(t, os.DirFS(cfg.ArtifactsDirectory()))
+	if dump == nil {
+		t.Fatalf("expected session dump file in %q, found none", cfg.ArtifactsDirectory())
+	}
+
+	wantParts := []*genai.Part{
+		{Text: "initial prompt"},
+		{Text: "thinking step by step", Thought: true},
+		{Text: "final response"},
+	}
+	var gotParts []*genai.Part
+	for _, ev := range dump.Events {
+		if ev.Content != nil {
+			gotParts = append(gotParts, ev.Content.Parts...)
+		}
+	}
+	if diff := cmp.Diff(wantParts, gotParts); diff != "" {
+		t.Errorf("dumped session parts diff (-want +got):\n%s", diff)
+	}
 }

@@ -24,7 +24,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -233,4 +235,55 @@ func TestFakeContext(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFakeModel(t *testing.T) {
+	testErr := errors.New("model error")
+	resp1 := &model.LLMResponse{
+		Content: &genai.Content{
+			Parts: []*genai.Part{{Text: "first"}},
+		},
+	}
+	resp2 := &model.LLMResponse{
+		Content: &genai.Content{
+			Parts: []*genai.Part{{Text: "second"}},
+		},
+	}
+
+	wantResponses := []*model.LLMResponse{resp1, resp2, nil}
+	wantErrors := []error{nil, nil, testErr}
+
+	m := NewModel(wantResponses, wantErrors)
+	if got, want := m.Name(), "fake-model"; got != want {
+		t.Errorf("Name() = %q, want %q", got, want)
+	}
+
+	req := &model.LLMRequest{Model: "custom-model"}
+	var gotResponses []*model.LLMResponse
+	var gotErrors []error
+
+	for r, err := range m.GenerateContent(t.Context(), req, false) {
+		gotResponses = append(gotResponses, r)
+		gotErrors = append(gotErrors, err)
+	}
+
+	if diff := cmp.Diff(wantResponses, gotResponses, protocmp.Transform()); diff != "" {
+		t.Errorf("GenerateContent() responses diff (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(wantErrors, gotErrors, cmpopts.EquateErrors()); diff != "" {
+		t.Errorf("GenerateContent() errors diff (-want +got):\n%s", diff)
+	}
+
+	if diff := cmp.Diff([]*model.LLMRequest{req}, m.Requests()); diff != "" {
+		t.Errorf("Requests() diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestNewModel_PanicsOnMismatchedLengths(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("NewModel() did not panic on mismatched slice lengths")
+		}
+	}()
+	_ = NewModel([]*model.LLMResponse{{}}, nil)
 }

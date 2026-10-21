@@ -171,3 +171,43 @@ func (f *FakeContext) Err() error { return f.ctx.Err() }
 
 // Value returns the value associated with this context for key.
 func (f *FakeContext) Value(key any) any { return f.ctx.Value(key) }
+
+// FakeModel is a fake implementation of model.LLM for testing.
+type FakeModel struct {
+	responses []*model.LLMResponse
+	errors    []error
+	requests  []*model.LLMRequest
+}
+
+// NewModel creates a new FakeModel that yields the given responses and errors.
+func NewModel(responses []*model.LLMResponse, errors []error) *FakeModel {
+	if len(responses) != len(errors) {
+		panic("responses and errors must be the same length")
+	}
+	return &FakeModel{
+		responses: responses,
+		errors:    errors,
+	}
+}
+
+// Name returns the name of the fake model.
+func (m *FakeModel) Name() string {
+	return "fake-model"
+}
+
+// Requests returns the list of LLM requests captured during GenerateContent calls.
+func (m *FakeModel) Requests() []*model.LLMRequest {
+	return m.requests
+}
+
+// GenerateContent records the incoming request and yields the configured responses and errors.
+func (m *FakeModel) GenerateContent(_ context.Context, req *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	m.requests = append(m.requests, req)
+	return func(yield func(*model.LLMResponse, error) bool) {
+		for i := range len(m.responses) {
+			if !yield(m.responses[i], m.errors[i]) {
+				return
+			}
+		}
+	}
+}

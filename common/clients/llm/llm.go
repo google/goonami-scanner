@@ -34,6 +34,8 @@ import (
 	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/pborman/uuid"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/plugin"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
@@ -270,6 +272,22 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 	return "", ErrMaxAttemptsReached
 }
 
+// includeThoughts configures Gemini thinking config to include the model's
+// chain of thoughts in the response, allowing reasoning to be dumped to session events.
+func includeThoughts(_ agent.Context, req *model.LLMRequest) (*model.LLMResponse, error) {
+	if req == nil {
+		return nil, nil
+	}
+	if req.Config == nil {
+		req.Config = &genai.GenerateContentConfig{}
+	}
+	if req.Config.ThinkingConfig == nil {
+		req.Config.ThinkingConfig = &genai.ThinkingConfig{}
+	}
+	req.Config.ThinkingConfig.IncludeThoughts = true
+	return nil, nil
+}
+
 // runTurn executes a single network turn with the model through the ADK runner.
 // It creates the session if absent, applies the per-request timeout, consumes
 // the runner event stream, tracks token consumption, and filters thought parts.
@@ -283,10 +301,17 @@ func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.C
 	}
 	defer c.dumpSession(ctx, sessionID)
 
+	p, _ := plugin.New(plugin.Config{
+		Name:                "thoughts",
+		BeforeModelCallback: includeThoughts,
+	})
 	r, err := runner.New(runner.Config{
 		Agent:          c.ag,
 		SessionService: c.sessionService,
 		AppName:        c.appName,
+		PluginConfig: runner.PluginConfig{
+			Plugins: []*plugin.Plugin{p},
+		},
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("%w: %v", ErrRunnerCreation, err)
