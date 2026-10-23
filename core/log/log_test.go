@@ -138,6 +138,10 @@ func TestDefaultLoggerDebug(t *testing.T) {
 func TestDefaultLoggerPrefix(t *testing.T) {
 	svc80 := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			IpAddress: npb.IpAddress_builder{
+				Address:       "1.2.3.4",
+				AddressFamily: npb.AddressFamily_IPV4,
+			}.Build(),
 			Port: npb.Port_builder{
 				PortNumber: 80,
 			}.Build(),
@@ -146,8 +150,20 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 
 	svc443 := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			IpAddress: npb.IpAddress_builder{
+				Address:       "1.2.3.4",
+				AddressFamily: npb.AddressFamily_IPV4,
+			}.Build(),
 			Port: npb.Port_builder{
 				PortNumber: 443,
+			}.Build(),
+		}.Build(),
+	}.Build()
+
+	svcPortOnly := nspb.NetworkService_builder{
+		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			Port: npb.Port_builder{
+				PortNumber: 8080,
 			}.Build(),
 		}.Build(),
 	}.Build()
@@ -166,22 +182,40 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 			wantPrefix: "INFO test",
 		},
 		{
+			name:       "when_host_metadata_host_prefix",
+			ctx:        ContextForHost(t.Context(), "1.2.3.4"),
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] test",
+		},
+		{
+			name:       "when_module_and_host_metadata_both_prefix",
+			ctx:        ContextForModuleAndHost(t.Context(), "my-module", "1.2.3.4"),
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [ my-module ] test",
+		},
+		{
 			name:       "when_module_metadata_module_prefix",
 			ctx:        ContextForModule(t.Context(), "my-module"),
 			msg:        "test",
 			wantPrefix: "INFO [ my-module ] test",
 		},
 		{
-			name:       "when_service_metadata_service_prefix",
+			name:       "when_service_metadata_host_and_service_prefix",
 			ctx:        ContextForService(t.Context(), svc80),
 			msg:        "test",
-			wantPrefix: "INFO [    80 ] test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [    80 ] test",
 		},
 		{
-			name:       "when_both_metadata_both_prefix",
+			name:       "when_service_without_host_metadata_port_only_prefix",
+			ctx:        ContextForService(t.Context(), svcPortOnly),
+			msg:        "test",
+			wantPrefix: "INFO [  8080 ] test",
+		},
+		{
+			name:       "when_both_metadata_host_port_and_module_prefix",
 			ctx:        ContextForModuleAndService(t.Context(), "my-module", svc443),
 			msg:        "test",
-			wantPrefix: "INFO [   443 ] [ my-module ] test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [   443 ] [ my-module ] test",
 		},
 		{
 			name:       "when_vuln_level_vuln_prefix",
@@ -210,9 +244,50 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 	}
 }
 
+func TestHostFromContext(t *testing.T) {
+	testCases := []struct {
+		name string
+		ctx  context.Context
+		want string
+	}{
+		{
+			name: "when_no_host_returns_empty_string",
+			ctx:  t.Context(),
+			want: "",
+		},
+		{
+			name: "when_host_set_directly_returns_host",
+			ctx:  ContextForHost(t.Context(), "10.0.0.1"),
+			want: "10.0.0.1",
+		},
+		{
+			name: "when_host_set_via_service_returns_host",
+			ctx: ContextForService(t.Context(), nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+					Port:     npb.Port_builder{PortNumber: 80}.Build(),
+				}.Build(),
+			}.Build()),
+			want: "example.com",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HostFromContext(tc.ctx); got != tc.want {
+				t.Errorf("HostFromContext() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestDefaultLoggerColors(t *testing.T) {
 	svc443 := nspb.NetworkService_builder{
 		NetworkEndpoint: npb.NetworkEndpoint_builder{
+			IpAddress: npb.IpAddress_builder{
+				Address:       "1.2.3.4",
+				AddressFamily: npb.AddressFamily_IPV4,
+			}.Build(),
 			Port: npb.Port_builder{
 				PortNumber: 443,
 			}.Build(),
@@ -227,6 +302,11 @@ func TestDefaultLoggerColors(t *testing.T) {
 	// INFO is Bold Blue: \033[1;34m
 	if !bytes.Contains([]byte(got), []byte("\033[1;34mINFO\033[0m")) {
 		t.Errorf("Log output does not contain expected INFO color: %q", got)
+	}
+	// Host "1.2.3.4" is Purple: \033[0;35m
+	// Brackets should NOT be colored.
+	if !bytes.Contains([]byte(got), []byte("[ \033[0;35m1.2.3.4\033[0m ]")) {
+		t.Errorf("Log output does not contain expected host color with uncolored brackets: %q", got)
 	}
 	// Port 443 is Green: \033[0;32m
 	// Brackets should NOT be colored.

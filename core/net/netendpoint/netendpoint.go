@@ -61,6 +61,33 @@ func FromString(endpoint string) *npb.NetworkEndpoint {
 	return endpointBuilder.Build()
 }
 
+// ToHost converts a NetworkEndpoint to a host string without port.
+// Note that it prioritizes the hostname to match ToURIAuthority.
+//
+// Examples:
+//
+//   - IP: "127.0.0.1" -> "127.0.0.1" ;; "3ffe::1" -> "[3ffe::1]"
+//   - IP_PORT: "127.0.0.1:80" -> "127.0.0.1" ;; "3ffe::1:80" -> "[3ffe::1]"
+//   - IP_HOSTNAME_PORT: "127.0.0.1:example.com:443" -> "example.com"
+//   - HOSTNAME_PORT: "example.com:80" -> "example.com"
+//   - IP_HOSTNAME: "127.0.0.1:example.com" -> "example.com"
+//   - HOSTNAME: "example.com" -> "example.com"
+func ToHost(endpoint *npb.NetworkEndpoint) (string, error) {
+	if endpoint.HasHostname() {
+		return endpoint.GetHostname().GetName(), nil
+	}
+
+	if endpoint.HasIpAddress() {
+		address := endpoint.GetIpAddress().GetAddress()
+		if endpoint.GetIpAddress().GetAddressFamily() == npb.AddressFamily_IPV6 {
+			return fmt.Sprintf("[%s]", address), nil
+		}
+		return address, nil
+	}
+
+	return "", ErrEndpointMissingAddress
+}
+
 // ToURIAuthority converts a NetworkEndpoint to a URI authority.
 // Note that it prioritizes the hostname to allow virtual-host matching of HTTP servers to succeed.
 //
