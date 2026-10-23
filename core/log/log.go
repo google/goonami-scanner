@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/goonami-scanner/core/net/netendpoint"
+
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 )
 
@@ -58,23 +60,43 @@ const (
 )
 
 type (
+	hostKey    struct{}
 	moduleKey  struct{}
 	serviceKey struct{}
 )
+
+// ContextForHost returns a new context with the host attached.
+func ContextForHost(ctx context.Context, host string) context.Context {
+	return context.WithValue(ctx, hostKey{}, host)
+}
+
+// HostFromContext returns the host attached to the context, or an empty string if none is attached.
+func HostFromContext(ctx context.Context) string {
+	host, _ := ctx.Value(hostKey{}).(string)
+	return host
+}
 
 // ContextForModule returns a new context with the module name attached.
 func ContextForModule(ctx context.Context, name string) context.Context {
 	return context.WithValue(ctx, moduleKey{}, name)
 }
 
-// ContextForService returns a new context with the service information (port) attached.
+// ContextForModuleAndHost returns a new context with both the module name and the host attached.
+func ContextForModuleAndHost(ctx context.Context, name string, host string) context.Context {
+	return ContextForModule(ContextForHost(ctx, host), name)
+}
+
+// ContextForService returns a new context with the service information (host and port) attached.
 func ContextForService(ctx context.Context, service *nspb.NetworkService) context.Context {
+	if host, err := netendpoint.ToHost(service.GetNetworkEndpoint()); err == nil && host != "" {
+		ctx = ContextForHost(ctx, host)
+	}
 	port := int(service.GetNetworkEndpoint().GetPort().GetPortNumber())
 	return context.WithValue(ctx, serviceKey{}, port)
 }
 
 // ContextForModuleAndService returns a new context with both the module name and the service
-// information (port) attached.
+// information (host and port) attached.
 func ContextForModuleAndService(ctx context.Context, name string, service *nspb.NetworkService) context.Context {
 	return ContextForModule(ContextForService(ctx, service), name)
 }
@@ -148,6 +170,10 @@ type DefaultLogger struct {
 func (l *DefaultLogger) log(ctx context.Context, level string, msg string) {
 	prefix := level + " "
 
+	if host, ok := ctx.Value(hostKey{}).(string); ok && host != "" {
+		hostVal := colorize(host, ansiPurple, l.UseColors)
+		prefix += "[ " + hostVal + " ] "
+	}
 	if port, ok := ctx.Value(serviceKey{}).(int); ok {
 		portVal := colorize(fmt.Sprintf("%5d", port), ansiGreen, l.UseColors)
 		prefix += "[ " + portVal + " ] "
