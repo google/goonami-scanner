@@ -19,6 +19,7 @@ package iputils
 
 import (
 	"net"
+	"net/netip"
 )
 
 // IsIP returns true if the input can be parsed as an IP address.
@@ -46,4 +47,46 @@ func IsIPv6(ip string) bool {
 	}
 
 	return false
+}
+
+// IsCIDR returns true if the input can be parsed as a CIDR range.
+func IsCIDR(cidr string) bool {
+	_, err := netip.ParsePrefix(cidr)
+	return err == nil
+}
+
+// IsIPv4CIDR returns true if the given input is an IPv4 CIDR range.
+func IsIPv4CIDR(cidr string) bool {
+	p, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return false
+	}
+
+	return p.Addr().Is4()
+}
+
+// IsIPv6CIDR returns true if the given input is an IPv6 CIDR range.
+func IsIPv6CIDR(cidr string) bool {
+	p, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return false
+	}
+
+	return p.Addr().Is6()
+}
+
+// ExpandCIDR expands a CIDR range into a slice of all IP addresses in the range.
+func ExpandCIDR(cidr string) ([]string, error) {
+	p, err := netip.ParsePrefix(cidr)
+	if err != nil {
+		return nil, err
+	}
+
+	p = p.Masked()
+	var ips []string
+	for addr := p.Addr(); p.Contains(addr); addr = addr.Next() {
+		ips = append(ips, addr.String())
+	}
+
+	return ips, nil
 }

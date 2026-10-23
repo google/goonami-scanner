@@ -74,6 +74,83 @@ func TestNewFromString(t *testing.T) {
 	}
 }
 
+func TestToHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   *npb.NetworkEndpoint
+		want    string
+		wantErr error
+	}{
+		{
+			name: "when_ipv4_ip_only_returns_ip",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+			}.Build(),
+			want: "127.0.0.1",
+		},
+		{
+			name: "when_ipv6_ip_only_returns_bracketed_ip",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
+			}.Build(),
+			want: "[3ffe::1]",
+		},
+		{
+			name: "when_ipv4_ip_and_port_returns_ip_without_port",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+				Port:      npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "127.0.0.1",
+		},
+		{
+			name: "when_ipv6_ip_and_port_returns_bracketed_ip_without_port",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "3ffe::1", AddressFamily: npb.AddressFamily_IPV6}.Build(),
+				Port:      npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "[3ffe::1]",
+		},
+		{
+			name: "when_hostname_and_port_returns_hostname_without_port",
+			input: npb.NetworkEndpoint_builder{
+				Hostname: npb.Hostname_builder{Name: "example.com"}.Build(),
+				Port:     npb.Port_builder{PortNumber: 80}.Build(),
+			}.Build(),
+			want: "example.com",
+		},
+		{
+			name: "when_ip_hostname_and_port_returns_prioritized_hostname_without_port",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1", AddressFamily: npb.AddressFamily_IPV4}.Build(),
+				Hostname:  npb.Hostname_builder{Name: "example.com"}.Build(),
+				Port:      npb.Port_builder{PortNumber: 443}.Build(),
+			}.Build(),
+			want: "example.com",
+		},
+		{
+			name:    "when_no_ip_and_no_hostname_returns_error",
+			input:   &npb.NetworkEndpoint{},
+			wantErr: ErrEndpointMissingAddress,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ToHost(tc.input)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("ToHost(%v) returned unexpected error: %v, want: %v", tc.input, err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+			if got != tc.want {
+				t.Errorf("ToHost(%v) = %q, want: %q", tc.input, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestToURIAuthority(t *testing.T) {
 	tests := []struct {
 		name    string
