@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// Package templatedweakcredentials provides tests for the templatedweakcredentials detector.
 package templatedweakcredentials
 
 import (
@@ -26,6 +25,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/credentialstore"
 	"github.com/google/goonami-scanner/common/templatedengine"
@@ -38,9 +38,10 @@ import (
 	"github.com/google/goonami-scanner/core/module"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
+	bfpb "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	twcpb "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials/templatedweakcredentials_config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -49,6 +50,9 @@ import (
 const mockPluginTextproto = `
 info {
 	name: "MockWeakCreds"
+}
+finding {
+	title: "Mock Weak Credentials"
 }
 config {
 	disabled: false
@@ -89,6 +93,9 @@ const mockPasswordOnlyPluginTextproto = `
 info {
 	name: "MockPasswordOnlyCreds"
 }
+finding {
+	title: "Mock Password Only Credentials"
+}
 config {
 	disabled: false
 }
@@ -123,6 +130,9 @@ actions {
 const mockCallbackRequiredPluginTextproto = `
 info {
 	name: "MockCallbackRequiredCreds"
+}
+finding {
+	title: "Mock Callback Required Credentials"
 }
 config {
 	disabled: false
@@ -159,6 +169,9 @@ actions {
 const mockFingerprintedPluginTextproto = `
 info {
 	name: "MockFingerprintedWeakCreds"
+}
+finding {
+	title: "Mock Fingerprinted Weak Credentials"
 }
 config {
 	disabled: false
@@ -223,84 +236,69 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 	l := &log.DefaultLogger{VerboseLevel: log.DebugLevelRequest}
 	log.SetLogger(l)
 
-	ctx := context.Background()
-
 	tests := []struct {
 		name                string
 		pluginProtoText     string
 		responseFunc        func(w http.ResponseWriter, r *http.Request)
-		configSetup         func() *config.Config
+		bfCfg               *bfpb.BruteForceConfig
 		customServiceSetup  func(ts *httptest.Server) *nspb.NetworkService
 		expectVulnerability bool
 		expectError         bool
 		wantBudgetExhausted int64
+		wantDetails         []string
 	}{
 		{
 			name:            "when_valid_credentials_exist_detection_reports_are_generated",
 			pluginProtoText: mockPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				bodyBytes, _ := io.ReadAll(r.Body)
-				bodyString := string(bodyBytes)
-				if strings.Contains(bodyString, "user=root&pass=123") {
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprint(w, "Welcome root")
-					return
-				}
-				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, "Unauthorized")
-			},
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			responseFunc: requireBodyLoginHandler(map[string]string{
+				"user=root&pass=123": "Welcome root",
+			}),
 			expectVulnerability: true,
+			wantDetails:         []string{"root:123"},
 		},
 		{
-			name:            "when_no_valid_credentials_exist_no_detector_reports",
+			name:            "when_multiple_valid_credentials_exist_stops_at_first_by_default",
 			pluginProtoText: mockPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, "Unauthorized")
-			},
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			responseFunc: requireBodyLoginHandler(map[string]string{
+				"user=admin&pass=password": "Welcome admin",
+				"user=root&pass=123":       "Welcome root",
+			}),
+			expectVulnerability: true,
+			wantDetails:         []string{"admin:password"},
+		},
+		{
+			name:            "when_stop_at_first_valid_credentials_is_false_collects_all_valid_credentials",
+			pluginProtoText: mockPluginTextproto,
+			responseFunc: requireBodyLoginHandler(map[string]string{
+				"user=admin&pass=password": "Welcome admin",
+				"user=root&pass=123":       "Welcome root",
+			}),
+			bfCfg: bfpb.BruteForceConfig_builder{
+				StopAtFirstValidCredentials: proto.Bool(false),
+			}.Build(),
+			expectVulnerability: true,
+			wantDetails:         []string{"admin:password", "root:123"},
+		},
+		{
+			name:                "when_no_valid_credentials_exist_no_detector_reports",
+			pluginProtoText:     mockPluginTextproto,
+			responseFunc:        requireBodyLoginHandler(nil),
 			expectVulnerability: false,
 		},
 		{
 			name:            "when_embedded_credentials_match_successfully_scans",
 			pluginProtoText: mockPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				bodyBytes, _ := io.ReadAll(r.Body)
-				bodyString := string(bodyBytes)
-				if strings.Contains(bodyString, "user=admin&pass=password") {
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprint(w, "Welcome admin")
-					return
-				}
-				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprint(w, "Unauthorized")
-			},
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			responseFunc: requireBodyLoginHandler(map[string]string{
+				"user=admin&pass=password": "Welcome admin",
+			}),
 			expectVulnerability: true,
 		},
 		{
 			name:            "when_password_only_authentication_configured_successfully_scans",
 			pluginProtoText: mockPasswordOnlyPluginTextproto,
-			responseFunc: func(w http.ResponseWriter, r *http.Request) {
-				bodyBytes, _ := io.ReadAll(r.Body)
-				bodyString := string(bodyBytes)
-				if bodyString == "pass=secret_password" {
-					w.WriteHeader(http.StatusOK)
-					fmt.Fprint(w, "Welcome User")
-					return
-				}
-				w.WriteHeader(http.StatusUnauthorized)
-			},
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			responseFunc: requireBodyLoginHandler(map[string]string{
+				"pass=secret_password": "Welcome User",
+			}),
 			expectVulnerability: true,
 		},
 		{
@@ -309,51 +307,24 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			responseFunc: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			},
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
 			customServiceSetup: func(ts *httptest.Server) *nspb.NetworkService {
 				return &nspb.NetworkService{}
 			},
 			expectError: true,
 		},
 		{
-			name:            "when_workflow_condition_not_met_skips_and_produces_no_reports",
-			pluginProtoText: mockCallbackRequiredPluginTextproto,
-			responseFunc:    acceptAnyLogin,
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			name:                "when_workflow_condition_not_met_skips_and_produces_no_reports",
+			pluginProtoText:     mockCallbackRequiredPluginTextproto,
+			responseFunc:        acceptAnyLogin,
 			expectVulnerability: false,
 		},
 		{
 			name:            "when_max_attempts_reached_aborts_detection",
 			pluginProtoText: mockPluginTextproto,
-			responseFunc: func() func(w http.ResponseWriter, r *http.Request) {
-				var attempts int
-				return func(w http.ResponseWriter, r *http.Request) {
-					attempts++
-					if attempts >= 2 {
-						w.WriteHeader(http.StatusOK)
-						fmt.Fprint(w, "Welcome admin")
-						return
-					}
-					w.WriteHeader(http.StatusUnauthorized)
-					fmt.Fprint(w, "Unauthorized")
-				}
-			}(),
-			configSetup: func() *config.Config {
-				twcCfg := twcpb.TemplatedWeakCredentialsConfig_builder{
-					MaxAttemptsPerService: int32Ptr(1),
-				}.Build()
-				pluginsCfg := cpb.PluginsConfig_builder{
-					Templatedweakcredentials: twcCfg,
-				}.Build()
-				cfgProto := cpb.Config_builder{
-					Plugins: pluginsCfg,
-				}.Build()
-				return config.FromProto(cfgProto)
-			},
+			responseFunc:    succeedOnAttemptLoginHandler(2, "Welcome admin"),
+			bfCfg: bfpb.BruteForceConfig_builder{
+				MaxAttemptsPerService: proto.Int32(1),
+			}.Build(),
 			expectVulnerability: false,
 			wantBudgetExhausted: 1,
 		},
@@ -370,68 +341,24 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 					acceptAnyLogin(w, r)
 				}
 			},
-			configSetup: func() *config.Config {
-				twcCfg := twcpb.TemplatedWeakCredentialsConfig_builder{
-					MaxAttemptsPerService: int32Ptr(1),
-				}.Build()
-				pluginsCfg := cpb.PluginsConfig_builder{
-					Templatedweakcredentials: twcCfg,
-				}.Build()
-				cfgProto := cpb.Config_builder{
-					Plugins: pluginsCfg,
-				}.Build()
-				return config.FromProto(cfgProto)
-			},
+			bfCfg: bfpb.BruteForceConfig_builder{
+				MaxAttemptsPerService: proto.Int32(1),
+			}.Build(),
 			expectVulnerability: false,
 			wantBudgetExhausted: 0,
 		},
 		{
-			name:            "when_fingerprinting_succeeds_runs_fingerprint_once_and_detects_weak_credentials",
-			pluginProtoText: mockFingerprintedPluginTextproto,
-			responseFunc: func() func(w http.ResponseWriter, r *http.Request) {
-				var healthChecks, versionChecks int
-				return func(w http.ResponseWriter, r *http.Request) {
-					switch r.URL.Path {
-					case "/health":
-						healthChecks++
-						if healthChecks > 1 {
-							w.WriteHeader(http.StatusInternalServerError)
-							return
-						}
-						w.WriteHeader(http.StatusOK)
-					case "/version":
-						versionChecks++
-						if versionChecks > 1 {
-							w.WriteHeader(http.StatusInternalServerError)
-							return
-						}
-						w.WriteHeader(http.StatusOK)
-					case "/login":
-						if healthChecks != 1 || versionChecks != 1 {
-							w.WriteHeader(http.StatusInternalServerError)
-							return
-						}
-						bodyBytes, _ := io.ReadAll(r.Body)
-						if strings.Contains(string(bodyBytes), "user=root&pass=123") {
-							w.WriteHeader(http.StatusOK)
-							fmt.Fprint(w, "Welcome root")
-							return
-						}
-						w.WriteHeader(http.StatusUnauthorized)
-					default:
-						w.WriteHeader(http.StatusNotFound)
-					}
-				}
-			}(),
-			configSetup: func() *config.Config {
-				return config.Default()
-			},
+			name:                "when_fingerprinting_succeeds_runs_fingerprint_once_and_detects_weak_credentials",
+			pluginProtoText:     mockFingerprintedPluginTextproto,
+			responseFunc:        fingerprintOnceLoginHandler("user=root&pass=123", "Welcome root"),
 			expectVulnerability: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
 			collector := metrics.NewCollector()
 			metrics.SetRecorder(collector)
 			t.Cleanup(func() { metrics.SetRecorder(nil) })
@@ -441,7 +368,17 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				t.Fatalf("Failed to parse mock plugin: %v", err)
 			}
 
-			cfg := tc.configSetup()
+			bfCfg := bfpb.BruteForceConfig_builder{
+				MaxRequestsPerSecond: proto.Int32(0),
+			}.Build()
+			if tc.bfCfg != nil {
+				proto.Merge(bfCfg, tc.bfCfg)
+			}
+			cfg := config.FromProto(cpb.Config_builder{
+				Plugins: cpb.PluginsConfig_builder{
+					Bruteforce: bfCfg,
+				}.Build(),
+			}.Build())
 			if err := callbackserver.Initialize(ctx, cfg); err != nil {
 				t.Fatalf("Failed to initialize callback server client: %v", err)
 			}
@@ -468,7 +405,7 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				if tc.expectError {
 					return
 				}
-				t.Fatalf("credentialstore.NewDefault failed: %v", err)
+				t.Fatalf("credentialstore.NewWithDefaults() failed: %v", err)
 			}
 
 			detector, err := NewFromProto(ctx, cfg, &pluginProto, store)
@@ -502,13 +439,88 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 				t.Errorf("Detect() hasVulnerability = %v, want %v", hasVob, tc.expectVulnerability)
 			}
 
-			budget := collector.Value(t.Context(), metrics.BudgetExhausted,
+			if tc.wantDetails != nil {
+				var gotDetails []string
+				for _, r := range reports.GetDetectionReports() {
+					for _, ad := range r.GetVulnerability().GetAdditionalDetails() {
+						gotDetails = append(gotDetails, ad.GetTextData().GetText())
+					}
+				}
+				if diff := cmp.Diff(tc.wantDetails, gotDetails); diff != "" {
+					t.Errorf("Detect() AdditionalDetails mismatch (-want +got):\n%s", diff)
+				}
+			}
+
+			budget := collector.Value(ctx, metrics.BudgetExhausted,
 				metrics.Module(detector.Name()),
 				metrics.LimitName(metrics.LimitMaxAttemptsPerService))
 			if budget != tc.wantBudgetExhausted {
 				t.Errorf("budget/exhausted = %d, want %d", budget, tc.wantBudgetExhausted)
 			}
 		})
+	}
+}
+
+func requireBodyLoginHandler(validBodies map[string]string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		if welcomeMsg, ok := validBodies[string(bodyBytes)]; ok {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, welcomeMsg)
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "Unauthorized")
+	}
+}
+
+func succeedOnAttemptLoginHandler(succeedAttempt int, welcomeMsg string) http.HandlerFunc {
+	var attempts int
+	return func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts >= succeedAttempt {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, welcomeMsg)
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprint(w, "Unauthorized")
+	}
+}
+
+func fingerprintOnceLoginHandler(validBody, welcomeMsg string) http.HandlerFunc {
+	var healthChecks, versionChecks int
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			healthChecks++
+			if healthChecks > 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		case "/version":
+			versionChecks++
+			if versionChecks > 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		case "/login":
+			if healthChecks != 1 || versionChecks != 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			bodyBytes, _ := io.ReadAll(r.Body)
+			if strings.Contains(string(bodyBytes), validBody) {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprint(w, welcomeMsg)
+				return
+			}
+			w.WriteHeader(http.StatusUnauthorized)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}
 }
 
@@ -524,14 +536,6 @@ func acceptAnyLogin(w http.ResponseWriter, r *http.Request) {
 	userField, _, _ := strings.Cut(string(body), "&")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Welcome %s", strings.TrimPrefix(userField, "user="))
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
-
-func int32Ptr(i int32) *int32 {
-	return &i
 }
 
 func TestDetectors(t *testing.T) {
@@ -568,7 +572,13 @@ func TestDetectors(t *testing.T) {
 
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
-	cfgProto := &cpb.Config{}
+	cfgProto := cpb.Config_builder{
+		Plugins: cpb.PluginsConfig_builder{
+			Bruteforce: bfpb.BruteForceConfig_builder{
+				MaxRequestsPerSecond: proto.Int32(0),
+			}.Build(),
+		}.Build(),
+	}.Build()
 	mockCBS := tc.GetMockCallbackServer()
 	tcsmock := fakecallbackserver.NewServer(mockCBS.GetEnabled(), mockCBS.GetHasInteraction(), false)
 	defer tcsmock.Close()
@@ -620,14 +630,5 @@ func newDetectorForTesting(ctx context.Context, cfg *config.Config, pluginProto 
 		return nil, err
 	}
 
-	d := &Detector{
-		cfg:          cfg,
-		baseDetector: baseDetector,
-		proto:        pluginProto,
-		store:        store,
-	}
-
-	d.loadCredentials(ctx)
-
-	return d, nil
+	return newDetector(ctx, cfg, pluginProto, baseDetector, store)
 }

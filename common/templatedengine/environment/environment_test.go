@@ -337,3 +337,22 @@ func TestEnvironment_SetGet(t *testing.T) {
 		t.Errorf("Get(unknown) = _, true, want _, false")
 	}
 }
+
+func TestEnvironment_Clone(t *testing.T) {
+	env := New(config.Default())
+	env.Set("k1", "v1")
+
+	clone := env.Clone()
+	clone.Set("k1", "v2")
+	clone.Set("k2", "v2")
+
+	if got, ok := env.Get("k1"); !ok || got != "v1" {
+		t.Errorf("env.Get(\"k1\") = %q, %v, want \"v1\", true", got, ok)
+	}
+	if _, ok := env.Get("k2"); ok {
+		t.Errorf("env.Get(\"k2\") = _, true, want _, false")
+	}
+	if got, ok := clone.Get("k1"); !ok || got != "v2" {
+		t.Errorf("clone.Get(\"k1\") = %q, %v, want \"v2\", true", got, ok)
+	}
+}
