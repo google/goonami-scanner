@@ -52,6 +52,12 @@ const (
 	// VarCallbackPort is the port of the callback server.
 	VarCallbackPort = "T_CBS_PORT"
 
+	// VarWeakCredsUsername is the username candidate injected during weak credential detection.
+	VarWeakCredsUsername = "T_USERNAME"
+
+	// VarWeakCredsPassword is the password candidate injected during weak credential detection.
+	VarWeakCredsPassword = "T_PASSWORD"
+
 	// VarTestingMagicPrefix is the prefix for all magic strings.
 	VarTestingMagicPrefix = "TSUNAMI_MAGIC_"
 
