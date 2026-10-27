@@ -24,6 +24,7 @@ import (
 	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
@@ -41,13 +42,13 @@ func TestNew(t *testing.T) {
 				Clients: cpb.ClientsConfig_builder{
 					CallbackServer: cbpb.CallbackserverConfig_builder{
 						HttpPollConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "http://127.0.0.1:8081",
+							PublicUri: proto.String("http://127.0.0.1:8081"),
 						}.Build(),
 						HttpRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "http://127.0.0.1:8080",
+							PublicUri: proto.String("http://127.0.0.1:8080"),
 						}.Build(),
 						DnsRecordConfig: cbpb.EndpointConfig_builder{
-							PublicUri: "cb.localhost.lan",
+							PublicUri: proto.String("cb.localhost.lan"),
 						}.Build(),
 					}.Build(),
 				}.Build(),
@@ -89,13 +90,13 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 			name: "when_all_endpoints_are_provided_returns_true",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8081",
+					PublicUri: proto.String("http://127.0.0.1:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8080",
+					PublicUri: proto.String("http://127.0.0.1:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			want: true,
@@ -104,10 +105,10 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 			name: "when_dns_record_config_is_missing_returns_false",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8081",
+					PublicUri: proto.String("http://127.0.0.1:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8080",
+					PublicUri: proto.String("http://127.0.0.1:8080"),
 				}.Build(),
 			}.Build(),
 			want: false,
@@ -116,10 +117,10 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 			name: "when_http_record_config_is_missing_returns_false",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8081",
+					PublicUri: proto.String("http://127.0.0.1:8081"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			want: false,
@@ -128,10 +129,10 @@ func TestClient_IsCallbackServerEnabled(t *testing.T) {
 			name: "when_http_poll_config_is_missing_returns_false",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://127.0.0.1:8080",
+					PublicUri: proto.String("http://127.0.0.1:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			want: false,
@@ -167,13 +168,13 @@ func TestClient_GetHTTPCallbackURI(t *testing.T) {
 			name: "when_address_is_ip_returns_http_format",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://1.2.3.4:8081",
+					PublicUri: proto.String("http://1.2.3.4:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://1.2.3.4:8080",
+					PublicUri: proto.String("http://1.2.3.4:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			secret:  "test",
@@ -184,13 +185,13 @@ func TestClient_GetHTTPCallbackURI(t *testing.T) {
 			name: "when_address_is_domain_returns_http_format",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://goonami.lan:8081",
+					PublicUri: proto.String("http://goonami.lan:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://goonami.lan:8080",
+					PublicUri: proto.String("http://goonami.lan:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			secret:  "test",
@@ -238,13 +239,13 @@ func TestClient_GetDNSCallbackDomain(t *testing.T) {
 			name: "when_address_is_domain_returns_domain_format",
 			config: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://1.2.3.4:8081",
+					PublicUri: proto.String("http://1.2.3.4:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://1.2.3.4:8080",
+					PublicUri: proto.String("http://1.2.3.4:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			secret:  "test",

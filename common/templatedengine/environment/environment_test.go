@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/core/config"
+	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
@@ -101,13 +102,13 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 			name: "when_callback_server_is_enabled_with_ip_sets_variables",
 			cbsConfig: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://10.0.0.1:8081",
+					PublicUri: proto.String("http://10.0.0.1:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://10.0.0.1:8080",
+					PublicUri: proto.String("http://10.0.0.1:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			wantVars: map[string]string{
@@ -124,13 +125,13 @@ func TestEnvironment_InitializeFor_CallbackServer(t *testing.T) {
 			name: "when_callback_server_is_enabled_with_domain_sets_variables",
 			cbsConfig: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://cb.localhost.lan:8081",
+					PublicUri: proto.String("http://cb.localhost.lan:8081"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "http://cb.localhost.lan:8080",
+					PublicUri: proto.String("http://cb.localhost.lan:8080"),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					PublicUri: "cb.localhost.lan",
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 			}.Build(),
 			wantVars: map[string]string{

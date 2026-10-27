@@ -50,20 +50,20 @@ func TestConfigFromFile(t *testing.T) {
 			path: "testdata/valid_config.textproto",
 			want: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					PublicUri:   "http://127.0.0.1:8081",
-					BindAddress: "127.0.0.1",
-					BindPort:    8081,
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					PublicUri:   proto.String("http://127.0.0.1:8081"),
+					BindAddress: proto.String("127.0.0.1"),
+					BindPort:    proto.Uint32(8081),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-					PublicUri: "cb.localhost.lan",
+					Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+					PublicUri: proto.String("cb.localhost.lan"),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					PublicUri:   "http://127.0.0.1:8080",
-					BindAddress: "127.0.0.1",
-					BindPort:    8080,
+					Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					PublicUri:   proto.String("http://127.0.0.1:8080"),
+					BindAddress: proto.String("127.0.0.1"),
+					BindPort:    proto.Uint32(8080),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -109,7 +109,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_valid_config_returns_nil",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -119,10 +119,10 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_valid_config_with_remote_server_returns_nil",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -132,15 +132,15 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_valid_config_with_local_ports_returns_nil",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					BindPort: 1,
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					BindPort: proto.Uint32(1),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					BindPort: 65535,
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					BindPort: proto.Uint32(65535),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -158,11 +158,11 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_invalid_http_record_port_returns_error",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				HttpRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					BindPort: 0,
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					BindPort: proto.Uint32(0),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -173,11 +173,11 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_invalid_dns_record_port_returns_error",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				DnsRecordConfig: cbpb.EndpointConfig_builder{
-					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-					BindPort: 65536,
+					Mode:     cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+					BindPort: proto.Uint32(65536),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -188,7 +188,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_invalid_interaction_ttl_returns_error",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				InteractionTtlSeconds: proto.Uint32(0),
 			}.Build(),
@@ -198,7 +198,7 @@ func TestValidateConfig(t *testing.T) {
 			name: "when_invalid_cleanup_interval_returns_error",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				CleanupIntervalSeconds: proto.Uint32(0),
 			}.Build(),
@@ -227,14 +227,14 @@ func TestNew(t *testing.T) {
 			name: "when_valid_config_returns_server",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 			want: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 				InteractionTtlSeconds:  proto.Uint32(60),
 				CleanupIntervalSeconds: proto.Uint32(10),
@@ -252,15 +252,13 @@ func TestNew(t *testing.T) {
 			name: "when_partial_config_uses_defaults",
 			cfg: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
 			}.Build(),
 			want: cbpb.CallbackserverConfig_builder{
 				HttpPollConfig: cbpb.EndpointConfig_builder{
-					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
+					Mode: cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
 				}.Build(),
-				InteractionTtlSeconds:  proto.Uint32(60),
-				CleanupIntervalSeconds: proto.Uint32(10),
 			}.Build(),
 		},
 	}
@@ -305,20 +303,20 @@ func TestServer(t *testing.T) {
 		InteractionTtlSeconds:  proto.Uint32(60),
 		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(recordPort),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(recordPort)),
 		}.Build(),
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(pollPort),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(pollPort)),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(dnsPort),
-			PublicUri:   dnsDomain,
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(dnsPort)),
+			PublicUri:   proto.String(dnsDomain),
 		}.Build(),
 	}.Build()
 
@@ -375,17 +373,17 @@ func TestServer_RemoteDNSRecording(t *testing.T) {
 		InteractionTtlSeconds:  proto.Uint32(60),
 		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:8080",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("http://127.0.0.1:8080"),
 		}.Build(),
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(pollPort),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(pollPort)),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "cb.localhost.lan",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("cb.localhost.lan"),
 		}.Build(),
 	}.Build()
 
@@ -421,17 +419,17 @@ func TestServer_RemoteHTTPRecording(t *testing.T) {
 		InteractionTtlSeconds:  proto.Uint32(60),
 		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:8080",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("http://127.0.0.1:8080"),
 		}.Build(),
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(pollPort),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(pollPort)),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:53",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("http://127.0.0.1:53"),
 		}.Build(),
 	}.Build()
 
@@ -473,17 +471,17 @@ func TestServer_RemotePolling(t *testing.T) {
 		InteractionTtlSeconds:  proto.Uint32(60),
 		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(recordPort),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(recordPort)),
 		}.Build(),
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:8081",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("http://127.0.0.1:8081"),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER,
-			PublicUri: "http://127.0.0.1:53",
+			Mode:      cbpb.CallbackEndpointMode_MODE_USE_REMOTE_SERVER.Enum(),
+			PublicUri: proto.String("http://127.0.0.1:53"),
 		}.Build(),
 	}.Build()
 
@@ -568,14 +566,14 @@ func TestServer_ListenFails(t *testing.T) {
 		InteractionTtlSeconds:  proto.Uint32(60),
 		CleanupIntervalSeconds: proto.Uint32(10),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(port),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(port)),
 		}.Build(),
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER,
-			BindAddress: "127.0.0.1",
-			BindPort:    uint32(port),
+			Mode:        cbpb.CallbackEndpointMode_MODE_START_LOCAL_SERVER.Enum(),
+			BindAddress: proto.String("127.0.0.1"),
+			BindPort:    proto.Uint32(uint32(port)),
 		}.Build(),
 	}.Build()
 

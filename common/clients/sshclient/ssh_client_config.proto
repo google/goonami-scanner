@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/sshclient/ssh_client_config_go_proto";
-option java_multiple_files = true;
 option java_outer_classname = "SSHClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
 
 // SSHClientConfig contains configuration settings for the SSH client.
 message SSHClientConfig {
   // Maximum time in seconds an SSH connection/authentication attempt is allowed to run.
-  // Default: 5
-  optional int32 timeout_seconds = 1;
+  int32 timeout_seconds = 1 [default = 5];
 }

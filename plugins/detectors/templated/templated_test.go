@@ -30,6 +30,7 @@ import (
 	"github.com/google/goonami-scanner/core/log"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	ttpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 )
@@ -71,7 +72,7 @@ func TestDetectors(t *testing.T) {
 
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
-	cfgProto := config.DefaultProto()
+	cfgProto := &cpb.Config{}
 	mockCBS := tc.GetMockCallbackServer()
 	tcsmock := fakecallbackserver.NewServer(mockCBS.GetEnabled(), mockCBS.GetHasInteraction(), false)
 	defer tcsmock.Close()

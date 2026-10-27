@@ -27,7 +27,6 @@ import (
 
 	"github.com/google/goonami-scanner/core/log"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 )
@@ -88,24 +87,6 @@ type Config struct {
 	cacheDir     string
 }
 
-// DefaultProto returns the default configuration for Goonami.
-func DefaultProto() *cpb.Config {
-	return cpb.Config_builder{
-		Globalcfg: cpb.GlobalConfig_builder{
-			Performance: cpb.GlobalConfig_Performance_builder{
-				MaxConcurrency:                 proto.Int32(5),
-				TimeoutPerRequestSeconds:       proto.Int32(10),
-				MaxPacketsPerSecond:            proto.Int32(0),
-				MaxHttpRequestsPerSecond:       proto.Int32(0),
-				MaxHttpRedirects:               proto.Int32(10),
-				MaxHttpAttemptsWhenRatelimit:   proto.Int32(3),
-				HttpRetryInitialBackoffSeconds: proto.Int32(2),
-				MaxHttpRetryAfterSeconds:       proto.Int32(15),
-			}.Build(),
-		}.Build(),
-	}.Build()
-}
-
 // FromFile creates a new Config from a textproto file. Caller is still responsible for explicitly
 // calling `CreateDirectories` before using the configuration.
 func FromFile(path string) (*Config, error) {
@@ -114,12 +95,10 @@ func FromFile(path string) (*Config, error) {
 		return nil, fmt.Errorf("%w: %v", ErrConfigRead, err)
 	}
 
-	cfgpb := DefaultProto()
-	provided := &cpb.Config{}
-	if err := prototext.Unmarshal(data, provided); err != nil {
+	cfgpb := &cpb.Config{}
+	if err := prototext.Unmarshal(data, cfgpb); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrConfigUnmarshal, err)
 	}
-	proto.Merge(cfgpb, provided)
 
 	return &Config{
 		proto: cfgpb,
@@ -129,17 +108,18 @@ func FromFile(path string) (*Config, error) {
 // FromProto creates a new Config from a Config proto. Caller is still responsible for explicitly
 // calling `CreateDirectories` before using the configuration.
 func FromProto(cfgpb *cpb.Config) *Config {
-	merged := DefaultProto()
-	proto.Merge(merged, cfgpb)
+	if cfgpb == nil {
+		cfgpb = &cpb.Config{}
+	}
 	return &Config{
-		proto: merged,
+		proto: cfgpb,
 	}
 }
 
 // Default creates a new Config with the default configuration.
 func Default() *Config {
 	return &Config{
-		proto: DefaultProto(),
+		proto: &cpb.Config{},
 	}
 }
 

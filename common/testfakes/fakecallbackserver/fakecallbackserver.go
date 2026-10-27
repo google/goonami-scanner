@@ -23,6 +23,8 @@ import (
 	"net/http/httptest"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
+
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
@@ -94,13 +96,13 @@ func (s *Server) ClientConfig() *cbpb.CallbackserverConfig {
 	}
 	return cbpb.CallbackserverConfig_builder{
 		HttpPollConfig: cbpb.EndpointConfig_builder{
-			PublicUri: s.server.URL,
+			PublicUri: proto.String(s.server.URL),
 		}.Build(),
 		HttpRecordConfig: cbpb.EndpointConfig_builder{
-			PublicUri: s.server.URL,
+			PublicUri: proto.String(s.server.URL),
 		}.Build(),
 		DnsRecordConfig: cbpb.EndpointConfig_builder{
-			PublicUri: DefaultDNSDomain,
+			PublicUri: proto.String(DefaultDNSDomain),
 		}.Build(),
 	}.Build()
 }

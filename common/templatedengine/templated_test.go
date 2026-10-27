@@ -34,6 +34,7 @@ import (
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
 
+	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -205,7 +206,7 @@ func TestTemplatedDetector_Detect(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfgProto := config.DefaultProto()
+			cfgProto := &cpb.Config{}
 			if tc.enableCBS {
 				cfgProto.SetClients(cbs.ClientsConfig())
 			}

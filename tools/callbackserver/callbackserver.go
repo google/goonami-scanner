@@ -31,7 +31,6 @@ import (
 	tcshttp "github.com/google/goonami-scanner/tools/callbackserver/server/http"
 	"github.com/google/goonami-scanner/tools/callbackserver/storage"
 	"google.golang.org/protobuf/encoding/prototext"
-	"google.golang.org/protobuf/proto"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 )
@@ -46,14 +45,6 @@ var (
 	// ErrInvalidConfig is returned when the config file is invalid.
 	ErrInvalidConfig = errors.New("invalid config")
 )
-
-// DefaultConfig returns the default config for the callback server.
-func DefaultConfig() *cbpb.CallbackserverConfig {
-	return cbpb.CallbackserverConfig_builder{
-		InteractionTtlSeconds:  proto.Uint32(60),
-		CleanupIntervalSeconds: proto.Uint32(10),
-	}.Build()
-}
 
 // ConfigFromFile reads and validates the config from the given file. This is used only by the
 // standalone callback server binary.
@@ -115,23 +106,21 @@ type Server struct {
 
 // New creates a new callback server.
 func New(ctx context.Context, cfg *cbpb.CallbackserverConfig) (*Server, error) {
-	clientCfg := DefaultConfig()
-
-	if cfg != nil {
-		proto.Merge(clientCfg, cfg)
+	if cfg == nil {
+		cfg = &cbpb.CallbackserverConfig{}
 	}
 
-	if err := ValidateConfig(clientCfg); err != nil {
+	if err := ValidateConfig(cfg); err != nil {
 		return nil, err
 	}
 
-	ttl := time.Duration(clientCfg.GetInteractionTtlSeconds()) * time.Second
-	cleanupInterval := time.Duration(clientCfg.GetCleanupIntervalSeconds()) * time.Second
+	ttl := time.Duration(cfg.GetInteractionTtlSeconds()) * time.Second
+	cleanupInterval := time.Duration(cfg.GetCleanupIntervalSeconds()) * time.Second
 	store := storage.NewInMemoryInteractionStore(ctx, ttl, cleanupInterval)
 
 	return &Server{
 		store: store,
-		cfg:   clientCfg,
+		cfg:   cfg,
 	}, nil
 }
 

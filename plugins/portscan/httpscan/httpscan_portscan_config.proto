@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.proto.configs.portscan;
 
 option go_package = "github.com/google/goonami-scanner/plugins/portscan/httpscan/httpscan_portscan_config_go_proto";
 
-option java_multiple_files = true;
 option java_outer_classname = "HttpScanPluginConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.portscan";
 

@@ -568,7 +568,7 @@ func TestDetectors(t *testing.T) {
 
 func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPluginTests_Test) {
 	ctx := t.Context()
-	cfgProto := config.DefaultProto()
+	cfgProto := &cpb.Config{}
 	mockCBS := tc.GetMockCallbackServer()
 	tcsmock := fakecallbackserver.NewServer(mockCBS.GetEnabled(), mockCBS.GetHasInteraction(), false)
 	defer tcsmock.Close()

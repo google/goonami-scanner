@@ -68,7 +68,7 @@ func TestNew(t *testing.T) {
 		{
 			name:       "when_nmap_config_is_not_provided_it_uses_default",
 			nmapConfig: nil,
-			wantConfig: DefaultConfig(),
+			wantConfig: &nccpb.NmapClientConfig{},
 		},
 	}
 	for _, tc := range testCases {

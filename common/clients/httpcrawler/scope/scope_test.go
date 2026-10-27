@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
 
 	hcpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 )
@@ -34,23 +35,23 @@ func TestFromProto(t *testing.T) {
 		{
 			name: "when_scope_has_domain_only_returns_normalized_scope",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
-				Domain: "foo.com",
+				Domain: proto.String("foo.com"),
 			}.Build(),
 			want: &Scope{Domain: "foo.com", Path: "/"},
 		},
 		{
 			name: "when_scope_has_domain_and_path_returns_normalized_scope",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
-				Domain: "foo.com",
-				Path:   "/path",
+				Domain: proto.String("foo.com"),
+				Path:   proto.String("/path"),
 			}.Build(),
 			want: &Scope{Domain: "foo.com", Path: "/path/"},
 		},
 		{
 			name: "when_scope_has_domain_and_file_path_returns_normalized_scope_with_parent_dir",
 			proto: hcpb.HttpCrawlerClientConfig_Scope_builder{
-				Domain: "foo.com",
-				Path:   "/path/foo.html",
+				Domain: proto.String("foo.com"),
+				Path:   proto.String("/path/foo.html"),
 			}.Build(),
 			want: &Scope{Domain: "foo.com", Path: "/path/"},
 		},
@@ -125,10 +126,10 @@ func TestLoad(t *testing.T) {
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_CONFIG_ONLY.Enum(),
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
-					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: ""}.Build(),
-					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/path"}.Build(),
-					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/some/test.html"}.Build(),
-					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/test/"}.Build(),
+					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: proto.String("foo.com"), Path: proto.String("")}.Build(),
+					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: proto.String("foo.com"), Path: proto.String("/path")}.Build(),
+					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: proto.String("foo.com"), Path: proto.String("/some/test.html")}.Build(),
+					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: proto.String("foo.com"), Path: proto.String("/test/")}.Build(),
 				},
 			}.Build(),
 			urls: []string{"http://bar.com"},
@@ -162,7 +163,7 @@ func TestLoad(t *testing.T) {
 			cfg: hcpb.HttpCrawlerClientConfig_builder{
 				ScopePolicy: hcpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
 				Scopes: []*hcpb.HttpCrawlerClientConfig_Scope{
-					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: "foo.com", Path: "/"}.Build(),
+					hcpb.HttpCrawlerClientConfig_Scope_builder{Domain: proto.String("foo.com"), Path: proto.String("/")}.Build(),
 				},
 			}.Build(),
 			urls: []string{"http://bar.com/path"},

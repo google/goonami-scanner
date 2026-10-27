@@ -14,51 +14,43 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto";
 
-option java_multiple_files = true;
 option java_outer_classname = "LlmClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
 
 message LlmClientConfig {
   // Timeout for each request to the LLM.
-  // Default: 240 (4 minutes)
-  optional int32 timeout_per_request_seconds = 1;
+  int32 timeout_per_request_seconds = 1 [default = 240];
 
   // Maximum number of attempts to run the agent.
-  // Default: 3
-  optional int32 max_attempts = 2;
+  int32 max_attempts = 2 [default = 3];
 
   // Delay between retries.
-  // Default: 10
-  optional int32 retry_delay_seconds = 3;
+  int32 retry_delay_seconds = 3 [default = 10];
 
   // Configuration for the tools that the LLM agent can use.
-  optional ToolConfig tools = 4;
+  ToolConfig tools = 4;
 
   // Abstraction for a lite model.
-  // Default: gemini-3.5-flash-lite
-  optional string lite_model = 5;
+  string lite_model = 5 [default = "gemini-3.5-flash-lite"];
 
   // Abstraction for a fast model.
-  // Default: gemini-3.6-flash
-  optional string fast_model = 6;
+  string fast_model = 6 [default = "gemini-3.6-flash"];
 
   // Abstraction for a pro model.
-  // Default: gemini-3.1-pro-preview
-  optional string pro_model = 7;
+  string pro_model = 7 [default = "gemini-3.1-pro-preview"];
 
   // Whether to dump the agent's session trajectories to the artifacts directory.
-  // Default: false
-  optional bool dump_trajectories = 8;
+  bool dump_trajectories = 8 [default = false];
 }
 
 message ToolConfig {
-  optional HttpClientConfig http_client_config = 1;
+  HttpClientConfig http_client_config = 1;
 }
 
 // Configuration for the HTTP client tool. Note that the tool uses the core
@@ -70,12 +62,10 @@ message HttpClientConfig {
 
   // Maximum number of HTTP requests per network service that the agent is
   // allowed to make.
-  // Default: 50
-  optional int32 max_requests_per_service = 2;
+  int32 max_requests_per_service = 2 [default = 50];
 
   // Maximum size of an HTTP response body to pass to the agent.
-  // Default: 1048576 (1MB)
-  optional int32 max_answer_size_bytes = 3;
+  int32 max_answer_size_bytes = 3 [default = 1048576];
 
   // Forbidden paths regexps. If the agent tries to request a path that matches
   // any of these regexps, the request will be rejected.

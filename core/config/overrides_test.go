@@ -41,7 +41,9 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"globalcfg.user_agent=new-agent"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().SetUserAgent("new-agent")
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					UserAgent: proto.String("new-agent"),
+				}.Build())
 				return c
 			},
 			wantErr: nil,
@@ -51,7 +53,11 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"globalcfg.performance.max_concurrency=10"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().GetPerformance().SetMaxConcurrency(10)
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxConcurrency: proto.Int32(10),
+					}.Build(),
+				}.Build())
 				return c
 			},
 			wantErr: nil,
@@ -117,7 +123,9 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"globalcfg.ports_to_scan=80,443"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().SetPortsToScan([]uint32{80, 443})
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					PortsToScan: []uint32{80, 443},
+				}.Build())
 				return c
 			},
 			wantErr: nil,
@@ -127,7 +135,9 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"globalcfg.ports_to_scan=80,443", "globalcfg.ports_to_scan=22"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().SetPortsToScan([]uint32{22})
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					PortsToScan: []uint32{22},
+				}.Build())
 				return c
 			},
 			wantErr: nil,
@@ -136,7 +146,9 @@ func TestApplyOverrides(t *testing.T) {
 			name:      "when_overriding_repeated_field_with_empty_value_it_clears_it",
 			overrides: []string{"globalcfg.ports_to_scan=80,443", "globalcfg.ports_to_scan="},
 			want: func() *Config {
-				return Default()
+				c := Default()
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{}.Build())
+				return c
 			},
 			wantErr: nil,
 		},
@@ -157,7 +169,9 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"ports=8080,8081"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().SetPortsToScan([]uint32{8080, 8081})
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					PortsToScan: []uint32{8080, 8081},
+				}.Build())
 				return c
 			},
 			wantErr: nil,
@@ -183,8 +197,12 @@ func TestApplyOverrides(t *testing.T) {
 			overrides: []string{"globalcfg.user_agent=agent1", "globalcfg.performance.max_concurrency=2"},
 			want: func() *Config {
 				c := Default()
-				c.proto.GetGlobalcfg().SetUserAgent("agent1")
-				c.proto.GetGlobalcfg().GetPerformance().SetMaxConcurrency(2)
+				c.proto.SetGlobalcfg(cpb.GlobalConfig_builder{
+					UserAgent: proto.String("agent1"),
+					Performance: cpb.GlobalConfig_Performance_builder{
+						MaxConcurrency: proto.Int32(2),
+					}.Build(),
+				}.Build())
 				return c
 			},
 			wantErr: nil,

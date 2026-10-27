@@ -65,16 +65,26 @@ func newTestServer(pages map[string]*testPage) *httptest.Server {
 
 func TestDefaultClientConfig(t *testing.T) {
 	want := cpb.HttpCrawlerClientConfig_builder{
-		MaxConcurrency:   proto.Int32(1),
-		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024),
-		MaxDepth:         proto.Int32(1),
-		MaxRequests:      proto.Int32(100),
-		Exclusions:       goohttp.DefaultForbiddenPathPatterns(),
-		ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+		Exclusions: goohttp.DefaultForbiddenPathPatterns(),
 	}.Build()
 	got := DefaultClientConfig()
 	if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
 		t.Errorf("DefaultClientConfig() returned diff (-want +got):\n%s", diff)
+	}
+	if got.GetMaxConcurrency() != 1 {
+		t.Errorf("DefaultClientConfig().GetMaxConcurrency() = %d, want 1", got.GetMaxConcurrency())
+	}
+	if got.GetMaxPageSizeBytes() != 1024*1024 {
+		t.Errorf("DefaultClientConfig().GetMaxPageSizeBytes() = %d, want %d", got.GetMaxPageSizeBytes(), 1024*1024)
+	}
+	if got.GetMaxDepth() != 1 {
+		t.Errorf("DefaultClientConfig().GetMaxDepth() = %d, want 1", got.GetMaxDepth())
+	}
+	if got.GetMaxRequests() != 100 {
+		t.Errorf("DefaultClientConfig().GetMaxRequests() = %d, want 100", got.GetMaxRequests())
+	}
+	if got.GetScopePolicy() != cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND {
+		t.Errorf("DefaultClientConfig().GetScopePolicy() = %v, want %v", got.GetScopePolicy(), cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND)
 	}
 }
 

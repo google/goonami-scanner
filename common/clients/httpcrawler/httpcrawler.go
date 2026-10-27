@@ -61,12 +61,7 @@ type Crawler interface {
 // DefaultClientConfig returns the default configuration for the HTTP crawler client.
 func DefaultClientConfig() *cpb.HttpCrawlerClientConfig {
 	return cpb.HttpCrawlerClientConfig_builder{
-		MaxConcurrency:   proto.Int32(1),
-		MaxPageSizeBytes: proto.Int32(1 * 1024 * 1024), // 1 MB
-		MaxDepth:         proto.Int32(1),
-		MaxRequests:      proto.Int32(100),
-		Exclusions:       goohttp.DefaultForbiddenPathPatterns(),
-		ScopePolicy:      cpb.HttpCrawlerClientConfig_SCOPE_POLICY_EXPAND.Enum(),
+		Exclusions: goohttp.DefaultForbiddenPathPatterns(),
 	}.Build()
 }
 

@@ -103,9 +103,5 @@ func SharedClient(cfg *config.Config) Client {
 
 // CurrentClientName returns the name of the current HTTP client.
 func CurrentClientName(cfg *config.Config) string {
-	if name := cfg.GlobalConfig().GetHttpClient(); name != "" {
-		return name
-	}
-
-	return "simpleclient"
+	return cfg.GlobalConfig().GetHttpClient()
 }

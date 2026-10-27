@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.proto.configs.fingerprinters;
 
 option go_package = "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto";
 
-option java_multiple_files = true;
 option java_outer_classname = "WebIdentityFpConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.fingerprinters";
 
 message WebIdentityFpConfig {
   // Directory where the signatures definition are stored.
-  optional string signatures_directory = 1;
+  string signatures_directory = 1;
 
   // Whether to write the HTML response to a file as we crawl the web service.
-  // Default: false
-  optional bool write_html_to_file = 2;
+  bool write_html_to_file = 2 [default = false];
 
   // If storing the HTML response, this is the maximum size of one file.
-  // Default: 1048576 (1MB)
-  optional int64 maximum_file_size_bytes= 3;
+  int64 maximum_file_size_bytes = 3 [default = 1048576];
 
   // If storing the HTML response, this is the maximum amount of storage space
   // to use.
-  // Default: 104857600 (100MB)
-  optional int64 maximum_storage_space_bytes = 4;
+  int64 maximum_storage_space_bytes = 4 [default = 104857600];
 }
