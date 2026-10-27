@@ -194,7 +194,7 @@ func (r *SimpleRunner) Run(ctx context.Context, target string) (*srpb.ScanResult
 	}
 	metrics.FingerprintDuration.Observe(ctx, time.Since(phaseStart).Seconds())
 
-	log.DebugContextf(ctx, log.DebugLevelSession, "fingerprinting phase complete")
+	log.DebugContextf(ctx, log.DebugLevelSession, "fingerprinting phase complete: %d service(s)", len(fpreport.GetNetworkServices()))
 
 	phaseStart = time.Now()
 	detections, err := r.DetectStep(ctx, fpreport)
