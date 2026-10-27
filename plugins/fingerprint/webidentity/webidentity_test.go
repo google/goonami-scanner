@@ -600,8 +600,360 @@ func TestFingerprintWithWrites(t *testing.T) {
 	}
 }
 
-func newTestServer(pages map[string]string) *httptest.Server {
+func TestFingerprintReconciliation(t *testing.T) {
+	const (
+		grafanaPage       = "I am Grafana"
+		nginxPage         = "I am NGINX"
+		unidentifiedPage1 = "<html><body>Hello</body></html>"
+		unidentifiedPage2 = "<html><body>Other</body></html>"
+		linkToV1Page      = "<a href=\"/v1/app\">v1</a>"
+		linkToV2Page      = "<a href=\"/v2/app\">v2</a>"
+	)
+
+	grafanaHash := pageHash(t, grafanaPage)
+	nginxHash := pageHash(t, nginxPage)
+	unidentifiedHash1 := pageHash(t, unidentifiedPage1)
+	unidentifiedHash2 := pageHash(t, unidentifiedPage2)
+	linkToV1Hash := pageHash(t, linkToV1Page)
+	linkToV2Hash := pageHash(t, linkToV2Page)
+
+	knownHashes := []*fpb.Fingerprints{
+		fpb.Fingerprints_builder{
+			SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "grafana"}.Build(),
+			ContentHashes: []*fpb.ContentHash{
+				fpb.ContentHash_builder{
+					ContentPath: "/",
+					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: grafanaHash}.Build()},
+				}.Build(),
+				fpb.ContentHash_builder{
+					ContentPath: "/app",
+					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: grafanaHash}.Build()},
+				}.Build(),
+			},
+		}.Build(),
+		fpb.Fingerprints_builder{
+			SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
+			ContentHashes: []*fpb.ContentHash{
+				fpb.ContentHash_builder{
+					ContentPath: "/",
+					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: nginxHash}.Build()},
+				}.Build(),
+			},
+		}.Build(),
+	}
+
+	tests := []struct {
+		name      string
+		hostPages map[string]string
+		ipPages   map[string]string
+		want      []*nspb.NetworkService
+	}{
+		{
+			name:      "when_ip_and_hostname_serve_same_identity_returns_single_reconciled_service",
+			hostPages: map[string]string{"/": grafanaPage},
+			ipPages:   map[string]string{"/": grafanaPage},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "{host_uri}", "grafana",
+					buildTestCrawl("{host_uri}/", 0, grafanaHash),
+					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
+				),
+			},
+		},
+		{
+			name:      "when_ip_is_identified_and_hostname_is_unidentified_returns_narrowed_services",
+			hostPages: map[string]string{"/": unidentifiedPage1},
+			ipPages:   map[string]string{"/": grafanaPage},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}", "grafana",
+					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "", "",
+					buildTestCrawl("{host_uri}/", 0, unidentifiedHash1),
+				),
+			},
+		},
+		{
+			name:      "when_hostname_is_identified_and_ip_is_unidentified_returns_narrowed_services",
+			hostPages: map[string]string{"/": grafanaPage},
+			ipPages:   map[string]string{"/": unidentifiedPage1},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}", "grafana",
+					buildTestCrawl("{host_uri}/", 0, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", "",
+					buildTestCrawl("{ip_uri}/", 0, unidentifiedHash1),
+				),
+			},
+		},
+		{
+			name:      "when_ip_and_hostname_serve_different_software_returns_narrowed_services",
+			hostPages: map[string]string{"/": nginxPage},
+			ipPages:   map[string]string{"/": grafanaPage},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}", "nginx",
+					buildTestCrawl("{host_uri}/", 0, nginxHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}", "grafana",
+					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
+				),
+			},
+		},
+		{
+			name:      "when_ip_and_hostname_serve_same_unidentified_pages_returns_single_reconciled_service",
+			hostPages: map[string]string{"/": unidentifiedPage1},
+			ipPages:   map[string]string{"/": unidentifiedPage1},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "", "",
+					buildTestCrawl("{host_uri}/", 0, unidentifiedHash1),
+					buildTestCrawl("{ip_uri}/", 0, unidentifiedHash1),
+				),
+			},
+		},
+		{
+			name:      "when_ip_and_hostname_serve_different_unidentified_pages_returns_narrowed_services",
+			hostPages: map[string]string{"/": unidentifiedPage1},
+			ipPages:   map[string]string{"/": unidentifiedPage2},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "", "",
+					buildTestCrawl("{host_uri}/", 0, unidentifiedHash1),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", "",
+					buildTestCrawl("{ip_uri}/", 0, unidentifiedHash2),
+				),
+			},
+		},
+		{
+			name: "when_ip_and_hostname_serve_same_identity_at_different_roots_returns_narrowed_services",
+			hostPages: map[string]string{
+				"/":       linkToV1Page,
+				"/v1/app": grafanaPage,
+			},
+			ipPages: map[string]string{
+				"/":       linkToV2Page,
+				"/v2/app": grafanaPage,
+			},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}/v1", "grafana",
+					buildTestCrawl("{host_uri}/v1/app", 1, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}/v2", "grafana",
+					buildTestCrawl("{ip_uri}/v2/app", 1, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "", "",
+					buildTestCrawl("{host_uri}/", 0, linkToV1Hash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", "",
+					buildTestCrawl("{ip_uri}/", 0, linkToV2Hash),
+				),
+			},
+		},
+		{
+			name: "when_ip_and_hostname_serve_same_identity_at_subpath_returns_reconciled_service",
+			hostPages: map[string]string{
+				"/":       linkToV1Page,
+				"/v1/app": grafanaPage,
+			},
+			ipPages: map[string]string{
+				"/":       linkToV1Page,
+				"/v1/app": grafanaPage,
+			},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "{host_uri}/v1", "grafana",
+					buildTestCrawl("{host_uri}/v1/app", 1, grafanaHash),
+					buildTestCrawl("{ip_uri}/v1/app", 1, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "", "",
+					buildTestCrawl("{host_uri}/", 0, linkToV1Hash),
+					buildTestCrawl("{ip_uri}/", 0, linkToV1Hash),
+				),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			server := newHostAwareTestServer(tc.hostPages, tc.ipPages)
+			defer server.Close()
+
+			ip, port, _ := serverInfo(t, server)
+			service := nspb.NetworkService_builder{
+				NetworkEndpoint:      buildTestEndpoint(npb.NetworkEndpoint_IP_HOSTNAME_PORT, ip, port),
+				SupportedHttpMethods: []string{"GET"},
+			}.Build()
+
+			registry := hash.NewRegistry()
+			for _, fp := range knownHashes {
+				if err := registry.Load(fp); err != nil {
+					t.Fatalf("Failed to load known hashes: %v", err)
+				}
+			}
+
+			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
+			cfg := buildConfig(t, modConfig, "")
+
+			mod, err := newWithRegistry(ctx, modConfig, cfg, registry)
+			if err != nil {
+				t.Fatalf("Failed to create module: %v", err)
+			}
+
+			gotServices, err := mod.Fingerprint(ctx, service)
+			if err != nil {
+				t.Fatalf("Fingerprint() returned unexpected error: %v", err)
+			}
+
+			hostURI := fmt.Sprintf("http://localhost:%d", port)
+			ipURI := fmt.Sprintf("http://%s:%d", ip, port)
+			replacePlaceholders := func(s string) string {
+				s = strings.ReplaceAll(s, "{host_uri}", hostURI)
+				return strings.ReplaceAll(s, "{ip_uri}", ipURI)
+			}
+
+			for _, svc := range tc.want {
+				svc.SetNetworkEndpoint(buildTestEndpoint(svc.GetNetworkEndpoint().GetType(), ip, port))
+				wsc := svc.GetServiceContext().GetWebServiceContext()
+				if wsc.GetApplicationRoot() != "" {
+					wsc.SetApplicationRoot(replacePlaceholders(wsc.GetApplicationRoot()))
+				}
+				for _, cr := range wsc.GetCrawlResults() {
+					cr.GetCrawlTarget().SetUrl(replacePlaceholders(cr.GetCrawlTarget().GetUrl()))
+				}
+			}
+
+			sortServices := cmpopts.SortSlices(func(a, b *nspb.NetworkService) bool {
+				aRoot := a.GetServiceContext().GetWebServiceContext().GetApplicationRoot()
+				bRoot := b.GetServiceContext().GetWebServiceContext().GetApplicationRoot()
+				if aRoot != bRoot {
+					return aRoot < bRoot
+				}
+				return a.GetNetworkEndpoint().GetType() < b.GetNetworkEndpoint().GetType()
+			})
+			sortCrawlResults := protocmp.SortRepeatedFields((*nspb.WebServiceContext)(nil), "crawl_results")
+
+			if diff := cmp.Diff(tc.want, gotServices, sortServices, protocmp.Transform(), sortCrawlResults); diff != "" {
+				t.Errorf("Fingerprint() returned unexpected diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestSplitServiceByEndpoint(t *testing.T) {
+	tests := []struct {
+		name    string
+		service *nspb.NetworkService
+		want    []*nspb.NetworkService
+	}{
+		{
+			name: "when_endpoint_is_ip_hostname_splits_into_hostname_and_ip",
+			service: nspb.NetworkService_builder{
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Type: npb.NetworkEndpoint_IP_HOSTNAME,
+					IpAddress: npb.IpAddress_builder{
+						AddressFamily: npb.AddressFamily_IPV4,
+						Address:       "127.0.0.1",
+					}.Build(),
+					Hostname: npb.Hostname_builder{
+						Name: "localhost",
+					}.Build(),
+				}.Build(),
+				SupportedHttpMethods: []string{"GET"},
+			}.Build(),
+			want: []*nspb.NetworkService{
+				nspb.NetworkService_builder{
+					NetworkEndpoint: npb.NetworkEndpoint_builder{
+						Type: npb.NetworkEndpoint_HOSTNAME,
+						Hostname: npb.Hostname_builder{
+							Name: "localhost",
+						}.Build(),
+					}.Build(),
+					SupportedHttpMethods: []string{"GET"},
+				}.Build(),
+				nspb.NetworkService_builder{
+					NetworkEndpoint: npb.NetworkEndpoint_builder{
+						Type: npb.NetworkEndpoint_IP,
+						IpAddress: npb.IpAddress_builder{
+							AddressFamily: npb.AddressFamily_IPV4,
+							Address:       "127.0.0.1",
+						}.Build(),
+					}.Build(),
+					SupportedHttpMethods: []string{"GET"},
+				}.Build(),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := splitServiceByEndpoint(tc.service)
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("splitServiceByEndpoint() returned unexpected diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func pageHash(t *testing.T, page string) string {
+	t.Helper()
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"text/html"}},
+	}
+	h, err := hash.FromResponse(resp, []byte(page+"\n"))
+	if err != nil {
+		t.Fatalf("hash.FromResponse(%q) failed: %v", page, err)
+	}
+	return h.Hex()
+}
+
+func buildTestEndpoint(epType npb.NetworkEndpoint_Type, ip string, port uint32) *npb.NetworkEndpoint {
+	b := npb.NetworkEndpoint_builder{
+		Type: epType,
+		Port: npb.Port_builder{PortNumber: port}.Build(),
+	}
+	if epType == npb.NetworkEndpoint_HOSTNAME_PORT || epType == npb.NetworkEndpoint_IP_HOSTNAME_PORT {
+		b.Hostname = npb.Hostname_builder{Name: "localhost"}.Build()
+	}
+	if epType == npb.NetworkEndpoint_IP_PORT || epType == npb.NetworkEndpoint_IP_HOSTNAME_PORT {
+		b.IpAddress = npb.IpAddress_builder{AddressFamily: npb.AddressFamily_IPV4, Address: ip}.Build()
+	}
+	return b.Build()
+}
+
+func buildTestService(epType npb.NetworkEndpoint_Type, appRoot, software string, crawls ...*wcpb.CrawlResult) *nspb.NetworkService {
+	wsc := nspb.WebServiceContext_builder{
+		ApplicationRoot: appRoot,
+		CrawlResults:    crawls,
+	}
+	if software != "" {
+		wsc.Software = spb.Software_builder{Name: software}.Build()
+		wsc.VersionSet = &spb.VersionSet{}
+	}
+	return nspb.NetworkService_builder{
+		NetworkEndpoint:      npb.NetworkEndpoint_builder{Type: epType}.Build(),
+		SupportedHttpMethods: []string{"GET"},
+		ServiceContext: nspb.ServiceContext_builder{
+			WebServiceContext: wsc.Build(),
+		}.Build(),
+	}.Build()
+}
+
+func buildTestCrawl(url string, depth int32, hexHash string) *wcpb.CrawlResult {
+	return wcpb.CrawlResult_builder{
+		CrawlTarget:      wcpb.CrawlTarget_builder{Url: url}.Build(),
+		CrawlDepth:       depth,
+		ResponseCode:     http.StatusOK,
+		Content:          []byte(hexHash),
+		CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
+	}.Build()
+}
+
+func newHostAwareTestServer(hostPages, ipPages map[string]string) *httptest.Server {
 	handler := func(w http.ResponseWriter, r *http.Request) {
+		pages := ipPages
+		if strings.HasPrefix(r.Host, "localhost") {
+			pages = hostPages
+		}
+
 		p, ok := pages[r.URL.Path]
 		if !ok {
 			http.NotFound(w, r)
@@ -613,6 +965,10 @@ func newTestServer(pages map[string]string) *httptest.Server {
 	}
 
 	return httptest.NewServer(http.HandlerFunc(handler))
+}
+
+func newTestServer(pages map[string]string) *httptest.Server {
+	return newHostAwareTestServer(pages, pages)
 }
 
 func serverInfo(t *testing.T, server *httptest.Server) (string, uint32, *nspb.NetworkService) {
@@ -631,16 +987,7 @@ func serverInfo(t *testing.T, server *httptest.Server) (string, uint32, *nspb.Ne
 	hostname := addr[0]
 	port := uint32(p)
 	service := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Type: npb.NetworkEndpoint_IP_PORT,
-			IpAddress: npb.IpAddress_builder{
-				AddressFamily: npb.AddressFamily_IPV4,
-				Address:       hostname,
-			}.Build(),
-			Port: npb.Port_builder{
-				PortNumber: port,
-			}.Build(),
-		}.Build(),
+		NetworkEndpoint:      buildTestEndpoint(npb.NetworkEndpoint_IP_PORT, hostname, port),
 		SupportedHttpMethods: []string{"GET"},
 	}.Build()
 

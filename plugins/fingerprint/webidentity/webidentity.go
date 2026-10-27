@@ -21,9 +21,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
@@ -37,6 +40,7 @@ import (
 
 	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	wfpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
+	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	spb "github.com/google/tsunami-security-scanner/proto/go/software_go_proto"
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
@@ -128,6 +132,19 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 		return []*nspb.NetworkService{service}, nil
 	}
 
+	var allServices []*nspb.NetworkService
+	for _, epService := range splitServiceByEndpoint(service) {
+		services, err := m.fingerprintEndpoint(ctx, epService)
+		if err != nil {
+			return nil, err
+		}
+		allServices = append(allServices, services...)
+	}
+
+	return reconcileServices(service, allServices), nil
+}
+
+func (m *Module) fingerprintEndpoint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 	run := &runInfo{
 		matches:      make(map[string][]*hash.Identity),
 		crawlResults: make(map[string]*wcpb.CrawlResult),
@@ -141,15 +158,12 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 }
 
 func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkService) error {
-	webroots, err := netservice.BuildAllWebRoots(service)
+	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
 		return err
 	}
 
-	var seeds []string
-	for _, root := range webroots {
-		seeds = append(seeds, root+"/")
-	}
+	seeds := []string{webroot + "/"}
 
 	var bytesWritten int64
 	callback := func(ctx context.Context, info *httpcrawler.PageInfo, resp *http.Response, content []byte) error {
@@ -321,6 +335,87 @@ func identityToNewService(ctx context.Context, service *nspb.NetworkService, cra
 	}
 
 	return newService
+}
+
+// If a network service is identified by both a hostname and an IP address, we split it into two
+// services, one for each endpoint. We will perform fingerprinting on each and reconcile the
+// results afterwards.
+func splitServiceByEndpoint(service *nspb.NetworkService) []*nspb.NetworkService {
+	endpoint := service.GetNetworkEndpoint()
+	if !endpoint.HasHostname() || !endpoint.HasIpAddress() {
+		return []*nspb.NetworkService{service}
+	}
+
+	hostEpType := npb.NetworkEndpoint_HOSTNAME
+	ipEpType := npb.NetworkEndpoint_IP
+	if endpoint.HasPort() {
+		hostEpType = npb.NetworkEndpoint_HOSTNAME_PORT
+		ipEpType = npb.NetworkEndpoint_IP_PORT
+	}
+
+	hostService := proto.Clone(service).(*nspb.NetworkService)
+	hostService.SetNetworkEndpoint(npb.NetworkEndpoint_builder{
+		Type:     hostEpType,
+		Hostname: endpoint.GetHostname(),
+		Port:     endpoint.GetPort(),
+	}.Build())
+
+	ipService := proto.Clone(service).(*nspb.NetworkService)
+	ipService.SetNetworkEndpoint(npb.NetworkEndpoint_builder{
+		Type:      ipEpType,
+		IpAddress: endpoint.GetIpAddress(),
+		Port:      endpoint.GetPort(),
+	}.Build())
+
+	return []*nspb.NetworkService{hostService, ipService}
+}
+
+func reconcileServices(baseService *nspb.NetworkService, services []*nspb.NetworkService) []*nspb.NetworkService {
+	var reconciled []*nspb.NetworkService
+	for _, s := range services {
+		i := slices.IndexFunc(reconciled, func(r *nspb.NetworkService) bool {
+			return areServicesIdentical(r, s)
+		})
+		if i == -1 {
+			reconciled = append(reconciled, s)
+			continue
+		}
+		reconciled[i].SetNetworkEndpoint(baseService.GetNetworkEndpoint())
+		netservice.AddCrawlResults(reconciled[i], s.GetServiceContext().GetWebServiceContext().GetCrawlResults())
+	}
+	return reconciled
+}
+
+func areServicesIdentical(s1, s2 *nspb.NetworkService) bool {
+	wsc1 := s1.GetServiceContext().GetWebServiceContext()
+	wsc2 := s2.GetServiceContext().GetWebServiceContext()
+
+	if wsc1.HasSoftware() && wsc2.HasSoftware() {
+		return wsc1.GetSoftware().GetName() == wsc2.GetSoftware().GetName() &&
+			extractPath(wsc1.GetApplicationRoot()) == extractPath(wsc2.GetApplicationRoot())
+	}
+
+	if wsc1.HasSoftware() != wsc2.HasSoftware() {
+		return false
+	}
+
+	return maps.Equal(crawlHashes(wsc1), crawlHashes(wsc2))
+}
+
+func crawlHashes(wsc *nspb.WebServiceContext) map[string]string {
+	hashes := make(map[string]string, len(wsc.GetCrawlResults()))
+	for _, r := range wsc.GetCrawlResults() {
+		hashes[extractPath(r.GetCrawlTarget().GetUrl())] = string(r.GetContent())
+	}
+	return hashes
+}
+
+func extractPath(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	return u.Path
 }
 
 // Retrieves the directory containing the signatures.
