@@ -1,0 +1,87 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "SpringBootActuator_ExposedUI"
+}
+
+tests: {
+  name: "whenActuatorEnvExposed_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/actuator/env"
+        status: 200
+        body_content: "{\"activeProfiles\":[\"prod\"],\"propertySources\":[{\"name\":\"systemProperties\"}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenApiZuulRoutesExposed_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/routes"
+        status: 200
+        body_content: "{\"/v1/**\":\"https://internal-backend.corp.example.com\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenApiActuatorGatewayRoutesExposed_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/actuator/gateway/routes"
+        status: 200
+        body_content: "[{\"predicate\":\"Paths: [/get]\",\"route_id\":\"path_route\",\"filters\":[]}]"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenHeapdumpExposed_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/actuator/heapdump"
+        status: 200
+        headers: [
+          {
+            name: "Content-Disposition"
+            value: "attachment; filename=\"heapdump2026-10-20-09-20-live.hprof.gz\""
+          }
+        ]
+        body_content: "JAVA PROFILE 1.0.2"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotSpringBootActuator_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "<html><body>Hello world</body></html>"
+      }
+    ]
+  }
+}
