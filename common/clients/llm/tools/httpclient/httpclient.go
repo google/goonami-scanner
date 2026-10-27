@@ -97,10 +97,8 @@ type Response struct {
 // DefaultConfig for the httpclient tool.
 func DefaultConfig() *hccpb.HttpClientConfig {
 	return hccpb.HttpClientConfig_builder{
-		AllowedMethods:        []string{"GET", "POST"},
-		MaxRequestsPerService: proto.Int32(50),
-		MaxAnswerSizeBytes:    proto.Int32(1 * 1024 * 1024), // 1 MB
-		ForbiddenPaths:        goohttp.DefaultForbiddenPathPatterns(),
+		AllowedMethods: []string{"GET", "POST"},
+		ForbiddenPaths: goohttp.DefaultForbiddenPathPatterns(),
 	}.Build()
 }
 

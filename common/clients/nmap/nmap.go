@@ -30,7 +30,6 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/net/iputils"
-	"google.golang.org/protobuf/proto"
 
 	nccpb "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 )
@@ -52,18 +51,6 @@ var (
 	ErrNmapTempFile = errors.New("error with nmap temporary file")
 )
 
-// DefaultConfig for the nmap client.
-// TCP scan of intensity 3 without version detection or scripts. No host discovery (-Pn option).
-func DefaultConfig() *nccpb.NmapClientConfig {
-	return nccpb.NmapClientConfig_builder{
-		TimeoutSeconds:         proto.Int32(300),
-		ScanTechnique:          nccpb.NmapClientConfig_CONNECT.Enum(),
-		ScanIntensity:          proto.Uint32(3),
-		EnableHostDiscovery:    proto.Bool(false),
-		EnableVersionDetection: proto.Bool(false),
-	}.Build()
-}
-
 // Client is the interface of the nmap client. We define an interface as we also provide a fake
 // implementation for testing.
 type Client interface {
@@ -78,9 +65,9 @@ type SimpleClient struct {
 
 // New nmap client.
 func New(cfg *config.Config) *SimpleClient {
-	nmapCfg := DefaultConfig()
+	nmapCfg := &nccpb.NmapClientConfig{}
 	if cfg.ClientsConfig().HasNmap() {
-		proto.Merge(nmapCfg, cfg.ClientsConfig().GetNmap())
+		nmapCfg = cfg.ClientsConfig().GetNmap()
 	}
 
 	return &SimpleClient{

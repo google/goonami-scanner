@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.callbackserver;
 
 option go_package = "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto";
 
-option java_multiple_files = true;
 option java_outer_classname = "CallbackserverConfigOuterClass";
 option java_package = "com.google.goonami.callbackserver.proto";
 
@@ -59,14 +58,14 @@ message CallbackserverConfig {
   EndpointConfig http_poll_config = 1;
 
   // The endpoint used to record HTTP interactions.
-  optional EndpointConfig http_record_config = 2;
+  EndpointConfig http_record_config = 2;
 
   // The endpoint used to record DNS interactions.
-  optional EndpointConfig dns_record_config = 3;
+  EndpointConfig dns_record_config = 3;
 
   // Time before interactions are invalidated.
-  optional uint32 interaction_ttl_seconds = 4;
+  uint32 interaction_ttl_seconds = 4 [default = 60];
 
   // The interval at which to run cleanup of expired interactions.
-  optional uint32 cleanup_interval_seconds = 5;
+  uint32 cleanup_interval_seconds = 5 [default = 10];
 }

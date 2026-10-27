@@ -38,7 +38,7 @@ import (
 
 const (
 	// DefaultTimeout is the default timeout for SSH connections and authentication.
-	DefaultTimeout = 5 * time.Second
+	DefaultTimeout = time.Duration(sccpb.Default_SSHClientConfig_TimeoutSeconds) * time.Second
 )
 
 var (
@@ -52,13 +52,6 @@ var (
 	ErrAuthFailed = errors.New("ssh: authentication failed")
 )
 
-// DefaultConfig returns the default configuration for the SSH client.
-func DefaultConfig() *sccpb.SSHClientConfig {
-	return sccpb.SSHClientConfig_builder{
-		TimeoutSeconds: proto.Int32(5),
-	}.Build()
-}
-
 // Client manages SSH connection establishment and password authentication.
 type Client struct {
 	coreConfig *config.Config
@@ -67,13 +60,15 @@ type Client struct {
 
 // New creates a new SSH Client populated from configuration.
 func New(cfg *config.Config) *Client {
-	sshCfg := DefaultConfig()
+	sshCfg := &sccpb.SSHClientConfig{}
 	if cfg != nil {
-		if timeout := cfg.GlobalConfig().GetPerformance().GetTimeoutPerRequestSeconds(); timeout > 0 {
-			sshCfg.SetTimeoutSeconds(timeout)
-		}
 		if cfg.ClientsConfig().HasSsh() {
 			proto.Merge(sshCfg, cfg.ClientsConfig().GetSsh())
+		}
+		if !sshCfg.HasTimeoutSeconds() {
+			if timeout := cfg.GlobalConfig().GetPerformance().GetTimeoutPerRequestSeconds(); timeout > 0 {
+				sshCfg.SetTimeoutSeconds(timeout)
+			}
 		}
 	}
 

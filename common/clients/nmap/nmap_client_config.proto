@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+edition = "2024";
 
 package goonami.proto.configs.clients;
 
 option go_package = "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto";
-option java_multiple_files = true;
 option java_outer_classname = "NmapClientConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.clients";
 
@@ -35,51 +34,42 @@ message NmapClientConfig {
 
   // (Optional) Path to the nmap binary. If empty, the client will try to use
   // the nmap binary found in the current PATH.
-  optional string binary_path = 1;
+  string binary_path = 1;
 
   // Maximum time nmap is allowed to run. This option is handled by the client
   // library and enforced on the nmap binary.
-  // Default: 300
-  optional int32 timeout_seconds = 2;
+  int32 timeout_seconds = 2 [default = 300];
 
   // The scan technique (SYN, CONNECT, ...) (e.g. -sS, -sT)
-  // Default: CONNECT
-  optional Technique scan_technique = 3;
+  Technique scan_technique = 3 [default = CONNECT];
 
   // Intensity (from 1 to 5) of the scan (-T1 to -T5).
-  // Default: 3
-  optional uint32 scan_intensity = 4;
+  uint32 scan_intensity = 4 [default = 3];
 
   // Host discovery; when disabled: -Pn
-  // Default: false
-  optional bool enable_host_discovery = 5;
+  bool enable_host_discovery = 5 [default = false];
 
   // Minimum number of packet per second to be sent. A value of 0 means no min
   // rate. Correspond to the `--min-rate` option passed to nmap.
-  // Default: 0
-  optional int32 min_rate = 10;
+  int32 min_rate = 10 [default = 0];
 
   ///////////////////////
   // VERSION DETECTION //
   ///////////////////////
 
   // version detection; -sV
-  // Default: false
-  optional bool enable_version_detection = 6;
+  bool enable_version_detection = 6 [default = false];
 
   // --version-intensity, ignored if enable_version_detection is false
-  // Default: 0
-  optional uint32 version_intensity = 7;
+  uint32 version_intensity = 7 [default = 0];
 
   /////////////
   // SCRIPTS //
   /////////////
 
   // scripts: Enable HTTP methods detection (--script http-methods).
-  // Default: false
-  optional bool enable_http_methods_detection = 8;
+  bool enable_http_methods_detection = 8 [default = false];
 
   // scripts: Enable SSL detection (--script ssl-cert,ssl-enum-ciphers)
-  // Default: false
-  optional bool enable_ssl_detection = 9;
+  bool enable_ssl_detection = 9 [default = false];
 }

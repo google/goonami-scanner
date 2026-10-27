@@ -65,15 +65,6 @@ var (
 	ErrArtifactsWrite = errors.New("error while writing artifact file")
 )
 
-// DefaultConfig returns the default configuration for the webidentity plugin.
-func DefaultConfig() *wfpb.WebIdentityFpConfig {
-	return wfpb.WebIdentityFpConfig_builder{
-		WriteHtmlToFile:          proto.Bool(false),
-		MaximumFileSizeBytes:     proto.Int64(1 * 1024 * 1024),   // 1 MB
-		MaximumStorageSpaceBytes: proto.Int64(100 * 1024 * 1024), // 100 MB
-	}.Build()
-}
-
 // Module is the fingerprinter to detect what product is running on a web server. It is the module
 // most people refer to as "web fingerprinting".
 type Module struct {
@@ -91,11 +82,7 @@ func init() {
 
 // New returns a new instance of the module.
 func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
-	modConfig := DefaultConfig()
-
-	if config.PluginsConfig().HasWebidentity() {
-		proto.Merge(modConfig, config.PluginsConfig().GetWebidentity())
-	}
+	modConfig := config.PluginsConfig().GetWebidentity()
 
 	if modConfig.GetSignaturesDirectory() == "" {
 		return nil, ErrNoFingerprintsDirectory

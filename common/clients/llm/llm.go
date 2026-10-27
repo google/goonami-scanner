@@ -39,7 +39,6 @@ import (
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
-	"google.golang.org/protobuf/proto"
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 )
@@ -94,19 +93,6 @@ type Client struct {
 	cachedContentTokenCount int32
 }
 
-// DefaultConfig returns the default configuration for the LLM client.
-func DefaultConfig() *lccpb.LlmClientConfig {
-	return lccpb.LlmClientConfig_builder{
-		MaxAttempts:              proto.Int32(3),
-		TimeoutPerRequestSeconds: proto.Int32(240),
-		RetryDelaySeconds:        proto.Int32(10),
-		LiteModel:                proto.String("gemini-3.5-flash-lite"),
-		FastModel:                proto.String("gemini-3.6-flash"),
-		ProModel:                 proto.String("gemini-3.1-pro-preview"),
-		DumpTrajectories:         proto.Bool(false),
-	}.Build()
-}
-
 // ModelTier represents the tier of the model to use.
 type ModelTier int
 
@@ -121,10 +107,7 @@ const (
 
 // GetModel returns the model name for a specific tier from the configuration.
 func GetModel(config *config.Config, tier ModelTier) string {
-	clientConfig := DefaultConfig()
-	if config.ClientsConfig().HasLlm() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
-	}
+	clientConfig := config.ClientsConfig().GetLlm()
 
 	switch tier {
 	case ModelTierLite:
@@ -140,19 +123,14 @@ func GetModel(config *config.Config, tier ModelTier) string {
 
 // TimeoutPerRequest returns the per-request timeout for the LLM client from the configuration.
 func TimeoutPerRequest(config *config.Config) time.Duration {
-	clientConfig := DefaultConfig()
-	if config.ClientsConfig().HasLlm() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
-	}
-
-	return time.Duration(clientConfig.GetTimeoutPerRequestSeconds()) * time.Second
+	return time.Duration(config.ClientsConfig().GetLlm().GetTimeoutPerRequestSeconds()) * time.Second
 }
 
 // New creates a new LLM client.
 func New(config *config.Config, ag agent.Agent) *Client {
-	clientConfig := DefaultConfig()
+	clientConfig := &lccpb.LlmClientConfig{}
 	if config.ClientsConfig().HasLlm() {
-		proto.Merge(clientConfig, config.ClientsConfig().GetLlm())
+		clientConfig = config.ClientsConfig().GetLlm()
 	}
 
 	return &Client{

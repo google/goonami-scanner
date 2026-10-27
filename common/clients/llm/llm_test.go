@@ -56,28 +56,13 @@ func TestNew(t *testing.T) {
 			llmConfig: lccpb.LlmClientConfig_builder{
 				MaxAttempts: proto.Int32(5),
 			}.Build(),
-			// The configured field overrides its default, every other field keeps its documented default.
 			wantConfig: lccpb.LlmClientConfig_builder{
-				MaxAttempts:              proto.Int32(5),
-				TimeoutPerRequestSeconds: proto.Int32(240),
-				RetryDelaySeconds:        proto.Int32(10),
-				LiteModel:                proto.String("gemini-3.5-flash-lite"),
-				FastModel:                proto.String("gemini-3.6-flash"),
-				ProModel:                 proto.String("gemini-3.1-pro-preview"),
-				DumpTrajectories:         proto.Bool(false),
+				MaxAttempts: proto.Int32(5),
 			}.Build(),
 		},
 		{
-			name: "when_llm_config_is_absent_the_defaults_are_used",
-			wantConfig: lccpb.LlmClientConfig_builder{
-				MaxAttempts:              proto.Int32(3),
-				TimeoutPerRequestSeconds: proto.Int32(240),
-				RetryDelaySeconds:        proto.Int32(10),
-				LiteModel:                proto.String("gemini-3.5-flash-lite"),
-				FastModel:                proto.String("gemini-3.6-flash"),
-				ProModel:                 proto.String("gemini-3.1-pro-preview"),
-				DumpTrajectories:         proto.Bool(false),
-			}.Build(),
+			name:       "when_llm_config_is_absent_the_defaults_are_used",
+			wantConfig: &lccpb.LlmClientConfig{},
 		},
 	}
 
