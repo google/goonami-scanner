@@ -22,6 +22,7 @@
 package config_go_proto
 
 import (
+	bruteforce_config_go_proto "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto"
 	httpcrawler_client_config_go_proto "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
@@ -658,6 +659,7 @@ type PluginsConfig struct {
 	xxx_hidden_Webidentity              *webidentity_fp_config_go_proto.WebIdentityFpConfig                      `protobuf:"bytes,1,opt,name=webidentity"`
 	xxx_hidden_Httpscan                 *httpscan_portscan_config_go_proto.HttpScanPluginConfig                  `protobuf:"bytes,2,opt,name=httpscan"`
 	xxx_hidden_Templatedweakcredentials *templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig `protobuf:"bytes,3,opt,name=templatedweakcredentials"`
+	xxx_hidden_Bruteforce               *bruteforce_config_go_proto.BruteForceConfig                             `protobuf:"bytes,4,opt,name=bruteforce"`
 	unknownFields                       protoimpl.UnknownFields
 	sizeCache                           protoimpl.SizeCache
 }
@@ -708,6 +710,13 @@ func (x *PluginsConfig) GetTemplatedweakcredentials() *templatedweakcredentials_
 	return nil
 }
 
+func (x *PluginsConfig) GetBruteforce() *bruteforce_config_go_proto.BruteForceConfig {
+	if x != nil {
+		return x.xxx_hidden_Bruteforce
+	}
+	return nil
+}
+
 func (x *PluginsConfig) SetWebidentity(v *webidentity_fp_config_go_proto.WebIdentityFpConfig) {
 	x.xxx_hidden_Webidentity = v
 }
@@ -718,6 +727,10 @@ func (x *PluginsConfig) SetHttpscan(v *httpscan_portscan_config_go_proto.HttpSca
 
 func (x *PluginsConfig) SetTemplatedweakcredentials(v *templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig) {
 	x.xxx_hidden_Templatedweakcredentials = v
+}
+
+func (x *PluginsConfig) SetBruteforce(v *bruteforce_config_go_proto.BruteForceConfig) {
+	x.xxx_hidden_Bruteforce = v
 }
 
 func (x *PluginsConfig) HasWebidentity() bool {
@@ -741,6 +754,13 @@ func (x *PluginsConfig) HasTemplatedweakcredentials() bool {
 	return x.xxx_hidden_Templatedweakcredentials != nil
 }
 
+func (x *PluginsConfig) HasBruteforce() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Bruteforce != nil
+}
+
 func (x *PluginsConfig) ClearWebidentity() {
 	x.xxx_hidden_Webidentity = nil
 }
@@ -753,12 +773,17 @@ func (x *PluginsConfig) ClearTemplatedweakcredentials() {
 	x.xxx_hidden_Templatedweakcredentials = nil
 }
 
+func (x *PluginsConfig) ClearBruteforce() {
+	x.xxx_hidden_Bruteforce = nil
+}
+
 type PluginsConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
 	Webidentity              *webidentity_fp_config_go_proto.WebIdentityFpConfig
 	Httpscan                 *httpscan_portscan_config_go_proto.HttpScanPluginConfig
 	Templatedweakcredentials *templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig
+	Bruteforce               *bruteforce_config_go_proto.BruteForceConfig
 }
 
 func (b0 PluginsConfig_builder) Build() *PluginsConfig {
@@ -768,6 +793,7 @@ func (b0 PluginsConfig_builder) Build() *PluginsConfig {
 	x.xxx_hidden_Webidentity = b.Webidentity
 	x.xxx_hidden_Httpscan = b.Httpscan
 	x.xxx_hidden_Templatedweakcredentials = b.Templatedweakcredentials
+	x.xxx_hidden_Bruteforce = b.Bruteforce
 	return m0
 }
 
@@ -1172,7 +1198,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\"\xfb\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1aPplugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto\x1a)common/bruteforce/bruteforce_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -1206,11 +1232,14 @@ const file_config_proto_rawDesc = "" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
 	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12U\n" +
 	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\x12@\n" +
-	"\x03ssh\x18\x05 \x01(\v2..goonami.proto.configs.clients.SSHClientConfigR\x03ssh\"\xbb\x02\n" +
+	"\x03ssh\x18\x05 \x01(\v2..goonami.proto.configs.clients.SSHClientConfigR\x03ssh\"\x8f\x03\n" +
 	"\rPluginsConfig\x12[\n" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentity\x12P\n" +
 	"\bhttpscan\x18\x02 \x01(\v24.goonami.proto.configs.portscan.HttpScanPluginConfigR\bhttpscan\x12{\n" +
-	"\x18templatedweakcredentials\x18\x03 \x01(\v2?.goonami.proto.configs.detectors.TemplatedWeakCredentialsConfigR\x18templatedweakcredentialsBk\n" +
+	"\x18templatedweakcredentials\x18\x03 \x01(\v2?.goonami.proto.configs.detectors.TemplatedWeakCredentialsConfigR\x18templatedweakcredentials\x12R\n" +
+	"\n" +
+	"bruteforce\x18\x04 \x01(\v22.goonami.proto.configs.bruteforce.BruteForceConfigR\n" +
+	"bruteforceBk\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassZ=github.com/google/goonami-scanner/core/config/config_go_protob\beditionsp\xe9\a"
 
 var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
@@ -1230,6 +1259,7 @@ var file_config_proto_goTypes = []any{
 	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),                      // 12: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),                  // 13: goonami.proto.configs.portscan.HttpScanPluginConfig
 	(*templatedweakcredentials_config_go_proto.TemplatedWeakCredentialsConfig)(nil), // 14: goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
+	(*bruteforce_config_go_proto.BruteForceConfig)(nil),                             // 15: goonami.proto.configs.bruteforce.BruteForceConfig
 }
 var file_config_proto_depIdxs = []int32{
 	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -1247,11 +1277,12 @@ var file_config_proto_depIdxs = []int32{
 	12, // 12: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 	13, // 13: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
 	14, // 14: goonami.proto.PluginsConfig.templatedweakcredentials:type_name -> goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	15, // 15: goonami.proto.PluginsConfig.bruteforce:type_name -> goonami.proto.configs.bruteforce.BruteForceConfig
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
