@@ -1,0 +1,40 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+edition = "2024";
+
+package goonami.proto.configs.bruteforce;
+
+option go_package = "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto";
+option java_outer_classname = "BruteForceConfigOuterClass";
+option java_package = "com.google.goonami.proto.configs.bruteforce";
+
+// BruteForceConfig contains configuration settings for the generic brute-force
+// library.
+message BruteForceConfig {
+  // Maximum number of authentication attempts to make per service.
+  int32 max_attempts_per_service = 1 [default = 2000];
+
+  // Maximum number of concurrent authentication attempts per service.
+  int32 max_concurrency = 2 [default = 1];
+
+  // Maximum number of authentication attempts per second per service.
+  int32 max_requests_per_second = 3 [default = 10];
+
+  // Whether to stop brute-forcing a service as soon as the first valid
+  // credential is found.
+  bool stop_at_first_valid_credentials = 4 [default = true];
+}
