@@ -713,3 +713,49 @@ func TestDo_ForbiddenPathsRedirect(t *testing.T) {
 		})
 	}
 }
+
+func TestDo_ProtocolSwitch(t *testing.T) {
+	connClosed := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer close(connClosed)
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("Hijack() failed: %v", err)
+			return
+		}
+		defer conn.Close()
+
+		const rawResp = "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\nunframed"
+		if _, err := io.WriteString(conn, rawResp); err != nil {
+			t.Errorf("WriteString() failed: %v", err)
+			return
+		}
+		_, _ = io.Copy(io.Discard, conn)
+	}))
+	defer ts.Close()
+
+	c, err := New(config.Default(), nil)
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext() failed: %v", err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf("Do() unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	<-connClosed
+
+	if got, want := resp.StatusCode, http.StatusSwitchingProtocols; got != want {
+		t.Errorf("Do() status = %d, want %d", got, want)
+	}
+	if resp.Body != http.NoBody {
+		t.Errorf("Do() resp.Body = %T, want http.NoBody", resp.Body)
+	}
+}
