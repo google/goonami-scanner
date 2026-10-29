@@ -30,6 +30,10 @@ var (
 	// ErrEndpointMissingAddress is returned when the network endpoint is missing both hostname and
 	// IP address.
 	ErrEndpointMissingAddress = errors.New("endpoint has neither a hostname nor an IP address")
+
+	// ErrInvalidEndpointType is returned when an endpoint's type cannot be promoted to a port
+	// endpoint type.
+	ErrInvalidEndpointType = errors.New("invalid network endpoint type")
 )
 
 // FromString creates a NetworkEndpoint from a string. Note that this function does not support
@@ -59,6 +63,51 @@ func FromString(endpoint string) *npb.NetworkEndpoint {
 
 	endpointBuilder.IpAddress = address.Build()
 	return endpointBuilder.Build()
+}
+
+// FromTarget converts a scan target (a CIDR range, IP address, or hostname) into one or more
+// NetworkEndpoints without ports. Non-CIDR inputs are converted as a single endpoint via
+// FromString; oversized CIDR ranges return an error wrapping iputils.ErrCIDRTooLarge.
+func FromTarget(target string) ([]*npb.NetworkEndpoint, error) {
+	ips, err := iputils.ExpandCIDR(target)
+	if err != nil {
+		if errors.Is(err, iputils.ErrInvalidCIDR) {
+			return []*npb.NetworkEndpoint{FromString(target)}, nil
+		}
+		return nil, err
+	}
+
+	endpoints := make([]*npb.NetworkEndpoint, 0, len(ips))
+	for _, ip := range ips {
+		endpoints = append(endpoints, FromString(ip))
+	}
+	return endpoints, nil
+}
+
+// WithPort returns a copy of endpoint with port attached and its endpoint type promoted to the
+// corresponding *_PORT variant (IP_PORT, HOSTNAME_PORT, or IP_HOSTNAME_PORT). It returns
+// ErrInvalidEndpointType if endpoint does not have type IP, HOSTNAME, or IP_HOSTNAME.
+func WithPort(endpoint *npb.NetworkEndpoint, port uint32) (*npb.NetworkEndpoint, error) {
+	var portType npb.NetworkEndpoint_Type
+	switch endpoint.GetType() {
+	case npb.NetworkEndpoint_IP:
+		portType = npb.NetworkEndpoint_IP_PORT
+	case npb.NetworkEndpoint_HOSTNAME:
+		portType = npb.NetworkEndpoint_HOSTNAME_PORT
+	case npb.NetworkEndpoint_IP_HOSTNAME:
+		portType = npb.NetworkEndpoint_IP_HOSTNAME_PORT
+	default:
+		return nil, fmt.Errorf("%w: %s", ErrInvalidEndpointType, endpoint.GetType())
+	}
+
+	return npb.NetworkEndpoint_builder{
+		Type:      portType,
+		IpAddress: endpoint.GetIpAddress(),
+		Hostname:  endpoint.GetHostname(),
+		Port: npb.Port_builder{
+			PortNumber: port,
+		}.Build(),
+	}.Build(), nil
 }
 
 // ToURIAuthority converts a NetworkEndpoint to a URI authority.
