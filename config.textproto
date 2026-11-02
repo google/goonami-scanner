@@ -117,7 +117,10 @@ plugins: {
     maximum_storage_space_bytes: 51200000  # 100 pages (~48 MB total)
   }
 
-  templatedweakcredentials: {
-    max_attempts_per_service: 0  # no limit
+  bruteforce: {
+    max_attempts_per_service: 2000
+    max_concurrency: 1
+    max_requests_per_second: 10
+    stop_at_first_valid_credentials: true
   }
 }
