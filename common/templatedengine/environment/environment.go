@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"net/url"
 	"regexp"
@@ -58,6 +59,13 @@ func New(cfg *config.Config) *Environment {
 		cfg:  cfg,
 		vars: make(map[string]string),
 	}
+}
+
+// Clone returns a deep copy of the environment.
+func (e *Environment) Clone() *Environment {
+	clone := New(e.cfg)
+	maps.Copy(clone.vars, e.vars)
+	return clone
 }
 
 // InitializeFor initializes the environment for a specific network service.

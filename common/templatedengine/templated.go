@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
@@ -235,7 +234,7 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 
 	// Override for testing.
 	if d.envForTesting != nil {
-		env = d.envForTesting
+		env = d.envForTesting.Clone()
 	}
 
 	for k, v := range extraVars {
@@ -274,15 +273,11 @@ func (d *TemplatedDetector) runWorkflowForService(ctx context.Context, service *
 		}()
 	}
 
-	timestamp := &tspb.Timestamp{
-		Seconds: time.Now().Unix(),
-		Nanos:   int32(time.Now().Nanosecond()),
-	}
 	return dpb.DetectionReportList_builder{
 		DetectionReports: []*dpb.DetectionReport{
 			dpb.DetectionReport_builder{
 				NetworkService:     service,
-				DetectionTimestamp: timestamp,
+				DetectionTimestamp: tspb.Now(),
 				DetectionStatus:    dpb.DetectionStatus_VULNERABILITY_VERIFIED,
 				Vulnerability:      d.proto.GetFinding(),
 			}.Build(),
