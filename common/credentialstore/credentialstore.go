@@ -69,12 +69,10 @@ func (c *CredentialStore) Copy() *CredentialStore {
 	defer c.mu.RUnlock()
 
 	cp := New()
-	cp.usernames = make([]string, len(c.usernames))
-	copy(cp.usernames, c.usernames)
+	cp.usernames = slices.Clone(c.usernames)
 
 	for user, passes := range c.credentials {
-		cp.credentials[user] = make([]string, len(passes))
-		copy(cp.credentials[user], passes)
+		cp.credentials[user] = slices.Clone(passes)
 	}
 
 	return cp
@@ -139,16 +137,14 @@ func (c *CredentialStore) PrependUser(username string) error {
 	defer c.mu.Unlock()
 
 	if _, ok := c.credentials[username]; ok {
-		idx := slices.Index(c.usernames, username)
-		if idx != -1 {
+		if idx := slices.Index(c.usernames, username); idx != -1 {
 			c.usernames = slices.Delete(c.usernames, idx, idx+1)
 		}
-		c.usernames = append([]string{username}, c.usernames...)
-		return nil
+	} else {
+		c.credentials[username] = []string{}
 	}
 
 	c.usernames = append([]string{username}, c.usernames...)
-	c.credentials[username] = []string{}
 	return nil
 }
 
@@ -167,6 +163,28 @@ func (c *CredentialStore) PrependPasswordForUser(username string, password strin
 
 	c.credentials[username] = append([]string{password}, c.credentials[username]...)
 	return nil
+}
+
+// CollapseToPasswordOnly collapses all credentials in the store under the empty
+// username (""), preserving password insertion order and deduplicating passwords
+// across all existing users.
+func (c *CredentialStore) CollapseToPasswordOnly() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var passwords []string
+	for _, user := range c.usernames {
+		for _, pass := range c.credentials[user] {
+			if !slices.Contains(passwords, pass) {
+				passwords = append(passwords, pass)
+			}
+		}
+	}
+
+	c.usernames = []string{""}
+	c.credentials = map[string][]string{
+		"": passwords,
+	}
 }
 
 // UsersFromFS reads a list of users from a file in the given filesystem and adds them to the store.
@@ -287,9 +305,7 @@ func (c *CredentialStore) Usernames() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	result := make([]string, len(c.usernames))
-	copy(result, c.usernames)
-	return result
+	return slices.Clone(c.usernames)
 }
 
 // Passwords returns a list of all passwords for a given username.
@@ -301,9 +317,7 @@ func (c *CredentialStore) Passwords(username string) []string {
 	if !ok {
 		return nil
 	}
-	result := make([]string, len(passes))
-	copy(result, passes)
-	return result
+	return slices.Clone(passes)
 }
 
 func readLines(fsys fs.FS, path string) ([]string, error) {

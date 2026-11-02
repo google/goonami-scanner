@@ -618,3 +618,47 @@ func TestCredentialStore_LoadDefaultsOnce(t *testing.T) {
 		t.Errorf("expected count to remain %d, got %d", count1, store.Count())
 	}
 }
+
+func TestCredentialStore_CollapseToPasswordOnly(t *testing.T) {
+	tests := []struct {
+		name             string
+		initialUsers     []string
+		initialPasswords map[string][]string
+		wantUsernames    []string
+		wantPasswords    []string
+	}{
+		{
+			name:          "when_store_is_empty_sets_empty_username_with_no_passwords",
+			wantUsernames: []string{""},
+			wantPasswords: []string{},
+		},
+		{
+			name:         "when_multiple_users_exist_collapses_and_deduplicates_passwords_in_order",
+			initialUsers: []string{"u1", "u2"},
+			initialPasswords: map[string][]string{
+				"u1": {"p1", "p2"},
+				"u2": {"p2", "p3"},
+			},
+			wantUsernames: []string{""},
+			wantPasswords: []string{"p1", "p2", "p3"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := New()
+			for _, u := range tt.initialUsers {
+				store.AddUser(u)
+				store.AddMultiplePasswordsForUser(u, tt.initialPasswords[u])
+			}
+			store.CollapseToPasswordOnly()
+
+			if got := store.Usernames(); !slices.Equal(got, tt.wantUsernames) {
+				t.Errorf("store.Usernames() = %v, want %v", got, tt.wantUsernames)
+			}
+			if got := store.Passwords(""); !slices.Equal(got, tt.wantPasswords) {
+				t.Errorf("store.Passwords(\"\") = %v, want %v", got, tt.wantPasswords)
+			}
+		})
+	}
+}
