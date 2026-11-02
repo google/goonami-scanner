@@ -20,21 +20,15 @@ package templatedweakcredentials
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 
+	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/credentialstore"
 	"github.com/google/goonami-scanner/common/templatedengine"
-	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/core/config"
-	"github.com/google/goonami-scanner/core/log"
-	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
-	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
-	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
-	vpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 //go:embed detections
@@ -54,149 +48,46 @@ func init() {
 		panic(fmt.Sprintf("failed to load templated weak credential plugins: %v", err))
 	}
 
-	for _, proto := range plugins {
-		name := namePrefix + proto.GetInfo().GetName()
+	for _, pluginProto := range plugins {
+		name := namePrefix + pluginProto.GetInfo().GetName()
 		module.RegisterDetector(name, func(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
-			return NewFromProto(ctx, cfg, proto, sharedStore)
+			return NewFromProto(ctx, cfg, pluginProto, sharedStore)
 		})
 	}
 }
 
-// NewFromProto creates a new templated weak credentials detector.
+// NewFromProto creates a new templated weak credentials detector backed by the generic brute-force library.
 func NewFromProto(ctx context.Context, cfg *config.Config, pluginProto *tpb.TemplatedPlugin, store *credentialstore.CredentialStore) (module.VulnDetector, error) {
 	baseDetector, err := templatedengine.New(ctx, cfg, pluginProto)
 	if err != nil {
 		return nil, err
 	}
 
-	d := &Detector{
-		cfg:          cfg,
+	return newDetector(ctx, cfg, pluginProto, baseDetector, store)
+}
+
+func newDetector(ctx context.Context, cfg *config.Config, pluginProto *tpb.TemplatedPlugin, baseDetector *templatedengine.TemplatedDetector, store *credentialstore.CredentialStore) (module.VulnDetector, error) {
+	handler := &Handler{
 		baseDetector: baseDetector,
 		proto:        pluginProto,
-		store:        store.Copy(),
 	}
 
-	d.loadCredentials(ctx)
-	return d, nil
-}
-
-// Detector is a detector that brute forces specific credentials.
-type Detector struct {
-	cfg          *config.Config
-	baseDetector *templatedengine.TemplatedDetector
-	proto        *tpb.TemplatedPlugin
-	store        *credentialstore.CredentialStore
-}
-
-// Name returns the name of the detector.
-func (d *Detector) Name() string {
-	return namePrefix + d.proto.GetInfo().GetName()
-}
-
-func (d *Detector) loadCredentials(ctx context.Context) {
-	// Important note: order in which credentials are added matters. The credentialstore keeps the
-	// username and passwords in the order they are added. All passwords of a given username are
-	// tested in that order. When loading credentials, we want to ensure the ones specific to the
-	// service (default or common credentials) are tried first, hence why they are prepended.
-	log.DebugContextf(ctx, log.DebugLevelSession, "loading default credentials from templated plugin configuration")
-	defaults := d.proto.GetServiceInformation().GetDefaultCredentials()
-	for _, cred := range defaults {
-		user := cred.GetLogin()
-		pass := cred.GetPassword()
-
-		if d.proto.GetServiceInformation().GetAuthenticationType() == tpb.ServiceInformation_AUTHENTICATION_TYPE_PASSWORD_ONLY {
-			user = ""
-		}
-
-		if err := d.store.PrependUser(user); err != nil {
-			log.WarnContextf(ctx, "failed to prepend user: %v", err)
-		}
-		if err := d.store.PrependPasswordForUser(user, pass); err != nil {
-			log.WarnContextf(ctx, "failed to prepend password: %v", err)
-		}
-	}
-}
-
-// Detect loops over registered credentials and issues detect workflows.
-func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
-	maxAttempts := d.cfg.PluginsConfig().GetTemplatedweakcredentials().GetMaxAttemptsPerService()
-	log.DebugContextf(ctx, log.DebugLevelService, "%d credentials generated (max attempts: %d) and will be used against the service", d.store.Count(), maxAttempts)
-
-	if _, err := d.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_FINGERPRINT, nil); err != nil {
-		if errors.Is(err, actions.ErrActionFailed) {
-			log.DebugContextf(ctx, log.DebugLevelService, "service fingerprinting failed: %v", err)
-			return nil, nil
-		}
-
-		if errors.Is(err, templatedengine.ErrNoCompatibleWorkflow) {
-			log.WarnContextf(ctx, "no compatible workflow found for service")
-			return nil, nil
-		}
-
-		return nil, err
+	opts := &bruteforce.Options{
+		CredentialStore:    store,
+		DefaultCredentials: defaultCredentials(pluginProto),
+		PasswordOnly:       handler.isPasswordOnly(),
 	}
 
-	var attempts int32
+	return bruteforce.New(ctx, cfg, handler, opts)
+}
 
-	for _, username := range d.store.Usernames() {
-		for _, password := range d.store.Passwords(username) {
-			if maxAttempts > 0 && attempts >= maxAttempts {
-				metrics.BudgetExhausted.Add(ctx, 1,
-					metrics.Module(d.Name()),
-					metrics.LimitName(metrics.LimitMaxAttemptsPerService))
-
-				log.DebugContextf(ctx, log.DebugLevelService, "reached maximum authentication attempts limit of %d", maxAttempts)
-				return nil, nil
-			}
-			attempts++
-
-			extraVars := map[string]string{
-				"T_PASSWORD": password,
-			}
-
-			if d.proto.GetServiceInformation().GetAuthenticationType() != tpb.ServiceInformation_AUTHENTICATION_TYPE_PASSWORD_ONLY {
-				extraVars["T_USERNAME"] = username
-			}
-
-			log.DebugContextf(ctx, log.DebugLevelRequest, "attempting detection with credentials %s:%s", username, password)
-			reports, err := d.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_DETECTION, extraVars)
-			if err != nil {
-				if errors.Is(err, actions.ErrActionFailed) {
-					log.DebugContextf(ctx, log.DebugLevelRequest, "attempt failed: %v", err)
-					continue
-				}
-
-				return nil, err
-			}
-
-			// No valid credentials identified.
-			if reports == nil || len(reports.GetDetectionReports()) == 0 {
-				continue
-			}
-
-			additionalDetails := vpb.AdditionalDetail_builder{
-				TextData: vpb.TextData_builder{
-					Text: fmt.Sprintf("%s:%s", username, password),
-				}.Build(),
-			}.Build()
-
-			for _, report := range reports.GetDetectionReports() {
-				if report.GetVulnerability() == nil {
-					continue
-				}
-
-				vuln := report.GetVulnerability()
-				details := vuln.GetAdditionalDetails()
-				details = append(details, additionalDetails)
-				vuln.SetAdditionalDetails(details)
-				report.SetVulnerability(vuln)
-			}
-
-			log.DebugContextf(ctx, log.DebugLevelService, "valid credentials identified after %d attempt(s): %s:%s", attempts, username, password)
-			return reports, nil
-		}
+func defaultCredentials(pluginProto *tpb.TemplatedPlugin) []bruteforce.Credential {
+	var creds []bruteforce.Credential
+	for _, cred := range pluginProto.GetServiceInformation().GetDefaultCredentials() {
+		creds = append(creds, bruteforce.Credential{
+			Username: cred.GetLogin(),
+			Password: cred.GetPassword(),
+		})
 	}
-
-	log.DebugContextf(ctx, log.DebugLevelService, "no valid credentials found after %d attempt(s)", attempts)
-	return nil, nil
+	return creds
 }
