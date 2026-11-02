@@ -38,7 +38,14 @@ import "plugins/portscan/httpscan/httpscan_portscan_config.proto";
 // fingerprinters config
 // these configs are in the `goonami.proto.configs.fingerprinters` namespace.
 import "plugins/fingerprint/webidentity/webidentity_fp_config.proto";
+
+// detectors config
+// these configs are in the `goonami.proto.configs.detectors` namespace.
 import "plugins/detectors/templatedweakcredentials/templatedweakcredentials_config.proto";
+
+// brute-force config
+// these configs are in the `goonami.proto.configs.bruteforce` namespace.
+import "common/bruteforce/bruteforce_config.proto";
 
 message Config {
   GlobalConfig globalcfg = 1;
@@ -137,4 +144,5 @@ message PluginsConfig {
   goonami.proto.configs.fingerprinters.WebIdentityFpConfig webidentity = 1;
   goonami.proto.configs.portscan.HttpScanPluginConfig httpscan = 2;
   goonami.proto.configs.detectors.TemplatedWeakCredentialsConfig templatedweakcredentials = 3;
+  goonami.proto.configs.bruteforce.BruteForceConfig bruteforce = 4;
 }
