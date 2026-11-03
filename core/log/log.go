@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"log"
 
-	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 )
 
 // Logger is Goonami's logging interface.
@@ -56,28 +56,6 @@ const (
 	// DebugLevelRequest is the last level of debugging, it might log every single request.
 	DebugLevelRequest = 3
 )
-
-type (
-	moduleKey  struct{}
-	serviceKey struct{}
-)
-
-// ContextForModule returns a new context with the module name attached.
-func ContextForModule(ctx context.Context, name string) context.Context {
-	return context.WithValue(ctx, moduleKey{}, name)
-}
-
-// ContextForService returns a new context with the service information (port) attached.
-func ContextForService(ctx context.Context, service *nspb.NetworkService) context.Context {
-	port := int(service.GetNetworkEndpoint().GetPort().GetPortNumber())
-	return context.WithValue(ctx, serviceKey{}, port)
-}
-
-// ContextForModuleAndService returns a new context with both the module name and the service
-// information (port) attached.
-func ContextForModuleAndService(ctx context.Context, name string, service *nspb.NetworkService) context.Context {
-	return ContextForModule(ContextForService(ctx, service), name)
-}
 
 var logger Logger = &DefaultLogger{}
 
@@ -145,16 +123,23 @@ type DefaultLogger struct {
 	UseColors    bool       // Whether colors should be used in the logs.
 }
 
+func (l *DefaultLogger) formatTag(val string, color string) string {
+	return "[ " + colorize(val, color, l.UseColors) + " ] "
+}
+
 func (l *DefaultLogger) log(ctx context.Context, level string, msg string) {
 	prefix := level + " "
 
+	if host := HostFromContext(ctx); host != "" {
+		for _, part := range netendpoint.SplitHost(host) {
+			prefix += l.formatTag(part, ansiPurple)
+		}
+	}
 	if port, ok := ctx.Value(serviceKey{}).(int); ok {
-		portVal := colorize(fmt.Sprintf("%5d", port), ansiGreen, l.UseColors)
-		prefix += "[ " + portVal + " ] "
+		prefix += l.formatTag(fmt.Sprintf("%5d", port), ansiGreen)
 	}
 	if module, ok := ctx.Value(moduleKey{}).(string); ok {
-		moduleVal := colorize(module, ansiCyan, l.UseColors)
-		prefix += "[ " + moduleVal + " ] "
+		prefix += l.formatTag(module, ansiCyan)
 	}
 	log.Print(prefix + msg)
 }

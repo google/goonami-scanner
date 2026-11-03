@@ -18,7 +18,6 @@ package log
 
 import (
 	"bytes"
-	"context"
 	"log"
 	"os"
 	"testing"
@@ -135,57 +134,92 @@ func TestDefaultLoggerDebug(t *testing.T) {
 	}
 }
 
+func testService(ip string, hostname string, port uint32) *nspb.NetworkService {
+	ep := npb.NetworkEndpoint_builder{
+		Port: npb.Port_builder{PortNumber: port}.Build(),
+	}
+	if ip != "" {
+		ep.IpAddress = npb.IpAddress_builder{
+			Address:       ip,
+			AddressFamily: npb.AddressFamily_IPV4,
+		}.Build()
+	}
+	if hostname != "" {
+		ep.Hostname = npb.Hostname_builder{Name: hostname}.Build()
+	}
+	return nspb.NetworkService_builder{
+		NetworkEndpoint: ep.Build(),
+	}.Build()
+}
+
 func TestDefaultLoggerPrefix(t *testing.T) {
-	svc80 := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Port: npb.Port_builder{
-				PortNumber: 80,
-			}.Build(),
-		}.Build(),
-	}.Build()
-
-	svc443 := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Port: npb.Port_builder{
-				PortNumber: 443,
-			}.Build(),
-		}.Build(),
-	}.Build()
-
 	testCases := []struct {
 		name       string
-		ctx        context.Context
+		host       string
+		module     string
+		service    *nspb.NetworkService
 		msg        string
 		wantPrefix string
 		isVuln     bool
 	}{
 		{
 			name:       "when_no_metadata_no_prefix",
-			ctx:        t.Context(),
 			msg:        "test",
 			wantPrefix: "INFO test",
 		},
 		{
+			name:       "when_host_metadata_host_prefix",
+			host:       "1.2.3.4",
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] test",
+		},
+		{
+			name:       "when_hostname_with_underscore_logs_single_bracket",
+			host:       "my_app.internal",
+			msg:        "test",
+			wantPrefix: "INFO [ my_app.internal ] test",
+		},
+		{
+			name:       "when_module_and_host_metadata_both_prefix",
+			host:       "1.2.3.4",
+			module:     "my-module",
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [ my-module ] test",
+		},
+		{
 			name:       "when_module_metadata_module_prefix",
-			ctx:        ContextForModule(t.Context(), "my-module"),
+			module:     "my-module",
 			msg:        "test",
 			wantPrefix: "INFO [ my-module ] test",
 		},
 		{
-			name:       "when_service_metadata_service_prefix",
-			ctx:        ContextForService(t.Context(), svc80),
+			name:       "when_service_metadata_host_and_service_prefix",
+			service:    testService("1.2.3.4", "", 80),
 			msg:        "test",
-			wantPrefix: "INFO [    80 ] test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [    80 ] test",
 		},
 		{
-			name:       "when_both_metadata_both_prefix",
-			ctx:        ContextForModuleAndService(t.Context(), "my-module", svc443),
+			name:       "when_service_without_host_metadata_port_only_prefix",
+			service:    testService("", "", 8080),
 			msg:        "test",
-			wantPrefix: "INFO [   443 ] [ my-module ] test",
+			wantPrefix: "INFO [  8080 ] test",
+		},
+		{
+			name:       "when_both_metadata_host_port_and_module_prefix",
+			module:     "my-module",
+			service:    testService("1.2.3.4", "", 443),
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [   443 ] [ my-module ] test",
+		},
+		{
+			name:       "when_service_has_ip_and_hostname_logs_both_in_separate_brackets",
+			module:     "my-module",
+			service:    testService("1.2.3.4", "example.com", 443),
+			msg:        "test",
+			wantPrefix: "INFO [ 1.2.3.4 ] [ example.com ] [   443 ] [ my-module ] test",
 		},
 		{
 			name:       "when_vuln_level_vuln_prefix",
-			ctx:        t.Context(),
 			msg:        "test",
 			wantPrefix: "VULN test",
 			isVuln:     true,
@@ -195,11 +229,12 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			buf.Reset()
+			ctx := buildTestContext(t.Context(), tc.host, tc.module, tc.service)
 			l := &DefaultLogger{}
 			if tc.isVuln {
-				l.VulnContextf(tc.ctx, "%s", tc.msg)
+				l.VulnContextf(ctx, "%s", tc.msg)
 			} else {
-				l.InfoContextf(tc.ctx, "%s", tc.msg)
+				l.InfoContextf(ctx, "%s", tc.msg)
 			}
 
 			got := buf.String()
@@ -211,14 +246,7 @@ func TestDefaultLoggerPrefix(t *testing.T) {
 }
 
 func TestDefaultLoggerColors(t *testing.T) {
-	svc443 := nspb.NetworkService_builder{
-		NetworkEndpoint: npb.NetworkEndpoint_builder{
-			Port: npb.Port_builder{
-				PortNumber: 443,
-			}.Build(),
-		}.Build(),
-	}.Build()
-	ctx := ContextForModuleAndService(t.Context(), "my-module", svc443)
+	ctx := ContextForModuleAndService(t.Context(), "my-module", testService("1.2.3.4", "", 443))
 	buf.Reset()
 	l := &DefaultLogger{UseColors: true}
 	l.InfoContext(ctx, "test message")
@@ -227,6 +255,11 @@ func TestDefaultLoggerColors(t *testing.T) {
 	// INFO is Bold Blue: \033[1;34m
 	if !bytes.Contains([]byte(got), []byte("\033[1;34mINFO\033[0m")) {
 		t.Errorf("Log output does not contain expected INFO color: %q", got)
+	}
+	// Host "1.2.3.4" is Purple: \033[0;35m
+	// Brackets should NOT be colored.
+	if !bytes.Contains([]byte(got), []byte("[ \033[0;35m1.2.3.4\033[0m ]")) {
+		t.Errorf("Log output does not contain expected host color with uncolored brackets: %q", got)
 	}
 	// Port 443 is Green: \033[0;32m
 	// Brackets should NOT be colored.

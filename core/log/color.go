@@ -27,6 +27,7 @@ const (
 	ansiGreen      = "\033[0;32m"
 	ansiBoldCyan   = "\033[1;36m"
 	ansiCyan       = "\033[0;36m"
+	ansiPurple     = "\033[0;35m"
 )
 
 // colorize applies the given ANSI color to the string if enabled is true.
