@@ -118,8 +118,16 @@ func (c *SimpleClient) Do(req *http.Request) (*http.Response, error) {
 		return resp, err
 	}
 
+	// On 101 Switching Protocols, net/http hands raw socket ownership to resp.Body and stops enforcing
+	// Client.Timeout and req.Context() (while Client.Timeout wraps resp.Body in cancelTimerBody,
+	// masking io.Writer). Close it immediately because SimpleClient only supports HTTP request/response.
+	if resp.StatusCode == http.StatusSwitchingProtocols {
+		resp.Body.Close()
+		resp.Body = http.NoBody
+	}
+
 	log.DebugContextf(ctx, log.DebugLevelRequest, "%s %q status:%d", req.Method, req.URL.Path, resp.StatusCode)
-	return resp, err
+	return resp, nil
 }
 
 func newClient(cfg *config.Config, options *goohttp.ClientOptions) (goohttp.Client, error) {
