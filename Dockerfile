@@ -27,7 +27,7 @@ RUN go build -o /goonami/bin/callbackserver tools/callbackserver/cmd/main.go
 # fingerprints directory.
 RUN cp /goonami/src/config.textproto /goonami/configs/scanner.textproto
 RUN cp /goonami/src/tools/callbackserver/cmd/config.textproto /goonami/configs/callbackserver.textproto
-RUN ln -s /goonami/src/plugins/fingerprint/webidentity/fingerprints /goonami/fingerprints \
+RUN mkdir -p /goonami/fingerprints \
   && sed -i 's%"plugins/fingerprint/webidentity/fingerprints"%"/goonami/fingerprints"%g' /goonami/configs/scanner.textproto
 
 FROM ubuntu:latest AS release
