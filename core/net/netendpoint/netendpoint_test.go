@@ -152,8 +152,31 @@ func TestToURIAuthority(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "when_hostname_empty_and_ip_present_returns_ip",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{
+					Address:       "127.0.0.1",
+					AddressFamily: npb.AddressFamily_IPV4,
+				}.Build(),
+				Hostname: &npb.Hostname{},
+				Port: npb.Port_builder{
+					PortNumber: 443,
+				}.Build(),
+			}.Build(),
+			want: "127.0.0.1:443",
+		},
+		{
+			name:    "when_nil_endpoint_returns_error",
+			wantErr: ErrEndpointMissingAddress,
+		},
+		{
 			name:    "when_no_ip_and_no_hostname_returns_error",
 			input:   npb.NetworkEndpoint_builder{}.Build(),
+			wantErr: ErrEndpointMissingAddress,
+		},
+		{
+			name:    "when_empty_string_endpoint_returns_error",
+			input:   FromString(""),
 			wantErr: ErrEndpointMissingAddress,
 		},
 	}
@@ -252,8 +275,55 @@ func TestToURIAuthorities(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "when_hostname_empty_and_ip_present_skips_empty_hostname",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{
+					Address:       "127.0.0.1",
+					AddressFamily: npb.AddressFamily_IPV4,
+				}.Build(),
+				Hostname: &npb.Hostname{},
+			}.Build(),
+			want: []string{
+				"127.0.0.1",
+			},
+		},
+		{
+			name: "when_ip_empty_and_hostname_present_skips_empty_ip",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: &npb.IpAddress{},
+				Hostname: npb.Hostname_builder{
+					Name: "example.com",
+				}.Build(),
+			}.Build(),
+			want: []string{
+				"example.com",
+			},
+		},
+		{
+			name:    "when_nil_endpoint_returns_error",
+			wantErr: ErrEndpointMissingAddress,
+		},
+		{
 			name:    "when_no_ip_and_no_hostname_returns_error",
 			input:   npb.NetworkEndpoint_builder{}.Build(),
+			wantErr: ErrEndpointMissingAddress,
+		},
+		{
+			name:    "when_empty_string_endpoint_returns_error",
+			input:   FromString(""),
+			wantErr: ErrEndpointMissingAddress,
+		},
+		{
+			name: "when_both_submessages_have_empty_strings_returns_error",
+			input: npb.NetworkEndpoint_builder{
+				IpAddress: npb.IpAddress_builder{
+					AddressFamily: npb.AddressFamily_IPV6,
+				}.Build(),
+				Hostname: &npb.Hostname{},
+				Port: npb.Port_builder{
+					PortNumber: 443,
+				}.Build(),
+			}.Build(),
 			wantErr: ErrEndpointMissingAddress,
 		},
 	}

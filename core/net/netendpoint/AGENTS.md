@@ -19,20 +19,22 @@ a usable address.
     stored verbatim as hostnames.
 -   **`ToURIAuthority(endpoint *npb.NetworkEndpoint) (string, error)`**: Formats
     `endpoint` as its primary URI authority (`host` or `host:port`, enclosing
-    `AddressFamily_IPV6` addresses in square brackets), preferring the hostname
-    over the IP address when both are present so HTTP virtual-host matching
-    succeeds. Returns `ErrEndpointMissingAddress` if neither a hostname nor an
-    IP address is populated.
+    `AddressFamily_IPV6` addresses in square brackets), preferring a non-empty
+    hostname over a non-empty IP address when both are present so HTTP
+    virtual-host matching succeeds. Returns `ErrEndpointMissingAddress` if
+    `endpoint` is `nil` or neither a non-empty hostname nor a non-empty IP
+    address is populated.
 -   **`ToURIAuthorities(endpoint *npb.NetworkEndpoint) ([]string, error)`**:
     Returns all URI authority strings (`host` or `host:port`, with bracketed
     `AddressFamily_IPV6` addresses) available on `endpoint`, placing the
-    hostname-based authority before the IP-based authority when both are set.
-    Returns `ErrEndpointMissingAddress` if `endpoint` has neither a hostname nor
-    an IP address.
+    hostname-based authority before the IP-based authority when both are
+    non-empty. Returns `ErrEndpointMissingAddress` if `endpoint` is `nil` or
+    lacks both a non-empty hostname and a non-empty IP address.
 -   **`ErrEndpointMissingAddress`**: Sentinel error returned by `ToURIAuthority`
-    and `ToURIAuthorities` when a `NetworkEndpoint` lacks both a hostname and an
-    IP address. Callers such as `SimpleRunner` match it with `errors.Is` to drop
-    unusable services during scanning.
+    and `ToURIAuthorities` when a `NetworkEndpoint` is `nil` or lacks both a
+    non-empty hostname and a non-empty IP address. Callers such as
+    `SimpleRunner` match it with `errors.Is` to drop unusable services during
+    scanning.
 
 ## Usage
 

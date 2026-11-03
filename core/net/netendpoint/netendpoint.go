@@ -82,22 +82,22 @@ func ToURIAuthority(endpoint *npb.NetworkEndpoint) (string, error) {
 }
 
 // ToURIAuthorities converts a NetworkEndpoint to all available URI authorities.
-// It returns both the hostname-based and IP-based authorities if both are present in the endpoint.
+// It returns both the hostname-based and IP-based authorities when both are non-empty.
 // It puts the hostname-based authorities first in the list.
-// If no authorities are available, it returns an error.
+// If endpoint is nil or has neither a non-empty hostname nor a non-empty IP address, it returns
+// ErrEndpointMissingAddress.
 func ToURIAuthorities(endpoint *npb.NetworkEndpoint) ([]string, error) {
 	var authorities []string
 
-	if endpoint.HasHostname() {
+	if hostname := endpoint.GetHostname().GetName(); hostname != "" {
 		if endpoint.HasPort() {
-			authorities = append(authorities, fmt.Sprintf("%s:%d", endpoint.GetHostname().GetName(), endpoint.GetPort().GetPortNumber()))
+			authorities = append(authorities, fmt.Sprintf("%s:%d", hostname, endpoint.GetPort().GetPortNumber()))
 		} else {
-			authorities = append(authorities, fmt.Sprintf("%s", endpoint.GetHostname().GetName()))
+			authorities = append(authorities, hostname)
 		}
 	}
 
-	if endpoint.HasIpAddress() {
-		address := endpoint.GetIpAddress().GetAddress()
+	if address := endpoint.GetIpAddress().GetAddress(); address != "" {
 		if endpoint.GetIpAddress().GetAddressFamily() == npb.AddressFamily_IPV6 {
 			address = fmt.Sprintf("[%s]", address)
 		}
@@ -105,7 +105,7 @@ func ToURIAuthorities(endpoint *npb.NetworkEndpoint) ([]string, error) {
 		if endpoint.HasPort() {
 			authorities = append(authorities, fmt.Sprintf("%s:%d", address, endpoint.GetPort().GetPortNumber()))
 		} else {
-			authorities = append(authorities, fmt.Sprintf("%s", address))
+			authorities = append(authorities, address)
 		}
 	}
 
