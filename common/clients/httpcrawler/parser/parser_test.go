@@ -254,6 +254,60 @@ func TestParseURL(t *testing.T) {
 			want:    "http://domain.com/test",
 		},
 		{
+			name:    "when_node_is_empty_query_delimiter_returns_root_url_without_query",
+			rootURL: "http://domain.com/test",
+			nodeURL: "?",
+			want:    "http://domain.com/test",
+		},
+		{
+			name:    "when_node_is_relative_path_with_query_strips_query",
+			rootURL: "http://domain.com/sub/",
+			nodeURL: "red/red.min.js?v=2.2.3",
+			want:    "http://domain.com/sub/red/red.min.js",
+		},
+		{
+			name:    "when_node_is_absolute_path_with_query_strips_query",
+			rootURL: "http://domain.com/sub/",
+			nodeURL: "/assets/index.js?v=1.2.3",
+			want:    "http://domain.com/assets/index.js",
+		},
+		{
+			name:    "when_root_has_query_and_node_is_empty_drops_root_query",
+			rootURL: "http://domain.com/sub/page.html?old=1",
+			nodeURL: "",
+			want:    "http://domain.com/sub/page.html",
+		},
+		{
+			name:    "when_root_has_query_and_node_is_relative_path_drops_root_query",
+			rootURL: "http://domain.com/sub/page.html?old=1",
+			nodeURL: "next.html",
+			want:    "http://domain.com/sub/next.html",
+		},
+		{
+			name:    "when_node_is_relative_path_with_percent_encoding_avoids_double_encoding",
+			rootURL: "http://domain.com/dir/",
+			nodeURL: "my%20file.js",
+			want:    "http://domain.com/dir/my%20file.js",
+		},
+		{
+			name:    "when_node_is_relative_path_with_query_and_fragment_strips_both",
+			rootURL: "http://domain.com/dir/",
+			nodeURL: "page.html?v=1#section",
+			want:    "http://domain.com/dir/page.html",
+		},
+		{
+			name:    "when_node_is_absolute_url_with_query_and_fragment_strips_both",
+			rootURL: "http://domain.com/",
+			nodeURL: "https://other.com/page?q=1#section",
+			want:    "https://other.com/page",
+		},
+		{
+			name:    "when_node_has_dot_segments_resolves_parent_dir",
+			rootURL: "http://domain.com/a/b/index.html",
+			nodeURL: "../c.js?v=1",
+			want:    "http://domain.com/a/c.js",
+		},
+		{
 			name:    "when_node_is_protocol_relative_http_returns_http_url",
 			rootURL: "http://domain.com/",
 			nodeURL: "//domain.com/something",
@@ -264,6 +318,12 @@ func TestParseURL(t *testing.T) {
 			rootURL: "https://domain.com/",
 			nodeURL: "//domain.com/something",
 			want:    "https://domain.com/something",
+		},
+		{
+			name:    "when_node_is_protocol_relative_other_domain_returns_other_domain_url",
+			rootURL: "https://domain.com/dir/",
+			nodeURL: "//cdn.other.com/app.js?v=1",
+			want:    "https://cdn.other.com/app.js",
 		},
 		{
 			name:    "when_node_has_different_protocol_returns_error",
