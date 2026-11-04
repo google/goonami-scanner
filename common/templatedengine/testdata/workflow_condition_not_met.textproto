@@ -12,3 +12,7 @@ workflows {
   condition: REQUIRES_CALLBACK_SERVER
   actions: "action1"
 }
+workflows {
+  condition: REQUIRES_DNS_CALLBACK_SERVER
+  actions: "action1"
+}

@@ -190,7 +190,7 @@ func (d *TemplatedDetector) DetectForPhase(ctx context.Context, service *nspb.Ne
 
 func (d *TemplatedDetector) workflowMeetsConditions(ctx context.Context, workflow *tpb.PluginWorkflow) bool {
 	switch workflow.GetCondition() {
-	case tpb.PluginWorkflow_REQUIRES_CALLBACK_SERVER:
+	case tpb.PluginWorkflow_REQUIRES_CALLBACK_SERVER, tpb.PluginWorkflow_REQUIRES_DNS_CALLBACK_SERVER:
 		if d.cfg == nil || !d.cfg.ClientsConfig().HasCallbackServer() {
 			return false
 		}
