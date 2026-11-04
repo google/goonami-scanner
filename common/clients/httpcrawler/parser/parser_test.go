@@ -122,6 +122,14 @@ func TestExtractFromHTML(t *testing.T) {
 			want:    nil,
 			wantErr: nil,
 		},
+		{
+			name:    "when_page_contains_mixed_case_unsupported_prefixes_and_tel_skips_them_and_keeps_valid_links",
+			rootURL: "http://a.com/d/index.html",
+			body:    []byte(`<html><body><a href="tel:+1-555-0100">Call</a><a href="JAVASCRIPT:alert('#%zz')">Click</a><a href="Mailto:ops@a.com">Email</a><img src="DATA:image/gif;base64,R0lGODlhAQABAAAAACw="><a href="valid.html">Valid</a></body></html>`),
+			want: []string{
+				"http://a.com/d/valid.html",
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -364,6 +372,27 @@ func TestParseURL(t *testing.T) {
 			nodeURL: "  javascript:alert('hello')",
 			wantErr: nil,
 			want:    "",
+		},
+		{
+			name:    "when_node_is_tel_returns_nothing",
+			rootURL: "http://domain.com/",
+			nodeURL: "tel:+1-555-0100",
+		},
+		{
+			name:    "when_node_is_bare_uppercase_tel_prefix_returns_nothing",
+			rootURL: "http://domain.com/",
+			nodeURL: "TEL:",
+		},
+		{
+			name:    "when_node_is_uppercase_javascript_with_invalid_escape_returns_nothing",
+			rootURL: "http://domain.com/",
+			nodeURL: "JAVASCRIPT:alert('#%zz')",
+		},
+		{
+			name:    "when_node_is_shorter_than_unsupported_prefix_resolves_relative_url",
+			rootURL: "http://domain.com/",
+			nodeURL: "tel",
+			want:    "http://domain.com/tel",
 		},
 	}
 

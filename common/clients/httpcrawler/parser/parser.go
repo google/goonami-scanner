@@ -39,6 +39,7 @@ var (
 		"data:",
 		"javascript:",
 		"mailto:",
+		"tel:",
 	}
 
 	knownLinkAttributes = []string{
@@ -143,7 +144,7 @@ func parseURL(base string, redirect string) (string, error) {
 	redirect = strings.TrimSpace(redirect)
 
 	for _, prefix := range unsupportedPrefixes {
-		if strings.HasPrefix(redirect, prefix) {
+		if len(redirect) >= len(prefix) && strings.EqualFold(redirect[:len(prefix)], prefix) {
 			return "", nil
 		}
 	}

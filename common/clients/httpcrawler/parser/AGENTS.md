@@ -4,8 +4,8 @@ Package `parser` parses HTML documents to extract and resolve candidate target
 URLs for Goonami's HTTP web crawler (`httpcrawler`). It traverses the HTML DOM
 tree to inspect standard HTML4 and HTML5 link-bearing attributes as well as
 `<meta>` refresh directives. Relative links are resolved against the page's root
-URL, non-crawlable prefixes (`data:`, `javascript:`, and `mailto:`) are ignored,
-and non-HTTP(S) schemes return an error.
+URL, non-crawlable prefixes (`data:`, `javascript:`, `mailto:`, and `tel:`) are
+ignored case-insensitively, and other non-HTTP(S) schemes return an error.
 
 ## Services
 
@@ -13,7 +13,8 @@ and non-HTTP(S) schemes return an error.
     HTML4 and HTML5 link attributes such as `href`, `src`, `action`,
     `formaction`, and `<meta>` refresh `content` across all nodes, and returns
     extracted URLs (`[]string`) resolved against `rootURL`. Attributes starting
-    with `data:`, `javascript:`, or `mailto:` are silently skipped.
+    with `data:`, `javascript:`, `mailto:`, or `tel:` (case-insensitively) are
+    silently skipped.
 -   **`ErrParseURL`**: Sentinel error wrapped and returned when an extracted
     link attribute or `rootURL` cannot be parsed as a valid URL.
 -   **`ErrUnsupportedScheme`**: Sentinel error wrapped and returned when a
