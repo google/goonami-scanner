@@ -19,10 +19,12 @@ package sshclient
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -323,6 +325,78 @@ func TestConnect(t *testing.T) {
 				}
 				if !errors.Is(err, tc.expectedErr) {
 					t.Fatalf("Connect() error = %v, expected errors.Is %v", err, tc.expectedErr)
+				}
+			}
+		})
+	}
+}
+
+func TestConnectWithPasswords(t *testing.T) {
+	testCases := []struct {
+		name        string
+		serverSetup func(t *testing.T) (string, func())
+		username    string
+		passwords   []string
+		expectedErr error
+	}{
+		{
+			name: "when_second_password_in_connection_succeeds_returns_client",
+			serverSetup: func(t *testing.T) (string, func()) {
+				var attempts atomic.Int32
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						if attempts.Add(1) == 2 && c.User() == "root" && string(pass) == "second" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{"first", "second"},
+			expectedErr: nil,
+		},
+		{
+			name: "when_all_passwords_fail_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.NewWithPasswordAuth("root", "secret")
+				if err != nil {
+					t.Fatalf("fakessh.NewWithPasswordAuth failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{"wrong1", "wrong2"},
+			expectedErr: ErrAuthFailed,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			addr, cleanup := tc.serverSetup(t)
+			defer cleanup()
+
+			client := New(nil)
+			sshClient, err := client.ConnectWithPasswords(t.Context(), addr, tc.username, tc.passwords...)
+			if tc.expectedErr == nil {
+				if err != nil {
+					t.Fatalf("ConnectWithPasswords() unexpected error = %v", err)
+				}
+				if sshClient == nil {
+					t.Fatal("ConnectWithPasswords() returned nil *ssh.Client on success")
+				}
+				_ = sshClient.Close()
+			} else {
+				if sshClient != nil {
+					_ = sshClient.Close()
+					t.Fatalf("ConnectWithPasswords() returned unexpected *ssh.Client on failure")
+				}
+				if !errors.Is(err, tc.expectedErr) {
+					t.Fatalf("ConnectWithPasswords() error = %v, expected errors.Is %v", err, tc.expectedErr)
 				}
 			}
 		})

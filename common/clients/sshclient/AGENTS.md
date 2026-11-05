@@ -21,6 +21,11 @@ non-SSH endpoints.
     login for `username`. Returns an established `*ssh.Client` (which the caller
     must close) on success, or an error classified via `ClassifyError` on
     failure.
+-   **`(*Client).ConnectWithPasswords(ctx, addr, username, passwords...)`**:
+    Dials `addr` within `Timeout()`, skips host key verification, and tries each
+    password sequentially within a single SSH connection handshake for
+    `username`. Returns an established `*ssh.Client` on success, or an error
+    classified via `ClassifyError` on failure.
 -   **`(*Client).Timeout()` and `DefaultTimeout`**: `Timeout()` returns the
     active connection and authentication `time.Duration`, defaulting to
     `DefaultTimeout` (`5s`) when no positive timeout is configured.

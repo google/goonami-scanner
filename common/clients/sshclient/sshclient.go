@@ -113,23 +113,33 @@ func (c *Client) dial(ctx context.Context, addr string, clientConfig *ssh.Client
 // for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
 // ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
 func (c *Client) Connect(ctx context.Context, addr, username, password string) (*ssh.Client, error) {
+	return c.ConnectWithPasswords(ctx, addr, username, password)
+}
+
+// ConnectWithPasswords attempts SSH password authentication with the given username by trying
+// the provided passwords sequentially within a single SSH connection handshake.
+// On success, it returns an established *ssh.Client connection (which the caller is responsible
+// for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
+// ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
+func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, error) {
 	ctx = log.ContextForModule(ctx, "clients/sshclient")
 
 	timeout := c.Timeout()
 	connCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	triedPassword := false
+	attempt := 0
 	clientConfig := &ssh.ClientConfig{
 		User: username,
 		AuthCallback: func(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
 			if !slices.Contains(authCtx.AllowedMethods, "password") {
 				return nil, ErrPasswordAuthUnsupported
 			}
-			if triedPassword {
+			if attempt >= len(passwords) {
 				return nil, ErrAuthFailed
 			}
-			triedPassword = true
+			password := passwords[attempt]
+			attempt++
 			return ssh.Password(password), nil
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
