@@ -19,24 +19,14 @@ package llm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/metrics"
-	"github.com/pborman/uuid"
 	"google.golang.org/adk/v2/agent"
-	"google.golang.org/adk/v2/model"
-	"google.golang.org/adk/v2/plugin"
-	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 
@@ -76,9 +66,6 @@ var (
 	// instead of asking the model to correct its answer. Use it for failures the model cannot fix,
 	// such as the target rate limiting the verification requests.
 	ErrAbort = errors.New("agent run aborted by verifier")
-
-	// For most of Goonami's use cases, the in-memory session service is sufficient.
-	defaultSessionService session.Service = session.InMemoryService()
 )
 
 // Client to perform LLMs queries using the agent dev kit.
@@ -140,36 +127,6 @@ func New(config *config.Config, ag agent.Agent) *Client {
 		appName:        DefaultAppName,
 		userID:         DefaultUserID,
 		sessionService: defaultSessionService,
-	}
-}
-
-// recordTokens attributes token consumption to the model that served the
-// response.
-//
-// The breakdown mirrors what the backend reports: the total is the sum of the
-// prompt, the generated candidates, the tool results fed back in and the
-// thinking tokens. Each count is recorded only when present, so a model that
-// does not think, or a request that uses no tools, simply has no series rather
-// than a series pinned at zero.
-func recordTokens(ctx context.Context, usage *genai.GenerateContentResponseUsageMetadata, model string) {
-	label := metrics.LLMModel(model)
-
-	counts := []struct {
-		metric *metrics.Counter
-		value  int32
-	}{
-		{metrics.LLMTokens, usage.TotalTokenCount},
-		{metrics.LLMInputTokens, usage.PromptTokenCount},
-		{metrics.LLMCachedTokens, usage.CachedContentTokenCount},
-		{metrics.LLMOutputTokens, usage.CandidatesTokenCount},
-		{metrics.LLMThoughtTokens, usage.ThoughtsTokenCount},
-		{metrics.LLMToolInputTokens, usage.ToolUsePromptTokenCount},
-	}
-
-	for _, count := range counts {
-		if count.value > 0 {
-			count.metric.Add(ctx, int64(count.value), label)
-		}
 	}
 }
 
@@ -262,171 +219,6 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 	return "", ErrMaxAttemptsReached
 }
 
-// includeThoughts configures Gemini thinking config to include the model's
-// chain of thoughts in the response, allowing reasoning to be dumped to session events.
-func includeThoughts(_ agent.Context, req *model.LLMRequest) (*model.LLMResponse, error) {
-	if req == nil {
-		return nil, nil
-	}
-	if req.Config == nil {
-		req.Config = &genai.GenerateContentConfig{}
-	}
-	if req.Config.ThinkingConfig == nil {
-		req.Config.ThinkingConfig = &genai.ThinkingConfig{}
-	}
-	req.Config.ThinkingConfig.IncludeThoughts = true
-	return nil, nil
-}
-
-type runnerItem struct {
-	event *session.Event
-	err   error
-}
-
-func (c *Client) addUsage(ctx context.Context, usage *genai.GenerateContentResponseUsageMetadata, modelVersion string) {
-	if usage == nil {
-		return
-	}
-	c.totalTokenCount += usage.TotalTokenCount
-	c.cachedContentTokenCount += usage.CachedContentTokenCount
-	recordTokens(ctx, usage, modelVersion)
-}
-
-// runTurn executes a single network turn with the model through the ADK runner.
-// It creates the session if absent, applies the per-request timeout, consumes
-// the runner event stream, tracks token consumption, and filters thought parts.
-func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.Content) (string, string, error) {
-	if sessionID == "" {
-		id, err := c.createSession(ctx)
-		if err != nil {
-			return "", "", err
-		}
-		sessionID = id
-	}
-	defer c.dumpSession(ctx, sessionID)
-
-	p, _ := plugin.New(plugin.Config{
-		Name:                "thoughts",
-		BeforeModelCallback: includeThoughts,
-	})
-	r, err := runner.New(runner.Config{
-		Agent:          c.ag,
-		SessionService: c.sessionService,
-		AppName:        c.appName,
-		PluginConfig: runner.PluginConfig{
-			Plugins: []*plugin.Plugin{p},
-		},
-	})
-	if err != nil {
-		return "", "", fmt.Errorf("%w: %v", ErrRunnerCreation, err)
-	}
-
-	timeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
-	turnCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	// Consume r.Run on a separate goroutine so runTurn can return promptly when
-	// turnCtx expires or is canceled. ADK's node scheduler waits for all active
-	// tool and node goroutines to exit before closing the event iterator, so a
-	// non-cooperative tool or transport stall would otherwise block the caller
-	// past the deadline.
-	itemCh := make(chan runnerItem)
-
-	go func() {
-		defer close(itemCh)
-		for event, err := range r.Run(turnCtx, c.userID, sessionID, content, agent.RunConfig{}) {
-			select {
-			case itemCh <- runnerItem{event: event, err: err}:
-			case <-turnCtx.Done():
-				return
-			}
-		}
-	}()
-
-	var (
-		response    strings.Builder
-		lastPartial *session.Event
-	)
-	defer func() {
-		if lastPartial != nil {
-			c.addUsage(ctx, lastPartial.UsageMetadata, lastPartial.ModelVersion)
-		}
-	}()
-
-	for {
-		var (
-			item runnerItem
-			ok   bool
-		)
-		select {
-		case <-turnCtx.Done():
-			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, turnCtx.Err())
-		case item, ok = <-itemCh:
-			if !ok {
-				if err := turnCtx.Err(); err != nil {
-					return "", "", fmt.Errorf("%w: %w", ErrAgentRun, err)
-				}
-				return sessionID, response.String(), nil
-			}
-		}
-
-		if item.err != nil {
-			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, item.err)
-		}
-
-		event := item.event
-		if event == nil {
-			continue
-		}
-
-		// Retrieve and process potential context cancellations.
-		ctxErr := turnCtx.Err()
-
-		// Partial events repeat the usage of the turn they belong to: the runner
-		// forwards them verbatim and only the final event is authoritative.
-		// Counting them on arrival would multiply every token metric by the chunk
-		// count, so keep only the latest partial chunk unless the turn aborts
-		// before the final event arrives.
-		if event.Partial {
-			if event.UsageMetadata != nil {
-				lastPartial = event
-			}
-		} else {
-			lastPartial = nil
-			c.addUsage(ctx, event.UsageMetadata, event.ModelVersion)
-			if event.Content != nil {
-				for _, part := range event.Content.Parts {
-					if part.Text != "" && !part.Thought {
-						response.WriteString(part.Text)
-					}
-				}
-			}
-		}
-
-		if ctxErr != nil {
-			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, ctxErr)
-		}
-	}
-}
-
-// createSession creates a new unique session with the configured session service.
-func (c *Client) createSession(ctx context.Context) (string, error) {
-	if c.sessionService == nil {
-		return "", ErrSessionService
-	}
-
-	sessionID := uuid.New()
-	_, err := c.sessionService.Create(ctx, &session.CreateRequest{
-		SessionID: sessionID,
-		UserID:    c.userID,
-		AppName:   c.appName,
-	})
-	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrSessionService, err)
-	}
-	return sessionID, nil
-}
-
 // feedbackContent formats the verifier failure diagnostic as a user turn for refinement.
 func feedbackContent(err error) *genai.Content {
 	return &genai.Content{
@@ -434,59 +226,5 @@ func feedbackContent(err error) *genai.Content {
 		Parts: []*genai.Part{{
 			Text: fmt.Sprintf("Verification of your previous response failed:\n%v\n\nPlease correct the issues and provide an updated response.", err),
 		}},
-	}
-}
-
-type sessionDump struct {
-	ID        string           `json:"id"`
-	AppName   string           `json:"appName"`
-	UserID    string           `json:"userId"`
-	UpdatedAt time.Time        `json:"lastUpdateTime"`
-	State     map[string]any   `json:"state,omitempty"`
-	Events    []*session.Event `json:"events"`
-}
-
-// dumpSession writes the full state and trajectory of the given session to the
-// module's artifacts directory if trajectory dumping is enabled.
-func (c *Client) dumpSession(ctx context.Context, sessionID string) {
-	if !c.config.GetDumpTrajectories() || c.coreConfig == nil || sessionID == "" || c.sessionService == nil {
-		return
-	}
-
-	artifactsDir, err := c.coreConfig.ArtifactsForModule(llmMetricsModule)
-	if err != nil {
-		log.WarnContextf(ctx, "Failed to get artifacts directory for dumping session %q: %v", sessionID, err)
-		return
-	}
-
-	resp, err := c.sessionService.Get(context.WithoutCancel(ctx), &session.GetRequest{
-		AppName:   c.appName,
-		UserID:    c.userID,
-		SessionID: sessionID,
-	})
-	if err != nil || resp == nil || resp.Session == nil {
-		log.WarnContextf(ctx, "Failed to retrieve session %q for dumping: %v", sessionID, err)
-		return
-	}
-
-	sess := resp.Session
-	dump := sessionDump{
-		ID:        sess.ID(),
-		AppName:   sess.AppName(),
-		UserID:    sess.UserID(),
-		UpdatedAt: sess.LastUpdateTime(),
-		State:     maps.Collect(sess.State().All()),
-		Events:    slices.Collect(sess.Events().All()),
-	}
-
-	data, err := json.MarshalIndent(dump, "", "  ")
-	if err != nil {
-		log.WarnContextf(ctx, "Failed to marshal session %q for dumping: %v", sessionID, err)
-		return
-	}
-
-	filePath := filepath.Join(artifactsDir, fmt.Sprintf("session_%s.json", sessionID))
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		log.WarnContextf(ctx, "Failed to write session dump to %q: %v", filePath, err)
 	}
 }

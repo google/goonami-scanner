@@ -250,32 +250,68 @@ func TestFakeModel(t *testing.T) {
 		},
 	}
 
-	wantResponses := []*model.LLMResponse{resp1, resp2, nil}
-	wantErrors := []error{nil, nil, testErr}
-
-	m := NewModel(wantResponses, wantErrors)
-	if got, want := m.Name(), "fake-model"; got != want {
-		t.Errorf("Name() = %q, want %q", got, want)
+	testCases := []struct {
+		name          string
+		model         *FakeModel
+		stream        bool
+		wantResponses []*model.LLMResponse
+		wantErrors    []error
+	}{
+		{
+			name:          "when_new_model_returns_responses_and_errors",
+			model:         NewModel([]*model.LLMResponse{resp1, resp2, nil}, []error{nil, nil, testErr}),
+			wantResponses: []*model.LLMResponse{resp1, resp2, nil},
+			wantErrors:    []error{nil, nil, testErr},
+		},
+		{
+			name: "when_new_model_with_func_returns_func_result",
+			model: NewModelWithFunc(func(_ context.Context, _ *model.LLMRequest) (*model.LLMResponse, error) {
+				return resp1, nil
+			}),
+			wantResponses: []*model.LLMResponse{resp1},
+			wantErrors:    []error{nil},
+		},
+		{
+			name:   "when_new_model_with_seq_returns_seq_results",
+			stream: true,
+			model: NewModelWithSeq(func(_ context.Context, _ *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+				return func(yield func(*model.LLMResponse, error) bool) {
+					if stream && !yield(resp1, nil) {
+						return
+					}
+					yield(resp2, testErr)
+				}
+			}),
+			wantResponses: []*model.LLMResponse{resp1, resp2},
+			wantErrors:    []error{nil, testErr},
+		},
 	}
 
-	req := &model.LLMRequest{Model: "custom-model"}
-	var gotResponses []*model.LLMResponse
-	var gotErrors []error
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got, want := tc.model.Name(), "fake-model"; got != want {
+				t.Errorf("Name() = %q, want %q", got, want)
+			}
 
-	for r, err := range m.GenerateContent(t.Context(), req, false) {
-		gotResponses = append(gotResponses, r)
-		gotErrors = append(gotErrors, err)
-	}
+			req := &model.LLMRequest{Model: "custom-model"}
+			var gotResponses []*model.LLMResponse
+			var gotErrors []error
 
-	if diff := cmp.Diff(wantResponses, gotResponses, protocmp.Transform()); diff != "" {
-		t.Errorf("GenerateContent() responses diff (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff(wantErrors, gotErrors, cmpopts.EquateErrors()); diff != "" {
-		t.Errorf("GenerateContent() errors diff (-want +got):\n%s", diff)
-	}
+			for r, err := range tc.model.GenerateContent(t.Context(), req, tc.stream) {
+				gotResponses = append(gotResponses, r)
+				gotErrors = append(gotErrors, err)
+			}
 
-	if diff := cmp.Diff([]*model.LLMRequest{req}, m.Requests()); diff != "" {
-		t.Errorf("Requests() diff (-want +got):\n%s", diff)
+			if diff := cmp.Diff(tc.wantResponses, gotResponses, protocmp.Transform()); diff != "" {
+				t.Errorf("GenerateContent() responses diff (-want +got):\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.wantErrors, gotErrors, cmpopts.EquateErrors()); diff != "" {
+				t.Errorf("GenerateContent() errors diff (-want +got):\n%s", diff)
+			}
+			if diff := cmp.Diff([]*model.LLMRequest{req}, tc.model.Requests()); diff != "" {
+				t.Errorf("Requests() diff (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
 

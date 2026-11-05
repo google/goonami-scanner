@@ -20,6 +20,8 @@ package fakellmagent
 import (
 	"context"
 	"iter"
+	"slices"
+	"sync"
 	"time"
 
 	"google.golang.org/adk/v2/agent"
@@ -172,11 +174,21 @@ func (f *FakeContext) Err() error { return f.ctx.Err() }
 // Value returns the value associated with this context for key.
 func (f *FakeContext) Value(key any) any { return f.ctx.Value(key) }
 
+// GenerateFn is the type of function that produces a single response or error
+// for a fake model call.
+type GenerateFn func(ctx context.Context, req *model.LLMRequest) (*model.LLMResponse, error)
+
+// GenerateSeqFn is the type of function that overrides the GenerateContent()
+// sequence of the fake model.
+type GenerateSeqFn func(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error]
+
 // FakeModel is a fake implementation of model.LLM for testing.
 type FakeModel struct {
-	responses []*model.LLMResponse
-	errors    []error
-	requests  []*model.LLMRequest
+	mu          sync.Mutex
+	responses   []*model.LLMResponse
+	errors      []error
+	requests    []*model.LLMRequest
+	generateSeq GenerateSeqFn
 }
 
 // NewModel creates a new FakeModel that yields the given responses and errors.
@@ -190,6 +202,23 @@ func NewModel(responses []*model.LLMResponse, errors []error) *FakeModel {
 	}
 }
 
+// NewModelWithFunc creates a new FakeModel that invokes fn on each
+// GenerateContent() call and yields its result.
+func NewModelWithFunc(fn GenerateFn) *FakeModel {
+	return NewModelWithSeq(func(ctx context.Context, req *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+		return func(yield func(*model.LLMResponse, error) bool) {
+			resp, err := fn(ctx, req)
+			yield(resp, err)
+		}
+	})
+}
+
+// NewModelWithSeq creates a new FakeModel that delegates GenerateContent() to
+// fn.
+func NewModelWithSeq(fn GenerateSeqFn) *FakeModel {
+	return &FakeModel{generateSeq: fn}
+}
+
 // Name returns the name of the fake model.
 func (m *FakeModel) Name() string {
 	return "fake-model"
@@ -197,12 +226,19 @@ func (m *FakeModel) Name() string {
 
 // Requests returns the list of LLM requests captured during GenerateContent calls.
 func (m *FakeModel) Requests() []*model.LLMRequest {
-	return m.requests
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return slices.Clone(m.requests)
 }
 
 // GenerateContent records the incoming request and yields the configured responses and errors.
-func (m *FakeModel) GenerateContent(_ context.Context, req *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+func (m *FakeModel) GenerateContent(ctx context.Context, req *model.LLMRequest, stream bool) iter.Seq2[*model.LLMResponse, error] {
+	m.mu.Lock()
 	m.requests = append(m.requests, req)
+	m.mu.Unlock()
+	if m.generateSeq != nil {
+		return m.generateSeq(ctx, req, stream)
+	}
 	return func(yield func(*model.LLMResponse, error) bool) {
 		for i := range len(m.responses) {
 			if !yield(m.responses[i], m.errors[i]) {
