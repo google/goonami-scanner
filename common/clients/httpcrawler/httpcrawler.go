@@ -130,8 +130,20 @@ func (c *SimpleCrawler) Crawl(ctx context.Context, callback PageCallback, urls [
 		return nil, err
 	}
 
+	opts := goohttp.DefaultClientOptions()
+	opts.ForbiddenPaths = c.exclusionRegexp
+	opts.AllowRedirect = func(targetURL *url.URL) bool {
+		inScope, err := scope.MatchAnyScope(targetURL.String(), scopes)
+		return err == nil && inScope
+	}
+	client, err := goohttp.NewClient(c.coreConfig, opts)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrCrawlRequest, err)
+	}
+
 	ctx = log.ContextForModule(ctx, "client/httpcrawler")
 	run.scopes = scopes
+	run.client = client
 	for _, url := range urls {
 		if err := c.queueForCrawl(ctx, url, 0, run); err != nil {
 			return nil, err
@@ -174,7 +186,7 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 		return nil
 	}
 
-	resp, err := goohttp.SharedClient(c.coreConfig).Do(req)
+	resp, err := run.client.Do(req)
 	if err != nil {
 		// Do not consider deadline errors as fatal.
 		if errors.Is(err, context.DeadlineExceeded) {

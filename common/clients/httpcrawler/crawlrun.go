@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler/scope"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 )
 
 // maxDecodeIterations is the maximum number of times we attempt to URL-decode a string.
@@ -34,6 +35,7 @@ const maxDecodeIterations = 10
 type crawlRun struct {
 	queue     chan *PageInfo
 	scopes    []*scope.Scope
+	client    goohttp.Client
 	callback  PageCallback
 	mut       sync.Mutex
 	workCount int

@@ -51,6 +51,11 @@ type ClientOptions struct {
 	// regular expressions.
 	ForbiddenPaths []*regexp.Regexp
 
+	// AllowRedirect optionally restricts redirects with a custom predicate. When non-nil, the
+	// client stops and returns the redirect response (via http.ErrUseLastResponse) if
+	// AllowRedirect(targetURL) returns false.
+	AllowRedirect func(*url.URL) bool
+
 	// RetryOnRateLimit indicates whether the client should automatically retry HTTP 429 Too Many
 	// Requests responses using exponential backoff and Retry-After headers configured in
 	// GlobalConfig.Performance. When retries are exhausted or Retry-After exceeds the configured
@@ -124,10 +129,17 @@ func (co *ClientOptions) IsAuthorityAllowed(targetURL *url.URL) bool {
 }
 
 // IsRedirectAllowed reports whether following a redirect to targetURL is permitted by the client
-// options (follow-redirects enabled, target authority in scope, and target path not forbidden).
+// options (follow-redirects enabled, target authority in scope, target path not forbidden, and
+// custom AllowRedirect predicate satisfied).
 func (co *ClientOptions) IsRedirectAllowed(targetURL *url.URL) bool {
+	if targetURL == nil {
+		return false
+	}
 	if co == nil {
 		return true
 	}
-	return !co.DisableFollowRedirects && co.IsAuthorityAllowed(targetURL) && !IsURLPathForbidden(targetURL, co.ForbiddenPaths)
+	return !co.DisableFollowRedirects &&
+		co.IsAuthorityAllowed(targetURL) &&
+		!IsURLPathForbidden(targetURL, co.ForbiddenPaths) &&
+		(co.AllowRedirect == nil || co.AllowRedirect(targetURL))
 }

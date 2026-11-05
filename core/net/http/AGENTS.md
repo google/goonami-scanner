@@ -28,12 +28,12 @@ helpers for bounded response-body reads and destructive URL path filtering.
     singleton `Client` using `DefaultClientOptions()`, panicking if
     initialization fails.
 -   **`ClientOptions` and `DefaultClientOptions`**: `ClientOptions` configures
-    ephemeral client behavior—`StoreCookies`, `EnforceTLSCertVerification`,
-    `DisableFollowRedirects`, `AllowedAuthorities`, `ForbiddenPaths`, and
-    `RetryOnRateLimit`. `DefaultClientOptions()` disables cookie storage, TLS
-    verification, and rate-limit retries, enables redirects across any
-    authority, and populates `ForbiddenPaths` from the default forbidden path
-    patterns.
+    ephemeral client behavior (`StoreCookies`, `EnforceTLSCertVerification`,
+    `DisableFollowRedirects`, `AllowedAuthorities`, `ForbiddenPaths`,
+    `AllowRedirect`, and `RetryOnRateLimit`). `DefaultClientOptions()` disables
+    cookie storage, TLS verification, and rate-limit retries, enables redirects
+    across any authority, and populates `ForbiddenPaths` from the default
+    forbidden path patterns.
 -   **`ClientOptions.LoadAuthorities`, `IsAuthorityAllowed`, and
     `IsRedirectAllowed`**: `LoadAuthorities(service)` populates
     `AllowedAuthorities` from a `NetworkService` endpoint via
@@ -41,7 +41,7 @@ helpers for bounded response-body reads and destructive URL path filtering.
     `IsAuthorityAllowed(targetURL)` checks host and port scope (resolving
     default HTTP/HTTPS ports and IPv6 brackets), and
     `IsRedirectAllowed(targetURL)` combines redirect enablement, authority
-    scope, and `ForbiddenPaths` checks.
+    scope, `ForbiddenPaths`, and any custom `AllowRedirect` predicate.
 -   **`DefaultForbiddenPathPatterns` and `IsURLPathForbidden`**:
     `DefaultForbiddenPathPatterns()` returns a cloned slice of case-insensitive,
     word-boundary-anchored regex strings that block destructive or lifecycle

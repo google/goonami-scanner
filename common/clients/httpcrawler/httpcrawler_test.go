@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -362,6 +364,19 @@ func TestCrawl(t *testing.T) {
 			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
 			wantCrawled: nil,
 		},
+		{
+			name: "when_http_client_is_unregistered_returns_error",
+			config: config.FromProto(
+				cfgpb.Config_builder{
+					Globalcfg: cfgpb.GlobalConfig_builder{
+						HttpClient: proto.String("unregistered_client"),
+					}.Build(),
+				}.Build(),
+			),
+			startURLs: []string{srv.URL},
+			callback:  cb,
+			wantErr:   ErrCrawlRequest,
+		},
 	}
 
 	for _, tc := range tests {
@@ -393,6 +408,159 @@ func TestCrawl(t *testing.T) {
 			sort.Strings(tc.wantCrawled)
 			if diff := cmp.Diff(tc.wantCrawled, crawled); diff != "" {
 				t.Errorf("Crawl() crawled unexpected pages (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestCrawl_Redirects(t *testing.T) {
+	var reqMu sync.Mutex
+	var requested []string
+	recordRequest := func(tag string) {
+		reqMu.Lock()
+		defer reqMu.Unlock()
+		requested = append(requested, tag)
+	}
+
+	externalSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recordRequest("external:" + r.URL.Path)
+		fmt.Fprintln(w, "external content")
+	}))
+	defer externalSrv.Close()
+
+	targetSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recordRequest(r.URL.Path)
+		switch r.URL.Path {
+		case "/sub/redirect-in-scope.html":
+			http.Redirect(w, r, "/sub/dest", http.StatusFound)
+		case "/sub/dest":
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintln(w, `<html><body><a href="/sub/leaf">leaf</a></body></html>`)
+		case "/sub/leaf":
+			fmt.Fprintln(w, "leaf content")
+		case "/sub/redirect-default-excluded.html":
+			http.Redirect(w, r, "/sub/kill", http.StatusFound)
+		case "/sub/kill":
+			fmt.Fprintln(w, "killed")
+		case "/sub/redirect-custom-excluded.html":
+			http.Redirect(w, r, "/sub/custom-blocked", http.StatusFound)
+		case "/sub/custom-blocked":
+			fmt.Fprintln(w, "custom blocked")
+		case "/sub/redirect-external.html":
+			http.Redirect(w, r, externalSrv.URL+"/sub/pwn", http.StatusFound)
+		case "/sub/redirect-out-of-path-scope.html":
+			http.Redirect(w, r, "/other/secret", http.StatusFound)
+		case "/other/secret":
+			fmt.Fprintln(w, "outside path scope")
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer targetSrv.Close()
+
+	tests := []struct {
+		name              string
+		config            *config.Config
+		startURLs         []string
+		wantRequested     []string
+		wantLastRespCodes map[string]int
+	}{
+		{
+			name:          "when_redirect_in_scope_and_not_excluded_follows_redirect",
+			config:        testConfig(),
+			startURLs:     []string{targetSrv.URL + "/sub/redirect-in-scope.html"},
+			wantRequested: []string{"/sub/dest", "/sub/leaf", "/sub/redirect-in-scope.html"},
+			wantLastRespCodes: map[string]int{
+				targetSrv.URL + "/sub/redirect-in-scope.html": http.StatusOK,
+				targetSrv.URL + "/sub/leaf":                   http.StatusOK,
+			},
+		},
+		{
+			name:          "when_redirect_matches_default_exclusion_blocks_redirect",
+			config:        testConfig(),
+			startURLs:     []string{targetSrv.URL + "/sub/redirect-default-excluded.html"},
+			wantRequested: []string{"/sub/redirect-default-excluded.html"},
+			wantLastRespCodes: map[string]int{
+				targetSrv.URL + "/sub/redirect-default-excluded.html": http.StatusFound,
+			},
+		},
+		{
+			name: "when_redirect_matches_custom_exclusion_blocks_custom_and_allows_default",
+			config: config.FromProto(
+				cfgpb.Config_builder{
+					Clients: cfgpb.ClientsConfig_builder{
+						HttpCrawler: cpb.HttpCrawlerClientConfig_builder{
+							MaxDepth:    proto.Int32(2),
+							MaxRequests: proto.Int32(10),
+							Exclusions:  []string{`.*custom-blocked.*`},
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			),
+			startURLs: []string{
+				targetSrv.URL + "/sub/redirect-custom-excluded.html",
+				targetSrv.URL + "/sub/redirect-default-excluded.html",
+			},
+			wantRequested: []string{
+				"/sub/kill",
+				"/sub/redirect-custom-excluded.html",
+				"/sub/redirect-default-excluded.html",
+			},
+			wantLastRespCodes: map[string]int{
+				targetSrv.URL + "/sub/redirect-custom-excluded.html":  http.StatusFound,
+				targetSrv.URL + "/sub/redirect-default-excluded.html": http.StatusOK,
+			},
+		},
+		{
+			name:          "when_redirect_crosses_domain_scope_blocks_redirect",
+			config:        testConfig(),
+			startURLs:     []string{targetSrv.URL + "/sub/redirect-external.html"},
+			wantRequested: []string{"/sub/redirect-external.html"},
+			wantLastRespCodes: map[string]int{
+				targetSrv.URL + "/sub/redirect-external.html": http.StatusFound,
+			},
+		},
+		{
+			name:          "when_redirect_escapes_path_scope_blocks_redirect",
+			config:        testConfig(),
+			startURLs:     []string{targetSrv.URL + "/sub/redirect-out-of-path-scope.html"},
+			wantRequested: []string{"/sub/redirect-out-of-path-scope.html"},
+			wantLastRespCodes: map[string]int{
+				targetSrv.URL + "/sub/redirect-out-of-path-scope.html": http.StatusFound,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			reqMu.Lock()
+			requested = nil
+			reqMu.Unlock()
+
+			gotRespCodes := make(map[string]int)
+			var cbMu sync.Mutex
+			cb := func(_ context.Context, info *PageInfo, resp *http.Response, _ []byte) error {
+				cbMu.Lock()
+				defer cbMu.Unlock()
+				gotRespCodes[info.URL] = resp.StatusCode
+				return nil
+			}
+
+			ctx := t.Context()
+			sc := NewSimpleCrawler(ctx, tc.config)
+			if _, err := sc.Crawl(ctx, cb, tc.startURLs); err != nil {
+				t.Fatalf("Crawl() returned unexpected error: %v", err)
+			}
+
+			reqMu.Lock()
+			gotRequested := slices.Clone(requested)
+			reqMu.Unlock()
+			slices.Sort(gotRequested)
+			if diff := cmp.Diff(tc.wantRequested, gotRequested); diff != "" {
+				t.Errorf("Crawl() server requests diff (-want +got):\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.wantLastRespCodes, gotRespCodes); diff != "" {
+				t.Errorf("Crawl() callback status codes diff (-want +got):\n%s", diff)
 			}
 		})
 	}

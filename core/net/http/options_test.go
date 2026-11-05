@@ -110,6 +110,11 @@ func TestOptions_IsRedirectAllowed(t *testing.T) {
 		want      bool
 	}{
 		{
+			name: "when_target_url_nil_returns_false",
+			opts: nil,
+			want: false,
+		},
+		{
 			name:      "when_options_nil_returns_true",
 			opts:      nil,
 			targetURL: "http://example.com/kill",
@@ -134,6 +139,22 @@ func TestOptions_IsRedirectAllowed(t *testing.T) {
 			want:      false,
 		},
 		{
+			name: "when_allow_redirect_returns_false_returns_false",
+			opts: &ClientOptions{
+				AllowRedirect: func(u *url.URL) bool { return u.Path == "/allowed" },
+			},
+			targetURL: "http://example.com/other",
+			want:      false,
+		},
+		{
+			name: "when_allow_redirect_returns_true_returns_true",
+			opts: &ClientOptions{
+				AllowRedirect: func(u *url.URL) bool { return u.Path == "/allowed" },
+			},
+			targetURL: "http://example.com/allowed",
+			want:      true,
+		},
+		{
 			name:      "when_redirect_allowed_returns_true",
 			opts:      DefaultClientOptions(),
 			targetURL: "http://example.com/skill.md",
@@ -143,9 +164,13 @@ func TestOptions_IsRedirectAllowed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			u, err := url.Parse(tc.targetURL)
-			if err != nil {
-				t.Fatalf("url.Parse(%q) failed: %v", tc.targetURL, err)
+			var u *url.URL
+			if tc.targetURL != "" {
+				var err error
+				u, err = url.Parse(tc.targetURL)
+				if err != nil {
+					t.Fatalf("url.Parse(%q) failed: %v", tc.targetURL, err)
+				}
 			}
 			if got := tc.opts.IsRedirectAllowed(u); got != tc.want {
 				t.Errorf("IsRedirectAllowed(%q) = %v, want %v", tc.targetURL, got, tc.want)
