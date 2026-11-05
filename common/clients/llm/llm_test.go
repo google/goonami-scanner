@@ -25,6 +25,8 @@ import (
 	"iter"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -37,6 +39,8 @@ import (
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/session"
+	"google.golang.org/adk/v2/tool"
+	"google.golang.org/adk/v2/tool/functiontool"
 	"google.golang.org/genai"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -460,12 +464,15 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 			var invocations int
 			ag := fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
 				invocations++
-				time.Sleep(100 * time.Second)
-				return nil, errors.New("stalled attempt failed")
+				return fakellmagent.TextEvent("candidate"), nil
 			})
+			verifier := func(ctx context.Context, result string) error {
+				time.Sleep(36 * time.Second)
+				return errors.New("slow verification failed")
+			}
 
 			c := New(makeTestConfig(3, 10), ag)
-			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
+			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), verifier)
 			if !errors.Is(err, context.DeadlineExceeded) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want context.DeadlineExceeded", err)
 			}
@@ -477,30 +484,41 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 
 	t.Run("when_turn_context_expires_during_event_stream_stops_iteration_immediately", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
-			var stepsExecuted int
+			var stepsExecuted atomic.Int32
+			unblock := make(chan struct{})
+			closeUnblock := sync.OnceFunc(func() { close(unblock) })
+			t.Cleanup(closeUnblock)
+
 			ag := fakellmagent.NewWithSeq(func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
 				return func(yield func(*session.Event, error) bool) {
-					stepsExecuted++
-					// Simulate a tool call that stalls past the 5s per-turn timeout and
-					// still yields a function-response event instead of returning a Go error.
-					time.Sleep(6 * time.Second)
+					stepsExecuted.Add(1)
+					// Simulate a tool call that stalls past the 5s per-turn timeout
+					// ignoring ic.Done(), and still tries to yield a function-response
+					// event once it eventually unblocks.
+					<-unblock
 					if !yield(fakellmagent.TextEvent("tool-response-event"), nil) {
 						return
 					}
-					// If runTurn did not break out of the event loop on ctx.Err(),
+					// If runTurn did not stop consuming the event stream on timeout,
 					// ADK would proceed to the next step and call the LLM again.
-					stepsExecuted++
+					stepsExecuted.Add(1)
 					yield(fakellmagent.TextEvent("final-answer"), nil)
 				}
 			})
 
+			start := time.Now()
 			c := New(makeTestConfig(1, 0), ag)
 			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
 			if !errors.Is(err, ErrMaxAttemptsReached) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
 			}
-			if stepsExecuted != 1 {
-				t.Errorf("stepsExecuted = %d, want 1 (should stop before next step)", stepsExecuted)
+			if elapsed := time.Since(start); elapsed != 5*time.Second {
+				t.Errorf("elapsed = %v, want 5s", elapsed)
+			}
+			closeUnblock()
+			synctest.Wait()
+			if got := stepsExecuted.Load(); got != 1 {
+				t.Errorf("stepsExecuted = %d, want 1 (should stop before next step)", got)
 			}
 		})
 	})
@@ -508,28 +526,40 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 	t.Run("when_turn_context_expires_on_partial_event_token_usage_is_recorded", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			collector := installCollector(t)
+			unblock := make(chan struct{})
+			t.Cleanup(func() { close(unblock) })
 
 			ag := fakellmagent.NewWithSeq(func(ic agent.InvocationContext) iter.Seq2[*session.Event, error] {
 				return func(yield func(*session.Event, error) bool) {
-					time.Sleep(6 * time.Second)
-					event := &session.Event{
-						LLMResponse: model.LLMResponse{
-							ModelVersion: "gemini-3.6-flash",
-							Partial:      true,
-							UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
-								TotalTokenCount:         50,
-								CachedContentTokenCount: 15,
+					chunks := []int32{20, 50}
+					for _, total := range chunks {
+						event := &session.Event{
+							LLMResponse: model.LLMResponse{
+								ModelVersion: "gemini-3.6-flash",
+								Partial:      true,
+								UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
+									TotalTokenCount:         total,
+									CachedContentTokenCount: 15,
+								},
 							},
-						},
+						}
+						if !yield(event, nil) {
+							return
+						}
 					}
-					yield(event, nil)
+					// Stall past the 5s per-turn timeout without yielding a final non-partial event.
+					<-unblock
 				}
 			})
 
+			start := time.Now()
 			c := New(makeTestConfig(1, 0), ag)
 			_, err := c.RunWithFeedbackLoop(t.Context(), userContent("prompt"), nil)
 			if !errors.Is(err, ErrMaxAttemptsReached) {
 				t.Errorf("RunWithFeedbackLoop() error = %v, want %v", err, ErrMaxAttemptsReached)
+			}
+			if elapsed := time.Since(start); elapsed != 5*time.Second {
+				t.Errorf("elapsed = %v, want 5s", elapsed)
 			}
 			if c.totalTokenCount != 50 || c.cachedContentTokenCount != 15 {
 				t.Errorf("token usage = (total: %d, cached: %d), want (50, 15)", c.totalTokenCount, c.cachedContentTokenCount)
@@ -559,6 +589,22 @@ func TestRunWithFeedbackLoop(t *testing.T) {
 		}
 		if capturedUserID != "custom-user-123" {
 			t.Errorf("capturedUserID = %q, want %q", capturedUserID, "custom-user-123")
+		}
+	})
+
+	t.Run("when_caller_cancels_context_during_verifier_returns_context_canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		verifier := func(_ context.Context, result string) error {
+			cancel()
+			return errors.New("verification canceled")
+		}
+
+		c := New(makeTestConfig(1, 0), fakellmagent.NewWithSimpleAnswer("candidate"))
+		_, err := c.RunWithFeedbackLoop(ctx, userContent("prompt"), verifier)
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("RunWithFeedbackLoop() error = %v, want context.Canceled", err)
 		}
 	})
 }
@@ -735,6 +781,26 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {total: 9, cached: 3}},
 			wantBudget: 1,
 		},
+		{
+			name:        "when_partial_stream_errors_mid_turn_flushes_latest_partial_token_usage",
+			maxAttempts: 1,
+			agent: fakellmagent.New(
+				[]*session.Event{
+					partial(usageEvent("gemini-3.6-flash", &genai.GenerateContentResponseUsageMetadata{
+						TotalTokenCount:         20,
+						CachedContentTokenCount: 5,
+					})),
+					partial(usageEvent("gemini-3.6-flash", &genai.GenerateContentResponseUsageMetadata{
+						TotalTokenCount:         45,
+						CachedContentTokenCount: 12,
+					})),
+					nil,
+				},
+				[]error{nil, nil, errors.New("stream reset")}),
+			wantErr:    ErrMaxAttemptsReached,
+			wantTokens: map[string]tokenCounts{"gemini-3.6-flash": {total: 45, cached: 12}},
+			wantBudget: 1,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -769,6 +835,16 @@ func TestRunWithFeedbackLoopRecordsMetrics(t *testing.T) {
 
 			if got := countTokenSeries(collector); got != len(tc.wantTokens) {
 				t.Errorf("llm/tokens covers %d models, want %d", got, len(tc.wantTokens))
+			}
+
+			var wantTotalTokens, wantCachedTokens int32
+			for _, want := range tc.wantTokens {
+				wantTotalTokens += int32(want.total)
+				wantCachedTokens += int32(want.cached)
+			}
+			if c.totalTokenCount != wantTotalTokens || c.cachedContentTokenCount != wantCachedTokens {
+				t.Errorf("token usage = (total: %d, cached: %d), want (%d, %d)",
+					c.totalTokenCount, c.cachedContentTokenCount, wantTotalTokens, wantCachedTokens)
 			}
 
 			if got := collector.Value(t.Context(), metrics.BudgetExhausted, metrics.Module(llmMetricsModule), metrics.LimitName(metrics.LimitMaxAttempts)); got != tc.wantBudget {
@@ -848,6 +924,9 @@ func (f *fakeSessionService) Create(ctx context.Context, req *session.CreateRequ
 }
 
 func (f *fakeSessionService) Get(ctx context.Context, req *session.GetRequest) (*session.GetResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	f.getCalls++
 	if f.failGetAfter > 0 && f.getCalls > f.failGetAfter && f.getErr != nil {
 		return nil, f.getErr
@@ -1342,5 +1421,277 @@ func TestRunWithFeedbackLoop_DumpsChainOfThoughts(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantParts, gotParts); diff != "" {
 		t.Errorf("dumped session parts diff (-want +got):\n%s", diff)
+	}
+}
+
+type callbackLLM struct {
+	generate func(context.Context, *model.LLMRequest) iter.Seq2[*model.LLMResponse, error]
+}
+
+func (m *callbackLLM) Name() string {
+	return "callback-llm"
+}
+
+func (m *callbackLLM) GenerateContent(ctx context.Context, req *model.LLMRequest, _ bool) iter.Seq2[*model.LLMResponse, error] {
+	return m.generate(ctx, req)
+}
+
+type probeToolArgs struct {
+	Target string `json:"target"`
+}
+
+type probeToolResult struct {
+	Status string `json:"status"`
+}
+
+func hasFunctionResponse(contents []*genai.Content) bool {
+	for _, content := range contents {
+		if content == nil {
+			continue
+		}
+		for _, part := range content.Parts {
+			if part != nil && part.FunctionResponse != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func newToolCallingLLMAgent(t *testing.T, handler functiontool.Func[probeToolArgs, probeToolResult]) agent.Agent {
+	t.Helper()
+
+	probeTool, err := functiontool.New(functiontool.Config{
+		Name:        "probe",
+		Description: "probes a target endpoint",
+	}, handler)
+	if err != nil {
+		t.Fatalf("functiontool.New() failed: %v", err)
+	}
+
+	llmModel := &callbackLLM{
+		generate: func(_ context.Context, req *model.LLMRequest) iter.Seq2[*model.LLMResponse, error] {
+			return func(yield func(*model.LLMResponse, error) bool) {
+				if hasFunctionResponse(req.Contents) {
+					yield(&model.LLMResponse{
+						ModelVersion: "gemini-3.6-flash",
+						Content: &genai.Content{
+							Role:  "model",
+							Parts: []*genai.Part{{Text: "recovered answer"}},
+						},
+					}, nil)
+					return
+				}
+				yield(&model.LLMResponse{
+					ModelVersion: "gemini-3.6-flash",
+					Content: &genai.Content{
+						Role: "model",
+						Parts: []*genai.Part{{
+							FunctionCall: &genai.FunctionCall{
+								ID:   "call-probe",
+								Name: "probe",
+								Args: map[string]any{"target": "http://example.test"},
+							},
+						}},
+					},
+					UsageMetadata: &genai.GenerateContentResponseUsageMetadata{
+						TotalTokenCount: 25,
+					},
+				}, nil)
+			}
+		},
+	}
+
+	ag, err := llmagent.New(llmagent.Config{
+		Name:  "test-tool-agent",
+		Model: llmModel,
+		Tools: []tool.Tool{probeTool},
+	})
+	if err != nil {
+		t.Fatalf("llmagent.New() failed: %v", err)
+	}
+	return ag
+}
+
+func TestRunWithFeedbackLoop_EnforcesContextDeadlines(t *testing.T) {
+	testCases := []struct {
+		name              string
+		maxAttempts       int32
+		retryDelaySecs    int32
+		setupCtx          func(context.Context) (context.Context, context.CancelFunc)
+		stallUntilAttempt int32
+		wantResult        string
+		wantErr           error
+		wantElapsed       time.Duration
+		wantToolCalls     int32
+		wantTotalTokens   int32
+	}{
+		{
+			name:              "when_llm_agent_tool_ignores_context_cancellation_enforces_per_turn_timeout_and_retries",
+			maxAttempts:       3,
+			retryDelaySecs:    10,
+			stallUntilAttempt: 3,
+			wantErr:           ErrMaxAttemptsReached,
+			wantElapsed:       35 * time.Second,
+			wantToolCalls:     3,
+			wantTotalTokens:   75,
+		},
+		{
+			name:              "when_caller_deadline_expires_during_blocked_llm_agent_tool_returns_deadline_exceeded_immediately",
+			maxAttempts:       3,
+			retryDelaySecs:    10,
+			stallUntilAttempt: 3,
+			setupCtx: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				return context.WithTimeout(ctx, 2*time.Second)
+			},
+			wantErr:         context.DeadlineExceeded,
+			wantElapsed:     2 * time.Second,
+			wantToolCalls:   1,
+			wantTotalTokens: 25,
+		},
+		{
+			name:              "when_caller_cancels_context_on_single_attempt_returns_context_canceled_instead_of_max_attempts",
+			maxAttempts:       1,
+			retryDelaySecs:    0,
+			stallUntilAttempt: 1,
+			setupCtx: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				ctx, cancel := context.WithCancel(ctx)
+				time.AfterFunc(1*time.Second, cancel)
+				return ctx, cancel
+			},
+			wantErr:         context.Canceled,
+			wantElapsed:     1 * time.Second,
+			wantToolCalls:   1,
+			wantTotalTokens: 25,
+		},
+		{
+			name:              "when_llm_agent_stalls_on_first_attempt_and_succeeds_on_retry_returns_result",
+			maxAttempts:       2,
+			retryDelaySecs:    10,
+			stallUntilAttempt: 1,
+			wantResult:        "recovered answer",
+			wantElapsed:       15 * time.Second,
+			wantToolCalls:     2,
+			wantTotalTokens:   50,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				unblock := make(chan struct{})
+				t.Cleanup(func() { close(unblock) })
+
+				var toolCalls atomic.Int32
+				ag := newToolCallingLLMAgent(t, func(_ agent.Context, _ probeToolArgs) (probeToolResult, error) {
+					call := toolCalls.Add(1)
+					if call <= tc.stallUntilAttempt {
+						// Intentionally ignore agent.Context cancellation to simulate a
+						// non-cooperative tool or hung socket read.
+						<-unblock
+					}
+					return probeToolResult{Status: "ok"}, nil
+				})
+
+				ctx := t.Context()
+				if tc.setupCtx != nil {
+					var cancel context.CancelFunc
+					ctx, cancel = tc.setupCtx(ctx)
+					defer cancel()
+				}
+
+				start := time.Now()
+				c := New(makeTestConfig(tc.maxAttempts, tc.retryDelaySecs), ag)
+				got, err := c.RunWithFeedbackLoop(ctx, userContent("probe target"), nil)
+				elapsed := time.Since(start)
+
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("RunWithFeedbackLoop() error = %v, wantErr %v", err, tc.wantErr)
+				}
+				if got != tc.wantResult {
+					t.Errorf("RunWithFeedbackLoop() = %q, want %q", got, tc.wantResult)
+				}
+				if elapsed != tc.wantElapsed {
+					t.Errorf("elapsed = %v, want %v", elapsed, tc.wantElapsed)
+				}
+				if gotCalls := toolCalls.Load(); gotCalls != tc.wantToolCalls {
+					t.Errorf("toolCalls = %d, want %d", gotCalls, tc.wantToolCalls)
+				}
+				if c.totalTokenCount != tc.wantTotalTokens {
+					t.Errorf("totalTokenCount = %d, want %d", c.totalTokenCount, tc.wantTotalTokens)
+				}
+			})
+		})
+	}
+}
+
+func TestRunWithFeedbackLoop_DumpsSessionOnExpiredContext(t *testing.T) {
+	testCases := []struct {
+		name     string
+		setupCtx func(context.Context) (context.Context, context.CancelFunc)
+		wantErr  error
+	}{
+		{
+			name: "when_caller_deadline_expires_during_stalled_turn_dumps_partial_trajectory",
+			setupCtx: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				return context.WithTimeout(ctx, 2*time.Second)
+			},
+			wantErr: context.DeadlineExceeded,
+		},
+		{
+			name:    "when_per_turn_timeout_expires_dumps_partial_trajectory",
+			wantErr: ErrMaxAttemptsReached,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					Llm: lccpb.LlmClientConfig_builder{
+						TimeoutPerRequestSeconds: proto.Int32(5),
+						RetryDelaySeconds:        proto.Int32(0),
+						MaxAttempts:              proto.Int32(1),
+						DumpTrajectories:         proto.Bool(true),
+					}.Build(),
+				}.Build(),
+			}.Build())
+			if err := cfg.CreateDirectories(t.TempDir()); err != nil {
+				t.Fatalf("CreateDirectories() failed: %v", err)
+			}
+
+			synctest.Test(t, func(t *testing.T) {
+				unblock := make(chan struct{})
+				t.Cleanup(func() { close(unblock) })
+
+				ag := newToolCallingLLMAgent(t, func(_ agent.Context, _ probeToolArgs) (probeToolResult, error) {
+					<-unblock
+					return probeToolResult{Status: "ok"}, nil
+				})
+
+				c := New(cfg, ag)
+				c.sessionService = &fakeSessionService{Service: session.InMemoryService()}
+
+				ctx := t.Context()
+				if tc.setupCtx != nil {
+					var cancel context.CancelFunc
+					ctx, cancel = tc.setupCtx(ctx)
+					defer cancel()
+				}
+
+				_, err := c.RunWithFeedbackLoop(ctx, userContent("initial prompt"), nil)
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("RunWithFeedbackLoop() error = %v, want %v", err, tc.wantErr)
+				}
+			})
+
+			dump := readDumpedSession(t, os.DirFS(cfg.ArtifactsDirectory()))
+			if dump == nil {
+				t.Fatalf("expected session dump file in %q after timeout, found none", cfg.ArtifactsDirectory())
+			}
+			if len(dump.Events) < 2 {
+				t.Fatalf("len(dump.Events) = %d, want at least 2 (prompt + model function call)", len(dump.Events))
+			}
+		})
 	}
 }

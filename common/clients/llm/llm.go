@@ -199,14 +199,14 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 	turnTimeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
 
 	loopTimeout := time.Duration(maxAttempts)*turnTimeout + time.Duration(max(0, maxAttempts-1))*retryDelay
-	ctx, cancel := context.WithTimeout(ctx, loopTimeout)
+	loopCtx, cancel := context.WithTimeout(ctx, loopTimeout)
 	defer cancel()
 
 	var sessionID string
 	turnContent := content
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		if err := ctx.Err(); err != nil {
+		if err := loopCtx.Err(); err != nil {
 			return "", err
 		}
 
@@ -214,25 +214,37 @@ func (c *Client) RunWithFeedbackLoop(ctx context.Context, content *genai.Content
 			log.DebugContextf(ctx, log.DebugLevelService, "waiting %v before next attempt", retryDelay)
 			select {
 			case <-time.After(retryDelay):
-			case <-ctx.Done():
-				return "", ctx.Err()
+			case <-loopCtx.Done():
+				return "", loopCtx.Err()
 			}
 		}
 
-		nextSessionID, resp, err := c.runTurn(ctx, sessionID, turnContent)
+		nextSessionID, resp, err := c.runTurn(loopCtx, sessionID, turnContent)
 		if err != nil {
 			log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) failed to run the agent: %v", attempt, maxAttempts, err)
+			// Check the caller's ctx rather than loopCtx so a final-attempt turn
+			// timeout still returns ErrMaxAttemptsReached, while caller cancellation
+			// or deadline expiration returns immediately.
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
 			sessionID = ""
 			turnContent = content
 			continue
 		}
 
 		if verifier != nil {
-			if err := verifier(ctx, resp); err != nil {
+			if err := verifier(loopCtx, resp); err != nil {
 				if errors.Is(err, ErrAbort) {
 					return "", err
 				}
 				log.DebugContextf(ctx, log.DebugLevelService, "(attempt %d of %d) agent's response verification failed: %v", attempt, maxAttempts, err)
+				// Check the caller's ctx rather than loopCtx so a final-attempt timeout
+				// still returns ErrMaxAttemptsReached, while caller cancellation or
+				// deadline expiration returns immediately.
+				if err := ctx.Err(); err != nil {
+					return "", err
+				}
 				sessionID = nextSessionID
 				turnContent = feedbackContent(err)
 				continue
@@ -266,6 +278,20 @@ func includeThoughts(_ agent.Context, req *model.LLMRequest) (*model.LLMResponse
 	return nil, nil
 }
 
+type runnerItem struct {
+	event *session.Event
+	err   error
+}
+
+func (c *Client) addUsage(ctx context.Context, usage *genai.GenerateContentResponseUsageMetadata, modelVersion string) {
+	if usage == nil {
+		return
+	}
+	c.totalTokenCount += usage.TotalTokenCount
+	c.cachedContentTokenCount += usage.CachedContentTokenCount
+	recordTokens(ctx, usage, modelVersion)
+}
+
 // runTurn executes a single network turn with the model through the ADK runner.
 // It creates the session if absent, applies the per-request timeout, consumes
 // the runner event stream, tracks token consumption, and filters thought parts.
@@ -296,45 +322,91 @@ func (c *Client) runTurn(ctx context.Context, sessionID string, content *genai.C
 	}
 
 	timeout := time.Duration(c.config.GetTimeoutPerRequestSeconds()) * time.Second
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	turnCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	events := r.Run(ctx, c.userID, sessionID, content, agent.RunConfig{})
+	// Consume r.Run on a separate goroutine so runTurn can return promptly when
+	// turnCtx expires or is canceled. ADK's node scheduler waits for all active
+	// tool and node goroutines to exit before closing the event iterator, so a
+	// non-cooperative tool or transport stall would otherwise block the caller
+	// past the deadline.
+	itemCh := make(chan runnerItem)
 
-	var response strings.Builder
-	for event, err := range events {
-		if err != nil {
-			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
+	go func() {
+		defer close(itemCh)
+		for event, err := range r.Run(turnCtx, c.userID, sessionID, content, agent.RunConfig{}) {
+			select {
+			case itemCh <- runnerItem{event: event, err: err}:
+			case <-turnCtx.Done():
+				return
+			}
+		}
+	}()
+
+	var (
+		response    strings.Builder
+		lastPartial *session.Event
+	)
+	defer func() {
+		if lastPartial != nil {
+			c.addUsage(ctx, lastPartial.UsageMetadata, lastPartial.ModelVersion)
+		}
+	}()
+
+	for {
+		var (
+			item runnerItem
+			ok   bool
+		)
+		select {
+		case <-turnCtx.Done():
+			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, turnCtx.Err())
+		case item, ok = <-itemCh:
+			if !ok {
+				if err := turnCtx.Err(); err != nil {
+					return "", "", fmt.Errorf("%w: %w", ErrAgentRun, err)
+				}
+				return sessionID, response.String(), nil
+			}
 		}
 
-		// Retrieve and process potential context cancellations.
-		err = ctx.Err()
-
-		// Partial events repeat the usage of the turn they belong to: the runner
-		// forwards them verbatim and only the final event is authoritative.
-		// Counting them would multiply every token metric by the chunk count.
-		if (err != nil || !event.Partial) && event.UsageMetadata != nil {
-			c.totalTokenCount += event.UsageMetadata.TotalTokenCount
-			c.cachedContentTokenCount += event.UsageMetadata.CachedContentTokenCount
-			recordTokens(ctx, event.UsageMetadata, event.ModelVersion)
+		if item.err != nil {
+			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, item.err)
 		}
 
-		if err != nil {
-			return "", "", fmt.Errorf("%w: %v", ErrAgentRun, err)
-		}
-
-		if event.Content == nil {
+		event := item.event
+		if event == nil {
 			continue
 		}
 
-		for _, part := range event.Content.Parts {
-			if part.Text != "" && !part.Thought {
-				response.WriteString(part.Text)
+		// Retrieve and process potential context cancellations.
+		ctxErr := turnCtx.Err()
+
+		// Partial events repeat the usage of the turn they belong to: the runner
+		// forwards them verbatim and only the final event is authoritative.
+		// Counting them on arrival would multiply every token metric by the chunk
+		// count, so keep only the latest partial chunk unless the turn aborts
+		// before the final event arrives.
+		if event.Partial {
+			if event.UsageMetadata != nil {
+				lastPartial = event
+			}
+		} else {
+			lastPartial = nil
+			c.addUsage(ctx, event.UsageMetadata, event.ModelVersion)
+			if event.Content != nil {
+				for _, part := range event.Content.Parts {
+					if part.Text != "" && !part.Thought {
+						response.WriteString(part.Text)
+					}
+				}
 			}
 		}
-	}
 
-	return sessionID, response.String(), nil
+		if ctxErr != nil {
+			return "", "", fmt.Errorf("%w: %w", ErrAgentRun, ctxErr)
+		}
+	}
 }
 
 // createSession creates a new unique session with the configured session service.
@@ -387,7 +459,7 @@ func (c *Client) dumpSession(ctx context.Context, sessionID string) {
 		return
 	}
 
-	resp, err := c.sessionService.Get(ctx, &session.GetRequest{
+	resp, err := c.sessionService.Get(context.WithoutCancel(ctx), &session.GetRequest{
 		AppName:   c.appName,
 		UserID:    c.userID,
 		SessionID: sessionID,
