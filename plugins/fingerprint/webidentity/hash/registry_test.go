@@ -140,6 +140,75 @@ func TestRegistryLoad(t *testing.T) {
 				murmur3.Sum64([]byte("hash1")): &Identity{Software: "sw1", Versions: []string{"1.0"}, PotentialRoots: []string{"/path1"}},
 			},
 		},
+		{
+			name: "when_loading_content_hashes_with_query_or_fragment_strips_query_and_fragment",
+			fingerprints: []*fpb.Fingerprints{
+				fpb.Fingerprints_builder{
+					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
+					ContentHashes: []*fpb.ContentHash{
+						contentHash("static/style.css?v=1.0", []string{"hash1"}),
+						contentHash("static/style.css?v=1.1#top", []string{"hash2"}),
+					},
+				}.Build(),
+			},
+			wantHashCount: 2,
+			wantRegistryState: map[uint64]*Identity{
+				murmur3.Sum64([]byte("hash1")): &Identity{
+					Software:       "sw1",
+					PotentialRoots: []string{"static/style.css"},
+				},
+				murmur3.Sum64([]byte("hash2")): &Identity{
+					Software:       "sw1",
+					PotentialRoots: []string{"static/style.css"},
+				},
+			},
+		},
+		{
+			name: "when_loading_unchanged_file_with_and_without_query_deduplicates_normalized_path",
+			fingerprints: []*fpb.Fingerprints{
+				fpb.Fingerprints_builder{
+					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
+					ContentHashes: []*fpb.ContentHash{
+						contentHash("misc/jquery.js", []string{"hash1"}),
+						contentHash("misc/jquery.js?_=2", []string{"hash1"}),
+					},
+				}.Build(),
+			},
+			wantHashCount: 1,
+			wantRegistryState: map[uint64]*Identity{
+				murmur3.Sum64([]byte("hash1")): &Identity{
+					Software:       "sw1",
+					PotentialRoots: []string{"misc/jquery.js"},
+				},
+			},
+		},
+		{
+			name: "when_loading_empty_normalized_paths_ignores_empty_only_hashes_and_keeps_valid_paths",
+			fingerprints: []*fpb.Fingerprints{
+				fpb.Fingerprints_builder{
+					SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "sw1"}.Build(),
+					HashVersions: []*fpb.HashVersion{
+						hashVersion("hash1", []string{"4.5.0"}),
+						hashVersion("hash2", []string{"4.5.0"}),
+						hashVersion("hash3", []string{"4.5.0"}),
+					},
+					ContentHashes: []*fpb.ContentHash{
+						contentHash("?file=default.css&version=4.5.0#frag", []string{"hash1"}),
+						contentHash("#top", []string{"hash2"}),
+						contentHash("?file=favicon.ico", []string{"hash3"}),
+						contentHash("favicon.ico", []string{"hash3"}),
+					},
+				}.Build(),
+			},
+			wantHashCount: 1,
+			wantRegistryState: map[uint64]*Identity{
+				murmur3.Sum64([]byte("hash3")): &Identity{
+					Software:       "sw1",
+					Versions:       []string{"4.5.0"},
+					PotentialRoots: []string{"favicon.ico"},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -173,6 +242,7 @@ func TestRegistryFind(t *testing.T) {
 			contentHash("path1", []string{"hash2"}),
 			contentHash("path2", []string{"hash2"}),
 			contentHash("imgs/logo.png", []string{"hash3"}),
+			contentHash("assets/app.js?v=1.0", []string{"hash5"}),
 			contentHash("collide/sw1", []string{"hashcollide"}),
 		},
 	}.Build()
@@ -256,6 +326,38 @@ func TestRegistryFind(t *testing.T) {
 			hash: "hashcollide",
 			path: "/collide/sw1",
 			want: nil,
+		},
+		{
+			name: "when_registered_content_path_has_query_matches_bare_path",
+			hash: "hash5",
+			path: "/sub/assets/app.js",
+			want: &Identity{
+				Software:       "sw1",
+				PotentialRoots: []string{"/sub/"},
+			},
+		},
+		{
+			name: "when_registered_content_path_has_query_matches_full_url_with_different_query_and_fragment",
+			hash: "hash5",
+			path: "http://example.com:8080/sub/assets/app.js?v=2.0#app",
+			want: &Identity{
+				Software:       "sw1",
+				PotentialRoots: []string{"http://example.com:8080/sub/"},
+			},
+		},
+		{
+			name: "when_fragment_contains_question_mark_strips_fragment_before_query",
+			hash: "hash2",
+			path: "/app/path1#frag?other=/path2",
+			want: &Identity{
+				Software:       "sw1",
+				PotentialRoots: []string{"/app/"},
+			},
+		},
+		{
+			name: "when_query_or_fragment_ends_with_content_path_but_resource_path_mismatches_returns_nil",
+			hash: "hash2",
+			path: "/other?redirect=/path1#/path2",
 		},
 	}
 

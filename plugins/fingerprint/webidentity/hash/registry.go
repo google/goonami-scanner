@@ -37,23 +37,32 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Load the given hashes from a protobuf to the registry.
+// Load registers the given hashes from a protobuf in the registry, normalizing ContentPath entries
+// by stripping fragments and query parameters and ignoring hashes that only appear on empty paths.
 // Note that this function transforms the old storage format of Tsunami (hex string) to a lighter
 // 64 bit uint hash. This increases the collision rate but significantly reduces the memory
 // footprint (~26%). No collision were actually observed on existing fingerprints.
 func (s *Registry) Load(fingerprints *fpb.Fingerprints) error {
 	software := fingerprints.GetSoftwareIdentity().GetSoftware()
-	for _, hv := range fingerprints.GetHashVersions() {
-		hash := murmur3.Sum64([]byte(hv.GetHash().GetHexString()))
-		s.addVersions(hash, software, hv.GetVersions())
-	}
-
+	emptyPathHashes := make(map[uint64]bool)
 	for _, contentHash := range fingerprints.GetContentHashes() {
-		path := contentHash.GetContentPath()
+		path := stripQueryAndFragment(contentHash.GetContentPath())
 		for _, h := range contentHash.GetHashes() {
 			hash := murmur3.Sum64([]byte(h.GetHexString()))
+			if path == "" {
+				emptyPathHashes[hash] = true
+				continue
+			}
 			s.addPath(hash, software, path)
 		}
+	}
+
+	for _, hv := range fingerprints.GetHashVersions() {
+		hash := murmur3.Sum64([]byte(hv.GetHash().GetHexString()))
+		if _, ok := s.knownHashes[hash]; emptyPathHashes[hash] && !ok {
+			continue
+		}
+		s.addVersions(hash, software, hv.GetVersions())
 	}
 
 	return nil
@@ -64,9 +73,9 @@ func (s *Registry) Count() int {
 	return len(s.knownHashes)
 }
 
-// Find the identity associated with a given hash and resource path.
-// This function tries to match the most probable root paths for the web application and returns
-// the candidates in the PotentialRoots field.
+// Find returns the identity associated with a given hash and resource path.
+// Fragments and query parameters are stripped before matching registered content paths to infer
+// candidate root paths in PotentialRoots.
 func (s *Registry) Find(hash string, path string) *Identity {
 	inthash := murmur3.Sum64([]byte(hash))
 	id, ok := s.knownHashes[inthash]
@@ -74,10 +83,12 @@ func (s *Registry) Find(hash string, path string) *Identity {
 		return nil
 	}
 
+	cleanPath := stripQueryAndFragment(path)
+
 	var roots []string
 	for _, p := range id.PotentialRoots {
-		if strings.HasSuffix(path, p) {
-			roots = append(roots, strings.TrimSuffix(path, p))
+		if root, ok := strings.CutSuffix(cleanPath, p); ok {
+			roots = append(roots, root)
 		}
 	}
 
@@ -116,6 +127,12 @@ func (s *Registry) addPath(hash uint64, software string, path string) {
 	if !slices.Contains(id.PotentialRoots, path) {
 		id.PotentialRoots = append(id.PotentialRoots, path)
 	}
+}
+
+func stripQueryAndFragment(raw string) string {
+	noFrag, _, _ := strings.Cut(raw, "#")
+	clean, _, _ := strings.Cut(noFrag, "?")
+	return clean
 }
 
 // addSoftware registers the given hash to a specific software. If there is a conflict with another

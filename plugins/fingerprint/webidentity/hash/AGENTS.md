@@ -36,14 +36,16 @@ URLs into software names, candidate application roots, and version sets.
     collisions.
 -   **`(*Registry).Load(fingerprints)`**: Indexes `HashVersions` and
     `ContentHashes` from a `*fpb.Fingerprints` protobuf message under its
-    software name while deduplicating version strings and content paths. If a
-    hash key collides across two different software names, the entry is
-    invalidated so subsequent loads and lookups ignore it.
+    software name, stripping fragments and query strings from `ContentPath`
+    entries (ignoring hashes whose normalized content paths are all empty, such
+    as query-only paths) while deduplicating version strings and normalized
+    content paths. If a hash key collides across two different software names,
+    the entry is invalidated so subsequent loads and lookups ignore it.
 -   **`(*Registry).Find(hash, path)`**: Looks up a hex response `hash` and
-    observed URL or request `path`, returning a new `*Identity` whose
-    `PotentialRoots` are derived by trimming matching content-path suffixes from
-    `path`. Returns `nil` if the hash is absent, invalidated, or associated with
-    content paths none of which match `path` as a suffix.
+    observed URL or request `path`, stripping fragments and query strings before
+    matching registered content paths as suffixes to return a new `*Identity`
+    with candidate `PotentialRoots`. Returns `nil` if the hash is absent,
+    invalidated, or associated with content paths none of which match `path`.
 
 ## Usage
 
