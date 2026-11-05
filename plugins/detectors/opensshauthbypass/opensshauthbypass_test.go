@@ -407,6 +407,10 @@ func TestDetect(t *testing.T) {
 				if got := vuln.GetMainId().GetValue(); got != "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS" {
 					t.Errorf("vuln.GetMainId().GetValue() = %q, want %q", got, "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS")
 				}
+				relatedIDs := vuln.GetRelatedId()
+				if len(relatedIDs) != 1 || relatedIDs[0].GetPublisher() != "CVE" || relatedIDs[0].GetValue() != "CVE-2026-123158" {
+					t.Errorf("vuln.GetRelatedId() = %v, want [publisher:\"CVE\" value:\"CVE-2026-123158\"]", relatedIDs)
+				}
 				if len(vuln.GetAdditionalDetails()) == 0 {
 					t.Error("vuln.GetAdditionalDetails() is empty, want details")
 				}

@@ -178,6 +178,12 @@ func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList
 						Publisher: "GOOGLE",
 						Value:     "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS",
 					}.Build(),
+					RelatedId: []*vpb.VulnerabilityId{
+						vpb.VulnerabilityId_builder{
+							Publisher: "CVE",
+							Value:     "CVE-2026-123158",
+						}.Build(),
+					},
 					Severity:       vpb.Severity_CRITICAL,
 					Title:          "OpenSSH Password Authentication Bypass on musl-based Systems",
 					Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as the default root entry on Alpine Linux) and at least one other account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
