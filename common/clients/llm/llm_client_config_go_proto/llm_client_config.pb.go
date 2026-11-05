@@ -546,10 +546,13 @@ type HttpClientConfig_builder struct {
 	MaxRequestsPerService *int32
 	// Maximum size of an HTTP response body to pass to the agent.
 	MaxAnswerSizeBytes *int32
-	// Forbidden paths regexps. If the agent tries to request a path that matches
-	// any of these regexps, the request will be rejected.
-	// Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*",
-	// ".*kill.*", ".*quit.*", ".*remove.*"]
+	// Forbidden paths regexps. Requests with a canonicalized path or query
+	// matching any of these regular expressions are rejected, and redirects to
+	// matching targets are not followed.
+	// Defaults to case-insensitive regular expressions with non-alphabetic
+	// boundaries blocking destructive or lifecycle endpoints ("abort(quit)*",
+	// "delete", "drop", "(hup)+", "kill(all)?", "(quit)+", and "remove"; see
+	// http.DefaultForbiddenPathPatterns).
 	ForbiddenPaths []string
 }
 

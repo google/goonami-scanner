@@ -301,9 +301,13 @@ type HttpCrawlerClientConfig_builder struct {
 	// means that its count will be shared between calls to Crawl(). In other
 	// words, it is shared between targets crawled.
 	MaxRequests *int32
-	// Paths to exclude from the crawl. This is a list of regular expressions that
-	// will be matched against the URL of a page before it is crawled.
-	// Default: [".*abort.*", ".*delete.*", ".*drop.*", ".*huphuphup.*", ".*kill.*", ".*quit.*", ".*remove.*"]
+	// Paths to exclude from the crawl. This is a list of regular expressions
+	// matched against the canonicalized path and query of candidate URLs before
+	// they are crawled.
+	// Defaults to case-insensitive regular expressions with non-alphabetic
+	// boundaries blocking destructive or lifecycle endpoints ("abort(quit)*",
+	// "delete", "drop", "(hup)+", "kill(all)?", "(quit)+", and "remove"; see
+	// http.DefaultForbiddenPathPatterns).
 	Exclusions []string
 	// Policy to use for the scope.
 	ScopePolicy *HttpCrawlerClientConfig_ScopePolicy
