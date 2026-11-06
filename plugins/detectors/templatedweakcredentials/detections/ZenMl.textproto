@@ -1,0 +1,119 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ZenMlTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_ZENML"
+  }
+  severity: CRITICAL
+  title: "Weak 'zenml' service credential"
+  description: "Well known or weak credentials are detected for 'zenml' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "default" password: "" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_zenml_info"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/api/v1/info"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"version\"" },
+          { body: {} contains: "\"deployment_type\"" },
+          { body: {} contains: "\"database_type\"" },
+          { body: {} contains: "\"secrets_store_type\"" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/api/v1/login"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+    ]
+    data: "username={{ T_USERNAME }}&password={{ T_PASSWORD }}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"access_token\"" },
+          { body: {} contains: "\"token_type\"" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"access_token\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "zenml_access_token"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_login"
+  http_request: {
+    method: GET
+    uri: "/api/v1/current-user"
+    headers: [
+      { name: "Authorization" value: "Bearer {{ zenml_access_token }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"active\":true" },
+          { body: {} contains: "\"name\":\"{{ T_USERNAME }}\"" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_zenml_info",
+    "attempt_login",
+    "verify_login"
+  ]
+}

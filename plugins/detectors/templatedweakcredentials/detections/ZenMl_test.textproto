@@ -1,0 +1,120 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ZenMlTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/v1/info"
+        status: 200
+        body_content: "{\"id\":\"26833c84-f7a3-4925-a7de-d1c44b0f3297\",\"version\":\"0.55.5\",\"debug\":false,\"deployment_type\":\"other\",\"database_type\":\"sqlite\",\"secrets_store_type\":\"sql\"}"
+      },
+      {
+        uri: "/api/v1/login"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+          ]
+          body_content: [
+            "username=default&password="
+          ]
+        }
+        body_content: "{\"access_token\":\"test_jwt_token\",\"token_type\":\"bearer\",\"expires_in\":null,\"refresh_token\":null,\"scope\":null}"
+      },
+      {
+        uri: "/api/v1/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"detail\":[\"AuthorizationException\",\"Authentication error: invalid username or password\"]}"
+      },
+      {
+        uri: "/api/v1/current-user"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Authorization" value: "Bearer test_jwt_token" }
+          ]
+        }
+        body_content: "{\"body\":{\"active\":true},\"id\":\"7c7b55a6-f000-480e-9a5c-416d753142fb\",\"permission_denied\":false,\"name\":\"default\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/v1/info"
+        status: 200
+        body_content: "{\"id\":\"26833c84-f7a3-4925-a7de-d1c44b0f3297\",\"version\":\"0.55.5\",\"debug\":false,\"deployment_type\":\"other\",\"database_type\":\"sqlite\",\"secrets_store_type\":\"sql\"}"
+      },
+      {
+        uri: "/api/v1/login"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"access_token\":\"test_jwt_token\",\"token_type\":\"bearer\",\"expires_in\":null,\"refresh_token\":null,\"scope\":null}"
+      },
+      {
+        uri: "/api/v1/current-user"
+        status: 401
+        body_content: "{\"detail\":[\"NotAuthorizedException\",\"Invalid authentication credentials\"]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/v1/info"
+        status: 200
+        body_content: "{\"id\":\"26833c84-f7a3-4925-a7de-d1c44b0f3297\",\"version\":\"0.55.5\",\"debug\":false,\"deployment_type\":\"other\",\"database_type\":\"sqlite\",\"secrets_store_type\":\"sql\"}"
+      },
+      {
+        uri: "/api/v1/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"detail\":[\"AuthorizationException\",\"Authentication error: invalid username or password\"]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_zenml_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
