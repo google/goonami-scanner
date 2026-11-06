@@ -11,6 +11,9 @@ bypass via `crypt()` returning `"*"` on passwords exceeding 256 bytes.
     detector under `"dt/opensshauthbypass"` via `module.RegisterDetector`.
 -   **`New(ctx context.Context, cfg *config.Config) (module.VulnDetector,
     error)`**: Constructs a new `*Module` backed by `sshclient.New(cfg)`.
+-   **`(*Module).Advisories`**: Returns the static base vulnerability advisory
+    (`GOOGLE` / `OPENSSH_MUSL_PASSWORD_AUTH_BYPASS`, `CVE-2026-123158`,
+    `Severity_CRITICAL`) supported by the detector.
 -   **`Module` / `(*Module).Detect(ctx context.Context, service
     *nspb.NetworkService)`**: Skips web and non-TCP services, resolves the
     endpoint authority, and verifies whether `root` authentication succeeds with

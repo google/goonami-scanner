@@ -25,11 +25,13 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/testfakes/fakessh"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	sccpb "github.com/google/goonami-scanner/common/clients/sshclient/ssh_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
@@ -419,6 +421,58 @@ func TestDetect(t *testing.T) {
 
 			if reports != nil && len(reports.GetDetectionReports()) > 0 {
 				t.Errorf("Detect() returned unexpected reports: %v", reports)
+			}
+		})
+	}
+}
+
+func TestAdvisories(t *testing.T) {
+	want := []*vpb.Vulnerability{
+		vpb.Vulnerability_builder{
+			MainId: vpb.VulnerabilityId_builder{
+				Publisher: "GOOGLE",
+				Value:     "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS",
+			}.Build(),
+			RelatedId: []*vpb.VulnerabilityId{
+				vpb.VulnerabilityId_builder{
+					Publisher: "CVE",
+					Value:     "CVE-2026-123158",
+				}.Build(),
+			},
+			Severity:       vpb.Severity_CRITICAL,
+			Title:          "OpenSSH Password Authentication Bypass on musl-based Systems",
+			Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as the default root entry on Alpine Linux) and at least one other account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
+			Recommendation: "Upgrade OpenSSH to a patched version (such as openssh 9.9_p2-r1 or later on Alpine Linux), or disable password authentication (PasswordAuthentication no) in sshd_config.",
+		}.Build(),
+	}
+
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "when_initialized_with_default_config_returns_base_advisory",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m, err := New(t.Context(), config.Default())
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+			mod := m.(*Module)
+
+			got := mod.Advisories()
+			if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
+			}
+
+			if len(got) > 0 {
+				got[0].SetTitle("mutated title")
+				second := mod.Advisories()
+				if second[0].GetTitle() == "mutated title" {
+					t.Errorf("Advisories() returned a mutable reference, expected an isolated clone")
+				}
 			}
 		})
 	}

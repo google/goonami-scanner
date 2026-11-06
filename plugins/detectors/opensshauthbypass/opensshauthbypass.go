@@ -76,6 +76,30 @@ func New(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 	}, nil
 }
 
+// Advisories returns the base vulnerability metadata reported by this module.
+func (m *Module) Advisories() []*vpb.Vulnerability {
+	return []*vpb.Vulnerability{baseVulnerability()}
+}
+
+func baseVulnerability() *vpb.Vulnerability {
+	return vpb.Vulnerability_builder{
+		MainId: vpb.VulnerabilityId_builder{
+			Publisher: "GOOGLE",
+			Value:     "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS",
+		}.Build(),
+		RelatedId: []*vpb.VulnerabilityId{
+			vpb.VulnerabilityId_builder{
+				Publisher: "CVE",
+				Value:     "CVE-2026-123158",
+			}.Build(),
+		},
+		Severity:       vpb.Severity_CRITICAL,
+		Title:          "OpenSSH Password Authentication Bypass on musl-based Systems",
+		Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as the default root entry on Alpine Linux) and at least one other account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
+		Recommendation: "Upgrade OpenSSH to a patched version (such as openssh 9.9_p2-r1 or later on Alpine Linux), or disable password authentication (PasswordAuthentication no) in sshd_config.",
+	}.Build()
+}
+
 // Detect probes the target network service for the OpenSSH + musl crypt()
 // password authentication bypass vulnerability.
 func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
@@ -162,6 +186,16 @@ func (m *Module) tryPassword(ctx context.Context, addr, username, password strin
 }
 
 func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList {
+	vuln := baseVulnerability()
+	vuln.SetAdditionalDetails([]*vpb.AdditionalDetail{
+		vpb.AdditionalDetail_builder{
+			Description: "Authentication bypass verified for locked account using >256-byte password",
+			TextData: vpb.TextData_builder{
+				Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", targetUser, probePasswordLen),
+			}.Build(),
+		}.Build(),
+	})
+
 	return dpb.DetectionReportList_builder{
 		DetectionReports: []*dpb.DetectionReport{
 			dpb.DetectionReport_builder{
@@ -173,30 +207,7 @@ func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList
 				NetworkService:     service,
 				DetectionTimestamp: tspb.Now(),
 				DetectionStatus:    dpb.DetectionStatus_VULNERABILITY_VERIFIED,
-				Vulnerability: vpb.Vulnerability_builder{
-					MainId: vpb.VulnerabilityId_builder{
-						Publisher: "GOOGLE",
-						Value:     "OPENSSH_MUSL_PASSWORD_AUTH_BYPASS",
-					}.Build(),
-					RelatedId: []*vpb.VulnerabilityId{
-						vpb.VulnerabilityId_builder{
-							Publisher: "CVE",
-							Value:     "CVE-2026-123158",
-						}.Build(),
-					},
-					Severity:       vpb.Severity_CRITICAL,
-					Title:          "OpenSSH Password Authentication Bypass on musl-based Systems",
-					Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as the default root entry on Alpine Linux) and at least one other account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
-					Recommendation: "Upgrade OpenSSH to a patched version (such as openssh 9.9_p2-r1 or later on Alpine Linux), or disable password authentication (PasswordAuthentication no) in sshd_config.",
-					AdditionalDetails: []*vpb.AdditionalDetail{
-						vpb.AdditionalDetail_builder{
-							Description: "Authentication bypass verified for locked account using >256-byte password",
-							TextData: vpb.TextData_builder{
-								Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", targetUser, probePasswordLen),
-							}.Build(),
-						}.Build(),
-					},
-				}.Build(),
+				Vulnerability:      vuln,
 			}.Build(),
 		},
 	}.Build()
