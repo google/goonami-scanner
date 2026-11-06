@@ -1,0 +1,143 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "AirbyteTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"description\" content=\"Airbyte is the turnkey open-source data integration platform that syncs data from applications, APIs and databases to warehouses.\"><title>Airbyte</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/login"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "JWT=eyJhbGciOiJIUzI1NiJ9.test; Max-Age=180; Path=/; HTTPOnly; SameSite=Lax" }
+        ]
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/json" }
+          ]
+          body_content: [
+            "\"username\":\"user@company.example\"",
+            "\"password\":\"new_password\""
+          ]
+        }
+      },
+      {
+        uri: "/api/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_lowercase_jwt_cookie_returned_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"description\" content=\"Airbyte is the turnkey open-source data integration platform that syncs data from applications, APIs and databases to warehouses.\"><title>Airbyte</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/login"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "jwt=12345" }
+        ]
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/json" }
+          ]
+          body_content: [
+            "\"username\":\"airbyte\"",
+            "\"password\":\"password\""
+          ]
+        }
+      },
+      {
+        uri: "/api/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_login_returns_200_without_cookie_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"description\" content=\"Airbyte is the turnkey open-source data integration platform that syncs data from applications, APIs and databases to warehouses.\"><title>Airbyte</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/login"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"description\" content=\"Airbyte is the turnkey open-source data integration platform that syncs data from applications, APIs and databases to warehouses.\"><title>Airbyte</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_airbyte_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}

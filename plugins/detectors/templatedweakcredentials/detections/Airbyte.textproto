@@ -1,0 +1,95 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "AirbyteTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_AIRBYTE"
+  }
+  severity: CRITICAL
+  title: "Weak 'airbyte' service credential"
+  description: "Well known or weak credentials are detected for 'airbyte' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "airbyte" password: "password" },
+    { login: "airbyte" password: "new_password" },
+    { login: "airbyte" password: "your_new_password_here" },
+    { login: "user@company.example" password: "password" },
+    { login: "user@company.example" password: "new_password" },
+    { login: "user@company.example" password: "your_new_password_here" },
+    { login: "your_new_username_here" password: "password" },
+    { login: "your_new_username_here" password: "new_password" },
+    { login: "your_new_username_here" password: "your_new_password_here" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_airbyte"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>Airbyte</title>" },
+          { body: {} contains: "Airbyte is the turnkey open-source data integration platform that syncs data from applications, APIs and databases to warehouses." }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/api/login"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"username\":\"{{ T_USERNAME }}\",\"password\":\"{{ T_PASSWORD }}\"}"
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { header: { name: "Set-Cookie" } contains: "JWT=" },
+          { header: { name: "Set-Cookie" } contains: "jwt=" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_airbyte",
+    "attempt_login"
+  ]
+}
