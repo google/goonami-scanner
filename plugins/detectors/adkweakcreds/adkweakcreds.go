@@ -82,6 +82,24 @@ func New(ctx context.Context, config *config.Config) (module.VulnDetector, error
 	}, nil
 }
 
+// Advisories returns the base vulnerability metadata reported by this module.
+func (m *Module) Advisories() []*vpb.Vulnerability {
+	return []*vpb.Vulnerability{baseVulnerability()}
+}
+
+func baseVulnerability() *vpb.Vulnerability {
+	return vpb.Vulnerability_builder{
+		Title:          "Web-service with weak credentials",
+		Severity:       vpb.Severity_HIGH,
+		Description:    "A web service with weak credentials has been detected. An attacker could guess these credentials and gain access to the service.",
+		Recommendation: "Use firewalling to restrict access to the service and use strong credentials and consider using multi-factor authentication.",
+		MainId: vpb.VulnerabilityId_builder{
+			Publisher: "GOOGLE",
+			Value:     "GENERIC_AGENTIC_WEAK_CREDENTIALS",
+		}.Build(),
+	}.Build()
+}
+
 // Detect performs the vulnerability detection process by interacting with the LLM agent and executing the brute-force strategy.
 func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
 	if !netservice.IsWebService(service) {
@@ -199,6 +217,15 @@ func (m *Module) buildDetectionReport(ctx context.Context, service *nspb.Network
 		return nil, err
 	}
 
+	vuln := baseVulnerability()
+	vuln.SetAdditionalDetails([]*vpb.AdditionalDetail{
+		vpb.AdditionalDetail_builder{
+			TextData: vpb.TextData_builder{
+				Text: string(extraDetails),
+			}.Build(),
+		}.Build(),
+	})
+
 	return dpb.DetectionReportList_builder{
 		DetectionReports: []*dpb.DetectionReport{
 			dpb.DetectionReport_builder{
@@ -210,23 +237,7 @@ func (m *Module) buildDetectionReport(ctx context.Context, service *nspb.Network
 				NetworkService:     service,
 				DetectionTimestamp: tpb.Now(),
 				DetectionStatus:    dpb.DetectionStatus_VULNERABILITY_VERIFIED,
-				Vulnerability: vpb.Vulnerability_builder{
-					Title:          "Web-service with weak credentials",
-					Severity:       vpb.Severity_HIGH,
-					Description:    "A web service with weak credentials has been detected. An attacker could guess these credentials and gain access to the service.",
-					Recommendation: "Use firewalling to restrict access to the service and use strong credentials and consider using multi-factor authentication.",
-					MainId: vpb.VulnerabilityId_builder{
-						Publisher: "GOOGLE",
-						Value:     "GENERIC_AGENTIC_WEAK_CREDENTIALS",
-					}.Build(),
-					AdditionalDetails: []*vpb.AdditionalDetail{
-						vpb.AdditionalDetail_builder{
-							TextData: vpb.TextData_builder{
-								Text: string(extraDetails),
-							}.Build(),
-						}.Build(),
-					},
-				}.Build(),
+				Vulnerability:      vuln,
 			}.Build(),
 		},
 	}.Build(), nil

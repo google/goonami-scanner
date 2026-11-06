@@ -22,6 +22,9 @@ before reporting `GENERIC_AGENTIC_WEAK_CREDENTIALS` findings.
     discovery and judge ADK agent builders and loads the `"dt/adkweakcreds"`
     strategy cache via `config.GetCacheForModule` (disabling caching on lookup
     failure).
+-   **`(*Module).Advisories`**: Returns the static base vulnerability advisory
+    (`GOOGLE` / `GENERIC_AGENTIC_WEAK_CREDENTIALS`, `Severity: HIGH`) supported
+    by the detector.
 -   **`(*Module).Detect`**: Evaluates a `*nspb.NetworkService` by obtaining an
     authentication strategy and testing its candidate credentials, returning
     `(nil, nil)` for non-web services or services without password/secret

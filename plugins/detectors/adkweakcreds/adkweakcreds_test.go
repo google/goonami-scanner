@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/clients/llm"
 	"github.com/google/goonami-scanner/common/testfakes/fakellmagent"
 	"github.com/google/goonami-scanner/core/config"
@@ -38,11 +39,13 @@ import (
 	"github.com/google/goonami-scanner/plugins/detectors/adkweakcreds/cache"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 type mockServerHTTP struct{}
@@ -863,5 +866,51 @@ func TestBuildJudgeAgent(t *testing.T) {
 	}
 	if got.Name() != judgeName {
 		t.Errorf("buildJudgeAgent().Name() = %q, want %q", got.Name(), judgeName)
+	}
+}
+
+func TestAdvisories(t *testing.T) {
+	want := []*vulnpb.Vulnerability{
+		vulnpb.Vulnerability_builder{
+			Title:          "Web-service with weak credentials",
+			Severity:       vulnpb.Severity_HIGH,
+			Description:    "A web service with weak credentials has been detected. An attacker could guess these credentials and gain access to the service.",
+			Recommendation: "Use firewalling to restrict access to the service and use strong credentials and consider using multi-factor authentication.",
+			MainId: vulnpb.VulnerabilityId_builder{
+				Publisher: "GOOGLE",
+				Value:     "GENERIC_AGENTIC_WEAK_CREDENTIALS",
+			}.Build(),
+		}.Build(),
+	}
+
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "when_initialized_with_default_config_returns_base_advisory",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m, err := New(t.Context(), config.Default())
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+			mod := m.(*Module)
+
+			got := mod.Advisories()
+			if diff := cmp.Diff(want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
+			}
+
+			if len(got) > 0 {
+				got[0].SetTitle("mutated title")
+				second := mod.Advisories()
+				if second[0].GetTitle() == "mutated title" {
+					t.Errorf("Advisories() returned a mutable reference, expected an isolated clone")
+				}
+			}
+		})
 	}
 }
