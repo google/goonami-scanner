@@ -1,0 +1,160 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "AirflowTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login/"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "session=initial_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: GET
+        }
+        body_content: "<title>Sign In - Airflow</title><input id=\"csrf_token\" name=\"csrf_token\" type=\"hidden\" value=\"a.CSRF.Token\"><script>var csrfToken = 'a.CSRF.Token';</script>"
+      },
+      {
+        uri: "/login/"
+        status: 302
+        headers: [
+          { name: "Location" value: "/home" },
+          { name: "Set-Cookie" value: "session=authenticated_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" },
+            { name: "Cookie" value: "session=initial_session_cookie" }
+          ]
+          body_content: [
+            "csrf_token=a.CSRF.Token",
+            "username=airflow",
+            "password=airflow"
+          ]
+        }
+        body_content: "<a href=\"/home\">/home</a>"
+      },
+      {
+        uri: "/login/"
+        status: 302
+        headers: [
+          { name: "Location" value: "/login/" },
+          { name: "Set-Cookie" value: "session=initial_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+        }
+        body_content: "<a href=\"/login/\">/login/</a>"
+      },
+      {
+        uri: "/home"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Cookie" value: "session=authenticated_session_cookie" }
+          ]
+        }
+        body_content: "<title>DAGs - Airflow</title><a href=\"/logout/\">Log Out</a>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login/"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "session=initial_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: GET
+        }
+        body_content: "<title>Sign In - Airflow</title><input id=\"csrf_token\" name=\"csrf_token\" type=\"hidden\" value=\"a.CSRF.Token\"><script>var csrfToken = 'a.CSRF.Token';</script>"
+      },
+      {
+        uri: "/login/"
+        status: 302
+        headers: [
+          { name: "Location" value: "/home" },
+          { name: "Set-Cookie" value: "session=authenticated_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+        }
+        body_content: "<a href=\"/home\">/home</a>"
+      },
+      {
+        uri: "/home"
+        status: 302
+        headers: [
+          { name: "Location" value: "/login/?next=%2Fhome" }
+        ]
+        body_content: "Redirecting..."
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login/"
+        status: 200
+        headers: [
+          { name: "Set-Cookie" value: "session=initial_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: GET
+        }
+        body_content: "<title>Sign In - Airflow</title><input id=\"csrf_token\" name=\"csrf_token\" type=\"hidden\" value=\"a.CSRF.Token\"><script>var csrfToken = 'a.CSRF.Token';</script>"
+      },
+      {
+        uri: "/login/"
+        status: 302
+        headers: [
+          { name: "Location" value: "/login/" },
+          { name: "Set-Cookie" value: "session=initial_session_cookie; Path=/; HttpOnly" }
+        ]
+        condition: {
+          request_type: POST
+        }
+        body_content: "<a href=\"/login/\">/login/</a>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_airflow_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}

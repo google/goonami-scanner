@@ -1,0 +1,150 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "AirflowTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_AIRFLOW"
+  }
+  severity: CRITICAL
+  title: "Weak 'airflow' service credential"
+  description: "Well known or weak credentials are detected for 'airflow' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "airflow" password: "airflow" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_airflow"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/login/"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "Sign In - Airflow" },
+          { body: {} contains: "csrf_token" },
+          { header: { name: "Set-Cookie" } contains: "session=" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "get_login_tokens"
+  http_request: {
+    method: GET
+    uri: "/login/"
+    response: {
+      http_status: 200
+      extract_all: {
+        patterns: [
+          {
+            from_header: { name: "Set-Cookie" }
+            regexp: "session=([^;]+)"
+            variable_name: "session_cookie"
+          },
+          {
+            from_body: {}
+            regexp: "(?:var CSRF = |var csrfToken = )[\"']([\\w-.]+)[\"']"
+            variable_name: "csrf_token"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/login/"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" },
+      { name: "Cookie" value: "session={{ session_cookie }}" }
+    ]
+    data: "csrf_token={{ csrf_token }}&username={{ T_USERNAME }}&password={{ T_PASSWORD }}"
+    response: {
+      http_status: 302
+      expect_all: {
+        conditions: [
+          { header: { name: "Location" } contains: "/home" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_header: { name: "Set-Cookie" }
+            regexp: "session=([^;]+)"
+            variable_name: "auth_session"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_login"
+  http_request: {
+    method: GET
+    uri: "/home"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    headers: [
+      { name: "Cookie" value: "session={{ auth_session }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "DAGs - Airflow" },
+          { body: {} contains: "/logout/" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_airflow",
+    "get_login_tokens",
+    "attempt_login",
+    "verify_login"
+  ]
+}
