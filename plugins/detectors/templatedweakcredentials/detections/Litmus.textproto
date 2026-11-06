@@ -1,0 +1,117 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "LitmusTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_LITMUS"
+  }
+  severity: CRITICAL
+  title: "Weak 'litmus' service credential"
+  description: "Well known or weak credentials are detected for 'litmus' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "admin" password: "litmus" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_litmus"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/login"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>LitmusChaos</title>" },
+          { body: {} contains: "<div id=\"react-root\"></div>" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/auth/login"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"username\":\"{{ T_USERNAME }}\",\"password\":\"{{ T_PASSWORD }}\"}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"accessToken\"" },
+          { body: {} contains: "\"type\":\"Bearer\"" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"accessToken\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "access_token"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_login"
+  http_request: {
+    method: GET
+    uri: "/auth/users"
+    headers: [
+      { name: "Authorization" value: "Bearer {{ access_token }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"userID\"" },
+          { body: {} contains: "\"username\":\"{{ T_USERNAME }}\"" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_litmus",
+    "attempt_login",
+    "verify_login"
+  ]
+}

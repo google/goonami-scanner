@@ -1,0 +1,121 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "LitmusTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>LitmusChaos</title></head><body><div id=\"react-root\"></div></body></html>"
+      },
+      {
+        uri: "/auth/login"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/json" }
+          ]
+          body_content: [
+            "\"username\":\"admin\"",
+            "\"password\":\"litmus\""
+          ]
+        }
+        body_content: "{\"accessToken\":\"test_jwt_token\",\"expiresIn\":86400,\"projectID\":\"1b7ca776-6480-4eb8-a366-68711ef401b8\",\"projectRole\":\"Owner\",\"type\":\"Bearer\"}"
+      },
+      {
+        uri: "/auth/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"invalid_credentials\",\"errorDescription\":\"Invalid Credentials\"}"
+      },
+      {
+        uri: "/auth/users"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Authorization" value: "Bearer test_jwt_token" }
+          ]
+        }
+        body_content: "[{\"userID\":\"98426084-780e-40a9-8e39-9af870cc10e6\",\"username\":\"admin\",\"role\":\"admin\"}]"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>LitmusChaos</title></head><body><div id=\"react-root\"></div></body></html>"
+      },
+      {
+        uri: "/auth/login"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"accessToken\":\"test_jwt_token\",\"expiresIn\":86400,\"projectID\":\"1b7ca776-6480-4eb8-a366-68711ef401b8\",\"projectRole\":\"Owner\",\"type\":\"Bearer\"}"
+      },
+      {
+        uri: "/auth/users"
+        status: 401
+        body_content: "{\"error\":\"unauthorized\",\"errorDescription\":\"The user does not have requested authorization to access this resource\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/login"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>LitmusChaos</title></head><body><div id=\"react-root\"></div></body></html>"
+      },
+      {
+        uri: "/auth/login"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"invalid_credentials\",\"errorDescription\":\"Invalid Credentials\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_litmus_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
