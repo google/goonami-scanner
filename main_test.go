@@ -25,15 +25,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	smpb "github.com/google/goonami-scanner/core/metrics/scan_metrics_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 var (
@@ -261,6 +264,7 @@ func TestValidateFlags(t *testing.T) {
 		outputDir  string
 		config     string
 		debugLevel int
+		advisories string
 		wantErr    error
 	}{
 		{
@@ -311,6 +315,18 @@ func TestValidateFlags(t *testing.T) {
 			debugLevel: 4,
 			wantErr:    ErrInvalidDebugLevel,
 		},
+		{
+			name:       "when_advisories_is_set_without_other_required_flags_returns_no_error",
+			debugLevel: 1,
+			advisories: "/tmp/advisories.textproto",
+			wantErr:    nil,
+		},
+		{
+			name:       "when_advisories_is_set_with_invalid_debug_level_returns_error",
+			debugLevel: 5,
+			advisories: "/tmp/advisories.textproto",
+			wantErr:    ErrInvalidDebugLevel,
+		},
 	}
 
 	for _, tc := range tests {
@@ -320,10 +336,118 @@ func TestValidateFlags(t *testing.T) {
 			*OutputDirFlag = tc.outputDir
 			*ConfigFlag = tc.config
 			*DebugLevelFlag = tc.debugLevel
+			*AdvisoriesFlag = tc.advisories
+			t.Cleanup(func() {
+				*AdvisoriesFlag = ""
+			})
 
 			err := validateFlags()
 			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("validateFlags() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestRunAdvisoriesFlag(t *testing.T) {
+	vuln1 := vulnpb.Vulnerability_builder{Title: "Advisory 1"}.Build()
+	vuln2 := vulnpb.Vulnerability_builder{Title: "Advisory 2"}.Build()
+	initErr := errors.New("detector initialization error")
+
+	tests := []struct {
+		name       string
+		setupReg   func()
+		advisories func(tempDir string) string
+		want       *vulnpb.VulnerabilityList
+		wantErr    error
+	}{
+		{
+			name: "when_advisories_flag_is_set_writes_vulnerability_list_and_skips_scan",
+			setupReg: func() {
+				module.RegisterPortScanner("ps1", func(ctx context.Context, config *config.Config) (module.PortScanner, error) {
+					return nil, errors.New("portscan must not be initialized")
+				})
+				module.RegisterFingerprinter("fp1", func(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
+					return nil, errors.New("fingerprinter must not be initialized")
+				})
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetectorWithAdvisories("d1", nil, []*vulnpb.Vulnerability{vuln1}, fakemodule.FakeDetectFnNoFindings))
+				module.RegisterDetector("d2", fakemodule.InitFakeVulnDetectorWithAdvisories("d2", nil, []*vulnpb.Vulnerability{vuln2}, fakemodule.FakeDetectFnNoFindings))
+			},
+			advisories: func(tempDir string) string {
+				return path.Join(tempDir, "advisories.textproto")
+			},
+			want: vulnpb.VulnerabilityList_builder{
+				Vulnerabilities: []*vulnpb.Vulnerability{vuln1, vuln2},
+			}.Build(),
+			wantErr: nil,
+		},
+		{
+			name:     "when_no_detectors_registered_writes_empty_vulnerability_list",
+			setupReg: func() {},
+			advisories: func(tempDir string) string {
+				return path.Join(tempDir, "empty.textproto")
+			},
+			want:    &vulnpb.VulnerabilityList{},
+			wantErr: nil,
+		},
+		{
+			name: "when_detector_initialization_fails_returns_error",
+			setupReg: func() {
+				module.RegisterDetector("d_err", fakemodule.InitFakeVulnDetectorWithAdvisories("d_err", initErr, nil, fakemodule.FakeDetectFnNoFindings))
+			},
+			advisories: func(tempDir string) string {
+				return path.Join(tempDir, "advisories.textproto")
+			},
+			want:    nil,
+			wantErr: initErr,
+		},
+		{
+			name:     "when_writing_advisories_file_fails_returns_error",
+			setupReg: func() {},
+			advisories: func(tempDir string) string {
+				return path.Join(tempDir, "non_existent_dir", "advisories.textproto")
+			},
+			want:    nil,
+			wantErr: ErrWriteAdvisories,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			module.ClearRegistry()
+			tc.setupReg()
+
+			tempDir := t.TempDir()
+			advPath := tc.advisories(tempDir)
+
+			*TargetFlag = ""
+			*OutputDirFlag = ""
+			*ConfigFlag = "non/existent/config"
+			*DebugLevelFlag = 0
+			*AdvisoriesFlag = advPath
+			t.Cleanup(func() {
+				*AdvisoriesFlag = ""
+			})
+
+			if err := run(t.Context()); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("run() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+
+			data, err := os.ReadFile(advPath)
+			if err != nil {
+				t.Fatalf("failed to read written advisories file: %v", err)
+			}
+
+			got := &vulnpb.VulnerabilityList{}
+			if err := prototext.Unmarshal(data, got); err != nil {
+				t.Fatalf("failed to unmarshal written advisories textproto: %v", err)
+			}
+
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("written advisories diff (-want +got):\n%s", diff)
 			}
 		})
 	}

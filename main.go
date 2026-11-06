@@ -54,6 +54,7 @@ import (
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 var (
@@ -74,6 +75,12 @@ var (
 
 	// ErrWriteResults is returned when the scan results cannot be written to a file.
 	ErrWriteResults = errors.New("failed to write scan results to file")
+
+	// ErrMarshalAdvisories is returned when the advisories list cannot be marshaled.
+	ErrMarshalAdvisories = errors.New("failed to marshal advisories")
+
+	// ErrWriteAdvisories is returned when the advisories list cannot be written to a file.
+	ErrWriteAdvisories = errors.New("failed to write advisories to file")
 )
 
 var (
@@ -92,6 +99,8 @@ var (
 	// MetricsFlag controls whether the scan collects metrics and writes them to
 	// metrics.textproto in the output directory.
 	MetricsFlag = flag.Bool("metrics", false, "collect scan metrics and write them to metrics.textproto")
+	// AdvisoriesFlag controls the file path to dump supported advisories to, skipping scan execution.
+	AdvisoriesFlag = flag.String("advisories", "", "dump the list of supported advisories to the given file in textproto format and exit")
 )
 
 func stringSlice(name, usage string) *[]string {
@@ -118,6 +127,15 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("invalid flags: %w", err)
 	}
 
+	logger := &log.DefaultLogger{
+		VerboseLevel: log.DebugLevel(*DebugLevelFlag),
+		UseColors:    *ColorFlag,
+	}
+
+	if *AdvisoriesFlag != "" {
+		return dumpAdvisories(ctx, logger, *AdvisoriesFlag)
+	}
+
 	log.InfoContextf(ctx, "initializing the scanner's config from %q", *ConfigFlag)
 	cfg, err := config.FromFile(*ConfigFlag)
 	if err != nil {
@@ -132,11 +150,6 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("failed to create the scanner's directories: %w", err)
 	}
 	defer cfg.Close(ctx)
-
-	logger := &log.DefaultLogger{
-		VerboseLevel: log.DebugLevel(*DebugLevelFlag),
-		UseColors:    *ColorFlag,
-	}
 
 	log.InfoContextf(ctx, "initializing the scanner's entrypoint")
 	options := &entrypoint.Options{
@@ -196,6 +209,14 @@ func writeMetrics(ctx context.Context, collector *metrics.Collector, dir string)
 }
 
 func validateFlags() error {
+	if *DebugLevelFlag < 0 || *DebugLevelFlag > 3 {
+		return ErrInvalidDebugLevel
+	}
+
+	if *AdvisoriesFlag != "" {
+		return nil
+	}
+
 	if *TargetFlag == "" {
 		return ErrTargetRequired
 	}
@@ -208,10 +229,36 @@ func validateFlags() error {
 		return ErrConfigRequired
 	}
 
-	if *DebugLevelFlag < 0 || *DebugLevelFlag > 3 {
-		return ErrInvalidDebugLevel
+	return nil
+}
+
+func dumpAdvisories(ctx context.Context, logger log.Logger, advisoriesPath string) error {
+	log.SetLogger(logger)
+	log.InfoContextf(ctx, "no scan will be performed, dumping advisories to %q", advisoriesPath)
+
+	advisories, err := entrypoint.Advisories(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("collecting advisories: %w", err)
 	}
 
+	if err := writeAdvisories(advisoriesPath, advisories); err != nil {
+		return err
+	}
+
+	log.InfoContextf(ctx, "advisories written to %q", advisoriesPath)
+	return nil
+}
+
+func writeAdvisories(advisoriesPath string, advisories *vulnpb.VulnerabilityList) error {
+	options := prototext.MarshalOptions{Multiline: true}
+	textproto, err := options.Marshal(advisories)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrMarshalAdvisories, err)
+	}
+
+	if err := os.WriteFile(advisoriesPath, textproto, 0644); err != nil {
+		return fmt.Errorf("%w: %v", ErrWriteAdvisories, err)
+	}
 	return nil
 }
 
