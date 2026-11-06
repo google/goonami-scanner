@@ -1,0 +1,135 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "Axis2TemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/axis2/"
+        status: 200
+        body_content: "<html><head><title>Axis 2 - Home</title></head><body><h1>Welcome!</h1>Welcome to the new generation of Axis.</body></html>"
+      },
+      {
+        uri: "/axis2/axis2-admin/login"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+          ]
+          body_content: [
+            "userName=admin&password=axis2"
+          ]
+        }
+        body_content: "<html><head><title>Axis2 :: Administration Page</title></head><body><h1>Welcome to Axis2 Web Admin Module !!</h1></body></html>"
+      },
+      {
+        uri: "/axis2/axis2-admin/login"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "<html><head><title>Login to Axis2 :: Administration page</title></head><body>Invalid auth credentials!</body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_weak_credentials_redirect_to_index_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/axis2/"
+        status: 200
+        body_content: "<html><head><title>Axis 2 - Home</title></head><body><h1>Welcome!</h1>Welcome to the new generation of Axis.</body></html>"
+      },
+      {
+        uri: "/axis2/axis2-admin/login"
+        status: 302
+        headers: [
+          { name: "Location" value: "/axis2/axis2-admin/index;jsessionid=testsessionid" }
+        ]
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+          ]
+          body_content: [
+            "userName=admin&password=axis2"
+          ]
+        }
+      },
+      {
+        uri: "/axis2/axis2-admin/index;jsessionid=testsessionid"
+        status: 200
+        condition: {
+          request_type: GET
+        }
+        body_content: "<html><head><title>Axis2 :: Administration Page</title></head><body><h1>Welcome to Axis2 Web Admin Module !!</h1></body></html>"
+      },
+      {
+        uri: "/axis2/axis2-admin/login"
+        status: 302
+        headers: [
+          { name: "Location" value: "/axis2/axis2-admin/welcome?failed=true" }
+        ]
+        condition: {
+          request_type: POST
+        }
+      },
+      {
+        uri: "/axis2/axis2-admin/welcome?failed=true"
+        status: 200
+        body_content: "<html><head><title>Login to Axis2 :: Administration page</title></head><body>Invalid auth credentials!</body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/axis2/"
+        status: 200
+        body_content: "<html><head><title>Axis 2 - Home</title></head><body><h1>Welcome!</h1>Welcome to the new generation of Axis.</body></html>"
+      },
+      {
+        uri: "/axis2/axis2-admin/login"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "<html><head><title>Login to Axis2 :: Administration page</title></head><body>Invalid auth credentials!</body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_axis2_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}

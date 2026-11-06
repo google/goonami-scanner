@@ -1,0 +1,87 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Axis2TemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_AXIS2"
+  }
+  severity: CRITICAL
+  title: "Weak 'axis2' service credential"
+  description: "Well known or weak credentials are detected for 'axis2' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "admin" password: "axis2" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_axis2"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/axis2/"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>Axis 2 - Home</title>" },
+          { body: {} contains: "Welcome to the new generation of Axis." }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/axis2/axis2-admin/login"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+    ]
+    data: "userName={{ T_USERNAME }}&password={{ T_PASSWORD }}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>Axis2 :: Administration Page</title>" },
+          { body: {} contains: "Welcome to Axis2 Web Admin Module !!" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_axis2",
+    "attempt_login"
+  ]
+}
