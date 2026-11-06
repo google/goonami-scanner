@@ -121,3 +121,34 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 		t.Errorf("Detect() hasVulnerability = %v, want %v", hasVulnerability, tc.GetExpectVulnerability())
 	}
 }
+
+func TestEmbeddedDetectorsAdvisories(t *testing.T) {
+	plugins, err := templatedengine.LoadPluginsFromFS(t.Context(), pluginFilesFS)
+	if err != nil {
+		t.Fatalf("LoadPluginsFromFS() failed: %v", err)
+	}
+
+	if len(plugins) == 0 {
+		t.Fatal("no embedded templated plugins found")
+	}
+
+	for _, plugin := range plugins {
+		t.Run(plugin.GetInfo().GetName(), func(t *testing.T) {
+			detector, err := templatedengine.New(t.Context(), config.Default(), plugin)
+			if err != nil {
+				t.Fatalf("templatedengine.New() failed: %v", err)
+			}
+
+			advisories := detector.Advisories()
+			if len(advisories) != 1 {
+				t.Fatalf("len(detector.Advisories()) = %d, want 1", len(advisories))
+			}
+			if advisories[0].GetTitle() == "" {
+				t.Errorf("advisory for %q has empty title", plugin.GetInfo().GetName())
+			}
+			if advisories[0].GetMainId().GetValue() == "" {
+				t.Errorf("advisory for %q has empty main_id value", plugin.GetInfo().GetName())
+			}
+		})
+	}
+}
