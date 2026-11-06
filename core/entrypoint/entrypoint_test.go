@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 func init() {
@@ -402,6 +403,67 @@ func TestNewInstallsRecorder(t *testing.T) {
 
 			if got, want := metrics.CurrentRecorder() == metrics.Recorder(collector), tc.withRecorder; got != want {
 				t.Errorf("the collector is installed = %t, want %t", got, want)
+			}
+		})
+	}
+}
+
+func TestAdvisories(t *testing.T) {
+	initErr := errors.New("detector init failed")
+
+	vuln1 := vulnpb.Vulnerability_builder{Title: "Vuln 1"}.Build()
+	vuln2 := vulnpb.Vulnerability_builder{Title: "Vuln 2"}.Build()
+	vuln3 := vulnpb.Vulnerability_builder{Title: "Vuln 3"}.Build()
+
+	tests := []struct {
+		name     string
+		setupReg func()
+		want     *vulnpb.VulnerabilityList
+		wantErr  error
+	}{
+		{
+			name:     "when_no_detectors_registered_returns_empty_list",
+			setupReg: func() {},
+			want:     &vulnpb.VulnerabilityList{},
+			wantErr:  nil,
+		},
+		{
+			name: "when_detectors_registered_flattens_advisories_in_registration_order",
+			setupReg: func() {
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetectorWithAdvisories("d1", nil, []*vulnpb.Vulnerability{vuln1, vuln2}, fakemodule.FakeDetectFnNoFindings))
+				module.RegisterDetector("d2", fakemodule.InitFakeVulnDetectorWithAdvisories("d2", nil, nil, fakemodule.FakeDetectFnNoFindings))
+				module.RegisterDetector("d3", fakemodule.InitFakeVulnDetectorWithAdvisories("d3", nil, []*vulnpb.Vulnerability{vuln3}, fakemodule.FakeDetectFnNoFindings))
+			},
+			want: vulnpb.VulnerabilityList_builder{
+				Vulnerabilities: []*vulnpb.Vulnerability{vuln1, vuln2, vuln3},
+			}.Build(),
+			wantErr: nil,
+		},
+		{
+			name: "when_detector_init_fails_returns_error",
+			setupReg: func() {
+				module.RegisterDetector("d1", fakemodule.InitFakeVulnDetectorWithAdvisories("d1", initErr, nil, fakemodule.FakeDetectFnNoFindings))
+			},
+			want:    nil,
+			wantErr: initErr,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			module.ClearRegistry()
+			tc.setupReg()
+
+			got, err := Advisories(t.Context(), nil)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Advisories() error = %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() diff (-want +got):\n%s", diff)
 			}
 		})
 	}

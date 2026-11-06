@@ -27,6 +27,10 @@ constructing and running an `Entrypoint`.
     `*srpb.ScanResults` report.
 -   **`(*Entrypoint).Artifacts()`**: Returns the filesystem path to the
     directory where scan artifacts are stored (`Config.ArtifactsDirectory()`).
+-   **`Advisories(ctx, logger)`**: Initializes all registered vulnerability
+    detectors using default configuration and returns the combined list of
+    supported advisories (`*vulnpb.VulnerabilityList`), optionally installing
+    `logger` before module initialization.
 
 ## Usage
 

@@ -31,6 +31,7 @@ import (
 	"github.com/google/goonami-scanner/core/runner/simplerunner"
 
 	srpb "github.com/google/tsunami-security-scanner/proto/go/scan_results_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 // Options are the parameters that control the behavior of the core engine of Goonami.
@@ -140,4 +141,35 @@ func (e *Entrypoint) Run(ctx context.Context, target string) (*srpb.ScanResults,
 // Artifacts returns the directory where artifacts were stored.
 func (e *Entrypoint) Artifacts() string {
 	return e.config.ArtifactsDirectory()
+}
+
+// Advisories initializes all registered vulnerability detectors using the default configuration
+// and returns the combined list of advisories they support. If logger is non-nil, it replaces
+// the global logger before initializing detectors.
+func Advisories(ctx context.Context, logger log.Logger) (*vulnpb.VulnerabilityList, error) {
+	ctx = log.ContextForModule(ctx, "entrypoint")
+	if logger != nil {
+		log.SetLogger(logger)
+		log.InfoContextf(ctx, "the logger was modified")
+	}
+
+	cfg := config.Default()
+	detectors, err := module.AllDetectors(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	log.InfoContextf(ctx, "collecting advisories from %d vulnerability detectors", len(detectors))
+	var advisories []*vulnpb.Vulnerability
+	for _, dt := range detectors {
+		for _, adv := range dt.Advisories() {
+			if adv != nil {
+				advisories = append(advisories, adv)
+			}
+		}
+	}
+
+	return vulnpb.VulnerabilityList_builder{
+		Vulnerabilities: advisories,
+	}.Build(), nil
 }
