@@ -1,0 +1,121 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ArgoCdTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>Argo CD</title></head><body>Argo CD CLI</body></html>"
+      },
+      {
+        uri: "/api/v1/session"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/json" }
+          ]
+          body_content: [
+            "\"username\":\"admin\"",
+            "\"password\":\"password\""
+          ]
+        }
+        body_content: "{\"token\":\"test_jwt_token\"}"
+      },
+      {
+        uri: "/api/v1/session"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"Invalid username or password\",\"code\":16,\"message\":\"Invalid username or password\"}"
+      },
+      {
+        uri: "/api/v1/session/userinfo"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Authorization" value: "Bearer test_jwt_token" }
+          ]
+        }
+        body_content: "{\"loggedIn\":true,\"username\":\"admin\",\"iss\":\"argocd\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>Argo CD</title></head><body>Argo CD CLI</body></html>"
+      },
+      {
+        uri: "/api/v1/session"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"token\":\"test_jwt_token\"}"
+      },
+      {
+        uri: "/api/v1/session/userinfo"
+        status: 200
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/"
+        status: 200
+        body_content: "<!doctype html><html lang=\"en\"><head><title>Argo CD</title></head><body>Argo CD CLI</body></html>"
+      },
+      {
+        uri: "/api/v1/session"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"Invalid username or password\",\"code\":16,\"message\":\"Invalid username or password\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_argocd_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}

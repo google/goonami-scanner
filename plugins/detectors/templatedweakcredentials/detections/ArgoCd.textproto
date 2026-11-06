@@ -1,0 +1,118 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ArgoCdTemplatedWeakCredentials"
+  author: "Tsunami developer team <tsunami-dev@google.com>"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "WEAK_CREDENTIALS_FOR_ARGOCD"
+  }
+  severity: CRITICAL
+  title: "Weak 'argocd' service credential"
+  description: "Well known or weak credentials are detected for 'argocd' service."
+  recommendation: "Change the password of all affected users to a strong one."
+}
+
+config: {}
+
+service_information: {
+  authentication_type: AUTHENTICATION_TYPE_USERNAME_PASSWORD
+  default_credentials: [
+    { login: "admin" password: "Password1!" },
+    { login: "admin" password: "password" },
+    { login: "admin" password: "YOUR-PASSWORD-HERE" }
+  ]
+}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_argocd"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "<title>Argo CD</title>" },
+          { body: {} contains: "Argo CD CLI" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "attempt_login"
+  http_request: {
+    method: POST
+    uri: "/api/v1/session"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"username\":\"{{ T_USERNAME }}\",\"password\":\"{{ T_PASSWORD }}\"}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"token\"" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"token\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "argocd_token"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_login"
+  http_request: {
+    method: GET
+    uri: "/api/v1/session/userinfo"
+    headers: [
+      { name: "Authorization" value: "Bearer {{ argocd_token }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"loggedIn\":true" },
+          { body: {} contains: "\"username\":\"{{ T_USERNAME }}\"" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_argocd",
+    "attempt_login",
+    "verify_login"
+  ]
+}
