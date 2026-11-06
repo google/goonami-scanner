@@ -27,17 +27,20 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/clients/callbackserver"
 	"github.com/google/goonami-scanner/common/templatedengine/actions"
 	"github.com/google/goonami-scanner/common/testfakes/fakecallbackserver"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 func TestTNew(t *testing.T) {
@@ -611,6 +614,55 @@ func TestTemplatedDetector_DetectForPhase(t *testing.T) {
 			hasReports := len(reports.GetDetectionReports()) > 0
 			if hasReports != tc.wantDetection {
 				t.Errorf("DetectForPhase() hasReports = %v, want %v", hasReports, tc.wantDetection)
+			}
+		})
+	}
+}
+
+func TestTemplatedDetector_Advisories(t *testing.T) {
+	findingVuln := vulnpb.Vulnerability_builder{
+		Title: "Test Vulnerability",
+	}.Build()
+
+	tests := []struct {
+		name    string
+		proto   *tpb.TemplatedPlugin
+		want    []*vulnpb.Vulnerability
+		isClone bool
+	}{
+		{
+			name: "when_plugin_has_finding_returns_cloned_vulnerability",
+			proto: tpb.TemplatedPlugin_builder{
+				Finding: findingVuln,
+			}.Build(),
+			want:    []*vulnpb.Vulnerability{findingVuln},
+			isClone: true,
+		},
+		{
+			name:  "when_plugin_has_no_finding_returns_nil",
+			proto: &tpb.TemplatedPlugin{},
+			want:  nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			detector, err := New(t.Context(), config.Default(), tc.proto)
+			if err != nil {
+				t.Fatalf("New() failed: %v", err)
+			}
+
+			got := detector.Advisories()
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
+			}
+
+			if tc.isClone && len(got) > 0 {
+				got[0].SetTitle("mutated title")
+				second := detector.Advisories()
+				if second[0].GetTitle() == "mutated title" {
+					t.Errorf("Advisories() returned a mutable reference, expected an isolated clone")
+				}
 			}
 		})
 	}

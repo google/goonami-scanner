@@ -11,11 +11,12 @@ helpers to register and run full or phase-targeted detection workflows against
 
 ## Services
 
--   **`TemplatedDetector` (`New`, `NewForTesting`, `Name`)**: Implements
-    `module.VulnDetector` to execute workflows defined in a
+-   **`TemplatedDetector` (`New`, `NewForTesting`, `Name`, `Advisories`)**:
+    Implements `module.VulnDetector` to execute workflows defined in a
     `*tpb.TemplatedPlugin` protocol buffer, reporting its module name with the
-    `"dt/tpl/"` prefix via `Name()`. `New` indexes the plugin's actions by name
-    and runs `Validate()`, while `NewForTesting` additionally injects a fixed
+    `"dt/tpl/"` prefix via `Name()` and its configured vulnerability finding via
+    `Advisories()`. `New` indexes the plugin's actions by name and runs
+    `Validate()`, while `NewForTesting` additionally injects a fixed
     `*environment.Environment` to override per-workflow environment
     initialization.
 -   **`(*TemplatedDetector).Validate`**: Verifies that every defined action maps

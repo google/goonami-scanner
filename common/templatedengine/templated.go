@@ -34,10 +34,12 @@ import (
 	"github.com/google/goonami-scanner/core/module"
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	tpb "github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_go_proto"
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 	tspb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -136,6 +138,14 @@ func NewForTesting(ctx context.Context, cfg *config.Config, proto *tpb.Templated
 // Name returns the name of the detector.
 func (d *TemplatedDetector) Name() string {
 	return namePrefix + d.proto.GetInfo().GetName()
+}
+
+// Advisories returns the vulnerability metadata defined by the templated plugin.
+func (d *TemplatedDetector) Advisories() []*vulnpb.Vulnerability {
+	if !d.proto.HasFinding() {
+		return nil
+	}
+	return []*vulnpb.Vulnerability{proto.CloneOf(d.proto.GetFinding())}
 }
 
 // Detect performs the vulnerability detection.
