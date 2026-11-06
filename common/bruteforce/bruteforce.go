@@ -100,6 +100,14 @@ func (d *Detector) CredentialStore() *credentialstore.CredentialStore {
 	return d.store.Copy()
 }
 
+// Advisories returns the base vulnerability advisory reported by this detector.
+func (d *Detector) Advisories() []*vpb.Vulnerability {
+	if d.handler == nil || d.handler.Vulnerability() == nil {
+		return nil
+	}
+	return []*vpb.Vulnerability{proto.CloneOf(d.handler.Vulnerability())}
+}
+
 // Detect fingerprints the target service and brute-forces credentials up to the
 // configured budget, reporting discovered weak credentials.
 func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {

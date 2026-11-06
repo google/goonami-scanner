@@ -29,6 +29,7 @@ import (
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/metrics"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	bfpb "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
@@ -278,6 +279,64 @@ func TestNew_DoesNotMutateOriginalStore(t *testing.T) {
 
 	if diff := cmp.Diff([]string{"u1"}, orig.Usernames()); diff != "" {
 		t.Errorf("original store usernames mutated (-want +got):\n%s", diff)
+	}
+}
+
+func TestDetector_Advisories(t *testing.T) {
+	baseVuln := vpb.Vulnerability_builder{
+		Title: "Weak Credentials Advisory",
+	}.Build()
+
+	tests := []struct {
+		name       string
+		nilHandler bool
+		want       []*vpb.Vulnerability
+		isClone    bool
+	}{
+		{
+			name:       "when_detector_initialized_returns_cloned_base_vulnerability",
+			nilHandler: false,
+			want:       []*vpb.Vulnerability{baseVuln},
+			isClone:    true,
+		},
+		{
+			name:       "when_detector_has_nil_handler_returns_nil",
+			nilHandler: true,
+			want:       nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var detector *Detector
+			if tc.nilHandler {
+				detector = &Detector{}
+			} else {
+				var err error
+				detector, err = New(
+					t.Context(),
+					config.Default(),
+					&fakeHandler{vuln: baseVuln},
+					&Options{CredentialStore: smallStore([]string{"admin"}, []string{"pass"})},
+				)
+				if err != nil {
+					t.Fatalf("New() failed: %v", err)
+				}
+			}
+
+			got := detector.Advisories()
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
+			}
+
+			if tc.isClone && len(got) > 0 {
+				got[0].SetTitle("mutated title")
+				second := detector.Advisories()
+				if second[0].GetTitle() == "mutated title" {
+					t.Errorf("Advisories() returned a mutable reference, expected an isolated clone")
+				}
+			}
+		})
 	}
 }
 
