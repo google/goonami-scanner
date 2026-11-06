@@ -18,32 +18,24 @@
 package iputils
 
 import (
-	"net"
+	"net/netip"
 )
 
-// IsIP returns true if the input can be parsed as an IP address.
+// IsIP returns true if the input can be parsed as an IP address without an IPv6 zone identifier.
 func IsIP(ip string) bool {
-	return net.ParseIP(ip) != nil
+	addr, err := netip.ParseAddr(ip)
+	return err == nil && addr.Zone() == ""
 }
 
 // IsIPv4 returns true if the given IP is an IPv4 address.
 func IsIPv4(ip string) bool {
-	if addr := net.ParseIP(ip); addr != nil {
-		// Note: ParseIP always returns a 16-byte IP address. To check
-		// whether it is an IPv4, we have to rely only on To4().
-		return addr.To4() != nil
-	}
-
-	return false
+	addr, err := netip.ParseAddr(ip)
+	return err == nil && addr.Is4()
 }
 
-// IsIPv6 returns true if the given IP is an IPv6 address.
+// IsIPv6 returns true if the given IP is an IPv6 address (including IPv4-mapped IPv6 addresses)
+// without an IPv6 zone identifier.
 func IsIPv6(ip string) bool {
-	if addr := net.ParseIP(ip); addr != nil {
-		// Note: ParseIP always returns a 16-byte IP address. To check
-		// whether it is an IPv6, we have to rely only on To4().
-		return addr.To4() == nil
-	}
-
-	return false
+	addr, err := netip.ParseAddr(ip)
+	return err == nil && addr.Is6() && addr.Zone() == ""
 }

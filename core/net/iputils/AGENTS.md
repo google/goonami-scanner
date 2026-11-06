@@ -3,23 +3,26 @@
 Package `iputils` provides lightweight helper functions for validating IP
 address strings and CIDR prefixes, distinguishing between IPv4 and IPv6 formats,
 and expanding or counting addresses in CIDR ranges. IP literal checks wrap
-`net.ParseIP` and `net.IP.To4`, and CIDR helpers wrap `netip.ParsePrefix` from
-the Go standard library without performing DNS resolution. Goonami networking
-packages, scanner clients, entrypoint target parsers, and callback server
-utilities use it to differentiate IP literals and CIDR blocks from hostnames,
-select IPv4 or IPv6 handling, and expand or count scan targets.
+`netip.ParseAddr`, and CIDR helpers wrap `netip.ParsePrefix` from the Go
+standard library without performing DNS resolution. Goonami networking packages,
+scanner clients, entrypoint target parsers, and callback server utilities use it
+to differentiate IP literals and CIDR blocks from hostnames, select IPv4 or IPv6
+handling, and expand or count scan targets.
 
 ## Services
 
 -   **`IsIP(ip string) bool`**: Reports whether `ip` can be parsed by
-    `net.ParseIP` as a valid IPv4 or IPv6 address literal, returning `false` for
+    `netip.ParseAddr` as a valid IPv4 or IPv6 address literal without an IPv6
+    zone identifier, returning `false` for zoned addresses, CIDR prefixes,
     hostnames, empty strings, or unparseable inputs.
--   **`IsIPv4(ip string) bool`**: Parses `ip` with `net.ParseIP` and reports
-    whether `addr.To4() != nil`. Returns `false` for IPv6 addresses, hostnames,
-    and invalid strings.
--   **`IsIPv6(ip string) bool`**: Parses `ip` with `net.ParseIP` and reports
-    whether `addr.To4() == nil`. Returns `false` for IPv4 addresses, hostnames,
-    and invalid strings.
+-   **`IsIPv4(ip string) bool`**: Parses `ip` with `netip.ParseAddr` and reports
+    whether `addr.Is4()` is `true`. Returns `false` for IPv6 addresses
+    (including IPv4-mapped IPv6 addresses such as `::ffff:192.168.1.1`),
+    hostnames, and invalid strings.
+-   **`IsIPv6(ip string) bool`**: Parses `ip` with `netip.ParseAddr` and reports
+    whether `addr.Is6()` is `true` without an IPv6 zone identifier (including
+    IPv4-mapped IPv6 addresses such as `::ffff:192.168.1.1`). Returns `false`
+    for IPv4 addresses, zoned IPv6 addresses, hostnames, and invalid strings.
 -   **`IsCIDR(cidr string) bool`**: Reports whether `cidr` can be parsed by
     `netip.ParsePrefix` as a valid IPv4 or IPv6 CIDR prefix.
 -   **`IsIPv4CIDR(cidr string) bool`**: Parses `cidr` with `netip.ParsePrefix`
