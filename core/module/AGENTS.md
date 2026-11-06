@@ -29,7 +29,8 @@ detectors.
     (`func(context.Context, *config.Config) (Fingerprinter, error)`) is the
     constructor callback signature accepted by the registry.
 -   **`VulnDetector` / `InitVulnDetectorFn`**: Interface for vulnerability
-    detection modules exposing `Name()` and
+    detection modules exposing `Name()`,
+    `Advisories() []*vulnpb.Vulnerability`, and
     `Detect(ctx, service) (*dpb.DetectionReportList, error)` against a target
     `*nspb.NetworkService`. `InitVulnDetectorFn`
     (`func(context.Context, *config.Config) (VulnDetector, error)`) is the
@@ -72,6 +73,7 @@ import (
 
   dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
   nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+  vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 type customDetector struct {
@@ -84,6 +86,10 @@ func NewDetector(
   return &customDetector{
       BaseModule: module.NewBaseModule("dt/custom"),
   }, nil
+}
+
+func (d *customDetector) Advisories() []*vulnpb.Vulnerability {
+  return nil
 }
 
 func (d *customDetector) Detect(

@@ -29,6 +29,7 @@ import (
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
 	rpb "github.com/google/tsunami-security-scanner/proto/go/reconnaissance_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 // Define dummy types for testing
@@ -50,6 +51,10 @@ func (d *dummyFingerprinter) Fingerprint(ctx context.Context, service *nspb.Netw
 
 type dummyDetector struct {
 	BaseModule
+}
+
+func (d *dummyDetector) Advisories() []*vulnpb.Vulnerability {
+	return nil
 }
 
 func (d *dummyDetector) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {

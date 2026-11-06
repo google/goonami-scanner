@@ -23,12 +23,16 @@ import (
 
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 // VulnDetector is a module that can detect vulnerabilities.
 type VulnDetector interface {
 	// Name of the module. Should be inherited from the BaseModule.
 	Name() string
+
+	// Advisories returns the vulnerability metadata for all detections supported by this module.
+	Advisories() []*vulnpb.Vulnerability
 
 	// Detect the presence of a vulnerability on the network service.
 	Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error)
