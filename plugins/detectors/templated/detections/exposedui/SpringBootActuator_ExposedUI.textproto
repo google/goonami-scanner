@@ -1,0 +1,116 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "SpringBootActuator_ExposedUI"
+  author: "Tsunami Team (tsunami-dev@google.com)"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "EXPOSED_SPRING_BOOT_ACTUATOR_ENDPOINT"
+  }
+  severity: CRITICAL
+  title: "Exposed Spring Boot Actuator Endpoint"
+  description:
+    "Spring Boot and Spring Cloud applications expose Actuator management"
+    " endpoints such as /env, /heapdump, /routes, /gateway/routes,"
+    " /threaddump, /mappings, and /jolokia. Exposing these endpoints without"
+    " authentication leaks environment variables, credentials, memory dumps,"
+    " or internal routing tables, and can lead to SSRF or remote code"
+    " execution."
+  recommendation:
+    "Disable public access to Spring Boot and Spring Cloud Actuator endpoints,"
+    " or require authentication and restrict management endpoints to an"
+    " internal management port."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_spring_boot_actuator_endpoints"
+  http_request: {
+    method: GET
+    uri: [
+      "/heapdump",
+      "/actuator/heapdump",
+      "/management/heapdump",
+      "/api/heapdump",
+      "/api/actuator/heapdump",
+      "/env",
+      "/actuator/env",
+      "/management/env",
+      "/api/env",
+      "/api/actuator/env",
+      "/routes",
+      "/actuator/routes",
+      "/management/routes",
+      "/api/routes",
+      "/api/actuator/routes",
+      "/gateway/routes",
+      "/actuator/gateway/routes",
+      "/management/gateway/routes",
+      "/api/gateway/routes",
+      "/api/actuator/gateway/routes",
+      "/threaddump",
+      "/actuator/threaddump",
+      "/management/threaddump",
+      "/api/threaddump",
+      "/api/actuator/threaddump",
+      "/dump",
+      "/actuator/dump",
+      "/management/dump",
+      "/api/dump",
+      "/api/actuator/dump",
+      "/mappings",
+      "/actuator/mappings",
+      "/management/mappings",
+      "/api/mappings",
+      "/api/actuator/mappings",
+      "/jolokia",
+      "/actuator/jolokia",
+      "/management/jolokia",
+      "/api/jolokia",
+      "/api/actuator/jolokia"
+    ]
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { header: { name: "Content-Disposition" } contains: "heapdump" },
+          { body: {} contains: "\"propertySources\"" },
+          { body: {} contains: "\"systemEnvironment\"" },
+          { body: {} contains: "/**\":\"" },
+          { body: {} contains: "/**\": \"" },
+          { body: {} contains: "\"fullPath\":" },
+          { body: {} contains: "\"route_id\"" },
+          { body: {} contains: "\"threadState\"" },
+          { body: {} contains: "\"dispatcherServlets\"" },
+          { body: {} contains: "RequestMappingHandlerMapping" },
+          { body: {} contains: "\"type\":\"version\"" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_spring_boot_actuator_endpoints"
+  ]
+}
