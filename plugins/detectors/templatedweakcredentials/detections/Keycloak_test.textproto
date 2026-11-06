@@ -1,0 +1,202 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "KeycloakTemplatedWeakCredentials"
+}
+
+tests: {
+  name: "when_weak_credentials_present_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/realms/master/.well-known/openid-configuration"
+        status: 200
+        body_content: "{\"issuer\":\"http://localhost:8080/realms/master\",\"authorization_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/auth\",\"token_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/token\"}"
+      },
+      {
+        uri: "/realms/master/protocol/openid-connect/token"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+          ]
+          body_content: [
+            "grant_type=password",
+            "client_id=admin-cli",
+            "username=admin",
+            "password=admin"
+          ]
+        }
+        body_content: "{\"access_token\":\"test_access_token\",\"expires_in\":60,\"token_type\":\"Bearer\"}"
+      },
+      {
+        uri: "/realms/master/protocol/openid-connect/token"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"invalid_grant\",\"error_description\":\"Invalid user credentials\"}"
+      },
+      {
+        uri: "/admin/realms/master"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Authorization" value: "Bearer test_access_token" }
+          ]
+        }
+        body_content: "{\"id\":\"master\",\"realm\":\"master\",\"displayName\":\"Keycloak\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_weak_credentials_present_on_legacy_auth_path_reports_vulnerability"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/realms/master/.well-known/openid-configuration"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/auth/realms/master/.well-known/openid-configuration"
+        status: 200
+        body_content: "{\"issuer\":\"http://localhost:8080/auth/realms/master\",\"authorization_endpoint\":\"http://localhost:8080/auth/realms/master/protocol/openid-connect/auth\",\"token_endpoint\":\"http://localhost:8080/auth/realms/master/protocol/openid-connect/token\"}"
+      },
+      {
+        uri: "/realms/master/protocol/openid-connect/token"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/auth/realms/master/protocol/openid-connect/token"
+        status: 200
+        condition: {
+          request_type: POST
+          headers: [
+            { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+          ]
+          body_content: [
+            "grant_type=password",
+            "client_id=admin-cli",
+            "username=admin",
+            "password=admin"
+          ]
+        }
+        body_content: "{\"access_token\":\"test_access_token\",\"expires_in\":60,\"token_type\":\"Bearer\"}"
+      },
+      {
+        uri: "/auth/realms/master/protocol/openid-connect/token"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"invalid_grant\",\"error_description\":\"Invalid user credentials\"}"
+      },
+      {
+        uri: "/admin/realms/master"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/auth/admin/realms/master"
+        status: 200
+        condition: {
+          request_type: GET
+          headers: [
+            { name: "Authorization" value: "Bearer test_access_token" }
+          ]
+        }
+        body_content: "{\"id\":\"master\",\"realm\":\"master\",\"displayName\":\"Keycloak\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_auth_verification_fails_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/realms/master/.well-known/openid-configuration"
+        status: 200
+        body_content: "{\"issuer\":\"http://localhost:8080/realms/master\",\"authorization_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/auth\",\"token_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/token\"}"
+      },
+      {
+        uri: "/realms/master/protocol/openid-connect/token"
+        status: 200
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"access_token\":\"test_access_token\",\"expires_in\":60,\"token_type\":\"Bearer\"}"
+      },
+      {
+        uri: "/admin/realms/master"
+        status: 401
+        body_content: "{\"error\":\"HTTP 401 Unauthorized\"}"
+      },
+      {
+        uri: "/auth/admin/realms/master"
+        status: 401
+        body_content: "{\"error\":\"HTTP 401 Unauthorized\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_credentials_invalid_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/realms/master/.well-known/openid-configuration"
+        status: 200
+        body_content: "{\"issuer\":\"http://localhost:8080/realms/master\",\"authorization_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/auth\",\"token_endpoint\":\"http://localhost:8080/realms/master/protocol/openid-connect/token\"}"
+      },
+      {
+        uri: "/realms/master/protocol/openid-connect/token"
+        status: 401
+        condition: {
+          request_type: POST
+        }
+        body_content: "{\"error\":\"invalid_grant\",\"error_description\":\"Invalid user credentials\"}"
+      },
+      {
+        uri: "/auth/realms/master/protocol/openid-connect/token"
+        status: 404
+        condition: {
+          request_type: POST
+        }
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_keycloak_reports_no_vulnerability"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
