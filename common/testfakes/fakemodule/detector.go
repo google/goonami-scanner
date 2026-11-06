@@ -26,6 +26,7 @@ import (
 
 	dpb "github.com/google/tsunami-security-scanner/proto/go/detection_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
+	vulnpb "github.com/google/tsunami-security-scanner/proto/go/vulnerability_go_proto"
 )
 
 // FakeDetectFn is the function that overrides the Detect() of the fake detector.
@@ -47,9 +48,15 @@ func FakeDetectFnErrors(ctx context.Context, svc *nspb.NetworkService) (*dpb.Det
 // FakeVulnDetector is a test double for module.VulnDetector.
 type FakeVulnDetector struct {
 	*module.BaseModule
-	override  FakeDetectFn
-	mut       sync.Mutex
-	scanCalls int
+	override   FakeDetectFn
+	mut        sync.Mutex
+	scanCalls  int
+	advisories []*vulnpb.Vulnerability
+}
+
+// Advisories returns the advisories configured on the fake detector.
+func (m *FakeVulnDetector) Advisories() []*vulnpb.Vulnerability {
+	return m.advisories
 }
 
 // Detect returns a detection report for the given network service.
@@ -76,6 +83,15 @@ func NewFakeVulnDetector(name string, override FakeDetectFn) *FakeVulnDetector {
 	}
 }
 
+// NewFakeVulnDetectorWithAdvisories creates a new FakeVulnDetector with the given advisories.
+func NewFakeVulnDetectorWithAdvisories(name string, advisories []*vulnpb.Vulnerability, override FakeDetectFn) *FakeVulnDetector {
+	return &FakeVulnDetector{
+		BaseModule: module.NewBaseModule(name),
+		override:   override,
+		advisories: advisories,
+	}
+}
+
 // InitFakeVulnDetector return an init function for the FakeVulnDetector. If err is provided, the
 // init function will immediately return it.
 func InitFakeVulnDetector(name string, err error, override FakeDetectFn) module.InitVulnDetectorFn {
@@ -85,5 +101,17 @@ func InitFakeVulnDetector(name string, err error, override FakeDetectFn) module.
 		}
 
 		return NewFakeVulnDetector(name, override), nil
+	}
+}
+
+// InitFakeVulnDetectorWithAdvisories returns an init function for a FakeVulnDetector with the
+// given advisories. If err is provided, the init function immediately returns it.
+func InitFakeVulnDetectorWithAdvisories(name string, err error, advisories []*vulnpb.Vulnerability, override FakeDetectFn) module.InitVulnDetectorFn {
+	return func(ctx context.Context, c *config.Config) (module.VulnDetector, error) {
+		if err != nil {
+			return nil, err
+		}
+
+		return NewFakeVulnDetectorWithAdvisories(name, advisories, override), nil
 	}
 }

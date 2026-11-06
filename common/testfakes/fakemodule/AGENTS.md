@@ -34,10 +34,14 @@ initialization errors, scan outputs, and runtime failures without network I/O.
     ([]*nspb.NetworkService, error)` and canned helpers for `FakeFingerprinter`.
     `FakeFingerprintFnDoNothing` returns `([]*nspb.NetworkService{svc}, nil)`,
     while `FakeFingerprintFnErrors` returns `(nil, ErrFakeFingerprintGeneric)`.
--   **`FakeVulnDetector` (`NewFakeVulnDetector`, `InitFakeVulnDetector`)**: Test
-    double for `module.VulnDetector` with mutex-guarded call counting whose
+-   **`FakeVulnDetector` (`NewFakeVulnDetector`,
+    `NewFakeVulnDetectorWithAdvisories`, `InitFakeVulnDetector`,
+    `InitFakeVulnDetectorWithAdvisories`)**: Test double for
+    `module.VulnDetector` with mutex-guarded call counting whose
     `Detect(ctx, service)` method increments `CountCalls()` and delegates to a
-    `FakeDetectFn` callback. `InitFakeVulnDetector(name, err, override)` returns
+    `FakeDetectFn` callback, and `Advisories()` returns configured advisories.
+    `InitFakeVulnDetector(name, err, override)` and
+    `InitFakeVulnDetectorWithAdvisories(name, err, advisories, override)` return
     a `module.InitVulnDetectorFn` that yields `err` when non-nil or constructs
     the fake.
 -   **`FakeDetectFn`, `FakeDetectFnNoFindings`, `FakeDetectFnErrors`,

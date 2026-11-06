@@ -64,6 +64,38 @@ func TestFakeVulnDetectorCountCalls(t *testing.T) {
 	}
 }
 
+func TestFakeVulnDetectorAdvisories(t *testing.T) {
+	wantAdv := []*vulnpb.Vulnerability{
+		vulnpb.Vulnerability_builder{Title: "vuln1"}.Build(),
+	}
+
+	tests := []struct {
+		name string
+		fake *FakeVulnDetector
+		want []*vulnpb.Vulnerability
+	}{
+		{
+			name: "when_constructed_without_advisories_returns_nil",
+			fake: NewFakeVulnDetector("test", FakeDetectFnNoFindings),
+			want: nil,
+		},
+		{
+			name: "when_constructed_with_advisories_returns_configured_advisories",
+			fake: NewFakeVulnDetectorWithAdvisories("test", wantAdv, FakeDetectFnNoFindings),
+			want: wantAdv,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.fake.Advisories()
+			if diff := cmp.Diff(tc.want, got, protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestFakeVulnDetectorDetect(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -172,6 +204,64 @@ func TestInitFakeVulnDetector(t *testing.T) {
 
 			if fake.Name() != "test" {
 				t.Errorf("InitFakeVulnDetector() created detector with name %q, want %q", detector.Name(), "test")
+			}
+		})
+	}
+}
+
+func TestInitFakeVulnDetectorWithAdvisories(t *testing.T) {
+	errInit := errors.New("init error")
+	wantAdv := []*vulnpb.Vulnerability{
+		vulnpb.Vulnerability_builder{Title: "vuln-adv"}.Build(),
+	}
+
+	testCases := []struct {
+		name     string
+		initErr  error
+		adv      []*vulnpb.Vulnerability
+		wantErr  error
+		wantName string
+	}{
+		{
+			name:     "when_init_has_no_error_returns_fake_with_advisories",
+			initErr:  nil,
+			adv:      wantAdv,
+			wantErr:  nil,
+			wantName: "test-adv",
+		},
+		{
+			name:     "when_init_has_error_returns_error",
+			initErr:  errInit,
+			adv:      wantAdv,
+			wantErr:  errInit,
+			wantName: "test-adv",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			initFn := InitFakeVulnDetectorWithAdvisories(tc.wantName, tc.initErr, tc.adv, FakeDetectFnNoFindings)
+			if initFn == nil {
+				t.Fatalf("InitFakeVulnDetectorWithAdvisories() returned nil, want init function")
+			}
+
+			detector, err := initFn(t.Context(), nil)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("init function returned error %v, want %v", err, tc.wantErr)
+			}
+			if tc.wantErr != nil {
+				return
+			}
+
+			fake, ok := detector.(*FakeVulnDetector)
+			if !ok {
+				t.Fatalf("detector is of type %T, want *FakeVulnDetector", detector)
+			}
+			if fake.Name() != tc.wantName {
+				t.Errorf("detector name = %q, want %q", fake.Name(), tc.wantName)
+			}
+			if diff := cmp.Diff(tc.adv, fake.Advisories(), protocmp.Transform()); diff != "" {
+				t.Errorf("Advisories() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
