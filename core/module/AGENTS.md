@@ -59,6 +59,9 @@ detectors.
     deduplicating matches in `require` and registration order while returning an
     error on invalid regexes, unmatched `require` patterns, or initializer
     failures.
+-   **`(*Registry).AllDetectors` / `AllDetectors`**: Initializes and returns all
+    registered vulnerability detectors in registration order, ignoring any
+    workflow configuration filters.
 
 ## Usage
 

@@ -19,6 +19,7 @@ package module
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -527,6 +528,85 @@ func TestGetDetectors(t *testing.T) {
 				if got[i].Name() != name {
 					t.Errorf("GetDetectors()[%d].Name() = %q, want %q", i, got[i].Name(), name)
 				}
+			}
+		})
+	}
+}
+
+func TestAllDetectors(t *testing.T) {
+	initErr := errors.New("init error")
+
+	tests := []struct {
+		name      string
+		setupReg  func()
+		config    *cpb.Config
+		wantNames []string
+		wantErr   error
+	}{
+		{
+			name:     "when_no_detectors_registered_returns_nil",
+			setupReg: func() {},
+			config:   &cpb.Config{},
+		},
+		{
+			name: "when_detectors_registered_returns_all_in_registration_order_ignoring_workflow_filters",
+			setupReg: func() {
+				RegisterDetector("dt/one", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/one")}, nil
+				})
+				RegisterDetector("dt/two", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/two")}, nil
+				})
+				RegisterDetector("dt/three", func(context.Context, *config.Config) (VulnDetector, error) {
+					return &dummyDetector{*NewBaseModule("dt/three")}, nil
+				})
+			},
+			config: cpb.Config_builder{
+				Workflowcfg: cpb.WorkflowConfiguration_builder{
+					Detectors: cpb.WorkflowConfiguration_ModuleFilter_builder{
+						Require: []string{"dt/one"},
+						Ignore:  []string{"dt/two"},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			wantNames: []string{"dt/one", "dt/two", "dt/three"},
+		},
+		{
+			name: "when_initialization_fails_returns_error",
+			setupReg: func() {
+				RegisterDetector("dt/broken", func(context.Context, *config.Config) (VulnDetector, error) {
+					return nil, initErr
+				})
+			},
+			config:  &cpb.Config{},
+			wantErr: initErr,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ClearRegistry()
+			tc.setupReg()
+
+			cfg := config.FromProto(tc.config)
+			got, err := AllDetectors(t.Context(), cfg)
+
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("AllDetectors() error = %v, want %v", err, tc.wantErr)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("AllDetectors() returned unexpected error: %v", err)
+			}
+			var gotNames []string
+			for _, d := range got {
+				gotNames = append(gotNames, d.Name())
+			}
+			if !slices.Equal(gotNames, tc.wantNames) {
+				t.Errorf("AllDetectors() names = %v, want %v", gotNames, tc.wantNames)
 			}
 		})
 	}

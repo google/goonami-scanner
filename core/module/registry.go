@@ -175,6 +175,31 @@ func (r *Registry) GetDetectors(ctx context.Context, cfg *config.Config) ([]Vuln
 	return results, nil
 }
 
+// AllDetectors initializes and returns all registered detectors in registration order,
+// ignoring workflow configuration filters.
+func (r *Registry) AllDetectors(ctx context.Context, cfg *config.Config) ([]VulnDetector, error) {
+	r.mu.RLock()
+	names := make([]string, len(r.detectorNames))
+	copy(names, r.detectorNames)
+
+	registryMap := make(map[string]InitVulnDetectorFn, len(r.detectors))
+	for k, v := range r.detectors {
+		registryMap[k] = v
+	}
+	r.mu.RUnlock()
+
+	var results []VulnDetector
+	for _, name := range names {
+		initFn := registryMap[name]
+		dt, err := initFn(ctx, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize detector %q: %w", name, err)
+		}
+		results = append(results, dt)
+	}
+	return results, nil
+}
+
 // Clear clears all registered extensibility points.
 func (r *Registry) Clear() {
 	r.mu.Lock()
@@ -217,6 +242,12 @@ func GetFingerprinters(ctx context.Context, cfg *config.Config) ([]Fingerprinter
 // GetDetectors initializes and returns the detectors selected in DefaultRegistry.
 func GetDetectors(ctx context.Context, cfg *config.Config) ([]VulnDetector, error) {
 	return DefaultRegistry.GetDetectors(ctx, cfg)
+}
+
+// AllDetectors initializes and returns all detectors registered in DefaultRegistry,
+// ignoring workflow configuration filters.
+func AllDetectors(ctx context.Context, cfg *config.Config) ([]VulnDetector, error) {
+	return DefaultRegistry.AllDetectors(ctx, cfg)
 }
 
 // ClearRegistry clears all registered modules in the DefaultRegistry.
