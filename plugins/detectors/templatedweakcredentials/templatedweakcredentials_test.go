@@ -632,3 +632,39 @@ func newDetectorForTesting(ctx context.Context, cfg *config.Config, pluginProto 
 
 	return newDetector(ctx, cfg, pluginProto, baseDetector, store)
 }
+
+func TestEmbeddedDetectorsAdvisories(t *testing.T) {
+	plugins, err := templatedengine.LoadPluginsFromFS(t.Context(), pluginFilesFS)
+	if err != nil {
+		t.Fatalf("LoadPluginsFromFS() failed: %v", err)
+	}
+
+	if len(plugins) == 0 {
+		t.Fatal("no embedded templated weak credentials plugins found")
+	}
+
+	store, err := credentialstore.NewWithDefaults()
+	if err != nil {
+		t.Fatalf("credentialstore.NewWithDefaults() failed: %v", err)
+	}
+
+	for _, plugin := range plugins {
+		t.Run(plugin.GetInfo().GetName(), func(t *testing.T) {
+			detector, err := NewFromProto(t.Context(), config.Default(), plugin, store)
+			if err != nil {
+				t.Fatalf("NewFromProto() failed: %v", err)
+			}
+
+			advisories := detector.Advisories()
+			if len(advisories) != 1 {
+				t.Fatalf("len(detector.Advisories()) = %d, want 1", len(advisories))
+			}
+			if advisories[0].GetTitle() == "" {
+				t.Errorf("advisory for %q has empty title", plugin.GetInfo().GetName())
+			}
+			if advisories[0].GetMainId().GetValue() == "" {
+				t.Errorf("advisory for %q has empty main_id value", plugin.GetInfo().GetName())
+			}
+		})
+	}
+}
