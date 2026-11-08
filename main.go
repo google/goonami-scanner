@@ -47,6 +47,7 @@ import (
 
 	// detectors
 	_ "github.com/google/goonami-scanner/plugins/detectors/adkweakcreds"
+	_ "github.com/google/goonami-scanner/plugins/detectors/lxdmtlsbypass"
 	_ "github.com/google/goonami-scanner/plugins/detectors/opensshauthbypass"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
