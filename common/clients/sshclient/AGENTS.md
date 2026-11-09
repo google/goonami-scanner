@@ -26,6 +26,11 @@ non-SSH endpoints.
     password sequentially within a single SSH connection handshake for
     `username`. Returns an established `*ssh.Client` on success, or an error
     classified via `ClassifyError` on failure.
+-   **`(*Client).ConnectWithBannerPrefix(ctx, addr, username, bannerPrefix,
+    passwords...)`**: Behaves like `ConnectWithPasswords`, and additionally
+    requires the server's `SSH-` identification banner to start with
+    `bannerPrefix` when non-empty (aborting before key exchange with
+    `ErrNotSSHService` on mismatch).
 -   **`(*Client).Timeout()` and `DefaultTimeout`**: `Timeout()` returns the
     active connection and authentication `time.Duration`, defaulting to
     `DefaultTimeout` (`5s`) when no positive timeout is configured.
@@ -33,10 +38,12 @@ non-SSH endpoints.
     SSH authentication errors with canonical sentinel errors while returning
     `nil`, context errors, and unrecognized errors unchanged.
 -   **Sentinel Errors (`ErrAuthFailed`, `ErrPasswordAuthUnsupported`,
-    `ErrNotSSHService`)**: Classify connection outcomes via `errors.Is` into
-    rejected credentials (`ErrAuthFailed`), servers disallowing password login
-    (`ErrPasswordAuthUnsupported`), or unreachable/non-SSH targets
-    (`ErrNotSSHService`).
+    `ErrNotSSHService`, `ErrConnectionDropped`)**: Classify connection outcomes
+    via `errors.Is` into rejected credentials (`ErrAuthFailed`), servers
+    disallowing password login (`ErrPasswordAuthUnsupported`),
+    unreachable/non-SSH targets (`ErrNotSSHService`), or TCP connections dropped
+    before sending an SSH banner (`ErrConnectionDropped`, wrapped alongside
+    `ErrNotSSHService`).
 -   **`SSHClientConfig` (`ssh_client_config.proto`)**: Protobuf configuration
     message (`goonami.proto.configs.clients.SSHClientConfig`) defining
     `timeout_seconds` (default `5`) for SSH connection and authentication

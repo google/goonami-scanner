@@ -22,7 +22,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/goonami-scanner/common/clients/sshclient"
 	"github.com/google/goonami-scanner/core/config"
@@ -42,8 +44,8 @@ import (
 const (
 	moduleName = "dt/opensshauthbypass"
 
-	// targetUser is the default account with '*' in /etc/shadow on Alpine Linux.
-	targetUser = "root"
+	// openSSHBannerPrefix restricts probing to SSH servers advertising OpenSSH.
+	openSSHBannerPrefix = "SSH-2.0-OpenSSH"
 
 	// probePasswordLen is between musl's SHA-256/SHA-512 KEY_MAX (256) and
 	// OpenSSH's MAX_PASSWORD_LEN (1024), triggering musl crypt() to fail and
@@ -53,14 +55,40 @@ const (
 	// shortProbePassword is <= 256 bytes so musl crypt() hashes it normally
 	// instead of returning "*".
 	shortProbePassword = "goonami-invalid-short-probe"
+
+	// maxPenaltyCooldownRetries is the maximum number of retry attempts when
+	// OpenSSH 9.8+ PerSourcePenalties drops a connection before sending a banner.
+	maxPenaltyCooldownRetries = 10
+
+	// defaultPenaltyCooldownSleep is the delay between pre-banner drop retries.
+	defaultPenaltyCooldownSleep = 3 * time.Second
+)
+
+// candidateUsernames are checked sequentially for '*' shadow entries, covering
+// both root and common non-root default accounts when PermitRootLogin is disabled.
+var candidateUsernames = []string{"root", "alpine", "sshuser", "admin", "user", "guest"}
+
+// standardSSHPorts are standard and fleet-observed alternative SSH ports probed
+// even when Nmap labels a rate-limited service as "tcpwrapped" or falls back to
+// static port-table names (such as "EtherNetIP-1" on 2222 or "down" on 2022 when
+// version detection is disabled or blocked by PerSourcePenalties).
+var standardSSHPorts = []uint32{22, 26, 222, 1022, 2022, 2222, 3389}
+
+type authAttemptResult int
+
+const (
+	authAttemptRejected authAttemptResult = iota
+	authAttemptAccepted
+	authAttemptAborted
 )
 
 // Module implements the module.VulnDetector interface for OpenSSH musl password
 // authentication bypass detection.
 type Module struct {
 	*module.BaseModule
-	config *config.Config
-	client *sshclient.Client
+	config        *config.Config
+	client        *sshclient.Client
+	cooldownSleep time.Duration
 }
 
 func init() {
@@ -70,9 +98,10 @@ func init() {
 // New returns a new instance of the OpenSSH password authentication bypass detector.
 func New(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 	return &Module{
-		BaseModule: module.NewBaseModule(moduleName),
-		config:     cfg,
-		client:     sshclient.New(cfg),
+		BaseModule:    module.NewBaseModule(moduleName),
+		config:        cfg,
+		client:        sshclient.New(cfg),
+		cooldownSleep: defaultPenaltyCooldownSleep,
 	}, nil
 }
 
@@ -103,16 +132,12 @@ func baseVulnerability() *vpb.Vulnerability {
 // Detect probes the target network service for the OpenSSH + musl crypt()
 // password authentication bypass vulnerability.
 func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
-	ctx = log.ContextForModuleAndService(ctx, m.Name(), service)
+	ctx = log.ContextForModuleAndService(ctx, m.Name(), service) // NOMUTANTS -- diagnostic logging context only
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	if netservice.IsWebService(service) {
-		return nil, nil
-	}
-
-	if proto := service.GetTransportProtocol(); proto != npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED && proto != npb.TransportProtocol_TCP {
+	if !isSupportedService(service) {
 		return nil, nil
 	}
 
@@ -121,7 +146,7 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, err
 	}
 
-	vulnerable, err := m.isVulnerable(ctx, addr)
+	verifiedUser, vulnerable, err := m.checkTarget(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -129,69 +154,125 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
-	return buildDetectionReport(service), nil
+	return buildDetectionReport(service, verifiedUser), nil
 }
 
-func (m *Module) isVulnerable(ctx context.Context, addr string) (bool, error) {
-	// 1. Probe with a >256-byte password ("AAA..."). On vulnerable OpenSSH + musl
-	// targets where /etc/shadow has '*' for root and a modular crypt salt from
-	// another account, musl crypt() fails on >256 bytes and returns "*".
-	ok, err := m.tryPassword(ctx, addr, targetUser, strings.Repeat("A", probePasswordLen))
-	if err != nil || !ok {
-		return false, err
+func isSupportedService(service *nspb.NetworkService) bool {
+	if netservice.IsWebService(service) || netservice.HasTLS(service) {
+		return false
 	}
-
-	// 2. Verify with a second distinct >256-byte password ("BBB...") to rule out
-	// the first probe coincidentally matching an actual password.
-	ok, err = m.tryPassword(ctx, addr, targetUser, strings.Repeat("B", probePasswordLen))
-	if err != nil || !ok {
-		return false, err
+	if proto := service.GetTransportProtocol(); proto != npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED && proto != npb.TransportProtocol_TCP {
+		return false
 	}
-
-	// 3. Negative validation: verify that a <=256-byte invalid password is
-	// rejected to rule out honeypots or servers accepting all passwords.
-	shortOK, err := m.tryPassword(ctx, addr, targetUser, shortProbePassword)
-	if err != nil {
-		return false, err
+	if software := strings.ToLower(strings.TrimSpace(service.GetSoftware().GetName())); software != "" {
+		return strings.Contains(software, "openssh")
 	}
-	if shortOK {
-		log.DebugContextf(ctx, log.DebugLevelService, "target accepted short invalid password; skipping accept-all service")
-		return false, nil
+	if slices.Contains(standardSSHPorts, service.GetNetworkEndpoint().GetPort().GetPortNumber()) {
+		return true
 	}
-
-	return true, nil
+	svcName := strings.ToLower(strings.TrimSpace(service.GetServiceName()))
+	return svcName == "" || svcName == "unknown" || svcName == "ssh"
 }
 
-func (m *Module) tryPassword(ctx context.Context, addr, username, password string) (bool, error) {
+func (m *Module) checkTarget(ctx context.Context, addr string) (string, bool, error) {
+	for _, username := range candidateUsernames {
+		// 1. Probe with a >256-byte password ("AAA..."). On vulnerable OpenSSH + musl
+		// targets where /etc/shadow has '*' for the account and a modular crypt salt
+		// from another account, musl crypt() fails on >256 bytes and returns "*".
+		res, err := m.tryPassword(ctx, addr, username, strings.Repeat("A", probePasswordLen))
+		if err != nil {
+			return "", false, err
+		}
+		if res == authAttemptAborted {
+			return "", false, nil
+		}
+		if res == authAttemptRejected {
+			continue
+		}
+
+		// 2. Verify with a second distinct >256-byte password ("BBB...") to rule out
+		// the first probe coincidentally matching an actual password.
+		res, err = m.tryPassword(ctx, addr, username, strings.Repeat("B", probePasswordLen))
+		if err != nil {
+			return "", false, err
+		}
+		if res != authAttemptAccepted {
+			continue
+		}
+
+		// 3. Negative validation: verify that a <=256-byte invalid password is
+		// rejected to rule out honeypots or servers accepting all passwords.
+		shortRes, err := m.tryPassword(ctx, addr, username, shortProbePassword)
+		if err != nil {
+			return "", false, err
+		}
+		if shortRes != authAttemptRejected {
+			log.DebugContextf(ctx, log.DebugLevelService, "target did not reject short invalid password; skipping accept-all service") // NOMUTANTS -- diagnostic logging only
+			return "", false, nil
+		}
+		return username, true, nil
+	}
+
+	return "", false, nil
+}
+
+func (m *Module) tryPassword(ctx context.Context, addr, username, password string) (authAttemptResult, error) {
 	// We supply the password twice within the same SSH connection because on
 	// OpenSSH + musl systems using /etc/shadow, the first password attempt in a
 	// connection initializes pick_salt()'s static salt buffer (clobbering
 	// getspnam()'s static line buffer), while the second attempt in the same
 	// connection reuses the cached salt without calling getspnam(), preserving
 	// pw_password ("*") for strcmp("*", "*").
-	conn, err := m.client.ConnectWithPasswords(ctx, addr, username, password, password)
-	if err != nil {
+	for attempt := range maxPenaltyCooldownRetries + 1 {
+		if attempt > 0 {
+			log.DebugContextf(ctx, log.DebugLevelService, "SSH connection to %s dropped before banner (likely PerSourcePenalties cooldown); retrying in %v (attempt %d/%d)", addr, m.cooldownSleep, attempt, maxPenaltyCooldownRetries) // NOMUTANTS -- diagnostic logging only
+			if err := sleepWithContext(ctx, m.cooldownSleep); err != nil {
+				return authAttemptAborted, err
+			}
+		}
+		conn, err := m.client.ConnectWithBannerPrefix(ctx, addr, username, openSSHBannerPrefix, password, password)
+		if err == nil {
+			_ = conn.Close()
+			return authAttemptAccepted, nil
+		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return false, ctxErr
+			return authAttemptAborted, ctxErr
 		}
-		if errors.Is(err, sshclient.ErrAuthFailed) ||
-			errors.Is(err, sshclient.ErrPasswordAuthUnsupported) ||
-			errors.Is(err, sshclient.ErrNotSSHService) {
-			return false, nil
+		if errors.Is(err, sshclient.ErrAuthFailed) {
+			return authAttemptRejected, nil
 		}
-		return false, err
+		if errors.Is(err, sshclient.ErrPasswordAuthUnsupported) {
+			return authAttemptAborted, nil
+		}
+		if errors.Is(err, sshclient.ErrConnectionDropped) {
+			continue
+		}
+		if errors.Is(err, sshclient.ErrNotSSHService) {
+			return authAttemptAborted, nil
+		}
+		return authAttemptAborted, err
 	}
-	_ = conn.Close()
-	return true, nil
+	return authAttemptAborted, nil
 }
 
-func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList {
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop() // NOMUTANTS -- defensive timer cleanup on early cancellation
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func buildDetectionReport(service *nspb.NetworkService, verifiedUser string) *dpb.DetectionReportList {
 	vuln := baseVulnerability()
 	vuln.SetAdditionalDetails([]*vpb.AdditionalDetail{
 		vpb.AdditionalDetail_builder{
 			Description: "Authentication bypass verified for locked account using >256-byte password",
 			TextData: vpb.TextData_builder{
-				Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", targetUser, probePasswordLen),
+				Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", verifiedUser, probePasswordLen),
 			}.Build(),
 		}.Build(),
 	})

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -84,6 +85,19 @@ func TestNew(t *testing.T) {
 				}.Build(),
 			),
 			expectedTimeout: 5 * time.Second,
+		},
+		{
+			name: "when_client_ssh_timeout_explicitly_zero_uses_default_timeout",
+			cfg: config.FromProto(
+				cpb.Config_builder{
+					Clients: cpb.ClientsConfig_builder{
+						Ssh: sccpb.SSHClientConfig_builder{
+							TimeoutSeconds: proto.Int32(0),
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			),
+			expectedTimeout: DefaultTimeout,
 		},
 	}
 
@@ -216,7 +230,7 @@ func TestDial(t *testing.T) {
 
 			ctx, clientCfg := tc.clientSetup(t)
 			client := New(nil)
-			sshClient, err := client.dial(ctx, addr, clientCfg)
+			sshClient, err := client.dial(ctx, addr, "", clientCfg)
 			if tc.wantErr {
 				if err == nil {
 					_ = sshClient.Close()
@@ -447,6 +461,349 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 			if !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Connect() error = %v, expected errors.Is %v", err, tc.expectedErr)
 			}
+			if errors.Is(err, ErrConnectionDropped) {
+				t.Fatalf("Connect() error = %v, unexpected ErrConnectionDropped", err)
+			}
+		})
+	}
+}
+
+func TestConnectWithBannerPrefix(t *testing.T) {
+	testCases := []struct {
+		name         string
+		bannerPrefix string
+		serverSetup  func(t *testing.T) (string, func())
+		wantErr      error
+		wantDropped  bool
+	}{
+		{
+			name:         "when_matching_banner_prefix_succeeds_returns_client",
+			bannerPrefix: "SSH-2.0-OpenSSH",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					ServerVersion: "SSH-2.0-OpenSSH_9.8",
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						if c.User() == "root" && string(pass) == "secret" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			wantErr: nil,
+		},
+		{
+			name:         "when_empty_banner_prefix_allows_any_ssh_banner_returns_client",
+			bannerPrefix: "",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					ServerVersion: "SSH-2.0-Dropbear_2022.83",
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						return nil, nil
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			wantErr: nil,
+		},
+		{
+			name:         "when_mismatched_banner_prefix_aborts_before_auth_returns_not_ssh_service",
+			bannerPrefix: "SSH-2.0-OpenSSH",
+			serverSetup: func(t *testing.T) (string, func()) {
+				var authCalled atomic.Bool
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					ServerVersion: "SSH-2.0-Dropbear_2022.83",
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						authCalled.Store(true)
+						return nil, nil
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() {
+					_ = srv.Close()
+					if authCalled.Load() {
+						t.Errorf("PasswordCallback was invoked despite banner mismatch")
+					}
+				}
+			},
+			wantErr:     ErrNotSSHService,
+			wantDropped: false,
+		},
+		{
+			name:         "when_rfc4253_pre_banner_lines_precede_matching_banner_returns_client",
+			bannerPrefix: "SSH-2.0-OpenSSH",
+			serverSetup: func(t *testing.T) (string, func()) {
+				backend, err := fakessh.New(&ssh.ServerConfig{
+					ServerVersion: "SSH-2.0-OpenSSH_10.6",
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						return nil, nil
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					_ = backend.Close()
+					t.Fatalf("net.Listen failed: %v", err)
+				}
+				go func() {
+					conn, err := listener.Accept()
+					if err != nil {
+						return
+					}
+					defer conn.Close()
+					bConn, err := net.Dial("tcp", backend.Addr())
+					if err != nil {
+						return
+					}
+					defer bConn.Close()
+					_, _ = conn.Write([]byte("Authorized users only\r\n"))
+					go func() { _, _ = io.Copy(conn, bConn) }()
+					_, _ = io.Copy(bConn, conn)
+				}()
+				return listener.Addr().String(), func() {
+					_ = listener.Close()
+					_ = backend.Close()
+				}
+			},
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			addr, cleanup := tc.serverSetup(t)
+			defer cleanup()
+
+			client := New(nil)
+			sshClient, err := client.ConnectWithBannerPrefix(t.Context(), addr, "root", tc.bannerPrefix, "secret")
+			if tc.wantErr == nil {
+				if err != nil {
+					t.Fatalf("ConnectWithBannerPrefix() unexpected error = %v", err)
+				}
+				if sshClient == nil {
+					t.Fatal("ConnectWithBannerPrefix() returned nil *ssh.Client on success")
+				}
+				_ = sshClient.Close()
+				return
+			}
+			if sshClient != nil {
+				_ = sshClient.Close()
+				t.Fatal("ConnectWithBannerPrefix() returned non-nil *ssh.Client on error")
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("ConnectWithBannerPrefix() error = %v, want errors.Is %v", err, tc.wantErr)
+			}
+			if got := errors.Is(err, ErrConnectionDropped); got != tc.wantDropped {
+				t.Fatalf("errors.Is(err, ErrConnectionDropped) = %v, want %v (err = %v)", got, tc.wantDropped, err)
+			}
+		})
+	}
+}
+
+func TestConnect_PreBannerDrops(t *testing.T) {
+	testCases := []struct {
+		name        string
+		handleConn  func(conn net.Conn)
+		wantDropped bool
+	}{
+		{
+			name: "when_empty_pre_banner_eof_returns_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_ = conn.Close()
+			},
+			wantDropped: true,
+		},
+		{
+			name: "when_openssh_penalty_message_before_eof_returns_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_, _ = conn.Write([]byte("Not allowed at this time\r\n"))
+				_ = conn.Close()
+			},
+			wantDropped: true,
+		},
+		{
+			name: "when_openssh_maxstartups_message_before_eof_returns_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_, _ = conn.Write([]byte("Exceeded MaxStartups\r\n"))
+				_ = conn.Close()
+			},
+			wantDropped: true,
+		},
+		{
+			name: "when_pre_banner_tcp_rst_returns_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				var buf [4]byte
+				_, _ = conn.Read(buf[:])
+				if tcpConn, ok := conn.(*net.TCPConn); ok {
+					_ = tcpConn.SetLinger(0)
+				}
+				_ = conn.Close()
+			},
+			wantDropped: true,
+		},
+		{
+			name: "when_non_ssh_banner_before_eof_returns_not_ssh_without_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_, _ = conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
+				_ = conn.Close()
+			},
+			wantDropped: false,
+		},
+		{
+			name: "when_oversized_non_ssh_response_before_eof_returns_not_ssh_without_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_, _ = conn.Write([]byte(strings.Repeat("X", 300) + "\r\n"))
+				_ = conn.Close()
+			},
+			wantDropped: false,
+		},
+		{
+			name: "when_post_banner_kex_eof_returns_not_ssh_without_connection_dropped",
+			handleConn: func(conn net.Conn) {
+				_, _ = conn.Write([]byte("SSH-2.0-OpenSSH_9.8\r\n"))
+				_ = conn.Close()
+			},
+			wantDropped: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("net.Listen failed: %v", err)
+			}
+			t.Cleanup(func() { _ = listener.Close() })
+			go func() {
+				conn, err := listener.Accept()
+				if err != nil {
+					return
+				}
+				tc.handleConn(conn)
+			}()
+
+			client := New(nil)
+			sshClient, err := client.ConnectWithBannerPrefix(t.Context(), listener.Addr().String(), "root", "SSH-2.0-OpenSSH", "pass")
+			if sshClient != nil {
+				_ = sshClient.Close()
+				t.Fatal("ConnectWithBannerPrefix() returned unexpected non-nil *ssh.Client")
+			}
+			if !errors.Is(err, ErrNotSSHService) {
+				t.Fatalf("ConnectWithBannerPrefix() error = %v, want errors.Is(ErrNotSSHService)", err)
+			}
+			if got := errors.Is(err, ErrConnectionDropped); got != tc.wantDropped {
+				t.Fatalf("errors.Is(err, ErrConnectionDropped) = %v, want %v (err = %v)", got, tc.wantDropped, err)
+			}
+		})
+	}
+}
+
+func TestIsConnectionDropError(t *testing.T) {
+	testCases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "when_io_eof_returns_true",
+			err:  io.EOF,
+			want: true,
+		},
+		{
+			name: "when_io_err_unexpected_eof_returns_true",
+			err:  io.ErrUnexpectedEOF,
+			want: true,
+		},
+		{
+			name: "when_connection_reset_by_peer_returns_true",
+			err:  errors.New("read tcp 127.0.0.1:1234->127.0.0.1:22: read: connection reset by peer"),
+			want: true,
+		},
+		{
+			name: "when_connection_refused_returns_false",
+			err:  errors.New("dial tcp 127.0.0.1:22: connect: connection refused"),
+			want: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isConnectionDropError(tc.err); got != tc.want {
+				t.Errorf("isConnectionDropError(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestBannerConn_IsPreBannerDrop(t *testing.T) {
+	canceledCtx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	testCases := []struct {
+		name       string
+		bc         *bannerConn
+		ctx        context.Context
+		err        error
+		wantResult bool
+	}{
+		{
+			name:       "when_empty_pre_banner_and_eof_returns_true",
+			bc:         &bannerConn{},
+			ctx:        t.Context(),
+			err:        io.EOF,
+			wantResult: true,
+		},
+		{
+			name: "when_banner_already_seen_returns_false",
+			bc: &bannerConn{
+				bannerSeen: true,
+				preBanner:  []byte("Not allowed at this time\r\n"),
+			},
+			ctx:        t.Context(),
+			err:        io.ErrUnexpectedEOF,
+			wantResult: false,
+		},
+		{
+			name:       "when_context_canceled_returns_false",
+			bc:         &bannerConn{},
+			ctx:        canceledCtx,
+			err:        io.EOF,
+			wantResult: false,
+		},
+		{
+			name:       "when_non_drop_error_returns_false",
+			bc:         &bannerConn{},
+			ctx:        t.Context(),
+			err:        net.ErrClosed,
+			wantResult: false,
+		},
+		{
+			name: "when_unrelated_pre_banner_payload_returns_false",
+			bc: &bannerConn{
+				preBanner: []byte("220 smtp.example.com ESMTP\r\n"),
+			},
+			ctx:        t.Context(),
+			err:        io.EOF,
+			wantResult: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.bc.isPreBannerDrop(tc.ctx, tc.err); got != tc.wantResult {
+				t.Errorf("isPreBannerDrop() = %v, want %v", got, tc.wantResult)
+			}
 		})
 	}
 }
@@ -490,6 +847,9 @@ func TestConnect_ContextErrors(t *testing.T) {
 			}
 			if !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Connect() error = %v, expected errors.Is %v", err, tc.expectedErr)
+			}
+			if errors.Is(err, ErrConnectionDropped) {
+				t.Fatalf("Connect() error = %v, unexpected ErrConnectionDropped", err)
 			}
 		})
 	}
@@ -590,6 +950,26 @@ func TestClassifyError(t *testing.T) {
 			name:        "when_connection_refused_returns_not_ssh_service",
 			inputErr:    errors.New("dial tcp 127.0.0.1:22: connect: connection refused"),
 			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_connection_reset_by_peer_returns_not_ssh_service",
+			inputErr:    errors.New("read tcp 127.0.0.1:22: read: connection reset by peer"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_io_eof_returns_not_ssh_service",
+			inputErr:    io.EOF,
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_io_err_unexpected_eof_returns_not_ssh_service",
+			inputErr:    io.ErrUnexpectedEOF,
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_wrapped_err_connection_dropped_preserves_dropped_sentinel",
+			inputErr:    fmt.Errorf("%w: %w: %w", ErrNotSSHService, ErrConnectionDropped, io.EOF),
+			expectedErr: ErrConnectionDropped,
 		},
 		{
 			name:        "when_no_route_to_host_returns_not_ssh_service",
