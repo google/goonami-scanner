@@ -19,7 +19,6 @@ edition = "2024";
 package goonami.proto;
 
 option go_package = "github.com/google/goonami-scanner/core/config/config_go_proto";
-
 option java_outer_classname = "ConfigOuterClass";
 option java_package = "com.google.goonami.proto";
 
@@ -27,6 +26,7 @@ option java_package = "com.google.goonami.proto";
 // most of these configs are in the `goonami.proto.configs.clients` namespace.
 import "common/clients/httpcrawler/httpcrawler_client_config.proto";
 import "common/clients/llm/llm_client_config.proto";
+import "common/clients/mysqlclient/mysql_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
 import "common/clients/sshclient/ssh_client_config.proto";
 import "tools/callbackserver/callbackserver_config.proto";
@@ -133,6 +133,7 @@ message ClientsConfig {
   goonami.proto.configs.clients.LlmClientConfig llm = 3;
   goonami.callbackserver.CallbackserverConfig callback_server = 4;
   goonami.proto.configs.clients.SSHClientConfig ssh = 5;
+  goonami.proto.configs.clients.MySQLClientConfig mysql = 6;
 }
 
 // PluginsConfig contains configuration for plugin.

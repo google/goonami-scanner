@@ -25,6 +25,7 @@ import (
 	bruteforce_config_go_proto "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto"
 	httpcrawler_client_config_go_proto "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	llm_client_config_go_proto "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
+	mysql_client_config_go_proto "github.com/google/goonami-scanner/common/clients/mysqlclient/mysql_client_config_go_proto"
 	nmap_client_config_go_proto "github.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_proto"
 	ssh_client_config_go_proto "github.com/google/goonami-scanner/common/clients/sshclient/ssh_client_config_go_proto"
 	webidentity_fp_config_go_proto "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
@@ -491,6 +492,7 @@ type ClientsConfig struct {
 	xxx_hidden_Llm            *llm_client_config_go_proto.LlmClientConfig                 `protobuf:"bytes,3,opt,name=llm"`
 	xxx_hidden_CallbackServer *callbackserver_config_go_proto.CallbackserverConfig        `protobuf:"bytes,4,opt,name=callback_server,json=callbackServer"`
 	xxx_hidden_Ssh            *ssh_client_config_go_proto.SSHClientConfig                 `protobuf:"bytes,5,opt,name=ssh"`
+	xxx_hidden_Mysql          *mysql_client_config_go_proto.MySQLClientConfig             `protobuf:"bytes,6,opt,name=mysql"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -555,6 +557,13 @@ func (x *ClientsConfig) GetSsh() *ssh_client_config_go_proto.SSHClientConfig {
 	return nil
 }
 
+func (x *ClientsConfig) GetMysql() *mysql_client_config_go_proto.MySQLClientConfig {
+	if x != nil {
+		return x.xxx_hidden_Mysql
+	}
+	return nil
+}
+
 func (x *ClientsConfig) SetNmap(v *nmap_client_config_go_proto.NmapClientConfig) {
 	x.xxx_hidden_Nmap = v
 }
@@ -573,6 +582,10 @@ func (x *ClientsConfig) SetCallbackServer(v *callbackserver_config_go_proto.Call
 
 func (x *ClientsConfig) SetSsh(v *ssh_client_config_go_proto.SSHClientConfig) {
 	x.xxx_hidden_Ssh = v
+}
+
+func (x *ClientsConfig) SetMysql(v *mysql_client_config_go_proto.MySQLClientConfig) {
+	x.xxx_hidden_Mysql = v
 }
 
 func (x *ClientsConfig) HasNmap() bool {
@@ -610,6 +623,13 @@ func (x *ClientsConfig) HasSsh() bool {
 	return x.xxx_hidden_Ssh != nil
 }
 
+func (x *ClientsConfig) HasMysql() bool {
+	if x == nil {
+		return false
+	}
+	return x.xxx_hidden_Mysql != nil
+}
+
 func (x *ClientsConfig) ClearNmap() {
 	x.xxx_hidden_Nmap = nil
 }
@@ -630,6 +650,10 @@ func (x *ClientsConfig) ClearSsh() {
 	x.xxx_hidden_Ssh = nil
 }
 
+func (x *ClientsConfig) ClearMysql() {
+	x.xxx_hidden_Mysql = nil
+}
+
 type ClientsConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -638,6 +662,7 @@ type ClientsConfig_builder struct {
 	Llm            *llm_client_config_go_proto.LlmClientConfig
 	CallbackServer *callbackserver_config_go_proto.CallbackserverConfig
 	Ssh            *ssh_client_config_go_proto.SSHClientConfig
+	Mysql          *mysql_client_config_go_proto.MySQLClientConfig
 }
 
 func (b0 ClientsConfig_builder) Build() *ClientsConfig {
@@ -649,6 +674,7 @@ func (b0 ClientsConfig_builder) Build() *ClientsConfig {
 	x.xxx_hidden_Llm = b.Llm
 	x.xxx_hidden_CallbackServer = b.CallbackServer
 	x.xxx_hidden_Ssh = b.Ssh
+	x.xxx_hidden_Mysql = b.Mysql
 	return m0
 }
 
@@ -1172,7 +1198,7 @@ var File_config_proto protoreflect.FileDescriptor
 
 const file_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1a)common/bruteforce/bruteforce_config.proto\"\xfb\x01\n" +
+	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a4common/clients/mysqlclient/mysql_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1a)common/bruteforce/bruteforce_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -1200,13 +1226,14 @@ const file_config_proto_rawDesc = "" +
 	"\x12max_http_redirects\x18\x05 \x01(\x05:\x0210R\x10maxHttpRedirects\x12I\n" +
 	" max_http_attempts_when_ratelimit\x18\x06 \x01(\x05:\x013R\x1cmaxHttpAttemptsWhenRatelimit\x12M\n" +
 	"\"http_retry_initial_backoff_seconds\x18\a \x01(\x05:\x012R\x1ehttpRetryInitialBackoffSeconds\x12B\n" +
-	"\x1cmax_http_retry_after_seconds\x18\b \x01(\x05:\x0215R\x18maxHttpRetryAfterSeconds\"\x8a\x03\n" +
+	"\x1cmax_http_retry_after_seconds\x18\b \x01(\x05:\x0215R\x18maxHttpRetryAfterSeconds\"\xd2\x03\n" +
 	"\rClientsConfig\x12C\n" +
 	"\x04nmap\x18\x01 \x01(\v2/.goonami.proto.configs.clients.NmapClientConfigR\x04nmap\x12Y\n" +
 	"\fhttp_crawler\x18\x02 \x01(\v26.goonami.proto.configs.clients.HttpCrawlerClientConfigR\vhttpCrawler\x12@\n" +
 	"\x03llm\x18\x03 \x01(\v2..goonami.proto.configs.clients.LlmClientConfigR\x03llm\x12U\n" +
 	"\x0fcallback_server\x18\x04 \x01(\v2,.goonami.callbackserver.CallbackserverConfigR\x0ecallbackServer\x12@\n" +
-	"\x03ssh\x18\x05 \x01(\v2..goonami.proto.configs.clients.SSHClientConfigR\x03ssh\"\x98\x02\n" +
+	"\x03ssh\x18\x05 \x01(\v2..goonami.proto.configs.clients.SSHClientConfigR\x03ssh\x12F\n" +
+	"\x05mysql\x18\x06 \x01(\v20.goonami.proto.configs.clients.MySQLClientConfigR\x05mysql\"\x98\x02\n" +
 	"\rPluginsConfig\x12[\n" +
 	"\vwebidentity\x18\x01 \x01(\v29.goonami.proto.configs.fingerprinters.WebIdentityFpConfigR\vwebidentity\x12P\n" +
 	"\bhttpscan\x18\x02 \x01(\v24.goonami.proto.configs.portscan.HttpScanPluginConfigR\bhttpscan\x12R\n" +
@@ -1229,9 +1256,10 @@ var file_config_proto_goTypes = []any{
 	(*llm_client_config_go_proto.LlmClientConfig)(nil),                 // 9: goonami.proto.configs.clients.LlmClientConfig
 	(*callbackserver_config_go_proto.CallbackserverConfig)(nil),        // 10: goonami.callbackserver.CallbackserverConfig
 	(*ssh_client_config_go_proto.SSHClientConfig)(nil),                 // 11: goonami.proto.configs.clients.SSHClientConfig
-	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 12: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),     // 13: goonami.proto.configs.portscan.HttpScanPluginConfig
-	(*bruteforce_config_go_proto.BruteForceConfig)(nil),                // 14: goonami.proto.configs.bruteforce.BruteForceConfig
+	(*mysql_client_config_go_proto.MySQLClientConfig)(nil),             // 12: goonami.proto.configs.clients.MySQLClientConfig
+	(*webidentity_fp_config_go_proto.WebIdentityFpConfig)(nil),         // 13: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),     // 14: goonami.proto.configs.portscan.HttpScanPluginConfig
+	(*bruteforce_config_go_proto.BruteForceConfig)(nil),                // 15: goonami.proto.configs.bruteforce.BruteForceConfig
 }
 var file_config_proto_depIdxs = []int32{
 	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
@@ -1246,14 +1274,15 @@ var file_config_proto_depIdxs = []int32{
 	9,  // 9: goonami.proto.ClientsConfig.llm:type_name -> goonami.proto.configs.clients.LlmClientConfig
 	10, // 10: goonami.proto.ClientsConfig.callback_server:type_name -> goonami.callbackserver.CallbackserverConfig
 	11, // 11: goonami.proto.ClientsConfig.ssh:type_name -> goonami.proto.configs.clients.SSHClientConfig
-	12, // 12: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
-	13, // 13: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
-	14, // 14: goonami.proto.PluginsConfig.bruteforce:type_name -> goonami.proto.configs.bruteforce.BruteForceConfig
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	12, // 12: goonami.proto.ClientsConfig.mysql:type_name -> goonami.proto.configs.clients.MySQLClientConfig
+	13, // 13: goonami.proto.PluginsConfig.webidentity:type_name -> goonami.proto.configs.fingerprinters.WebIdentityFpConfig
+	14, // 14: goonami.proto.PluginsConfig.httpscan:type_name -> goonami.proto.configs.portscan.HttpScanPluginConfig
+	15, // 15: goonami.proto.PluginsConfig.bruteforce:type_name -> goonami.proto.configs.bruteforce.BruteForceConfig
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_config_proto_init() }
