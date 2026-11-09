@@ -17,8 +17,11 @@
 package http
 
 import (
+	"cmp"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // ReadBody reads the body of an HTTP response up to a maximum size. Note that if the response is
@@ -39,4 +42,54 @@ func ReadBody(resp *http.Response, maxsize int) ([]byte, error) {
 	}
 
 	return buffer[:n], nil
+}
+
+// ResponseCookies returns the active cookies in jar across all URLs visited in the redirect chain
+// ending at resp (most recent hop first, followed by reqURL) and any explicit Set-Cookie paths on
+// those responses, deduplicated by cookie name.
+func ResponseCookies(jar http.CookieJar, reqURL *url.URL, resp *http.Response) []*http.Cookie {
+	if jar == nil {
+		return nil
+	}
+	seenURLs := make(map[string]bool)
+	seenNames := make(map[string]bool)
+	var cookies []*http.Cookie
+	collect := func(u *url.URL) {
+		if u == nil {
+			return
+		}
+		key := u.Scheme + "://" + u.Host + cmp.Or(u.Path, "/")
+		if seenURLs[key] {
+			return
+		}
+		seenURLs[key] = true
+		for _, c := range jar.Cookies(u) {
+			if !seenNames[c.Name] {
+				seenNames[c.Name] = true
+				cookies = append(cookies, c)
+			}
+		}
+	}
+	for cur := resp; cur != nil; {
+		u := reqURL
+		if cur.Request != nil && cur.Request.URL != nil {
+			u = cur.Request.URL
+		}
+		collect(u)
+		if u != nil && len(cur.Header["Set-Cookie"]) > 0 {
+			for _, sc := range cur.Cookies() {
+				if strings.HasPrefix(sc.Path, "/") {
+					cu := *u
+					cu.Path, cu.RawPath = sc.Path, ""
+					collect(&cu)
+				}
+			}
+		}
+		if cur.Request == nil {
+			break
+		}
+		cur = cur.Request.Response
+	}
+	collect(reqURL)
+	return cookies
 }

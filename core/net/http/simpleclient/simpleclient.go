@@ -75,7 +75,9 @@ func New(cfg *config.Config, options *goohttp.ClientOptions) (*SimpleClient, err
 		},
 	}
 
-	if options.StoreCookies {
+	if options.CookieJar != nil {
+		client.Jar = options.CookieJar
+	} else if options.StoreCookies {
 		jar, err := cookiejar.New(nil)
 		if err != nil {
 			return nil, err

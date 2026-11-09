@@ -6,8 +6,8 @@ in Goonami. It enforces per-service guardrails from `HttpClientConfig`,
 including allowed HTTP methods, path-only URI validation, forbidden path
 patterns, per-service request budgets, in-scope redirect checks, and response
 size limits. It supports both stateless requests and cookie-backed sessions,
-returning the status code, final in-scope URI, high-signal response headers, and
-body content.
+returning the status code, final in-scope URI, high-signal response headers,
+active cookies, and body content.
 
 ## Services
 
@@ -31,9 +31,9 @@ body content.
     request.
 -   **`Response`**: JSON-schema-annotated output struct returned by `Tool.Do`
     containing `StatusCode`, `FinalURI` after any followed in-scope redirects,
-    filtered `Headers`, and raw body `Content`. `Headers` retains only
-    `Content-Type`, `Location`, `Refresh`, `Server`, `Www-Authenticate`, and
-    chronological `Set-Cookie` values aggregated across redirect hops.
+    filtered `Headers` (`Content-Type`, `Location`, `Refresh`, `Server`, and
+    `Www-Authenticate`), active `Cookies` (`map[string]string` from the cookie
+    jar after creations, updates, and deletions), and raw body `Content`.
 -   **`ErrInvalidURI`, `ErrInvalidMethod`, `ErrContentDenied`,
     `ErrTooManyRequests`**: Sentinel errors returned by `Tool.Do` when a URI
     lacks a leading `/` or contains `:`, the HTTP method is not allowed, the

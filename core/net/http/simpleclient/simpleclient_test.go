@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -264,6 +265,11 @@ func TestDo_StoreCookies(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	customJar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("cookiejar.New() failed: %v", err)
+	}
+
 	tests := []struct {
 		name       string
 		options    *goohttp.ClientOptions
@@ -272,6 +278,11 @@ func TestDo_StoreCookies(t *testing.T) {
 		{
 			name:       "when_store_cookies_is_true_sends_cookies_back",
 			options:    &goohttp.ClientOptions{StoreCookies: true},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "when_cookie_jar_is_provided_populates_jar_and_sends_cookies_back",
+			options:    &goohttp.ClientOptions{CookieJar: customJar},
 			wantStatus: http.StatusOK,
 		},
 		{
@@ -323,6 +334,11 @@ func TestDo_StoreCookies(t *testing.T) {
 
 			if getResp.StatusCode != tt.wantStatus {
 				t.Errorf("Do() /get status = %d, want %d", getResp.StatusCode, tt.wantStatus)
+			}
+			if tt.options.CookieJar != nil {
+				if got := tt.options.CookieJar.Cookies(getReq.URL); len(got) != 1 || got[0].Name != "foo" || got[0].Value != "bar" {
+					t.Errorf("CookieJar.Cookies() = %v, want [foo=bar]", got)
+				}
 			}
 		})
 	}

@@ -215,8 +215,9 @@ response of a successful login.
     placeholder or dummy headers.
     The tool returns `status_code`, `final_uri` (the final request URI after
     following any in-scope redirects), high-signal `headers` (`Content-Type`,
-    `Location`, `Refresh`, `Server`, `Set-Cookie`, `Www-Authenticate`), and
-    response `content`.
+    `Location`, `Refresh`, `Server`, `Www-Authenticate`), active `cookies`
+    (resolved name-to-value cookie jar state after any creations, updates, or
+    deletions across redirect hops and session requests), and response `content`.
     The tool automatically follows redirects within the target service, but
     will NOT follow redirects to external hosts (returning a 3xx response with
     the external `Location` header).
