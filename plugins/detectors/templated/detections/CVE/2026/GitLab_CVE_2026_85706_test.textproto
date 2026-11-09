@@ -1,0 +1,259 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "GitLab_CVE_2026_85706"
+}
+
+tests: {
+  name: "whenVulnerableOmnibusFilesEndpoint_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" },
+          { name: "X-Gitlab-Meta" value: "{\"correlation_id\":\"01K9PGM31C3M8E9Z3V5155R6P4\",\"version\":\"1\"}" }
+        ]
+        body_content: "{\"name\":\"GitLab\",\"short_name\":\"GitLab\",\"icons\":[{\"src\":\"/-/pwa-icons/logo-192.png\"}]}"
+      },
+      {
+        uri: "/api/v4/projects?per_page=1&simple=true"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "[]"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/files/README/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        condition: {
+          body_content: [
+            "Content-Type=application/x-www-form-urlencoded"
+          ]
+        }
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"400 Bad request - Invalid parameter: invalid %-encoding (    #RequestStore is enabled Only for GitLab SaaS.\\n    # Default is 95% of the worker timeout\\n)\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenVulnerableCommitsEndpointWithDiscoveredProjectId_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" },
+          { name: "X-Gitlab-Meta" value: "{\"correlation_id\":\"01K9PGM31C3M8E9Z3V5155R6P4\",\"version\":\"1\"}" }
+        ]
+        body_content: "{\"name\":\"GitLab\",\"short_name\":\"GitLab\",\"icons\":[{\"src\":\"/-/pwa-icons/logo-192.png\"}]}"
+      },
+      {
+        uri: "/api/v4/projects?per_page=1&simple=true"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "[{\"id\":42,\"description\":null,\"name\":\"public-repo\"}]"
+      },
+      {
+        uri: "/api/v4/projects/42/repository/files/README/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"branch is missing, branch is empty, commit_message is missing, commit_message is empty, content is missing\"}"
+      },
+      {
+        uri: "/api/v4/projects/42/repository/files/README/?file=&file.path=/srv/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"branch is missing, branch is empty, commit_message is missing, commit_message is empty, content is missing\"}"
+      },
+      {
+        uri: "/api/v4/projects/42/repository/files/README/?file=&file.path=/home/git/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"branch is missing, branch is empty, commit_message is missing, commit_message is empty, content is missing\"}"
+      },
+      {
+        uri: "/api/v4/projects/42/repository/commits/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        condition: {
+          body_content: [
+            "Content-Type=application/x-www-form-urlencoded"
+          ]
+        }
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"400 Bad request - Invalid parameter: invalid %-encoding (    # Default is 95% of the worker timeout\\n)\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatchedReturns401Unauthorized_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" },
+          { name: "X-Gitlab-Meta" value: "{\"correlation_id\":\"01K9PGM31C3M8E9Z3V5155R6P4\",\"version\":\"1\"}" }
+        ]
+        body_content: "{\"name\":\"GitLab\",\"short_name\":\"GitLab\",\"icons\":[{\"src\":\"/-/pwa-icons/logo-192.png\"}]}"
+      },
+      {
+        uri: "/api/v4/projects?per_page=1&simple=true"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "[]"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/files/README/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/files/README/?file=&file.path=/srv/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/files/README/?file=&file.path=/home/git/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/commits/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/commits/?file=&file.path=/srv/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/commits/?file=&file.path=/home/git/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"401 Unauthorized\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenGeneric400WithoutFileLeak_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" },
+          { name: "X-Gitlab-Meta" value: "{\"correlation_id\":\"01K9PGM31C3M8E9Z3V5155R6P4\",\"version\":\"1\"}" }
+        ]
+        body_content: "{\"name\":\"GitLab\",\"short_name\":\"GitLab\",\"icons\":[{\"src\":\"/-/pwa-icons/logo-192.png\"}]}"
+      },
+      {
+        uri: "/api/v4/projects?per_page=1&simple=true"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "[]"
+      },
+      {
+        uri: "/api/v4/projects/1/repository/files/README/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"message\":\"400 Bad request - Invalid parameter\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotGitLab_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/users/sign_in"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/explore"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}

