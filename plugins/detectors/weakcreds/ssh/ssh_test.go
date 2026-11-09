@@ -69,7 +69,7 @@ func fastBruteForceConfig(stopAtFirst bool) *config.Config {
 	}.Build())
 }
 
-func startFakePasswordSSHServer(t *testing.T, validCreds map[string]string, acceptAll bool, serviceName string) *networkservicepb.NetworkService {
+func startFakePasswordSSHServer(t *testing.T, validCreds map[string]string, acceptAll bool) *networkservicepb.NetworkService {
 	t.Helper()
 	srv, err := fakessh.New(&ssh.ServerConfig{
 		PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
@@ -89,7 +89,6 @@ func startFakePasswordSSHServer(t *testing.T, validCreds map[string]string, acce
 	t.Cleanup(func() { _ = srv.Close() })
 
 	svc := proto.CloneOf(srv.NetworkService())
-	svc.SetServiceName(serviceName)
 	return svc
 }
 
@@ -202,7 +201,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		name        string
 		validCreds  map[string]string
 		acceptAll   bool
-		serviceName string
 		stopAtFirst bool
 		store       *credentialstore.CredentialStore
 		wantCreds   []string
@@ -210,7 +208,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		{
 			name:        "when_root_weak_password_matches_returns_verified_finding",
 			validCreds:  map[string]string{"root": "123456"},
-			serviceName: "ssh",
 			stopAtFirst: true,
 			store:       smallStore([]string{"root", "admin"}, []string{"wrong", "123456"}),
 			wantCreds:   []string{"root:123456"},
@@ -218,7 +215,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		{
 			name:        "when_service_name_is_unknown_fingerprints_and_returns_verified_finding",
 			validCreds:  map[string]string{"admin": "password"},
-			serviceName: "unknown",
 			stopAtFirst: true,
 			store:       smallStore([]string{"admin"}, []string{"password"}),
 			wantCreds:   []string{"admin:password"},
@@ -226,7 +222,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		{
 			name:        "when_service_name_is_empty_fingerprints_and_returns_verified_finding",
 			validCreds:  map[string]string{"test": "test"},
-			serviceName: "",
 			stopAtFirst: true,
 			store:       smallStore([]string{"test"}, []string{"test"}),
 			wantCreds:   []string{"test:test"},
@@ -234,7 +229,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		{
 			name:        "when_accept_all_ssh_server_fingerprints_and_returns_verified_finding",
 			acceptAll:   true,
-			serviceName: "ssh",
 			stopAtFirst: true,
 			store:       smallStore([]string{"admin"}, []string{"admin"}),
 			wantCreds:   []string{"admin:admin"},
@@ -245,7 +239,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 				"root":  "000000",
 				"admin": "123456",
 			},
-			serviceName: "ssh",
 			stopAtFirst: false,
 			store:       smallStore([]string{"root", "admin"}, []string{"000000", "123456"}),
 			wantCreds:   []string{"root:000000", "admin:123456"},
@@ -255,7 +248,7 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
-			svc := startFakePasswordSSHServer(t, tc.validCreds, tc.acceptAll, tc.serviceName)
+			svc := startFakePasswordSSHServer(t, tc.validCreds, tc.acceptAll)
 
 			detector, err := NewWithOptions(ctx, fastBruteForceConfig(tc.stopAtFirst), &bruteforce.Options{
 				CredentialStore: tc.store,
@@ -289,41 +282,31 @@ func TestDetect_NoWeakCredentials(t *testing.T) {
 	tests := []struct {
 		name        string
 		validCreds  map[string]string
-		serviceName string
 		protocol    networkpb.TransportProtocol
 		httpMethods []string
 	}{
 		{
-			name:        "when_password_is_strong_returns_no_findings",
-			validCreds:  map[string]string{"root": "Str0ng_UnGu3ssable_P@ssw0rd!"},
-			serviceName: "ssh",
-			protocol:    networkpb.TransportProtocol_TCP,
+			name:       "when_password_is_strong_returns_no_findings",
+			validCreds: map[string]string{"root": "Str0ng_UnGu3ssable_P@ssw0rd!"},
+			protocol:   networkpb.TransportProtocol_TCP,
 		},
 		{
 			name:        "when_service_is_web_service_skips_without_findings",
 			validCreds:  map[string]string{"root": "123456"},
-			serviceName: "http",
 			protocol:    networkpb.TransportProtocol_TCP,
 			httpMethods: []string{"GET"},
 		},
 		{
-			name:        "when_transport_protocol_is_udp_skips_without_findings",
-			validCreds:  map[string]string{"root": "123456"},
-			serviceName: "ssh",
-			protocol:    networkpb.TransportProtocol_UDP,
-		},
-		{
-			name:        "when_service_name_is_non_ssh_skips_without_findings",
-			validCreds:  map[string]string{"root": "123456"},
-			serviceName: "mysql",
-			protocol:    networkpb.TransportProtocol_TCP,
+			name:       "when_transport_protocol_is_udp_skips_without_findings",
+			validCreds: map[string]string{"root": "123456"},
+			protocol:   networkpb.TransportProtocol_UDP,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
-			svc := startFakePasswordSSHServer(t, tc.validCreds, false, tc.serviceName)
+			svc := startFakePasswordSSHServer(t, tc.validCreds, false)
 			svc.SetTransportProtocol(tc.protocol)
 			if len(tc.httpMethods) > 0 {
 				svc.SetSupportedHttpMethods(tc.httpMethods)

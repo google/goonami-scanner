@@ -21,7 +21,6 @@ package ssh
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/clients/sshclient"
@@ -108,10 +107,8 @@ func (h *Handler) Fingerprint(ctx context.Context, service *networkservicepb.Net
 	if netservice.IsWebService(service) {
 		return false, nil
 	}
+
 	if proto := service.GetTransportProtocol(); proto != networkpb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED && proto != networkpb.TransportProtocol_TCP {
-		return false, nil
-	}
-	if !isCandidateServiceName(service.GetServiceName()) {
 		return false, nil
 	}
 
@@ -157,13 +154,4 @@ func (h *Handler) TestCredential(ctx context.Context, service *networkservicepb.
 	}
 	_ = conn.Close()
 	return true, nil
-}
-
-func isCandidateServiceName(raw string) bool {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "unknown", "ssh":
-		return true
-	default:
-		return false
-	}
 }
