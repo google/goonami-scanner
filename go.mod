@@ -8,6 +8,7 @@ require (
   github.com/google/go-cmp v0.7.0
   github.com/google/tsunami-security-scanner v0.2.0
   github.com/google/tsunami-security-scanner-plugins v0.0.0-20261109101944-a41c263298fc
+  github.com/lib/pq v1.12.3
   github.com/pborman/uuid v1.2.1
   github.com/twmb/murmur3 v1.2.2
   golang.org/x/crypto v0.58.0

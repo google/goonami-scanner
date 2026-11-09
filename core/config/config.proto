@@ -28,6 +28,7 @@ import "common/clients/httpcrawler/httpcrawler_client_config.proto";
 import "common/clients/llm/llm_client_config.proto";
 import "common/clients/mysqlclient/mysql_client_config.proto";
 import "common/clients/nmap/nmap_client_config.proto";
+import "common/clients/postgresclient/postgres_client_config.proto";
 import "common/clients/sshclient/ssh_client_config.proto";
 import "tools/callbackserver/callbackserver_config.proto";
 
@@ -134,6 +135,7 @@ message ClientsConfig {
   goonami.callbackserver.CallbackserverConfig callback_server = 4;
   goonami.proto.configs.clients.SSHClientConfig ssh = 5;
   goonami.proto.configs.clients.MySQLClientConfig mysql = 6;
+  goonami.proto.configs.clients.PostgresClientConfig postgres = 7;
 }
 
 // PluginsConfig contains configuration for plugin.

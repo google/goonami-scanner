@@ -49,7 +49,7 @@ and allocate per-module artifact and cache directories.
     `user_agent`, and `http_client`), `WorkflowConfiguration` (`portscan` name
     plus ordered `ModuleFilter` `require`/`ignore` regex lists for
     `fingerprinters` and `detectors`), `ClientsConfig` (`nmap`, `http_crawler`,
-    `llm`, `callback_server`, `ssh`, `mysql`), and `PluginsConfig`
+    `llm`, `callback_server`, `ssh`, `mysql`, `postgres`), and `PluginsConfig`
     (`webidentity`, `httpscan`, `templatedweakcredentials`).
 -   **Sentinel Errors**: Exports `ErrUninitialized`, `ErrWorkDirEmpty`,
     `ErrWorkDirAccess`, and `ErrCreateDir` for directory lifecycle failures;
