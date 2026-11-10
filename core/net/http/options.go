@@ -18,6 +18,7 @@ package http
 
 import (
 	"net"
+	"net/http"
 	"net/url"
 	"regexp"
 	"slices"
@@ -34,6 +35,10 @@ import (
 type ClientOptions struct {
 	// StoreCookies indicates whether the client should keep track of cookies.
 	StoreCookies bool
+
+	// CookieJar optionally specifies the cookie jar used by the client. When non-nil, cookies are
+	// stored in and sent from this jar regardless of StoreCookies.
+	CookieJar http.CookieJar
 
 	// Whether to verify TLS certificates. By default, the client does NOT verify TLS certificates.
 	// That is because we want to scan targets that may not have valid certificates.

@@ -529,6 +529,9 @@ func TestTool_Do_MaintainSession(t *testing.T) {
 	if err != nil || resp1.StatusCode != 200 {
 		t.Fatalf("Stateless request 1 failed: %v", err)
 	}
+	if diff := cmp.Diff(map[string]string{"session": "123"}, resp1.Cookies); diff != "" {
+		t.Errorf("Stateless request 1 Cookies mismatch (-want +got):\n%s", diff)
+	}
 
 	// Request 2: Verify cookie (should fail because it's stateless)
 	req2 := &Request{Method: "GET", URI: "/verify", MaintainSession: false}
@@ -539,6 +542,9 @@ func TestTool_Do_MaintainSession(t *testing.T) {
 	if resp2.StatusCode != 403 {
 		t.Fatalf("Stateless request 2 should have failed with 403, got: %v", resp2.StatusCode)
 	}
+	if resp2.Cookies != nil {
+		t.Errorf("Stateless request 2 Cookies = %v, want nil", resp2.Cookies)
+	}
 
 	// Test 2: MaintainSession = true
 	// Request 3: Get the cookie with session tracking
@@ -546,6 +552,9 @@ func TestTool_Do_MaintainSession(t *testing.T) {
 	resp3, err := toolInstance.Do(nil, req3)
 	if err != nil || resp3.StatusCode != 200 {
 		t.Fatalf("Stateful request 1 failed: %v", err)
+	}
+	if diff := cmp.Diff(map[string]string{"session": "123"}, resp3.Cookies); diff != "" {
+		t.Errorf("Stateful request 1 Cookies mismatch (-want +got):\n%s", diff)
 	}
 
 	// Request 4: Verify cookie (should succeed because it's stateful)
@@ -556,6 +565,9 @@ func TestTool_Do_MaintainSession(t *testing.T) {
 	}
 	if resp4.StatusCode != 200 {
 		t.Fatalf("Stateful request 2 should have succeeded with 200, got: %v", resp4.StatusCode)
+	}
+	if diff := cmp.Diff(map[string]string{"session": "123"}, resp4.Cookies); diff != "" {
+		t.Errorf("Stateful request 2 Cookies mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -617,6 +629,9 @@ func TestTool_Do_ClearSession(t *testing.T) {
 	}
 	if resp3.StatusCode != 403 {
 		t.Fatalf("ClearSession failed to wipe cookies, got status: %v", resp3.StatusCode)
+	}
+	if resp3.Cookies != nil {
+		t.Errorf("ClearSession Cookies = %v, want nil", resp3.Cookies)
 	}
 }
 
@@ -777,7 +792,6 @@ func TestExtractRelevantHeaders(t *testing.T) {
 				"Refresh":          "0; url=/login.asp",
 				"Content-Type":     "application/json",
 				"Server":           "nginx/1.18.0",
-				"Set-Cookie":       "session=abc; Path=/",
 			},
 		},
 		{
@@ -785,33 +799,10 @@ func TestExtractRelevantHeaders(t *testing.T) {
 			resp: &http.Response{
 				Header: http.Header{
 					"Www-Authenticate": []string{"Negotiate", "Basic realm=\"foo\""},
-					"Set-Cookie":       []string{"sid=1; Path=/", "theme=dark; Path=/"},
 				},
 			},
 			want: map[string]string{
 				"Www-Authenticate": "Negotiate, Basic realm=\"foo\"",
-				"Set-Cookie":       "sid=1; Path=/, theme=dark; Path=/",
-			},
-		},
-		{
-			name: "when_redirect_chain_sets_cookies_preserves_chronological_order",
-			resp: &http.Response{
-				Header: http.Header{
-					"Content-Type": []string{"text/html"},
-					"Set-Cookie":   []string{"final=2; Path=/"},
-				},
-				Request: &http.Request{
-					Response: &http.Response{
-						Header: http.Header{
-							"Location":   []string{"/dashboard"},
-							"Set-Cookie": []string{"hop1=1; Path=/"},
-						},
-					},
-				},
-			},
-			want: map[string]string{
-				"Content-Type": "text/html",
-				"Set-Cookie":   "hop1=1; Path=/, final=2; Path=/",
 			},
 		},
 		{
@@ -844,12 +835,22 @@ func TestTool_Do_Headers(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/redirect_login":
-			http.SetCookie(w, &http.Cookie{Name: "session", Value: "abc", Path: "/"})
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "v1", Path: "/"})
+			http.SetCookie(w, &http.Cookie{Name: "temp", Value: "1", Path: "/"})
+			http.Redirect(w, r, "/auth/step", http.StatusFound)
+		case "/auth/step":
+			http.SetCookie(w, &http.Cookie{Name: "sso_state", Value: "ok"})
 			http.Redirect(w, r, "/dashboard", http.StatusFound)
 		case "/dashboard":
+			body := "welcome stateless"
+			if cookie, err := r.Cookie("session"); err == nil && cookie.Value == "v1" {
+				body = "welcome stateful"
+			}
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "v2", Path: "/"})
+			http.SetCookie(w, &http.Cookie{Name: "temp", Value: "", MaxAge: -1, Path: "/"})
 			http.SetCookie(w, &http.Cookie{Name: "prefs", Value: "1", Path: "/"})
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("welcome"))
+			w.Write([]byte(body))
 		default:
 			w.Header().Set("WWW-Authenticate", "Basic realm=\"Router\"")
 			w.Header().Set("Refresh", "0; url=/login")
@@ -886,22 +887,41 @@ func TestTool_Do_Headers(t *testing.T) {
 		"Content-Type":     "text/plain; charset=utf-8",
 		"Refresh":          "0; url=/login",
 		"Server":           "Embedded/1.0",
-		"Set-Cookie":       "sid=xyz",
 	}
 	if diff := cmp.Diff(wantHeaders, resp.Headers); diff != "" {
 		t.Errorf("Do() Headers mismatch (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff(map[string]string{"sid": "xyz"}, resp.Cookies); diff != "" {
+		t.Errorf("Do() Cookies mismatch (-want +got):\n%s", diff)
 	}
 
 	redirectResp, err := toolInstance.Do(nil, &Request{Method: "GET", URI: "/redirect_login"})
 	if err != nil {
 		t.Fatalf("Do() unexpected error: %v", err)
 	}
+	if redirectResp.Content != "welcome stateless" {
+		t.Errorf("Do() stateless redirect Content = %q, want %q", redirectResp.Content, "welcome stateless")
+	}
 
 	wantRedirectHeaders := map[string]string{
 		"Content-Type": "text/plain; charset=utf-8",
-		"Set-Cookie":   "session=abc; Path=/, prefs=1; Path=/",
 	}
 	if diff := cmp.Diff(wantRedirectHeaders, redirectResp.Headers); diff != "" {
 		t.Errorf("Do() redirect Headers mismatch (-want +got):\n%s", diff)
+	}
+	wantRedirectCookies := map[string]string{"session": "v2", "sso_state": "ok", "prefs": "1"}
+	if diff := cmp.Diff(wantRedirectCookies, redirectResp.Cookies); diff != "" {
+		t.Errorf("Do() redirect Cookies mismatch (-want +got):\n%s", diff)
+	}
+
+	statefulResp, err := toolInstance.Do(nil, &Request{Method: "GET", URI: "/redirect_login", MaintainSession: true})
+	if err != nil {
+		t.Fatalf("Do() stateful redirect error: %v", err)
+	}
+	if statefulResp.Content != "welcome stateful" {
+		t.Errorf("Do() stateful redirect Content = %q, want %q", statefulResp.Content, "welcome stateful")
+	}
+	if diff := cmp.Diff(wantRedirectCookies, statefulResp.Cookies); diff != "" {
+		t.Errorf("Do() stateful redirect Cookies mismatch (-want +got):\n%s", diff)
 	}
 }

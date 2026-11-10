@@ -22,6 +22,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -66,6 +68,7 @@ type Tool struct {
 
 	mut             sync.Mutex
 	client          goohttp.Client
+	jar             http.CookieJar
 	statelessClient goohttp.Client
 	countRequests   int
 }
@@ -90,7 +93,8 @@ type Request struct {
 type Response struct {
 	StatusCode int32             `json:"status_code" jsonschema:"HTTP status code returned by the server."`
 	FinalURI   string            `json:"final_uri" jsonschema:"Final request URI after following any in-scope redirects (e.g. '/login')."`
-	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Refresh, Server, Set-Cookie, Www-Authenticate)."`
+	Headers    map[string]string `json:"headers" jsonschema:"High-signal HTTP response headers (e.g. Content-Type, Location, Refresh, Server, Www-Authenticate)."`
+	Cookies    map[string]string `json:"cookies,omitempty" jsonschema:"Active cookies after the request (name to value), reflecting any creations, updates, or deletions across redirects and session requests."`
 	Content    string            `json:"content" jsonschema:"Raw body content returned by the server."`
 }
 
@@ -178,8 +182,12 @@ func (h *Tool) numberOfRequests() int {
 }
 
 func (h *Tool) clearSession() error {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return err
+	}
 	opts := &goohttp.ClientOptions{
-		StoreCookies:   true,
+		CookieJar:      jar,
 		ForbiddenPaths: h.badPaths,
 	}
 	if err := opts.LoadAuthorities(h.service); err != nil {
@@ -192,18 +200,19 @@ func (h *Tool) clearSession() error {
 	}
 	h.mut.Lock()
 	h.client = client
+	h.jar = jar
 	h.mut.Unlock()
 	return nil
 }
 
-func (h *Tool) getClient(maintainSession bool) goohttp.Client {
+func (h *Tool) getClient(maintainSession bool) (goohttp.Client, http.CookieJar) {
 	if maintainSession {
 		h.mut.Lock()
 		defer h.mut.Unlock()
-		return h.client
+		return h.client, h.jar
 	}
 
-	return h.statelessClient
+	return h.statelessClient, nil
 }
 
 // Do performs an HTTP request against the service.
@@ -232,7 +241,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 		}
 	}
 
-	client := h.getClient(toolreq.MaintainSession)
+	client, jar := h.getClient(toolreq.MaintainSession)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -253,6 +262,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 		StatusCode: int32(resp.StatusCode),
 		FinalURI:   finalURI,
 		Headers:    extractRelevantHeaders(resp),
+		Cookies:    extractCookies(jar, req.URL, resp),
 		Content:    string(content),
 	}, nil
 }
@@ -314,14 +324,12 @@ var relevantResponseHeaders = []string{
 	"Location",
 	"Refresh",
 	"Server",
-	"Set-Cookie",
 	"Www-Authenticate",
 }
 
 // extractRelevantHeaders filters and returns high-signal HTTP response headers from the final
-// response and preserves any Set-Cookie headers issued across intermediate in-scope redirect hops
-// in chronological order. Keys in http.Response.Header are guaranteed to be canonicalized by
-// net/http, enabling direct O(1) lookups without scanning or lowercasing all response headers.
+// response. Keys in http.Response.Header are guaranteed to be canonicalized by net/http, enabling
+// direct O(1) lookups without scanning or lowercasing all response headers.
 func extractRelevantHeaders(resp *http.Response) map[string]string {
 	extracted := make(map[string]string)
 	if resp == nil {
@@ -332,27 +340,46 @@ func extractRelevantHeaders(resp *http.Response) map[string]string {
 			extracted[key] = strings.Join(vals, ", ")
 		}
 	}
-
-	var chain []*http.Response
-	for cur := resp; cur != nil; {
-		chain = append(chain, cur)
-		if cur.Request == nil {
-			break
-		}
-		cur = cur.Request.Response
-	}
-	if len(chain) <= 1 {
-		return extracted
-	}
-
-	// Reverse so redirect hops are processed in chronological order (initial hop to final response).
-	slices.Reverse(chain)
-	var cookies []string
-	for _, hop := range chain {
-		cookies = append(cookies, hop.Header["Set-Cookie"]...)
-	}
-	if len(cookies) > 0 {
-		extracted["Set-Cookie"] = strings.Join(cookies, ", ")
-	}
 	return extracted
+}
+
+func extractCookies(jar http.CookieJar, reqURL *url.URL, resp *http.Response) map[string]string {
+	if jar == nil {
+		var chain []*http.Response
+		for cur := resp; cur != nil; {
+			if len(cur.Header["Set-Cookie"]) > 0 {
+				chain = append(chain, cur)
+			}
+			if cur.Request == nil {
+				break
+			}
+			cur = cur.Request.Response
+		}
+		if len(chain) == 0 {
+			return nil
+		}
+		var err error
+		jar, err = cookiejar.New(nil)
+		if err != nil {
+			return nil
+		}
+		for _, hop := range slices.Backward(chain) {
+			u := reqURL
+			if hop.Request != nil && hop.Request.URL != nil {
+				u = hop.Request.URL
+			}
+			if u != nil {
+				jar.SetCookies(u, hop.Cookies())
+			}
+		}
+	}
+	raw := goohttp.ResponseCookies(jar, reqURL, resp)
+	if len(raw) == 0 {
+		return nil
+	}
+	cookies := make(map[string]string, len(raw))
+	for _, c := range raw {
+		cookies[c.Name] = c.Value
+	}
+	return cookies
 }

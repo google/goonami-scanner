@@ -28,12 +28,13 @@ helpers for bounded response-body reads and destructive URL path filtering.
     singleton `Client` using `DefaultClientOptions()`, panicking if
     initialization fails.
 -   **`ClientOptions` and `DefaultClientOptions`**: `ClientOptions` configures
-    ephemeral client behavior (`StoreCookies`, `EnforceTLSCertVerification`,
-    `DisableFollowRedirects`, `AllowedAuthorities`, `ForbiddenPaths`,
-    `AllowRedirect`, and `RetryOnRateLimit`). `DefaultClientOptions()` disables
-    cookie storage, TLS verification, and rate-limit retries, enables redirects
-    across any authority, and populates `ForbiddenPaths` from the default
-    forbidden path patterns.
+    ephemeral client behavior (`StoreCookies`, `CookieJar`,
+    `EnforceTLSCertVerification`, `DisableFollowRedirects`,
+    `AllowedAuthorities`, `ForbiddenPaths`, `AllowRedirect`, and
+    `RetryOnRateLimit`). `DefaultClientOptions()` disables cookie storage, TLS
+    verification, and rate-limit retries, enables redirects across any
+    authority, and populates `ForbiddenPaths` from the default forbidden path
+    patterns.
 -   **`ClientOptions.LoadAuthorities`, `IsAuthorityAllowed`, and
     `IsRedirectAllowed`**: `LoadAuthorities(service)` populates
     `AllowedAuthorities` from a `NetworkService` endpoint via
@@ -50,11 +51,14 @@ helpers for bounded response-body reads and destructive URL path filtering.
     `IsURLPathForbidden(targetURL, forbidden)` canonicalizes the URL path and
     unescapes the query string before matching against `forbidden`, ignoring the
     scheme and authority.
--   **`ReadBody`**: `ReadBody(resp, maxsize)` reads `resp.Body` into a
-    `maxsize`-byte buffer and returns the payload when its length is strictly
-    less than `maxsize`. It returns `ErrPageTooBig` if the body is at least
-    `maxsize` bytes, `io.EOF` if the body is empty, or any underlying read
-    error.
+-   **`ReadBody` and `ResponseCookies`**: `ReadBody(resp, maxsize)` reads
+    `resp.Body` into a `maxsize`-byte buffer and returns the payload when its
+    length is strictly less than `maxsize`. It returns `ErrPageTooBig` if the
+    body is at least `maxsize` bytes, `io.EOF` if the body is empty, or any
+    underlying read error. `ResponseCookies(jar, reqURL, resp)` returns the
+    active cookies in `jar` across all URLs visited in `resp`'s redirect chain,
+    `reqURL`, and any explicit `Set-Cookie` paths on those responses,
+    deduplicated by cookie name.
 -   **Sentinel Errors (`ErrPageTooBig`, `ErrRateLimited`)**: `ErrPageTooBig` is
     returned when a response body reaches or exceeds the maximum allowed byte
     size (such as in `ReadBody`). `ErrRateLimited` is returned when
