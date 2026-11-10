@@ -122,6 +122,10 @@ func (c *Client) Connect(ctx context.Context, addr, username, password string) (
 // for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
 // ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
 func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	ctx = log.ContextForModule(ctx, "clients/sshclient")
 
 	timeout := c.Timeout()
@@ -148,6 +152,9 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 
 	client, err := c.dial(connCtx, addr, clientConfig)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		log.DebugContextf(ctx, log.DebugLevelRequest, "SSH connection/authentication to %s for user %q failed: %v", addr, username, err)
 		return nil, ClassifyError(err)
 	}
@@ -158,6 +165,14 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 func ClassifyError(err error) error {
 	if err == nil {
 		return nil
+	}
+
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+
+	if errors.Is(err, ErrAuthFailed) || errors.Is(err, ErrPasswordAuthUnsupported) || errors.Is(err, ErrNotSSHService) {
+		return err
 	}
 
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {

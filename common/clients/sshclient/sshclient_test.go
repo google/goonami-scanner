@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -492,6 +493,44 @@ func TestConnect_ContextErrors(t *testing.T) {
 				t.Fatalf("Connect() error = %v, expected errors.Is %v", err, tc.expectedErr)
 			}
 		})
+	}
+}
+
+func TestConnect_ContextCanceledDuringHandshake(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen failed: %v", err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	t.Cleanup(func() {
+		cancel()
+		close(done)
+		_ = listener.Close()
+		wg.Wait()
+	})
+	go func() {
+		defer wg.Done()
+		conn, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer conn.Close()
+		cancel()
+		<-done
+	}()
+
+	addr := listener.Addr().String()
+	client := New(nil)
+	sshClient, err := client.Connect(ctx, addr, "user", "pass")
+	if sshClient != nil {
+		_ = sshClient.Close()
+		t.Fatalf("Connect(%q) = %v, want nil on context error", addr, sshClient)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Connect(%q) error = %v, want %v", addr, err, context.Canceled)
 	}
 }
 
