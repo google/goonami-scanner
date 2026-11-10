@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -434,6 +435,37 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 			},
 			expectedErr: ErrNotSSHService,
 		},
+		{
+			name: "when_connection_reset_by_peer_returns_not_ssh_service",
+			setup: func(t *testing.T) string {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatalf("net.Listen failed: %v", err)
+				}
+				done := make(chan struct{})
+				t.Cleanup(func() {
+					_ = listener.Close()
+					<-done
+				})
+				go func() {
+					defer close(done)
+					conn, acceptErr := listener.Accept()
+					if acceptErr != nil {
+						return
+					}
+					if tcpConn, ok := conn.(*net.TCPConn); ok {
+						// SetLinger(0) forces a TCP RST on Close() instead of FIN.
+						_ = tcpConn.SetLinger(0)
+					}
+					_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+					buf := make([]byte, 16)
+					_, _ = conn.Read(buf)
+					_ = conn.Close()
+				}()
+				return listener.Addr().String()
+			},
+			expectedErr: ErrNotSSHService,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -633,6 +665,31 @@ func TestClassifyError(t *testing.T) {
 		{
 			name:        "when_no_route_to_host_returns_not_ssh_service",
 			inputErr:    errors.New("dial tcp 10.0.0.1:22: connect: no route to host"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_connection_reset_by_peer_returns_not_ssh_service",
+			inputErr:    errors.New("ssh: handshake failed: read tcp 172.16.0.109:56382->34.224.167.227:3389: read: connection reset by peer"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_syscall_econnreset_returns_not_ssh_service",
+			inputErr:    fmt.Errorf("read failed: %w", syscall.ECONNRESET),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_broken_pipe_returns_not_ssh_service",
+			inputErr:    errors.New("write tcp 127.0.0.1:22: write: broken pipe"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_network_unreachable_returns_not_ssh_service",
+			inputErr:    errors.New("dial tcp 10.0.0.1:22: connect: network is unreachable"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_io_timeout_returns_not_ssh_service",
+			inputErr:    errors.New("read tcp 10.0.0.1:22: i/o timeout"),
 			expectedErr: ErrNotSSHService,
 		},
 		{

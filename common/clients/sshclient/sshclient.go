@@ -26,6 +26,7 @@ import (
 	"net"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/goonami-scanner/core/config"
@@ -175,7 +176,7 @@ func ClassifyError(err error) error {
 		return err
 	}
 
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+	if matchesAnyError(err, notSSHServiceSentinels) {
 		return fmt.Errorf("%w: %w", ErrNotSSHService, err)
 	}
 
@@ -188,25 +189,71 @@ func ClassifyError(err error) error {
 	if strings.Contains(msg, "attempted methods") && strings.Contains(msg, "password") {
 		return fmt.Errorf("%w: %w", ErrAuthFailed, err)
 	}
-	if strings.Contains(msg, "unable to authenticate") ||
-		strings.Contains(msg, "password auth failed") ||
-		strings.Contains(msg, "failed authentication") ||
-		strings.Contains(msg, "authentication failed") ||
-		strings.Contains(msg, "auth failed") ||
-		strings.Contains(msg, "too many authentication failures") {
+	if containsAny(msg, authFailedSubstrings) {
 		return fmt.Errorf("%w: %w", ErrAuthFailed, err)
 	}
 
-	if strings.Contains(msg, "no version identifier") ||
-		strings.Contains(msg, "banner header contains illegal") ||
-		strings.Contains(msg, "overflow reading version") ||
-		strings.Contains(msg, "no common algorithm") ||
-		strings.Contains(msg, "protocol version") ||
-		strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "no route to host") ||
-		strings.Contains(msg, "eof") {
+	if containsAny(msg, notSSHServiceSubstrings) {
 		return fmt.Errorf("%w: %w", ErrNotSSHService, err)
 	}
 
 	return err
+}
+
+var (
+	notSSHServiceSentinels = []error{
+		io.EOF,
+		io.ErrUnexpectedEOF,
+		syscall.ECONNRESET,
+		syscall.ECONNREFUSED,
+		syscall.ECONNABORTED,
+		syscall.EPIPE,
+		syscall.ENETUNREACH,
+		syscall.EHOSTUNREACH,
+		syscall.EHOSTDOWN,
+		syscall.ETIMEDOUT,
+	}
+	authFailedSubstrings = []string{
+		"unable to authenticate",
+		"password auth failed",
+		"failed authentication",
+		"authentication failed",
+		"auth failed",
+		"too many authentication failures",
+	}
+	notSSHServiceSubstrings = []string{
+		"no version identifier",
+		"banner header contains illegal",
+		"overflow reading version",
+		"no common algorithm",
+		"protocol version",
+		"connection reset",
+		"forcibly closed",
+		"broken pipe",
+		"connection aborted",
+		"connection refused",
+		"no route to host",
+		"network is unreachable",
+		"host is down",
+		"i/o timeout",
+		"eof",
+	}
+)
+
+func matchesAnyError(err error, targets []error) bool {
+	for _, target := range targets {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAny(s string, subs []string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
 }
