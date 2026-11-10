@@ -132,37 +132,49 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 	return buildDetectionReport(service), nil
 }
 
+type authResult int
+
+const (
+	authNotSSHOrUnsupported authResult = iota
+	authRejected
+	authAccepted
+)
+
 func (m *Module) isVulnerable(ctx context.Context, addr string) (bool, error) {
 	// 1. Probe with a >256-byte password ("AAA..."). On vulnerable OpenSSH + musl
 	// targets where /etc/shadow has '*' for root and a modular crypt salt from
 	// another account, musl crypt() fails on >256 bytes and returns "*".
-	ok, err := m.tryPassword(ctx, addr, targetUser, strings.Repeat("A", probePasswordLen))
-	if err != nil || !ok {
+	res, err := m.tryPassword(ctx, addr, targetUser, strings.Repeat("A", probePasswordLen))
+	if err != nil || res != authAccepted {
 		return false, err
 	}
 
 	// 2. Verify with a second distinct >256-byte password ("BBB...") to rule out
 	// the first probe coincidentally matching an actual password.
-	ok, err = m.tryPassword(ctx, addr, targetUser, strings.Repeat("B", probePasswordLen))
-	if err != nil || !ok {
+	res, err = m.tryPassword(ctx, addr, targetUser, strings.Repeat("B", probePasswordLen))
+	if err != nil || res != authAccepted {
 		return false, err
 	}
 
 	// 3. Negative validation: verify that a <=256-byte invalid password is
-	// rejected to rule out honeypots or servers accepting all passwords.
-	shortOK, err := m.tryPassword(ctx, addr, targetUser, shortProbePassword)
+	// explicitly rejected to rule out honeypots, accept-all servers, or dropped
+	// connections.
+	res, err = m.tryPassword(ctx, addr, targetUser, shortProbePassword)
 	if err != nil {
 		return false, err
 	}
-	if shortOK {
+	if res == authAccepted {
 		log.DebugContextf(ctx, log.DebugLevelService, "target accepted short invalid password; skipping accept-all service")
+		return false, nil
+	}
+	if res != authRejected {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func (m *Module) tryPassword(ctx context.Context, addr, username, password string) (bool, error) {
+func (m *Module) tryPassword(ctx context.Context, addr, username, password string) (authResult, error) {
 	// We supply the password twice within the same SSH connection because on
 	// OpenSSH + musl systems using /etc/shadow, the first password attempt in a
 	// connection initializes pick_salt()'s static salt buffer (clobbering
@@ -172,17 +184,16 @@ func (m *Module) tryPassword(ctx context.Context, addr, username, password strin
 	conn, err := m.client.ConnectWithPasswords(ctx, addr, username, password, password)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return false, ctxErr
+			return authNotSSHOrUnsupported, ctxErr
 		}
-		if errors.Is(err, sshclient.ErrAuthFailed) ||
-			errors.Is(err, sshclient.ErrPasswordAuthUnsupported) ||
-			errors.Is(err, sshclient.ErrNotSSHService) {
-			return false, nil
+		if errors.Is(err, sshclient.ErrAuthFailed) {
+			return authRejected, nil
 		}
-		return false, err
+		log.DebugContextf(ctx, log.DebugLevelService, "SSH probe to %q failed: %v", addr, err)
+		return authNotSSHOrUnsupported, nil
 	}
 	_ = conn.Close()
-	return true, nil
+	return authAccepted, nil
 }
 
 func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList {

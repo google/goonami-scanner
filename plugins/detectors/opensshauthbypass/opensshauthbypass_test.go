@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/testfakes/fakessh"
@@ -364,6 +365,108 @@ func TestDetect(t *testing.T) {
 					}.Build(),
 				}.Build()
 				return t.Context(), svc
+			},
+			wantFindings: false,
+			wantErr:      nil,
+		},
+		{
+			name: "when_non_ssh_service_resets_connection_returns_no_findings",
+			setup: func(t *testing.T) (context.Context, *nspb.NetworkService) {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatalf("net.Listen failed: %v", err)
+				}
+				t.Cleanup(func() { _ = listener.Close() })
+				go func() {
+					conn, acceptErr := listener.Accept()
+					if acceptErr != nil {
+						return
+					}
+					if tcpConn, ok := conn.(*net.TCPConn); ok {
+						// SetLinger(0) forces a TCP RST on Close() instead of FIN.
+						_ = tcpConn.SetLinger(0)
+					}
+					_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+					buf := make([]byte, 16)
+					_, _ = conn.Read(buf)
+					_ = conn.Close()
+				}()
+				port := listener.Addr().(*net.TCPAddr).Port
+				svc := nspb.NetworkService_builder{
+					ServiceName: "ms-wbt-server",
+					NetworkEndpoint: npb.NetworkEndpoint_builder{
+						Type: npb.NetworkEndpoint_IP_PORT,
+						IpAddress: npb.IpAddress_builder{
+							Address:       "127.0.0.1",
+							AddressFamily: npb.AddressFamily_IPV4,
+						}.Build(),
+						Port: npb.Port_builder{
+							PortNumber: uint32(port),
+						}.Build(),
+					}.Build(),
+				}.Build()
+				return t.Context(), svc
+			},
+			wantFindings: false,
+			wantErr:      nil,
+		},
+		{
+			name: "when_non_ssh_service_sends_non_ssh_data_returns_no_findings",
+			setup: func(t *testing.T) (context.Context, *nspb.NetworkService) {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatalf("net.Listen failed: %v", err)
+				}
+				t.Cleanup(func() { _ = listener.Close() })
+				go func() {
+					conn, acceptErr := listener.Accept()
+					if acceptErr != nil {
+						return
+					}
+					_, _ = conn.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
+					_ = conn.Close()
+				}()
+				port := listener.Addr().(*net.TCPAddr).Port
+				svc := nspb.NetworkService_builder{
+					ServiceName: "unknown",
+					NetworkEndpoint: npb.NetworkEndpoint_builder{
+						Type: npb.NetworkEndpoint_IP_PORT,
+						IpAddress: npb.IpAddress_builder{
+							Address:       "127.0.0.1",
+							AddressFamily: npb.AddressFamily_IPV4,
+						}.Build(),
+						Port: npb.Port_builder{
+							PortNumber: uint32(port),
+						}.Build(),
+					}.Build(),
+				}.Build()
+				return t.Context(), svc
+			},
+			wantFindings: false,
+			wantErr:      nil,
+		},
+		{
+			name: "when_short_probe_connection_drops_returns_no_findings",
+			setup: func(t *testing.T) (context.Context, *nspb.NetworkService) {
+				ready := make(chan struct{})
+				var attempts atomic.Int32
+				var srv *fakessh.Server
+				var err error
+				srv, err = fakessh.New(&ssh.ServerConfig{
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						<-ready
+						if attempts.Add(1) == 2 {
+							_ = srv.Close()
+						}
+						return nil, nil
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				close(ready)
+				t.Cleanup(func() { _ = srv.Close() })
+				return t.Context(), srv.NetworkService()
 			},
 			wantFindings: false,
 			wantErr:      nil,
