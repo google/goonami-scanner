@@ -157,6 +157,9 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 			return nil, ctxErr
 		}
 		log.DebugContextf(ctx, log.DebugLevelRequest, "SSH connection/authentication to %s for user %q failed: %v", addr, username, err)
+		if errors.Is(connCtx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("%w: %w", ErrNotSSHService, err)
+		}
 		return nil, ClassifyError(err)
 	}
 	return client, nil
@@ -204,6 +207,7 @@ var (
 	notSSHServiceSentinels = []error{
 		io.EOF,
 		io.ErrUnexpectedEOF,
+		net.ErrClosed,
 		syscall.ECONNRESET,
 		syscall.ECONNREFUSED,
 		syscall.ECONNABORTED,
@@ -261,6 +265,7 @@ var (
 		"network is unreachable",
 		"host is down",
 		"i/o timeout",
+		"closed network connection",
 		"eof",
 	}
 )

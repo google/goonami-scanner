@@ -61,7 +61,6 @@ func TestDetect(t *testing.T) {
 		setup        func(t *testing.T) (context.Context, *nspb.NetworkService)
 		wantFindings bool
 		wantErr      error
-		wantAnyErr   bool
 	}{
 		{
 			name: "when_vulnerable_ssh_server_returns_verified_finding",
@@ -324,7 +323,7 @@ func TestDetect(t *testing.T) {
 			wantErr:      context.Canceled,
 		},
 		{
-			name: "when_connection_times_out_returns_error",
+			name: "when_non_ssh_service_hangs_past_timeout_returns_no_findings",
 			cfg: config.FromProto(cpb.Config_builder{
 				Clients: cpb.ClientsConfig_builder{
 					Ssh: sccpb.SSHClientConfig_builder{
@@ -343,8 +342,8 @@ func TestDetect(t *testing.T) {
 					_ = listener.Close()
 				})
 				go func() {
-					conn, err := listener.Accept()
-					if err != nil {
+					conn, acceptErr := listener.Accept()
+					if acceptErr != nil {
 						return
 					}
 					defer conn.Close()
@@ -352,7 +351,7 @@ func TestDetect(t *testing.T) {
 				}()
 				port := listener.Addr().(*net.TCPAddr).Port
 				svc := nspb.NetworkService_builder{
-					ServiceName: "ssh",
+					ServiceName: "redis",
 					NetworkEndpoint: npb.NetworkEndpoint_builder{
 						Type: npb.NetworkEndpoint_IP_PORT,
 						IpAddress: npb.IpAddress_builder{
@@ -367,7 +366,7 @@ func TestDetect(t *testing.T) {
 				return t.Context(), svc
 			},
 			wantFindings: false,
-			wantAnyErr:   true,
+			wantErr:      nil,
 		},
 	}
 
@@ -384,12 +383,6 @@ func TestDetect(t *testing.T) {
 			}
 
 			reports, err := detector.Detect(ctx, svc)
-			if tc.wantAnyErr {
-				if err == nil {
-					t.Fatal("Detect() error = nil, want non-nil error")
-				}
-				return
-			}
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("Detect() error = %v, want %v", err, tc.wantErr)
 			}

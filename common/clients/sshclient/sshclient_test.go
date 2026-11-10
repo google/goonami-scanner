@@ -407,6 +407,14 @@ func TestConnectWithPasswords(t *testing.T) {
 }
 
 func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
+	timeoutCfg := config.FromProto(cpb.Config_builder{
+		Clients: cpb.ClientsConfig_builder{
+			Ssh: sccpb.SSHClientConfig_builder{
+				TimeoutSeconds: proto.Int32(1),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
 	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	t.Cleanup(httpServer.Close)
 
@@ -418,6 +426,10 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 		buf := make([]byte, 16)
 		_, _ = conn.Read(buf)
+	})
+	hangingBannerAddr := startFakeTCPServer(t, func(conn net.Conn) {
+		_, _ = conn.Write([]byte("-ERR unknown command\r\n"))
+		_, _ = io.Copy(io.Discard, conn)
 	})
 	malformedPacketAddr := startFakeTCPServer(t, func(conn net.Conn) {
 		_, _ = conn.Write([]byte("SSH-2.0-Fake\r\n\x00\x00\x00\x01\x00"))
@@ -446,6 +458,11 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 			expectedErr: ErrNotSSHService,
 		},
 		{
+			name:        "when_non_ssh_banner_hangs_past_timeout_returns_not_ssh_service",
+			addr:        hangingBannerAddr,
+			expectedErr: ErrNotSSHService,
+		},
+		{
 			name:        "when_malformed_ssh_packet_after_banner_returns_not_ssh_service",
 			addr:        malformedPacketAddr,
 			expectedErr: ErrNotSSHService,
@@ -454,7 +471,7 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := New(nil)
+			client := New(timeoutCfg)
 			sshClient, err := client.Connect(t.Context(), tc.addr, "root", "root")
 			if sshClient != nil {
 				_ = sshClient.Close()
@@ -673,6 +690,11 @@ func TestClassifyError(t *testing.T) {
 		{
 			name:        "when_io_timeout_returns_not_ssh_service",
 			inputErr:    errors.New("read tcp 10.0.0.1:22: i/o timeout"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_closed_network_connection_returns_not_ssh_service",
+			inputErr:    net.ErrClosed,
 			expectedErr: ErrNotSSHService,
 		},
 		{
