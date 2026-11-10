@@ -1,0 +1,173 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "JFrogArtifactory_CVE_2026_42018"
+}
+
+########
+# TESTS #
+########
+
+tests: {
+  name: "whenVulnerableRootPath_returnsTrue"
+  expect_vulnerability: true
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/access/api/v1/system/ping"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body_content: "OK"
+      },
+      {
+        uri: "/access/api/v1/aws/token"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"HTTP 401 Unauthorized\",\"detail\":\"Aws request has failed\"}]}"
+      },
+      {
+        uri: "/access/api/v1/aws/token/"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"access_token\":\"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqZmFjQDAxdGVzdC91c2Vycy9hbm9ueW1vdXMiLCJzY3AiOiJhcHBsaWVkLXBlcm1pc3Npb25zL3VzZXIifQ.dGVzdHNpZ25hdHVyZQ\",\"expires_in\":3600,\"scope\":\"applied-permissions/user\",\"token_type\":\"Bearer\",\"username\":\"anonymous\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenVulnerableArtifactorySubpath_returnsTrue"
+  expect_vulnerability: true
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/access/api/v1/system/ping"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/artifactory/access/api/v1/system/ping"
+        status: 200
+        body_content: "OK"
+      },
+      {
+        uri: "/access/api/v1/aws/token"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/artifactory/access/api/v1/aws/token"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"HTTP 401 Unauthorized\"}]}"
+      },
+      {
+        uri: "/access/api/v1/aws/token/"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/artifactory/access/api/v1/aws/token/"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"access_token\":\"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqZmFjQDAxdGVzdC91c2Vycy9hbm9ueW1vdXMifQ.dGVzdHNpZ25hdHVyZQ\",\"expires_in\":3600,\"scope\":\"applied-permissions/user\",\"token_type\":\"Bearer\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatchedReturns401OnTrailingSlash_returnsFalse"
+  expect_vulnerability: false
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/access/api/v1/system/ping"
+        status: 200
+        body_content: "OK"
+      },
+      {
+        uri: "/access/api/v1/aws/token"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"HTTP 401 Unauthorized\",\"detail\":\"Aws request has failed\"}]}"
+      },
+      {
+        uri: "/access/api/v1/aws/token/"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"HTTP 401 Unauthorized\",\"detail\":\"Aws request has failed\"}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenCatchAllOrEchoServerReturns200Everywhere_returnsFalse"
+  expect_vulnerability: false
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"status\":\"OK\",\"echo\":\"{}\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNonJwtTokenReturned_returnsFalse"
+  expect_vulnerability: false
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/access/api/v1/system/ping"
+        status: 200
+        body_content: "OK"
+      },
+      {
+        uri: "/access/api/v1/aws/token"
+        status: 401
+        body_content: "{\"errors\":[{\"code\":\"UNAUTHORIZED\"}]}"
+      },
+      {
+        uri: "/access/api/v1/aws/token/"
+        status: 200
+        body_content: "{\"access_token\":\"not-a-jwt-value\",\"token_type\":\"Bearer\",\"scope\":\"applied-permissions/user\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenUnrelatedWebServer_returnsFalse"
+  expect_vulnerability: false
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "<html><body>404 Not Found</body></html>"
+      }
+    ]
+  }
+}

