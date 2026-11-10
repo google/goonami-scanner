@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -406,73 +407,55 @@ func TestConnectWithPasswords(t *testing.T) {
 }
 
 func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
+	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	t.Cleanup(httpServer.Close)
+
+	resetAddr := startFakeTCPServer(t, func(conn net.Conn) {
+		if tcpConn, ok := conn.(*net.TCPConn); ok {
+			// SetLinger(0) forces a TCP RST on Close() instead of FIN.
+			_ = tcpConn.SetLinger(0)
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		buf := make([]byte, 16)
+		_, _ = conn.Read(buf)
+	})
+	malformedPacketAddr := startFakeTCPServer(t, func(conn net.Conn) {
+		_, _ = conn.Write([]byte("SSH-2.0-Fake\r\n\x00\x00\x00\x01\x00"))
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_, _ = io.Copy(io.Discard, conn)
+	})
+
 	testCases := []struct {
 		name        string
-		setup       func(t *testing.T) string
+		addr        string
 		expectedErr error
 	}{
 		{
-			name: "when_service_is_http_returns_not_ssh_service",
-			setup: func(t *testing.T) string {
-				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-				t.Cleanup(ts.Close)
-				return ts.Listener.Addr().String()
-			},
+			name:        "when_service_is_http_returns_not_ssh_service",
+			addr:        httpServer.Listener.Addr().String(),
 			expectedErr: ErrNotSSHService,
 		},
 		{
-			name: "when_connection_refused_returns_not_ssh_service",
-			setup: func(t *testing.T) string {
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
-				if err != nil {
-					t.Fatalf("net.Listen failed: %v", err)
-				}
-				addr := listener.Addr().String()
-				if err := listener.Close(); err != nil {
-					t.Fatalf("listener.Close failed: %v", err)
-				}
-				return addr
-			},
+			name:        "when_connection_refused_returns_not_ssh_service",
+			addr:        closedTCPAddr(t),
 			expectedErr: ErrNotSSHService,
 		},
 		{
-			name: "when_connection_reset_by_peer_returns_not_ssh_service",
-			setup: func(t *testing.T) string {
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
-				if err != nil {
-					t.Fatalf("net.Listen failed: %v", err)
-				}
-				done := make(chan struct{})
-				t.Cleanup(func() {
-					_ = listener.Close()
-					<-done
-				})
-				go func() {
-					defer close(done)
-					conn, acceptErr := listener.Accept()
-					if acceptErr != nil {
-						return
-					}
-					if tcpConn, ok := conn.(*net.TCPConn); ok {
-						// SetLinger(0) forces a TCP RST on Close() instead of FIN.
-						_ = tcpConn.SetLinger(0)
-					}
-					_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-					buf := make([]byte, 16)
-					_, _ = conn.Read(buf)
-					_ = conn.Close()
-				}()
-				return listener.Addr().String()
-			},
+			name:        "when_connection_reset_by_peer_returns_not_ssh_service",
+			addr:        resetAddr,
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_malformed_ssh_packet_after_banner_returns_not_ssh_service",
+			addr:        malformedPacketAddr,
 			expectedErr: ErrNotSSHService,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			addr := tc.setup(t)
 			client := New(nil)
-			sshClient, err := client.Connect(t.Context(), addr, "root", "root")
+			sshClient, err := client.Connect(t.Context(), tc.addr, "root", "root")
 			if sshClient != nil {
 				_ = sshClient.Close()
 				t.Fatal("Connect() returned non-nil *ssh.Client on non-SSH target")
@@ -693,6 +676,16 @@ func TestClassifyError(t *testing.T) {
 			expectedErr: ErrNotSSHService,
 		},
 		{
+			name:        "when_invalid_packet_length_returns_not_ssh_service",
+			inputErr:    errors.New("ssh: handshake failed: ssh: invalid packet length, packet too large"),
+			expectedErr: ErrNotSSHService,
+		},
+		{
+			name:        "when_non_auth_disconnect_returns_not_ssh_service",
+			inputErr:    errors.New(`ssh: disconnect, reason 11: "connection rejected"`),
+			expectedErr: ErrNotSSHService,
+		},
+		{
 			name:        "when_unrecognized_error_returns_verbatim",
 			inputErr:    errors.New("something totally unexpected"),
 			expectedErr: nil,
@@ -719,4 +712,44 @@ func TestClassifyError(t *testing.T) {
 			}
 		})
 	}
+}
+
+func startFakeTCPServer(t *testing.T, handler func(conn net.Conn)) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen failed: %v", err)
+	}
+	done := make(chan struct{})
+	t.Cleanup(func() {
+		_ = listener.Close()
+		<-done
+	})
+	go func() {
+		defer close(done)
+		conn, acceptErr := listener.Accept()
+		if acceptErr != nil {
+			return
+		}
+		defer conn.Close()
+		stop := context.AfterFunc(t.Context(), func() {
+			_ = conn.Close()
+		})
+		defer stop()
+		handler(conn)
+	}()
+	return listener.Addr().String()
+}
+
+func closedTCPAddr(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen failed: %v", err)
+	}
+	addr := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("listener.Close failed: %v", err)
+	}
+	return addr
 }
