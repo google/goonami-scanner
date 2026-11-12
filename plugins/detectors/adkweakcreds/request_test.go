@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -631,6 +632,64 @@ func TestRequest_Do_FinalURI(t *testing.T) {
 			}
 			if resp.FinalURI != tc.wantFinalURI {
 				t.Errorf("resp.FinalURI = %q, want %q", resp.FinalURI, tc.wantFinalURI)
+			}
+		})
+	}
+}
+
+func TestExtractSetCookies(t *testing.T) {
+	hop1 := &http.Response{
+		Header: http.Header{
+			"Set-Cookie": []string{
+				"a=1; Path=/",
+				"b=2; Path=/",
+			},
+		},
+		Request: &http.Request{},
+	}
+	hop2 := &http.Response{
+		Request: &http.Request{
+			Response: hop1,
+		},
+	}
+	hop3 := &http.Response{
+		Header: http.Header{
+			"Set-Cookie": []string{
+				"c=3; Path=/; HttpOnly",
+			},
+		},
+		Request: &http.Request{
+			Response: hop2,
+		},
+	}
+
+	tests := []struct {
+		name string
+		resp *http.Response
+		want []string
+	}{
+		{
+			name: "when_redirect_chain_has_cookies_collects_chronologically",
+			resp: hop3,
+			want: []string{
+				"a=1; Path=/",
+				"b=2; Path=/",
+				"c=3; Path=/; HttpOnly",
+			},
+		},
+		{
+			name: "when_no_cookies_returns_nil",
+			resp: &http.Response{},
+		},
+		{
+			name: "when_response_is_nil_returns_nil",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if diff := cmp.Diff(tc.want, extractSetCookies(tc.resp)); diff != "" {
+				t.Errorf("extractSetCookies() diff (-want +got):\n%s", diff)
 			}
 		})
 	}

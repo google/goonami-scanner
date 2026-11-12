@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	goohttp "github.com/google/goonami-scanner/core/net/http"
@@ -110,8 +111,28 @@ type response struct {
 	StatusCode int
 	// FinalURI is the request URI of the final response after following any in-scope redirects.
 	FinalURI string
+	// SetCookies contains raw Set-Cookie headers across this request chain in chronological order.
+	SetCookies []string
 	// Body is the raw response body read from the server.
 	Body []byte
+}
+
+func extractSetCookies(resp *http.Response) []string {
+	var chain []*http.Response
+	for cur := resp; cur != nil; {
+		if len(cur.Header["Set-Cookie"]) > 0 {
+			chain = append(chain, cur)
+		}
+		if cur.Request == nil {
+			break
+		}
+		cur = cur.Request.Response
+	}
+	var cookies []string
+	for _, hop := range slices.Backward(chain) {
+		cookies = append(cookies, hop.Header["Set-Cookie"]...)
+	}
+	return cookies
 }
 
 // do executes the request and performs the extraction specified in the ExtractionRegex.
@@ -155,6 +176,7 @@ func (r *request) do(ctx context.Context, service *nspb.NetworkService, client g
 		Extraction: extraction,
 		StatusCode: resp.StatusCode,
 		FinalURI:   finalURI,
+		SetCookies: extractSetCookies(resp),
 		Body:       body,
 	}, nil
 }
