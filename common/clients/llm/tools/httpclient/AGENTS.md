@@ -31,9 +31,10 @@ body content.
     request.
 -   **`Response`**: JSON-schema-annotated output struct returned by `Tool.Do`
     containing `StatusCode`, `FinalURI` after any followed in-scope redirects,
-    filtered `Headers`, and raw body `Content`. `Headers` retains only
-    `Content-Type`, `Location`, `Refresh`, `Server`, `Www-Authenticate`, and
-    chronological `Set-Cookie` values aggregated across redirect hops.
+    filtered `Headers`, and raw body `Content` (empty on zero-byte responses).
+    `Headers` retains only `Content-Type`, `Location`, `Refresh`, `Server`,
+    `Www-Authenticate`, and chronological `Set-Cookie` values aggregated across
+    redirect hops.
 -   **`ErrInvalidURI`, `ErrInvalidMethod`, `ErrContentDenied`,
     `ErrTooManyRequests`**: Sentinel errors returned by `Tool.Do` when a URI
     lacks a leading `/` or contains `:`, the HTTP method is not allowed, the

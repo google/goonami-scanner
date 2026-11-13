@@ -220,6 +220,22 @@ func TestDo(t *testing.T) {
 			},
 		},
 		{
+			name: "when_response_body_is_empty_returns_empty_content",
+			req: &Request{
+				Method: "GET",
+				URI:    "/empty",
+			},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			},
+			cfg: DefaultConfig(),
+			want: &Response{
+				StatusCode: http.StatusNoContent,
+				FinalURI:   "/empty",
+				Content:    "",
+			},
+		},
+		{
 			name: "when_post_with_data_and_headers_returns_response",
 			req: &Request{
 				Method: "POST",

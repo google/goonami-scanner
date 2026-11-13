@@ -240,7 +240,7 @@ func (h *Tool) Do(toolctx agent.Context, toolreq *Request) (*Response, error) {
 	defer resp.Body.Close()
 
 	content, err := goohttp.ReadBody(resp, int(h.config.GetMaxAnswerSizeBytes()))
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err
 	}
 
