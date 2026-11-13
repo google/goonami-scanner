@@ -1,0 +1,66 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.plugins.webidentity;
+
+import "plugins/fingerprint/webidentity/fingerprint.proto";
+
+option go_package = "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprint_test_go_proto";
+option java_multiple_files = true;
+option java_outer_classname = "FingerprintTestOuterClass";
+option java_package = "com.google.goonami.proto.plugins.webidentity";
+
+// WebFingerprintTests defines test cases for validating a WebFingerprint
+// definition.
+message WebFingerprintTests {
+  // Name or path of the fingerprint definition being tested.
+  string tested_fingerprint = 1;
+
+  // Whether this test suite is temporarily disabled.
+  bool disabled = 2;
+
+  // List of test cases.
+  repeated TestCase tests = 3;
+
+  // TestCase defines mock HTTP responses and expected detection results.
+  message TestCase {
+    // Descriptive test case name.
+    string name = 1;
+
+    // Simulated responses returned by target host endpoints.
+    repeated MockResponse mock_responses = 2;
+
+    // Expected fingerprint matches.
+    repeated ExpectedMatch expected_matches = 3;
+  }
+
+  // MockResponse defines an endpoint URI and the HTTP response it returns.
+  message MockResponse {
+    string uri = 1;
+    int32 status_code = 2;
+    repeated HttpHeader headers = 3;
+    string body = 4;
+  }
+
+  // ExpectedMatch defines the expected detected application root and versions.
+  message ExpectedMatch {
+    string application_root_path =
+        1;  // e.g. "" for root, "/grafana" for subpath
+    repeated string expected_versions = 2;
+  }
+}

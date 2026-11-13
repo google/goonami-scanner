@@ -1,0 +1,240 @@
+/*
+ * Copyright 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package goonami.proto.plugins.webidentity;
+
+option go_package = "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprint_go_proto";
+option java_multiple_files = true;
+option java_outer_classname = "FingerprintOuterClass";
+option java_package = "com.google.goonami.proto.plugins.webidentity";
+
+// HttpMethod represents standard HTTP methods supported by fingerprint steps.
+enum HttpMethod {
+  METHOD_UNSPECIFIED = 0;  // Interpreted as GET by default
+  GET = 1;
+  POST = 2;
+  HEAD = 3;
+  OPTIONS = 4;
+  PUT = 5;
+  DELETE = 6;
+}
+
+// WebFingerprint defines a declarative web application fingerprint definition.
+message WebFingerprint {
+  // Metadata about the fingerprint plugin and the software it identifies.
+  FingerprintInfo info = 1;
+
+  // Optional configuration (e.g. disabled).
+  FingerprintConfig config = 2;
+
+  // Reusable HTTP probe steps defined for this fingerprint, referenced by name
+  // in workflows.
+  repeated Step steps = 3;
+
+  // Independent identification workflows. Each workflow is an ordered sequence
+  // of steps (referenced by name) that is self-sufficient to identify the
+  // target software.
+  repeated Workflow workflows = 4;
+}
+
+// FingerprintInfo contains identifying metadata for the target software.
+message FingerprintInfo {
+  // Unique name of the fingerprint plugin (e.g. "Grafana", "MLflow").
+  string name = 1;
+
+  // Author of the fingerprint definition.
+  string author = 2;
+
+  // Canonical software identifier populated into
+  // WebServiceContext.Software.Name (e.g. "grafana", "mlflow"). Required.
+  string software = 3;
+
+  // Optional human-readable description.
+  string description = 4;
+}
+
+// FingerprintConfig defines operational flags for this fingerprint.
+message FingerprintConfig {
+  // If true, this fingerprint is skipped at startup.
+  bool disabled = 1;
+}
+
+// Workflow defines an ordered sequence of steps (referenced by name) that
+// together identify the target software.
+message Workflow {
+  // Sequence of step names (defined in WebFingerprint.steps) executed in order.
+  // Earlier steps can extract variables used in subsequent step paths via
+  // `{{ var_name }}`. All steps must succeed for the workflow to match.
+  repeated string steps = 1;
+}
+
+// Step defines an individual HTTP probe and its response criteria.
+message Step {
+  // Unique step name within this fingerprint, referenced in workflows.
+  string name = 1;
+
+  // Path specification (mutually exclusive).
+  oneof path_pattern {
+    // Exact path relative to the candidate application root, e.g. "/login",
+    // "/api/health". Supports variable substitution from prior steps: "/{{
+    // bundle_path }}".
+    string path = 2;
+
+    // Suffix matched against crawled URLs, e.g. "/login", "/wp-login.php".
+    // When matched on a crawled URL (e.g. "http://host:8080/sub/login"),
+    // the suffix is stripped to infer application_root
+    // ("http://host:8080/sub").
+    string path_suffix = 3;
+
+    // RE2 regular expression matched against crawled URL paths, e.g.
+    // "^(?P<root>.*?)/public/build/grafana\\..*\\.js$". The prefix before
+    // the match (or `root` capture group) infers application_root.
+    string path_regexp = 4;
+  }
+
+  // HTTP method (defaults to GET if METHOD_UNSPECIFIED).
+  HttpMethod method = 5;
+
+  // Optional custom request headers.
+  repeated HttpHeader headers = 6;
+
+  // Optional request body (for POST/PUT).
+  string data = 7;
+
+  // Actions and expectations on the HTTP response.
+  HttpResponse response = 8;
+}
+
+// HttpHeader defines an HTTP header key-value pair.
+message HttpHeader {
+  string name = 1;
+  string value = 2;
+}
+
+// HttpResponse evaluates HTTP response status, headers, body, hashes, and
+// extractions.
+message HttpResponse {
+  message Header {
+    // Name of the header.
+    string name = 1;
+  }
+
+  message Body {}
+
+  message Hash {
+    // Hex Murmur3-128 hashes of (status + Content-Type + body).
+    repeated string murmur3_hashes = 1;
+    // Hex SHA-256 hashes of the raw response body (e.g. static favicons).
+    repeated string body_sha256_hashes = 2;
+  }
+
+  message Expectation {
+    // The value to expect in the response.
+    string contains = 1;
+
+    // Regular expression to match against the response.
+    string regexp = 2;
+
+    // For headers: check whether the header exists.
+    bool exists = 3;
+
+    // Where to expect the value.
+    oneof expectation {
+      Header header = 4;
+      Body body = 5;
+      Hash hash = 6;
+    }
+  }
+
+  message ExpectAll {
+    repeated Expectation conditions = 1;
+  }
+
+  message ExpectAny {
+    repeated Expectation conditions = 1;
+  }
+
+  message ExpectNone {
+    repeated Expectation conditions = 1;
+  }
+
+  message Extract {
+    // The name of the variable to store the extracted value in.
+    string variable_name = 1;
+
+    // The regexp to use to extract the value from the response.
+    string regexp = 2;
+
+    // Where to extract the value from.
+    oneof extract {
+      Header from_header = 3;
+      Body from_body = 4;
+    }
+  }
+
+  message ExtractAll {
+    repeated Extract patterns = 1;
+  }
+
+  message ExtractAny {
+    repeated Extract patterns = 1;
+  }
+
+  // Allowed HTTP status codes (e.g. [200]). If empty, any status code is
+  // accepted.
+  repeated int32 status_codes = 1;
+
+  // Primary expectation checks:
+  // All conditions in expect_all must match (logical AND).
+  ExpectAll expect_all = 2;
+
+  // At least one condition in expect_any must match (logical OR).
+  ExpectAny expect_any = 3;
+
+  // None of the conditions in expect_none may match (logical NOT / false
+  // positive prevention).
+  ExpectNone expect_none = 4;
+
+  // Extract values from the response and store in variables for subsequent
+  // steps.
+  oneof extractions {
+    ExtractAny extract_any = 5;
+    ExtractAll extract_all = 6;
+  }
+
+  // Version extraction (evaluated when all expectations succeed; best-effort,
+  // does not fail the step).
+  repeated VersionExtractor version_extractors = 7;
+}
+
+// VersionExtractor extracts version strings via regex or hash mapping.
+message VersionExtractor {
+  // Regular expression with a capturing group `(...)` for the version string.
+  string regexp = 1;
+
+  // Where to extract the version from.
+  oneof extract {
+    HttpResponse.Header from_header = 2;
+    HttpResponse.Body from_body = 3;
+  }
+
+  // Static hash-to-version mapping for static assets.
+  string murmur3_hash = 4;
+  string body_sha256_hash = 5;
+  repeated string static_versions = 6;
+}
