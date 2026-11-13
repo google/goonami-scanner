@@ -22,35 +22,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/creachadair/stringset"
 	"github.com/twmb/murmur3"
 )
 
 // Hash is a hash object that can be used to fingerprint HTTP responses.
 type Hash struct {
 	hash murmur3.Hash128
-}
-
-// Identity of a specific web application.
-type Identity struct {
-	Software       string
-	PotentialRoots []string
-	Versions       []string
-}
-
-// IntersectVersions tries to reduce the set of potential versions the application might be running.
-// To do so, it uses a newly identified set of potential versions and computes the intersection.
-func (id *Identity) IntersectVersions(newmatch *Identity) {
-	if newmatch == nil || newmatch.Software != id.Software {
-		return
-	}
-
-	versions := stringset.New(newmatch.Versions...).Intersect(stringset.New(id.Versions...))
-	if versions.Empty() {
-		return
-	}
-
-	id.Versions = versions.Elements()
 }
 
 // FromResponse computes the hash for a given HTTP response and its content.
