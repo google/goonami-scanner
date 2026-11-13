@@ -108,6 +108,8 @@ type response struct {
 	Extraction *string
 	// StatusCode is the HTTP status code returned by the server.
 	StatusCode int
+	// FinalURI is the request URI of the final response after following any in-scope redirects.
+	FinalURI string
 	// Body is the raw response body read from the server.
 	Body []byte
 }
@@ -144,9 +146,15 @@ func (r *request) do(ctx context.Context, service *nspb.NetworkService, client g
 		extraction = &s
 	}
 
+	finalURI := req.URL.RequestURI()
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalURI = resp.Request.URL.RequestURI()
+	}
+
 	return &response{
 		Extraction: extraction,
 		StatusCode: resp.StatusCode,
+		FinalURI:   finalURI,
 		Body:       body,
 	}, nil
 }

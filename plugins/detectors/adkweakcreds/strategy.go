@@ -212,15 +212,15 @@ func (a *authStrategy) judgeCredential(ctx context.Context, cfg *config.Config, 
 		"Login request: %s %s\n"+
 			"Candidate credential: username=%q, password=%q\n"+
 			"Negative baseline credential (known-invalid): username=%q, password=%q\n\n"+
-			"--- Negative Baseline Response (HTTP %d) ---\n"+
+			"--- Negative Baseline Response (HTTP %d, final_uri=%q) ---\n"+
 			"<baseline_response_body>\n%s\n</baseline_response_body>\n\n"+
-			"--- Candidate Response (HTTP %d) ---\n"+
+			"--- Candidate Response (HTTP %d, final_uri=%q) ---\n"+
 			"<candidate_response_body>\n%s\n</candidate_response_body>\n",
 		loginReq.Method, loginReq.Path,
 		cred.Username, cred.Password,
 		invalidCred.Username, invalidCred.Password,
-		baseline.StatusCode, string(baseline.Body),
-		candidate.StatusCode, string(candidate.Body),
+		baseline.StatusCode, baseline.FinalURI, string(baseline.Body),
+		candidate.StatusCode, candidate.FinalURI, string(candidate.Body),
 	)
 	content := &genai.Content{
 		Role:  "user",

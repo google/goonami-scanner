@@ -19,6 +19,7 @@ package adkweakcreds
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -532,6 +533,104 @@ func TestSubstitute(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := substitute(tc.s, tc.substitutions, tc.escape); got != tc.want {
 				t.Errorf("substitute() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+type staticHTTPClient struct {
+	resp *http.Response
+}
+
+func (c *staticHTTPClient) Do(*http.Request) (*http.Response, error) {
+	return c.resp, nil
+}
+
+func TestRequest_Do_FinalURI(t *testing.T) {
+	externalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request to external server: %s", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(externalServer.Close)
+
+	cfg, service := setupMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/login":
+			http.Redirect(w, r, "/dashboard?ok=1", http.StatusFound)
+		case "/dashboard":
+			w.Write([]byte("welcome"))
+		case "/external_redirect":
+			http.Redirect(w, r, externalServer.URL+"/sso", http.StatusFound)
+		case "/plain":
+			w.Write([]byte("plain"))
+		}
+	})
+
+	opts := goohttp.DefaultClientOptions()
+	if err := opts.LoadAuthorities(service); err != nil {
+		t.Fatalf("LoadAuthorities() failed: %v", err)
+	}
+	defaultClient, err := goohttp.NewClient(cfg, opts)
+	if err != nil {
+		t.Fatalf("NewClient() failed: %v", err)
+	}
+
+	tests := []struct {
+		name          string
+		path          string
+		substitutions map[string]string
+		client        goohttp.Client
+		wantFinalURI  string
+	}{
+		{
+			name:         "when_redirect_followed_returns_final_uri",
+			path:         "/login",
+			wantFinalURI: "/dashboard?ok=1",
+		},
+		{
+			name:         "when_redirect_targets_external_host_keeps_in_scope_final_uri",
+			path:         "/external_redirect",
+			wantFinalURI: "/external_redirect",
+		},
+		{
+			name:         "when_no_redirect_returns_request_uri",
+			path:         "/plain",
+			wantFinalURI: "/plain",
+		},
+		{
+			name:          "when_response_request_nil_falls_back_to_substituted_request_uri",
+			path:          "/login?user=[[username]]",
+			substitutions: map[string]string{"username": "admin"},
+			client: &staticHTTPClient{
+				resp: &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       http.NoBody,
+				},
+			},
+			wantFinalURI: "/login?user=admin",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &request{
+				Method:          http.MethodGet,
+				Path:            tc.path,
+				ExtractionRegex: "error: (.*)",
+			}
+			if err := req.compileAndValidate(); err != nil {
+				t.Fatalf("compileAndValidate() failed: %v", err)
+			}
+			client := tc.client
+			if client == nil {
+				client = defaultClient
+			}
+			resp, err := req.do(t.Context(), service, client, tc.substitutions)
+			if err != nil {
+				t.Fatalf("do() failed: %v", err)
+			}
+			if resp.FinalURI != tc.wantFinalURI {
+				t.Errorf("resp.FinalURI = %q, want %q", resp.FinalURI, tc.wantFinalURI)
 			}
 		})
 	}
