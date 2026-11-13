@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
+	"github.com/google/goonami-scanner/core/metrics"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/engine"
 	"google.golang.org/protobuf/proto"
@@ -1031,6 +1032,218 @@ func TestFingerprintRelativeApplicationRoot(t *testing.T) {
 
 			if diff := cmp.Diff([]string{tc.wantRoot}, identifiedRoots); diff != "" {
 				t.Errorf("Fingerprint() returned unexpected application_root diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFingerprintRecordsIdentificationMetrics(t *testing.T) {
+	fingerprints := []*fpb.WebFingerprint{
+		fpb.WebFingerprint_builder{
+			Info: fpb.FingerprintInfo_builder{
+				Name:     "Grafana",
+				Software: "grafana",
+			}.Build(),
+			Steps: []*fpb.Step{
+				fpb.Step_builder{
+					Name:       "grafana_login",
+					PathSuffix: proto.String("/login"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: "grafana-app",
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
+				}.Build(),
+				fpb.Step_builder{
+					Name: "grafana_health",
+					Path: proto.String("/api/health"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: "grafana-ok",
+								}.Build(),
+							},
+						}.Build(),
+						VersionExtractors: []*fpb.VersionExtractor{
+							fpb.VersionExtractor_builder{
+								FromBody: &fpb.HttpResponse_Body{},
+								Regexp:   `v([0-9.]+)`,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			},
+			Workflows: []*fpb.Workflow{
+				fpb.Workflow_builder{Steps: []string{"grafana_login", "grafana_health"}}.Build(),
+				fpb.Workflow_builder{Steps: []string{"grafana_login"}}.Build(),
+			},
+		}.Build(),
+		fpb.WebFingerprint_builder{
+			Info: fpb.FingerprintInfo_builder{
+				Name:     "NGINX",
+				Software: "nginx",
+			}.Build(),
+			Steps: []*fpb.Step{
+				fpb.Step_builder{
+					Name: "nginx_root",
+					Path: proto.String("/"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: "nginx-welcome",
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			},
+			Workflows: []*fpb.Workflow{
+				fpb.Workflow_builder{Steps: []string{"nginx_root"}}.Build(),
+			},
+		}.Build(),
+	}
+
+	type wantCount struct {
+		fingerprint string
+		rule        string
+		count       int64
+	}
+
+	tests := []struct {
+		name      string
+		epType    npb.NetworkEndpoint_Type
+		hostPages map[string]string
+		ipPages   map[string]string
+		want      []wantCount
+	}{
+		{
+			name:   "when_no_fingerprint_matches_records_no_series",
+			epType: npb.NetworkEndpoint_IP_PORT,
+			ipPages: map[string]string{
+				"/": "<html><body>unknown</body></html>",
+			},
+		},
+		{
+			name:   "when_multi_step_workflow_matches_records_each_matched_step",
+			epType: npb.NetworkEndpoint_IP_PORT,
+			ipPages: map[string]string{
+				"/":           `<a href="/login">login</a>`,
+				"/login":      "grafana-app",
+				"/api/health": "grafana-ok v10.1.0",
+			},
+			want: []wantCount{
+				{fingerprint: "grafana", rule: "grafana_health", count: 1},
+				{fingerprint: "grafana", rule: "grafana_login", count: 1},
+			},
+		},
+		{
+			name:   "when_ip_and_hostname_identify_same_app_counts_each_rule_once",
+			epType: npb.NetworkEndpoint_IP_HOSTNAME_PORT,
+			hostPages: map[string]string{
+				"/":           `<a href="/login">login</a>`,
+				"/login":      "grafana-app",
+				"/api/health": "grafana-ok v10.1.0",
+			},
+			ipPages: map[string]string{
+				"/":           `<a href="/login">login</a>`,
+				"/login":      "grafana-app",
+				"/api/health": "grafana-ok v10.1.0",
+			},
+			want: []wantCount{
+				{fingerprint: "grafana", rule: "grafana_health", count: 1},
+				{fingerprint: "grafana", rule: "grafana_login", count: 1},
+			},
+		},
+		{
+			name:   "when_ip_and_hostname_identify_different_apps_counts_rules_for_each",
+			epType: npb.NetworkEndpoint_IP_HOSTNAME_PORT,
+			hostPages: map[string]string{
+				"/": "nginx-welcome",
+			},
+			ipPages: map[string]string{
+				"/":           `<a href="/login">login</a>`,
+				"/login":      "grafana-app",
+				"/api/health": "grafana-ok v10.1.0",
+			},
+			want: []wantCount{
+				{fingerprint: "grafana", rule: "grafana_health", count: 1},
+				{fingerprint: "grafana", rule: "grafana_login", count: 1},
+				{fingerprint: "nginx", rule: "nginx_root", count: 1},
+			},
+		},
+		{
+			name:   "when_multiple_subpaths_identified_sums_rule_counts",
+			epType: npb.NetworkEndpoint_IP_PORT,
+			ipPages: map[string]string{
+				"/":        `<a href="/a/login">a</a><a href="/b/login">b</a>`,
+				"/a/login": "grafana-app",
+				"/b/login": "grafana-app",
+			},
+			want: []wantCount{
+				{fingerprint: "grafana", rule: "grafana_login", count: 2},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			collector := metrics.NewCollector()
+			metrics.SetRecorder(collector)
+			t.Cleanup(func() { metrics.SetRecorder(nil) })
+
+			server := newHostAwareTestServer(tc.hostPages, tc.ipPages)
+			defer server.Close()
+
+			ip, port, _ := serverInfo(t, server)
+			service := nspb.NetworkService_builder{
+				NetworkEndpoint:      buildTestEndpoint(tc.epType, ip, port),
+				SupportedHttpMethods: []string{"GET"},
+			}.Build()
+
+			mod := newTestModuleWithFingerprints(t, fingerprints, nil, "")
+			if _, err := mod.Fingerprint(t.Context(), service); err != nil {
+				t.Fatalf("Fingerprint() returned unexpected error: %v", err)
+			}
+
+			type seriesKey struct {
+				fingerprint string
+				rule        string
+			}
+			got := make(map[seriesKey]int64)
+			for _, s := range collector.Series() {
+				if s.Metric != metrics.FingerprintIdentifications {
+					continue
+				}
+				var fp, rule string
+				for _, l := range s.Labels {
+					switch l.Key {
+					case metrics.LabelFingerprint:
+						fp = l.Value
+					case metrics.LabelRule:
+						rule = l.Value
+					}
+				}
+				got[seriesKey{fingerprint: fp, rule: rule}] = s.Value()
+			}
+
+			want := make(map[seriesKey]int64, len(tc.want))
+			for _, w := range tc.want {
+				want[seriesKey{fingerprint: w.fingerprint, rule: w.rule}] = w.count
+			}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("FingerprintIdentifications metrics diff (-want +got):\n%s", diff)
 			}
 		})
 	}

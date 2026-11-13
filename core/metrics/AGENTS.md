@@ -27,16 +27,18 @@ exports aggregated `ScanMetrics` protobuf or textproto summaries.
     records a `float64` sample on the active `Recorder`.
 -   **`Label`, `LabelKey`, `LimitNameValue`, and Label Constructors**: `Label`
     pairs a declared `LabelKey` (`LabelModule`, `LabelErrorClass`,
-    `LabelLimitName`, `LabelModel`) with a sanitized string value, while metrics
-    drop undeclared or duplicate keys automatically. Constructors `Module`,
-    `LLMModel`, `LimitName` (`LimitMaxAttemptsPerService`,
+    `LabelLimitName`, `LabelModel`, `LabelFingerprint`, `LabelRule`) with a
+    sanitized string value, while metrics drop undeclared or duplicate keys
+    automatically. Constructors `Module`, `LLMModel`, `Fingerprint`,
+    `FingerprintRule`, `LimitName` (`LimitMaxAttemptsPerService`,
     `LimitMaxRequestsPerService`, `LimitMaxHTTPRedirects`, `LimitMaxAttempts`),
     and `ErrorClass` build normalized labels with bounded values.
 -   **Catalog Metric Handles**: Pre-declared handles record scan phase latencies
     (`ScanDuration`, `PortScanDuration`, `FingerprintDuration`,
-    `DetectDuration`), module execution and findings (`ServicesDiscovered`,
-    `ModuleDuration`, `ModuleErrors`, `Findings`, `BudgetExhausted`), and HTTP
-    traffic (`HTTPRequests`, `HTTPRequestErrors`). LLM telemetry is tracked via
+    `DetectDuration`), module execution, fingerprints, and findings
+    (`ServicesDiscovered`, `ModuleDuration`, `ModuleErrors`, `Findings`,
+    `FingerprintIdentifications`, `BudgetExhausted`), and HTTP traffic
+    (`HTTPRequests`, `HTTPRequestErrors`). LLM telemetry is tracked via
     `LLMDuration` and token counters (`LLMTokens`, `LLMInputTokens`,
     `LLMCachedTokens`, `LLMOutputTokens`, `LLMThoughtTokens`,
     `LLMToolInputTokens`).

@@ -29,6 +29,7 @@ import (
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
+	"github.com/google/goonami-scanner/core/metrics"
 	"github.com/google/goonami-scanner/core/module"
 	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
@@ -101,21 +102,29 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	ctx = log.ContextForModuleAndService(ctx, moduleName, service)
 	crawler := httpcrawler.NewSimpleCrawler(ctx, m.coreConfig)
 	var allServices []*nspb.NetworkService
+	var allIdentifications []*identifiedApp
 	for _, epService := range splitServiceByEndpoint(service) {
-		services, err := m.fingerprintEndpoint(ctx, crawler, epService)
+		services, apps, err := m.fingerprintEndpoint(ctx, crawler, epService)
 		if err != nil {
 			return nil, err
 		}
 		allServices = append(allServices, services...)
+		allIdentifications = append(allIdentifications, apps...)
 	}
 
-	return reconcileServices(service, allServices), nil
+	reconciled := reconcileServices(service, allServices)
+	for _, app := range reconcileIdentifiedApps(allIdentifications) {
+		for _, step := range app.steps {
+			metrics.FingerprintIdentifications.Add(ctx, 1, metrics.Fingerprint(app.software), metrics.FingerprintRule(step))
+		}
+	}
+	return reconciled, nil
 }
 
-func (m *Module) fingerprintEndpoint(ctx context.Context, crawler *httpcrawler.SimpleCrawler, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+func (m *Module) fingerprintEndpoint(ctx context.Context, crawler *httpcrawler.SimpleCrawler, service *nspb.NetworkService) ([]*nspb.NetworkService, []*identifiedApp, error) {
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	run := &runInfo{
@@ -124,7 +133,7 @@ func (m *Module) fingerprintEndpoint(ctx context.Context, crawler *httpcrawler.S
 	httpCache := cache.New(goohttp.SharedClient(m.coreConfig))
 
 	if err := m.crawl(ctx, crawler, run, webroot, httpCache); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return m.matching(ctx, run, service, httpCache, webroot)
@@ -206,14 +215,24 @@ func (m *Module) writeToArtifacts(ctx context.Context, info *httpcrawler.PageInf
 	return contentSize, nil
 }
 
-func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.NetworkService, httpCache *cache.Cache, webroot string) ([]*nspb.NetworkService, error) {
+func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.NetworkService, httpCache *cache.Cache, webroot string) ([]*nspb.NetworkService, []*identifiedApp, error) {
 	identifications, err := m.runEngineOnWebRoots(ctx, httpCache, []string{webroot})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	apps := make([]*identifiedApp, 0, len(identifications))
+	for _, ir := range identifications {
+		apps = append(apps, &identifiedApp{
+			software: ir.result.Software,
+			appRoot:  applicationRootPath(ir.fullRoots[0]),
+			versions: ir.result.Versions,
+			steps:    ir.result.MatchedSteps,
+		})
 	}
 
 	m.recordActiveCachePages(ctx, run, httpCache)
-	return buildIdentifiedServices(ctx, service, identifications, run.CrawlResults()), nil
+	return buildIdentifiedServices(ctx, service, identifications, run.CrawlResults()), apps, nil
 }
 
 func (m *Module) runEngineOnWebRoots(ctx context.Context, httpCache *cache.Cache, webroots []string) ([]*rootResult, error) {
@@ -230,6 +249,7 @@ func (m *Module) runEngineOnWebRoots(ctx context.Context, httpCache *cache.Cache
 			})
 			if idx >= 0 {
 				allIdentifications[idx].fullRoots = append(allIdentifications[idx].fullRoots, fullRoot)
+				allIdentifications[idx].result.MatchedSteps = mergeUniqueSorted(allIdentifications[idx].result.MatchedSteps, r.MatchedSteps)
 				continue
 			}
 			allIdentifications = append(allIdentifications, &rootResult{

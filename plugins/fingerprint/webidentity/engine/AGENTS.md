@@ -17,8 +17,8 @@ duplicate requests.
     catalog.
 -   **`(*Engine).Run(ctx, c, baseURL)`**: Executes passive cache evaluation and
     active probing against `baseURL` using `cache.Cache`, returning sorted
-    `*IdentificationResult` entries with `Software`, `ApplicationRoot`, and
-    deduplicated `Versions`.
+    `*IdentificationResult` entries with `Software`, `ApplicationRoot`,
+    deduplicated `Versions`, and deduplicated `MatchedSteps`.
 -   **Sentinel errors (`ErrNilFingerprint`, `ErrMissingSoftware`,
     `ErrDuplicateStep`)**: Returned by `CompileFingerprint` for invalid
     fingerprint definitions.
