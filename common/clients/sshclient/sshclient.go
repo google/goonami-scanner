@@ -40,10 +40,15 @@ import (
 const (
 	// DefaultTimeout is the default timeout for SSH connections and authentication.
 	DefaultTimeout = time.Duration(sccpb.Default_SSHClientConfig_TimeoutSeconds) * time.Second
+
+	// maxKeyboardInteractiveEmptyPrompts bounds consecutive or total zero-prompt
+	// informational challenges accepted in a single keyboard-interactive attempt.
+	maxKeyboardInteractiveEmptyPrompts = 3
 )
 
 var (
-	// ErrPasswordAuthUnsupported indicates the SSH server does not support password authentication.
+	// ErrPasswordAuthUnsupported indicates the SSH server does not support password
+	// or keyboard-interactive authentication.
 	ErrPasswordAuthUnsupported = errors.New("ssh: password authentication unsupported")
 
 	// ErrNotSSHService indicates the target network service is not a valid SSH service.
@@ -109,16 +114,16 @@ func (c *Client) dial(ctx context.Context, addr string, clientConfig *ssh.Client
 	return ssh.NewClient(sshConn, chans, reqs), nil
 }
 
-// Connect attempts SSH password authentication with the given username and password.
-// On success, it returns an established *ssh.Client connection (which the caller is responsible
-// for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
-// ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
+// Connect attempts SSH password or keyboard-interactive authentication with the given username
+// and password. On success, it returns an established *ssh.Client connection (which the caller is
+// responsible for closing). On failure, it returns a classified sentinel error (such as
+// ErrAuthFailed, ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
 func (c *Client) Connect(ctx context.Context, addr, username, password string) (*ssh.Client, error) {
 	return c.ConnectWithPasswords(ctx, addr, username, password)
 }
 
-// ConnectWithPasswords attempts SSH password authentication with the given username by trying
-// the provided passwords sequentially within a single SSH connection handshake.
+// ConnectWithPasswords attempts SSH password or keyboard-interactive authentication with the given
+// username by trying the provided passwords sequentially within a single SSH connection handshake.
 // On success, it returns an established *ssh.Client connection (which the caller is responsible
 // for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
 // ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
@@ -134,18 +139,30 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 	defer cancel()
 
 	attempt := 0
+	abort := false
 	clientConfig := &ssh.ClientConfig{
 		User: username,
 		AuthCallback: func(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
-			if !slices.Contains(authCtx.AllowedMethods, "password") {
-				return nil, ErrPasswordAuthUnsupported
+			if abort {
+				return nil, ErrAuthFailed
+			}
+			hasPassword := slices.Contains(authCtx.AllowedMethods, "password")
+			hasKeyboardInteractive := slices.Contains(authCtx.AllowedMethods, "keyboard-interactive")
+			if !hasPassword && !hasKeyboardInteractive {
+				if attempt == 0 {
+					return nil, ErrPasswordAuthUnsupported
+				}
+				return nil, ErrAuthFailed
 			}
 			if attempt >= len(passwords) {
 				return nil, ErrAuthFailed
 			}
 			password := passwords[attempt]
 			attempt++
-			return ssh.Password(password), nil
+			if hasPassword {
+				return ssh.Password(password), nil
+			}
+			return keyboardInteractiveAuth(password, &abort), nil
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         timeout,
@@ -163,6 +180,27 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 		return nil, ClassifyError(err)
 	}
 	return client, nil
+}
+
+func keyboardInteractiveAuth(password string, abort *bool) ssh.AuthMethod {
+	emptyPrompts := 0
+	passwordSent := false
+	return ssh.KeyboardInteractive(func(_, _ string, questions []string, _ []bool) ([]string, error) {
+		if len(questions) == 0 {
+			emptyPrompts++
+			if emptyPrompts > maxKeyboardInteractiveEmptyPrompts {
+				*abort = true
+				return nil, ErrAuthFailed
+			}
+			return nil, nil
+		}
+		if passwordSent || len(questions) != 1 {
+			*abort = true
+			return nil, ErrAuthFailed
+		}
+		passwordSent = true
+		return []string{password}, nil
+	})
 }
 
 // ClassifyError maps standard network and SSH errors into canonical sentinels wrapping the original error.
@@ -189,7 +227,7 @@ func ClassifyError(err error) error {
 		return fmt.Errorf("%w: %w", ErrPasswordAuthUnsupported, err)
 	}
 
-	if strings.Contains(msg, "attempted methods") && strings.Contains(msg, "password") {
+	if strings.Contains(msg, "attempted methods") && (strings.Contains(msg, "password") || strings.Contains(msg, "keyboard-interactive")) {
 		return fmt.Errorf("%w: %w", ErrAuthFailed, err)
 	}
 	if containsAny(msg, authFailedSubstrings) {

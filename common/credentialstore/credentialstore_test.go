@@ -61,6 +61,77 @@ func TestCredentialStore_NewWithDefaults(t *testing.T) {
 	}
 }
 
+func TestCredentialStore_DefaultPasswordsParity(t *testing.T) {
+	store, err := NewWithDefaults()
+	if err != nil {
+		t.Fatalf("NewWithDefaults() failed: %v", err)
+	}
+
+	rootPasses := store.Passwords("root")
+	seen := make(map[string]bool, len(rootPasses))
+	for _, p := range rootPasses {
+		if seen[p] {
+			t.Errorf("store.Passwords(%q) contains duplicate password %q", "root", p)
+		}
+		seen[p] = true
+	}
+
+	expectedPasswords := []string{
+		"root",
+		"admin",
+		"Password",
+		"Password1",
+		"1qaz2wsx",
+		"123qwe",
+		"qwertyuiop",
+		"121212",
+		"s3cret",
+		"changethis",
+	}
+
+	for _, want := range expectedPasswords {
+		if !seen[want] {
+			t.Errorf("store.Passwords(%q) missing expected password %q", "root", want)
+		}
+	}
+}
+
+func TestCredentialStore_DefaultUsernamesParity(t *testing.T) {
+	store, err := NewWithDefaults()
+	if err != nil {
+		t.Fatalf("NewWithDefaults() failed: %v", err)
+	}
+
+	users := store.Usernames()
+	if len(users) != 23 {
+		t.Errorf("len(store.Usernames()) = %d, want 23", len(users))
+	}
+	seen := make(map[string]bool, len(users))
+	for _, u := range users {
+		if seen[u] {
+			t.Errorf("store.Usernames() contains duplicate username %q", u)
+		}
+		seen[u] = true
+	}
+
+	expectedUsernames := []string{
+		"root",
+		"admin",
+		"postgres",
+		"anonymous",
+		"cisco",
+		"rstudio",
+		"tomcat",
+		"manager",
+	}
+
+	for _, want := range expectedUsernames {
+		if !seen[want] {
+			t.Errorf("store.Usernames() missing expected username %q", want)
+		}
+	}
+}
+
 func TestCredentialStore_Copy(t *testing.T) {
 	store := New()
 	store.AddUser("user1")

@@ -19,6 +19,10 @@ and helper accessors expose the bound address, port, and a Tsunami
 -   **`NewWithPasswordAuth(user, password string) (*Server, error)`**: Starts a
     `Server` configured with password authentication that accepts only the exact
     `user` and `password` pair and rejects all other credentials.
+-   **`NewWithKeyboardInteractiveAuth(user, password string) (*Server,
+    error)`**: Starts a `Server` configured with only keyboard-interactive
+    authentication that accepts only the exact `user` and `password` pair and
+    rejects all other credentials.
 -   **`NewPublicKeyOnly() (*Server, error)`**: Starts a `Server` configured with
     only a rejecting `PublicKeyCallback` so password authentication is
     advertised as unsupported during SSH handshakes.

@@ -369,7 +369,8 @@ func TestTemplatedWeakCredentialsDetector(t *testing.T) {
 			}
 
 			bfCfg := bfpb.BruteForceConfig_builder{
-				MaxRequestsPerSecond: proto.Int32(0),
+				MaxAttemptsPerService: proto.Int32(0),
+				MaxRequestsPerSecond:  proto.Int32(0),
 			}.Build()
 			if tc.bfCfg != nil {
 				proto.Merge(bfCfg, tc.bfCfg)
@@ -575,7 +576,8 @@ func runTestCase(t *testing.T, plugin *tpb.TemplatedPlugin, tc *ttpb.TemplatedPl
 	cfgProto := cpb.Config_builder{
 		Plugins: cpb.PluginsConfig_builder{
 			Bruteforce: bfpb.BruteForceConfig_builder{
-				MaxRequestsPerSecond: proto.Int32(0),
+				MaxAttemptsPerService: proto.Int32(0),
+				MaxRequestsPerSecond:  proto.Int32(0),
 			}.Build(),
 		}.Build(),
 	}.Build()

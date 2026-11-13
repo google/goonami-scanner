@@ -302,6 +302,150 @@ func TestConnect(t *testing.T) {
 			password:    "anypass",
 			expectedErr: ErrPasswordAuthUnsupported,
 		},
+		{
+			name: "when_keyboard_interactive_valid_credentials_returns_client",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.NewWithKeyboardInteractiveAuth("admin", "secret")
+				if err != nil {
+					t.Fatalf("fakessh.NewWithKeyboardInteractiveAuth failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: nil,
+		},
+		{
+			name: "when_keyboard_interactive_invalid_password_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.NewWithKeyboardInteractiveAuth("admin", "secret")
+				if err != nil {
+					t.Fatalf("fakessh.NewWithKeyboardInteractiveAuth failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "wrongpass",
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_keyboard_interactive_with_info_banners_and_valid_password_returns_client",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if _, err := client("Notice", "Banner line", nil, nil); err != nil {
+							return nil, err
+						}
+						answers, err := client("", "", []string{"Password: "}, []bool{false})
+						if err != nil {
+							return nil, err
+						}
+						if _, err := client("Authenticated", "Welcome", nil, nil); err != nil {
+							return nil, err
+						}
+						if len(answers) == 1 && c.User() == "admin" && answers[0] == "secret" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: nil,
+		},
+		{
+			name: "when_keyboard_interactive_excessive_empty_prompts_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						for range maxKeyboardInteractiveEmptyPrompts + 2 {
+							if _, err := client("", "info", nil, nil); err != nil {
+								return nil, err
+							}
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_keyboard_interactive_multi_question_prompt_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if _, err := client("", "", []string{"Password: ", "OTP: "}, []bool{false, false}); err != nil {
+							return nil, err
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_keyboard_interactive_second_prompt_in_same_attempt_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if _, err := client("", "", []string{"Password: "}, []bool{false}); err != nil {
+							return nil, err
+						}
+						if _, err := client("", "", []string{"Verification code: "}, []bool{false}); err != nil {
+							return nil, err
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_partial_success_leaves_only_publickey_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+						return nil, &ssh.PartialSuccessError{
+							Next: ssh.ServerAuthCallbacks{
+								PublicKeyCallback: func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+									return nil, fmt.Errorf("publickey required")
+								},
+							},
+						}
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "admin",
+			password:    "secret",
+			expectedErr: ErrAuthFailed,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -369,6 +513,44 @@ func TestConnectWithPasswords(t *testing.T) {
 				srv, err := fakessh.NewWithPasswordAuth("root", "secret")
 				if err != nil {
 					t.Fatalf("fakessh.NewWithPasswordAuth failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{"wrong1", "wrong2"},
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_keyboard_interactive_second_password_in_connection_succeeds_returns_client",
+			serverSetup: func(t *testing.T) (string, func()) {
+				var attempts atomic.Int32
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						answers, err := client("", "", []string{"Password: "}, []bool{false})
+						if err != nil {
+							return nil, err
+						}
+						if attempts.Add(1) == 2 && c.User() == "root" && len(answers) == 1 && answers[0] == "second" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{"first", "second"},
+			expectedErr: nil,
+		},
+		{
+			name: "when_keyboard_interactive_all_passwords_fail_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.NewWithKeyboardInteractiveAuth("root", "secret")
+				if err != nil {
+					t.Fatalf("fakessh.NewWithKeyboardInteractiveAuth failed: %v", err)
 				}
 				return srv.Addr(), func() { _ = srv.Close() }
 			},
@@ -610,6 +792,11 @@ func TestClassifyError(t *testing.T) {
 		{
 			name:        "when_attempted_methods_password_returns_auth_failed",
 			inputErr:    errors.New("ssh: handshake failed: ssh: unable to authenticate, attempted methods [none password], no supported methods remain"),
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name:        "when_attempted_methods_keyboard_interactive_returns_auth_failed",
+			inputErr:    errors.New("ssh: handshake failed: ssh: unable to authenticate, attempted methods [none keyboard-interactive], no supported methods remain"),
 			expectedErr: ErrAuthFailed,
 		},
 		{

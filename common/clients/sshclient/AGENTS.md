@@ -17,15 +17,16 @@ non-SSH endpoints.
     `DefaultTimeout`. Passing `nil` initializes a client configured with
     `DefaultTimeout`.
 -   **`(*Client).Connect(ctx, addr, username, password)`**: Dials `addr` within
-    `Timeout()`, skips host key verification, and attempts a single password
-    login for `username`. Returns an established `*ssh.Client` (which the caller
-    must close) on success, or an error classified via `ClassifyError` on
-    failure.
+    `Timeout()`, skips host key verification, and attempts a single password or
+    keyboard-interactive login for `username`. Returns an established
+    `*ssh.Client` (which the caller must close) on success, or an error
+    classified via `ClassifyError` on failure.
 -   **`(*Client).ConnectWithPasswords(ctx, addr, username, passwords...)`**:
     Dials `addr` within `Timeout()`, skips host key verification, and tries each
-    password sequentially within a single SSH connection handshake for
-    `username`. Returns an established `*ssh.Client` on success, or an error
-    classified via `ClassifyError` on failure.
+    password sequentially (using `"password"` authentication when advertised, or
+    falling back to `"keyboard-interactive"`) within a single SSH connection
+    handshake for `username`. Returns an established `*ssh.Client` on success,
+    or an error classified via `ClassifyError` on failure.
 -   **`(*Client).Timeout()` and `DefaultTimeout`**: `Timeout()` returns the
     active connection and authentication `time.Duration`, defaulting to
     `DefaultTimeout` (`5s`) when no positive timeout is configured.
@@ -34,9 +35,9 @@ non-SSH endpoints.
     `nil`, context errors, and unrecognized errors unchanged.
 -   **Sentinel Errors (`ErrAuthFailed`, `ErrPasswordAuthUnsupported`,
     `ErrNotSSHService`)**: Classify connection outcomes via `errors.Is` into
-    rejected credentials (`ErrAuthFailed`), servers disallowing password login
-    (`ErrPasswordAuthUnsupported`), or unreachable/non-SSH targets
-    (`ErrNotSSHService`).
+    rejected credentials (`ErrAuthFailed`), servers disallowing password and
+    keyboard-interactive login (`ErrPasswordAuthUnsupported`), or
+    unreachable/non-SSH targets (`ErrNotSSHService`).
 -   **`SSHClientConfig` (`ssh_client_config.proto`)**: Protobuf configuration
     message (`goonami.proto.configs.clients.SSHClientConfig`) defining
     `timeout_seconds` (default `5`) for SSH connection and authentication

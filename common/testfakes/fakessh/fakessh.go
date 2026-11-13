@@ -144,6 +144,24 @@ func NewWithPasswordAuth(user, password string) (*Server, error) {
 	return New(cfg)
 }
 
+// NewWithKeyboardInteractiveAuth starts a fake SSH server that advertises only
+// keyboard-interactive authentication and accepts the given username and password.
+func NewWithKeyboardInteractiveAuth(user, password string) (*Server, error) {
+	cfg := &ssh.ServerConfig{
+		KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+			answers, err := client("", "", []string{"Password: "}, []bool{false})
+			if err != nil {
+				return nil, err
+			}
+			if len(answers) == 1 && c.User() == user && answers[0] == password {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("auth failed")
+		},
+	}
+	return New(cfg)
+}
+
 // NewPublicKeyOnly starts a fake SSH server that only supports public key authentication.
 func NewPublicKeyOnly() (*Server, error) {
 	cfg := &ssh.ServerConfig{

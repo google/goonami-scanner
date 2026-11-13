@@ -95,6 +95,58 @@ func TestNew(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "when_keyboard_interactive_auth_configured_authenticates_valid_credentials",
+			serverSetup: func(t *testing.T) *Server {
+				s, err := NewWithKeyboardInteractiveAuth("admin", "secret")
+				if err != nil {
+					t.Fatalf("NewWithKeyboardInteractiveAuth failed: %v", err)
+				}
+				return s
+			},
+			authSetup: func() *ssh.ClientConfig {
+				return &ssh.ClientConfig{
+					User: "admin",
+					Auth: []ssh.AuthMethod{
+						ssh.KeyboardInteractive(func(_, _ string, questions []string, _ []bool) ([]string, error) {
+							if len(questions) == 0 {
+								return nil, nil
+							}
+							return []string{"secret"}, nil
+						}),
+					},
+					HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+					Timeout:         2 * time.Second,
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "when_keyboard_interactive_auth_invalid_password_fails_handshake",
+			serverSetup: func(t *testing.T) *Server {
+				s, err := NewWithKeyboardInteractiveAuth("admin", "secret")
+				if err != nil {
+					t.Fatalf("NewWithKeyboardInteractiveAuth failed: %v", err)
+				}
+				return s
+			},
+			authSetup: func() *ssh.ClientConfig {
+				return &ssh.ClientConfig{
+					User: "admin",
+					Auth: []ssh.AuthMethod{
+						ssh.KeyboardInteractive(func(_, _ string, questions []string, _ []bool) ([]string, error) {
+							if len(questions) == 0 {
+								return nil, nil
+							}
+							return []string{"wrongpassword"}, nil
+						}),
+					},
+					HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+					Timeout:         2 * time.Second,
+				}
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tc := range testCases {

@@ -94,6 +94,28 @@ func startFakePasswordSSHServer(t *testing.T, validCreds map[string]string, acce
 	return svc
 }
 
+func startFakeKeyboardInteractiveSSHServer(t *testing.T, validCreds map[string]string) *networkservicepb.NetworkService {
+	t.Helper()
+	srv, err := fakessh.New(&ssh.ServerConfig{
+		KeyboardInteractiveCallback: func(c ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+			answers, err := client("", "", []string{"Password: "}, []bool{false})
+			if err != nil {
+				return nil, err
+			}
+			wantPass, ok := validCreds[c.User()]
+			if ok && len(answers) == 1 && answers[0] == wantPass {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("auth failed")
+		},
+	})
+	if err != nil {
+		t.Fatalf("fakessh.New() failed: %v", err)
+	}
+	t.Cleanup(func() { _ = srv.Close() })
+	return srv.NetworkService()
+}
+
 func startCancelingSSHServer(t *testing.T, cancel context.CancelFunc) *networkservicepb.NetworkService {
 	t.Helper()
 	srv, err := fakessh.New(&ssh.ServerConfig{
@@ -198,6 +220,31 @@ func TestNewAndOptions(t *testing.T) {
 	}
 }
 
+func TestNew_DefaultStorePrependsEmptyPassword(t *testing.T) {
+	d, err := New(t.Context(), config.Default())
+	if err != nil {
+		t.Fatalf("New() unexpected error: %v", err)
+	}
+	bfDetector, ok := d.(*bruteforce.Detector)
+	if !ok {
+		t.Fatalf("New() type = %T, want *bruteforce.Detector", d)
+	}
+	store := bfDetector.CredentialStore()
+	if len(store.Usernames()) == 0 {
+		t.Fatal("CredentialStore().Usernames() is empty, want default usernames")
+	}
+	for _, u := range store.Usernames() {
+		passes := store.Passwords(u)
+		if len(passes) == 0 {
+			t.Errorf("CredentialStore().Passwords(%q) is empty, want empty password first", u)
+			continue
+		}
+		if passes[0] != "" {
+			t.Errorf("CredentialStore().Passwords(%q)[0] = %q, want %q", u, passes[0], "")
+		}
+	}
+}
+
 func TestDetect_WeakCredentialsFound(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -270,6 +317,66 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 			report := reports.GetDetectionReports()[0]
 			if got := report.GetDetectionStatus(); got != detectionpb.DetectionStatus_VULNERABILITY_VERIFIED {
 				t.Errorf("report.GetDetectionStatus() = %v, want %v", got, detectionpb.DetectionStatus_VULNERABILITY_VERIFIED)
+			}
+
+			gotCreds := extractFoundCredentials(reports)
+			if diff := cmp.Diff(tc.wantCreds, gotCreds); diff != "" {
+				t.Errorf("Detect(%v) credentials diff (-want +got):\n%s", svc, diff)
+			}
+		})
+	}
+}
+
+func TestDetect_KeyboardInteractiveAndEmptyPassword(t *testing.T) {
+	tests := []struct {
+		name        string
+		serverSetup func(t *testing.T) *networkservicepb.NetworkService
+		opts        *bruteforce.Options
+		wantCreds   []string
+	}{
+		{
+			name: "when_keyboard_interactive_weak_password_matches_returns_verified_finding",
+			serverSetup: func(t *testing.T) *networkservicepb.NetworkService {
+				return startFakeKeyboardInteractiveSSHServer(t, map[string]string{"root": "Password"})
+			},
+			opts: &bruteforce.Options{
+				CredentialStore: smallStore([]string{"root"}, []string{"wrong", "Password"}),
+			},
+			wantCreds: []string{"root:Password"},
+		},
+		{
+			name: "when_keyboard_interactive_password_is_strong_returns_no_findings",
+			serverSetup: func(t *testing.T) *networkservicepb.NetworkService {
+				return startFakeKeyboardInteractiveSSHServer(t, map[string]string{"root": "Str0ng_UnGu3ssable_P@ssw0rd!"})
+			},
+			opts: &bruteforce.Options{
+				CredentialStore: smallStore([]string{"root"}, []string{"123456", "Password"}),
+			},
+			wantCreds: nil,
+		},
+		{
+			name: "when_empty_password_matches_with_default_store_returns_verified_finding",
+			serverSetup: func(t *testing.T) *networkservicepb.NetworkService {
+				return startFakePasswordSSHServer(t, map[string]string{"root": ""}, false)
+			},
+			opts:      nil,
+			wantCreds: []string{"root:"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			svc := tc.serverSetup(t)
+
+			detector, err := NewWithOptions(ctx, fastBruteForceConfig(true), tc.opts)
+			if err != nil {
+				t.Fatalf("NewWithOptions() unexpected error: %v", err)
+			}
+
+			reports, err := detector.Detect(ctx, svc)
+			if err != nil {
+				t.Fatalf("Detect(%v) unexpected error: %v", svc, err)
 			}
 
 			gotCreds := extractFoundCredentials(reports)

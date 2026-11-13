@@ -5,6 +5,7 @@ guest
 info
 adm
 mysql
+postgres
 user
 administrator
 oracle
@@ -15,3 +16,8 @@ ansible
 ec2-user
 vagrant
 azureuser
+anonymous
+cisco
+rstudio
+tomcat
+manager

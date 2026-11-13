@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/clients/sshclient"
+	"github.com/google/goonami-scanner/common/credentialstore"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
@@ -56,8 +57,26 @@ func New(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 }
 
 // NewWithOptions creates a new SSH weak credentials detector with custom
-// brute-force options.
+// brute-force options. When opts is nil, the default credential store is loaded
+// with an empty password ("") prepended for every user.
 func NewWithOptions(ctx context.Context, cfg *config.Config, opts *bruteforce.Options) (*bruteforce.Detector, error) {
+	if cfg == nil {
+		return nil, bruteforce.ErrConfigNil
+	}
+	if opts == nil {
+		store, err := credentialstore.NewWithDefaults()
+		if err != nil {
+			return nil, err
+		}
+		for _, user := range store.Usernames() {
+			if err := store.PrependPasswordForUser(user, ""); err != nil {
+				return nil, err
+			}
+		}
+		opts = &bruteforce.Options{
+			CredentialStore: store,
+		}
+	}
 	handler := &Handler{
 		client: sshclient.New(cfg),
 	}
