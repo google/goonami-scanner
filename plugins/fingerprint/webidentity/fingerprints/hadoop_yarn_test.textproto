@@ -1,0 +1,463 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "hadoop_yarn"
+
+tests: [
+  {
+    name: "yarn_3_5_0_default_resourcemanager_ui_and_rest_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" },
+          { name: "Location", value: "http://target.test:8080/cluster" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/cluster"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=8\">\n  <meta http-equiv=\"Content-type\" content=\"text/html; charset=UTF-8\">\n  <title>\n    About the Cluster\n  </title>\n  <link rel=\"stylesheet\" href=\"/static/yarn.css\">\n  <script type=\"text/javascript\" src=\"/static/yarn.dt.plugins.js\">\n  </script>\n  <table><tbody><tr><td id=\"navcell\"><div id=\"nav\"><h3>Cluster</h3><ul><li><a href=\"/cluster/cluster\">About</a></li><li><a href=\"/cluster/apps\">Applications</a></li></ul></div></td><td class=\"content\"><div><table id=\"metricsoverview\"><caption>Cluster Metrics</caption></table><table><tr class=\"odd\"><th>ResourceManager state:</th><td>STARTED</td></tr><tr class=\"odd\"><th>ResourceManager version:</th><td>\n                  3.5.0 from dbcc7cd797100e6b32cd84f85b53a5193a5f9af0 by cnauroth source checksum 5f245a9fee3873666f512583c5df5d7 on 2026-03-24T17:01Z\n                </td></tr><tr class=\"even\"><th>Hadoop version:</th><td>\n                  3.5.0 from dbcc7cd797100e6b32cd84f85b53a5193a5f9af0 by cnauroth source checksum 64582ed0a62a169c39a19c734a8f33b5 on 2026-03-24T16:56Z\n                </td></tr></table></div></td></tr></tbody></table>\n</html>\n"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" },
+          { name: "X-Content-Type-Options", value: "nosniff" }
+        ]
+        body: "{\"clusterInfo\":{\"id\":1793793933624,\"startedOn\":1793793933624,\"state\":\"STARTED\",\"haState\":\"ACTIVE\",\"rmStateStoreName\":\"org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore\",\"resourceManagerVersion\":\"3.5.0\",\"resourceManagerBuildVersion\":\"3.5.0 from dbcc7cd797100e6b32cd84f85b53a5193a5f9af0 by cnauroth source checksum 5f245a9fee3873666f512583c5df5d7\",\"resourceManagerVersionBuiltOn\":\"2026-03-24T17:01Z\",\"hadoopVersion\":\"3.5.0\",\"hadoopBuildVersion\":\"3.5.0 from dbcc7cd797100e6b32cd84f85b53a5193a5f9af0 by cnauroth source checksum 64582ed0a62a169c39a19c734a8f33b5\",\"hadoopVersionBuiltOn\":\"2026-03-24T16:56Z\",\"haZooKeeperConnectionState\":\"Could not find leader elector. Verify both HA and automatic failover are enabled.\"}}"
+      },
+      {
+        uri: "/static/yarn.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "/* Styles for YARN */\n* { margin: 0; border: 0 }\n#themeswitcher { margin: 1em 0.25em }\n"
+      },
+      {
+        uri: "/static/yarn.dt.plugins.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "if (!jQuery.fn.dataTableExt.fnVersionCheck(\"1.7.5\")) { alert(\"These plugins requires dataTables 1.7.5+\"); }\nfunction parseHadoopID(data, type, full) { return data; }\nfunction parseHadoopProgress(data, type, full) { return data; }\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.5.0"]
+      }
+    ]
+  },
+  {
+    name: "yarn_3_4_1_default_resourcemanager_and_xml_cluster_info"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" },
+          { name: "Location", value: "http://target.test:8080/cluster" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml; charset=utf-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><clusterInfo><id>1793793702947</id><startedOn>1793793702947</startedOn><state>STARTED</state><haState>ACTIVE</haState><rmStateStoreName>org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore</rmStateStoreName><resourceManagerVersion>3.4.1</resourceManagerVersion><resourceManagerBuildVersion>3.4.1 from 4d7825309348956336b8f06a08322b78422849b1 by mthakur source checksum 934da0c5743762b7851cfcff9f8ca2</resourceManagerBuildVersion><resourceManagerVersionBuiltOn>2024-10-09T15:14Z</resourceManagerVersionBuiltOn><hadoopVersion>3.4.1</hadoopVersion><hadoopBuildVersion>3.4.1 from 4d7825309348956336b8f06a08322b78422849b1 by mthakur source checksum 7292fe9dba5e2e44e3a9f763fce3e680</hadoopBuildVersion><hadoopVersionBuiltOn>2024-10-09T14:57Z</hadoopVersionBuiltOn></clusterInfo>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.4.1"]
+      }
+    ]
+  },
+  {
+    name: "yarn_3_3_6_configured_pseudo_auth_mode"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "PseudoAuth" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html>\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html;charset=ISO-8859-1\"/>\n<title>Error 401 Authentication required</title>\n</head>\n<body><h2>HTTP ERROR 401 Authentication required</h2>\n<table>\n<tr><th>URI:</th><td>/</td></tr>\n<tr><th>STATUS:</th><td>401</td></tr>\n<tr><th>MESSAGE:</th><td>Authentication required</td></tr>\n<tr><th>SERVLET:</th><td>org.apache.hadoop.http.WebServlet-61e94def</td></tr>\n</table>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/cluster"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "PseudoAuth" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401 Authentication required</h2></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "PseudoAuth" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401 Authentication required</h2></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info?user.name=dr.who"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" },
+          { name: "Set-Cookie", value: "hadoop.auth=\"u=dr.who&p=dr.who&t=simple&e=1793829437&s=sig\"; Path=/; HttpOnly" }
+        ]
+        body: "{\"clusterInfo\":{\"id\":1793793395000,\"startedOn\":1793793395000,\"state\":\"STARTED\",\"haState\":\"ACTIVE\",\"rmStateStoreName\":\"org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore\",\"resourceManagerVersion\":\"3.3.6\",\"resourceManagerBuildVersion\":\"3.3.6 from 1be78238728da9266a4f88195058f08fd012bf9c by ubuntu source checksum d42eb795a5eadb0febf5e44a7f87a9\",\"resourceManagerVersionBuiltOn\":\"2023-06-18T08:31Z\",\"hadoopVersion\":\"3.3.6\",\"hadoopBuildVersion\":\"3.3.6 from 1be78238728da9266a4f88195058f08fd012bf9c by ubuntu source checksum 5652179ad55f76cb287d9c633bb53bbd\",\"hadoopVersionBuiltOn\":\"2023-06-18T08:22Z\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.3.6"]
+      }
+    ]
+  },
+  {
+    name: "yarn_2_10_2_configured_pseudo_auth_mode_with_root_redirect"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" },
+          { name: "Location", value: "http://target.test:8080/cluster" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/cluster"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "PseudoAuth" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401</h2><p>Problem accessing /cluster. Reason:<pre>    Authentication required</pre></p><hr /><i><small>Powered by Jetty://</small></i></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "PseudoAuth" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401</h2></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info?user.name=dr.who"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" },
+          { name: "Set-Cookie", value: "hadoop.auth=\"u=dr.who&p=dr.who&t=simple&e=1793829240&s=sig\"; Path=/; HttpOnly" }
+        ]
+        body: "{\"clusterInfo\":{\"id\":1793793219201,\"startedOn\":1793793219201,\"state\":\"STARTED\",\"haState\":\"ACTIVE\",\"rmStateStoreName\":\"org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore\",\"resourceManagerVersion\":\"2.10.2\",\"resourceManagerBuildVersion\":\"2.10.2 from 965fd380006fa78b2315668fbc7eb432e1d8200f by ubuntu source checksum 332d49624f6d2fd6fb142861335c939\",\"resourceManagerVersionBuiltOn\":\"2022-05-24T22:40Z\",\"hadoopVersion\":\"2.10.2\",\"hadoopBuildVersion\":\"2.10.2 from 965fd380006fa78b2315668fbc7eb432e1d8200f by ubuntu source checksum d3ab737f7788f05d467784f0a86573fe\",\"hadoopVersionBuiltOn\":\"2022-05-24T22:35Z\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.2"]
+      }
+    ]
+  },
+  {
+    name: "yarn_2_10_2_classic_about_page_when_rest_api_blocked"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" },
+          { name: "Location", value: "http://target.test:8080/cluster" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "403 Forbidden"
+      },
+      {
+        uri: "/cluster"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n  <title>\n    All Applications\n  </title>\n  <link rel=\"stylesheet\" href=\"/static/yarn.css\">\n  <script type=\"text/javascript\" src=\"/static/yarn.dt.plugins.js\"></script>\n  <a href=\"/cluster/cluster\">About</a>\n  <script type=\"text/javascript\">var appsTableData=[]</script>\n</html>\n"
+      },
+      {
+        uri: "/cluster/cluster"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n  <title>\n    About the Cluster\n  </title>\n  <link rel=\"stylesheet\" href=\"/static/yarn.css\">\n  <script type=\"text/javascript\" src=\"/static/yarn.dt.plugins.js\">\n  </script>\n  <a href=\"/cluster/cluster\">About</a>\n  <table>\n    <tr class=\"odd\">\n      <th>\n        ResourceManager state:\n      </th>\n      <td>\n        STARTED\n      </td>\n    </tr>\n    <tr class=\"odd\">\n      <th>\n        ResourceManager version:\n      </th>\n      <td>\n        2.10.2 from 965fd380006fa78b2315668fbc7eb432e1d8200f by ubuntu source checksum 332d49624f6d2fd6fb142861335c939 on 2022-05-24T22:40Z\n      </td>\n    </tr>\n    <tr class=\"even\">\n      <th>\n        Hadoop version:\n      </th>\n      <td>\n        2.10.2 from 965fd380006fa78b2315668fbc7eb432e1d8200f by ubuntu source checksum d3ab737f7788f05d467784f0a86573fe on 2022-05-24T22:35Z\n      </td>\n    </tr>\n  </table>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.2"]
+      }
+    ]
+  },
+  {
+    name: "yarn_2_10_2_ui2_legacy_title_and_version"
+    mock_responses: [
+      {
+        uri: "/ui2/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <title>YarnUi</title>\n    <link rel=\"stylesheet\" href=\"assets/vendor.css\">\n    <link rel=\"stylesheet\" href=\"assets/yarn-ui.css\">\n  </head>\n  <body>\n    <script src=\"config/configs.env\" integrity=\"\"></script>\n    <script src=\"assets/vendor.js\"></script>\n    <script src=\"assets/yarn-ui.js\"></script>\n  </body>\n</html>\n"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"clusterInfo\":{\"id\":1793793219201,\"state\":\"STARTED\",\"rmStateStoreName\":\"org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore\",\"resourceManagerVersion\":\"2.10.2\",\"hadoopVersion\":\"2.10.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.2"]
+      }
+    ]
+  },
+  {
+    name: "yarn_subpath_deployment_via_ui2_index_and_rest_api"
+    mock_responses: [
+      {
+        uri: "/yarn/ui2/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <title>YARN</title>\n    <link rel=\"stylesheet\" href=\"assets/vendor.css\">\n    <link rel=\"stylesheet\" href=\"assets/yarn-ui.css\">\n  </head>\n  <body>\n    <script src=\"config/configs.env\" integrity=\"\"></script>\n    <script src=\"assets/vendor.js\"></script>\n    <script src=\"assets/yarn-ui.js\"></script>\n  </body>\n</html>\n"
+      },
+      {
+        uri: "/yarn/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\"clusterInfo\":{\"id\":1793793702947,\"state\":\"STARTED\",\"haState\":\"ACTIVE\",\"rmStateStoreName\":\"org.apache.hadoop.yarn.server.resourcemanager.recovery.NullRMStateStore\",\"resourceManagerVersion\":\"3.4.1\",\"hadoopVersion\":\"3.4.1\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/yarn"
+        expected_versions: ["3.4.1"]
+      }
+    ]
+  },
+  {
+    name: "yarn_subpath_deployment_via_ui2_js_bundle_without_version"
+    mock_responses: [
+      {
+        uri: "/gateway/default/yarn/ui2/assets/yarn-ui.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "\"use strict\";define(\"yarn-ui/adapters/cluster-info\",[\"exports\",\"yarn-ui/adapters/abstract\"],function(exports,_yarnUiAdaptersAbstract){exports[\"default\"]=_yarnUiAdaptersAbstract[\"default\"].extend({address:\"rmWebAddress\",restNameSpace:\"cluster\",serverName:\"RM\"});});require(\"yarn-ui/app\")[\"default\"].create({\"hosts\":{\"rmWebAddress\":\"localhost:8088\"},\"namespaces\":{\"cluster\":\"ws/v1/cluster\"},\"name\":\"yarn-ui\",\"version\":\"0.0.1+dbcc7cd7\"});\n"
+      },
+      {
+        uri: "/gateway/default/yarn/ws/v1/cluster/info"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"error\":\"Forbidden\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/gateway/default/yarn"
+      }
+    ]
+  },
+  {
+    name: "negative_apache_hadoop_hdfs_namenode_3_3_6"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" },
+          { name: "Location", value: "http://target.test:8080/index.html" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/hadoop.css\" />\n<title>Namenode information</title>\n</head>\n<body>\n<script type=\"text/javascript\" src=\"dfshealth.js\"></script>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/cluster"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" }
+        ]
+        body: "<html><head><title>Error 404 Not Found</title></head><body><h2>HTTP ERROR 404 Not Found</h2><table><tr><th>URI:</th><td>/cluster</td></tr><tr><th>SERVLET:</th><td>org.apache.hadoop.http.WebServlet-359df09a</td></tr></table></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" }
+        ]
+        body: "<html><head><title>Error 404 Not Found</title></head><body><h2>HTTP ERROR 404 Not Found</h2><table><tr><th>URI:</th><td>/ws/v1/cluster/info</td></tr><tr><th>SERVLET:</th><td>org.apache.hadoop.http.WebServlet-359df09a</td></tr></table></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_apache_hadoop_mapreduce_jobhistory_server_3_3_6"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" },
+          { name: "Location", value: "http://target.test:8080/jobhistory" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/static/yarn.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "/* Styles for YARN */\n* { margin: 0; border: 0 }\n#themeswitcher { margin: 1em 0.25em }\n"
+      },
+      {
+        uri: "/static/yarn.dt.plugins.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "if (!jQuery.fn.dataTableExt.fnVersionCheck(\"1.7.5\")) { alert(\"These plugins requires dataTables 1.7.5+\"); }\nfunction parseHadoopID(data, type, full) { return data; }\nfunction parseHadoopProgress(data, type, full) { return data; }\n"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\"><html><title>Sorry, got error 404</title><link rel=\"stylesheet\" href=\"/static/yarn.css\"><script type=\"text/javascript\" src=\"/static/yarn.dt.plugins.js\"></script></html>"
+      },
+      {
+        uri: "/cluster/cluster"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" }
+        ]
+        body: "<html><head><title>Error 404 Not Found</title></head><body><h2>HTTP ERROR 404 Not Found</h2></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_kerberos_protected_hadoop_httpserver2_daemon"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "Negotiate" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401 Authentication required</h2></body></html>"
+      },
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "Negotiate" },
+          { name: "Set-Cookie", value: "hadoop.auth=; Path=/; HttpOnly" }
+        ]
+        body: "<html><head><title>Error 401 Authentication required</title></head><body><h2>HTTP ERROR 401 Authentication required</h2></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_catchall"
+    mock_responses: [
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA</title></head><body><!-- clusterInfo resourceManagerVersion=\"3.5.0\" hadoopVersion=\"3.5.0\" rmStateStoreName --></body></html>"
+      },
+      {
+        uri: "/static/yarn.dt.plugins.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>dataTableExt parseHadoopID parseHadoopProgress</body></html>"
+      },
+      {
+        uri: "/ui2/assets/yarn-ui.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>yarn-ui/adapters/ rmWebAddress ws/v1/cluster yarn-ui/app</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_cluster_info_api"
+    mock_responses: [
+      {
+        uri: "/ws/v1/cluster/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"clusterInfo\":{\"name\":\"k8s-prod\",\"version\":\"1.29.0\",\"status\":\"healthy\"}}"
+      }
+    ]
+  }
+]

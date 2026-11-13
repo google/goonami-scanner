@@ -1,0 +1,1314 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Craft CMS"
+  author: "Goonami team"
+  software: "craftcms"
+  description: "Detects Craft CMS content management system across installed and pending-install states and extracts version."
+}
+
+steps: [
+  # Control Panel login page (HTTP 200 when installed, HTTP 503 when pending install or offline)
+  # that extracts the published /cpresources/<hex>/cp.js asset path for version identification.
+  {
+    name: "craftcms_admin_login_extract_cp_js"
+    path_suffix: "/admin/login"
+    response: {
+      status_codes: [200, 503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.LoginForm"
+          },
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            regexp: "Craft isn(?:'|’)t installed yet"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "cp_js_path"
+            from_body: {}
+            regexp: "[\"'][^\"']*?(cpresources/[0-9a-f]+/cp\\.js(?:\\?v=[0-9]+)?)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Pending-install or system-offline HTTP 503 root page that embeds window.Craft and cp.js.
+  {
+    name: "craftcms_offline_root_extract_cp_js"
+    path: "/"
+    response: {
+      status_codes: [503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "cp_js_path"
+            from_body: {}
+            regexp: "[\"'][^\"']*?(cpresources/[0-9a-f]+/cp\\.js(?:\\?v=[0-9]+)?)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Control Panel web installer wizard (/admin/install returns HTTP 200 when pending installation)
+  # that extracts the published /cpresources/<hex>/cp.js asset path.
+  {
+    name: "craftcms_admin_install_extract_cp_js"
+    path_suffix: "/admin/install"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:install|cp)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.Installer"
+          },
+          {
+            body: {}
+            contains: "<title>Install Craft CMS"
+          },
+          {
+            body: {}
+            contains: "begininstall"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "cp_js_path"
+            from_body: {}
+            regexp: "[\"'][^\"']*?(cpresources/[0-9a-f]+/cp\\.js(?:\\?v=[0-9]+)?)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Non-rewrite query-parameter Control Panel login route (/index.php?p=admin/login)
+  # that extracts cp.js for version identification.
+  {
+    name: "craftcms_index_php_admin_login_extract_cp_js"
+    path: "/index.php?p=admin/login"
+    response: {
+      status_codes: [200, 503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.LoginForm"
+          },
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            regexp: "Craft isn(?:'|’)t installed yet"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "cp_js_path"
+            from_body: {}
+            regexp: "[\"'][^\"']*?(cpresources/[0-9a-f]+/cp\\.js(?:\\?v=[0-9]+)?)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Non-rewrite query-parameter Control Panel installer route (/index.php?p=admin/install)
+  # that extracts cp.js for version identification.
+  {
+    name: "craftcms_index_php_admin_install_extract_cp_js"
+    path: "/index.php?p=admin/install"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:install|cp)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.Installer"
+          },
+          {
+            body: {}
+            contains: "<title>Install Craft CMS"
+          },
+          {
+            body: {}
+            contains: "begininstall"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "cp_js_path"
+            from_body: {}
+            regexp: "[\"'][^\"']*?(cpresources/[0-9a-f]+/cp\\.js(?:\\?v=[0-9]+)?)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Published Control Panel core JS bundle (/cpresources/<hex>/cp.js) verified via Craft/Garnish
+  # class definitions and mapped to exact Craft CMS versions via SHA-256 and Murmur3-128 hashes.
+  {
+    name: "craftcms_cp_js_version"
+    path: "/{{ cp_js_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "Garnish\\.(?:Base|Modal)"
+          },
+          {
+            body: {}
+            regexp: "Craft\\.(?:Accordion|Uploader|ElementIndex|LoginForm)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          body_sha256_hash: "5e6f71c2020faf0af5d2720805774b8421562727e5f1ea8daeab318e9c71d762"
+          static_versions: ["3.9.15"]
+        },
+        {
+          body_sha256_hash: "2dec004511920ddf9d1fae445c0d3aeeeb0feaa6451e341bbc9e26263b5ebcf9"
+          static_versions: ["4.8.2", "4.8.3", "4.8.4"]
+        },
+        {
+          body_sha256_hash: "123d9321967234dea7346455daed16a0bd0b0cf890d261daa5e0196fd1193848"
+          static_versions: ["4.18.9"]
+        },
+        {
+          body_sha256_hash: "d5996d28843421e6c28ce6dcf2b0ffb5db65c8c99a13ca55af7400fac7d600e5"
+          static_versions: ["5.11.5"]
+        },
+        {
+          murmur3_hash: "59b412778205b3f7b29a2a054fd0d363"
+          static_versions: ["3.8.7"]
+        },
+        {
+          murmur3_hash: "91b13359d6af0cfd786a14899df84a15"
+          static_versions: ["3.8.8", "3.8.9", "3.8.10", "3.8.10.2", "3.8.11"]
+        },
+        {
+          murmur3_hash: "78ffcf0b998ed55f8a8a1440e6729457"
+          static_versions: ["3.8.12"]
+        },
+        {
+          murmur3_hash: "daff72eda04ff56ad2025d04782e1efb"
+          static_versions: ["3.8.13", "3.8.14", "3.8.15", "3.8.16"]
+        },
+        {
+          murmur3_hash: "baa7e5e306cfd2c6e5555160acb73988"
+          static_versions: ["3.8.17"]
+        },
+        {
+          murmur3_hash: "e23d5bca9e622e1621a51eea2aacfb81"
+          static_versions: ["3.9.0", "3.9.1"]
+        },
+        {
+          murmur3_hash: "5a03a81a378630c01515fb6deb71997c"
+          static_versions: ["3.9.2"]
+        },
+        {
+          murmur3_hash: "159bdfb135d6159764a250686b094d00"
+          static_versions: ["3.9.3", "3.9.4", "3.9.5", "3.9.6"]
+        },
+        {
+          murmur3_hash: "716f5b818531e702febe4ce344766de7"
+          static_versions: ["3.9.10"]
+        },
+        {
+          murmur3_hash: "3b841046ff6cb3f664507cec03809c85"
+          static_versions: ["3.9.11", "3.9.12"]
+        },
+        {
+          murmur3_hash: "5ec947d7c5b62b6af4e93481d486564e"
+          static_versions: ["4.4.6"]
+        },
+        {
+          murmur3_hash: "a4bbded48511dd547ded0b967dbfb829"
+          static_versions: ["4.4.7", "4.4.7.1"]
+        },
+        {
+          murmur3_hash: "17b03ffec8f81ab9fa00baa60d945fe1"
+          static_versions: ["4.4.8", "4.4.9", "4.4.10", "4.4.10.1", "4.4.11"]
+        },
+        {
+          murmur3_hash: "2939f15df4f6ae51b9323ebc319d6cc6"
+          static_versions: ["4.4.12"]
+        },
+        {
+          murmur3_hash: "7100f70bcbac47e03ae7a63a1af8729c"
+          static_versions: ["4.4.13"]
+        },
+        {
+          murmur3_hash: "6ed1a2477e56f8d7feb7267914705d73"
+          static_versions: ["4.4.14"]
+        },
+        {
+          murmur3_hash: "3fd0f285a57f4328a5e257f2250f3108"
+          static_versions: ["4.4.15"]
+        },
+        {
+          murmur3_hash: "b82b6294919ce1a6f39e7c5746088c74"
+          static_versions: ["4.4.16", "4.4.16.1"]
+        },
+        {
+          murmur3_hash: "dad3fb60f6eb2233e6332ef057af24c5"
+          static_versions: ["4.4.17"]
+        },
+        {
+          murmur3_hash: "73ab8a3da21314f369e8d22bc0a4f111"
+          static_versions: ["4.5.0-beta.1"]
+        },
+        {
+          murmur3_hash: "c0ec05f5db730cd0e121c649163f0465"
+          static_versions: ["4.5.0-beta.2"]
+        },
+        {
+          murmur3_hash: "ef82b250ec83d1ec85de79e8ba7df85e"
+          static_versions: ["4.5.0"]
+        },
+        {
+          murmur3_hash: "6e3d96763d31c04e42c1320d9a1d30ef"
+          static_versions: ["4.5.1"]
+        },
+        {
+          murmur3_hash: "1f963b5829833c109ebfd853e74afa91"
+          static_versions: ["4.5.2"]
+        },
+        {
+          murmur3_hash: "a0ac0a9f1fc37ac665782f9a96472909"
+          static_versions: ["4.5.3"]
+        },
+        {
+          murmur3_hash: "8fa60b3232e481b2d19526bb59566d5f"
+          static_versions: ["4.5.4"]
+        },
+        {
+          murmur3_hash: "1f6c99477f0c1e75a9273f133d6ab133"
+          static_versions: ["4.5.5"]
+        },
+        {
+          murmur3_hash: "b138e56529e39ffb352dfb1a90a9cacd"
+          static_versions: ["4.5.6"]
+        },
+        {
+          murmur3_hash: "36ab27d4e1f20a2fd5bf9ce3f4076e06"
+          static_versions: ["4.5.6.1"]
+        },
+        {
+          murmur3_hash: "e051a79a3b25c9c79af4bb714a2d4e64"
+          static_versions: ["4.5.7"]
+        },
+        {
+          murmur3_hash: "b8257ab248b0106fb818b080ccf7ac63"
+          static_versions: ["4.5.8", "4.5.9", "4.5.10", "4.5.11", "4.5.11.1"]
+        },
+        {
+          murmur3_hash: "81a54389ce7a51530b30c5913913febb"
+          static_versions: ["4.5.12"]
+        },
+        {
+          murmur3_hash: "6f2179d7e0c3b844b882ae315f45730e"
+          static_versions: ["4.5.13"]
+        },
+        {
+          murmur3_hash: "c863c271d10f702231c723930f9d5428"
+          static_versions: ["4.5.14"]
+        },
+        {
+          murmur3_hash: "c2eb0f7c32edd858c6b9b7ec8abe9fce"
+          static_versions: ["4.5.15"]
+        },
+        {
+          murmur3_hash: "df33c02bf0de163f64fb2aadad4d854f"
+          static_versions: ["4.6.0-RC1"]
+        },
+        {
+          murmur3_hash: "762caf60305d1092c472dfce991e4882"
+          static_versions: ["4.6.0"]
+        },
+        {
+          murmur3_hash: "1e00bc493b90c07eb3cb9b0ea7ce3abc"
+          static_versions: ["4.6.1", "4.7.0", "4.7.1"]
+        },
+        {
+          murmur3_hash: "65c8cadacf62a81f0563b8b56d4f194b"
+          static_versions: ["4.7.2", "4.7.2.1"]
+        },
+        {
+          murmur3_hash: "4ed63abe11570aac43877dbcf7fae76d"
+          static_versions: ["4.7.3"]
+        },
+        {
+          murmur3_hash: "76656b02eb5cc1ea9c2d8a27e947d15c"
+          static_versions: ["4.7.4"]
+        },
+        {
+          murmur3_hash: "bca2a614277bb6ff716a66a13261afde"
+          static_versions: ["4.8.0"]
+        },
+        {
+          murmur3_hash: "333413ef819ceb2f25c51d60d2d76c72"
+          static_versions: ["4.8.1"]
+        },
+        {
+          murmur3_hash: "3f96c6d35a1644a4bfffcbec2b2929bb"
+          static_versions: ["4.8.2", "4.8.3", "4.8.4"]
+        }
+      ]
+    }
+  },
+  # Passive subpath discovery and verification via published Craft CMS /cpresources/<hex>/ JS bundles
+  # (note: Yii2 crc32 hex directory hashes can be 6-8 hex characters, e.g. 57abd98 in Craft 5).
+  {
+    name: "craftcms_cpresources_js_asset"
+    path_regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish|login|install)\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "Garnish\\.(?:Base|Modal)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.Accordion"
+          },
+          {
+            body: {}
+            contains: "Craft.LoginForm"
+          },
+          {
+            body: {}
+            contains: "Craft.Installer"
+          },
+          {
+            body: {}
+            contains: "Garnish.$win"
+          },
+          {
+            body: {}
+            contains: "garnish.js.LICENSE.txt"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          body_sha256_hash: "5e6f71c2020faf0af5d2720805774b8421562727e5f1ea8daeab318e9c71d762"
+          static_versions: ["3.9.15"]
+        },
+        {
+          body_sha256_hash: "2dec004511920ddf9d1fae445c0d3aeeeb0feaa6451e341bbc9e26263b5ebcf9"
+          static_versions: ["4.8.2", "4.8.3", "4.8.4"]
+        },
+        {
+          body_sha256_hash: "123d9321967234dea7346455daed16a0bd0b0cf890d261daa5e0196fd1193848"
+          static_versions: ["4.18.9"]
+        },
+        {
+          body_sha256_hash: "d5996d28843421e6c28ce6dcf2b0ffb5db65c8c99a13ca55af7400fac7d600e5"
+          static_versions: ["5.11.5"]
+        },
+        {
+          murmur3_hash: "59b412778205b3f7b29a2a054fd0d363"
+          static_versions: ["3.8.7"]
+        },
+        {
+          murmur3_hash: "91b13359d6af0cfd786a14899df84a15"
+          static_versions: ["3.8.8", "3.8.9", "3.8.10", "3.8.10.2", "3.8.11"]
+        },
+        {
+          murmur3_hash: "78ffcf0b998ed55f8a8a1440e6729457"
+          static_versions: ["3.8.12"]
+        },
+        {
+          murmur3_hash: "daff72eda04ff56ad2025d04782e1efb"
+          static_versions: ["3.8.13", "3.8.14", "3.8.15", "3.8.16"]
+        },
+        {
+          murmur3_hash: "baa7e5e306cfd2c6e5555160acb73988"
+          static_versions: ["3.8.17"]
+        },
+        {
+          murmur3_hash: "e23d5bca9e622e1621a51eea2aacfb81"
+          static_versions: ["3.9.0", "3.9.1"]
+        },
+        {
+          murmur3_hash: "5a03a81a378630c01515fb6deb71997c"
+          static_versions: ["3.9.2"]
+        },
+        {
+          murmur3_hash: "159bdfb135d6159764a250686b094d00"
+          static_versions: ["3.9.3", "3.9.4", "3.9.5", "3.9.6"]
+        },
+        {
+          murmur3_hash: "716f5b818531e702febe4ce344766de7"
+          static_versions: ["3.9.10"]
+        },
+        {
+          murmur3_hash: "3b841046ff6cb3f664507cec03809c85"
+          static_versions: ["3.9.11", "3.9.12"]
+        },
+        {
+          murmur3_hash: "5ec947d7c5b62b6af4e93481d486564e"
+          static_versions: ["4.4.6"]
+        },
+        {
+          murmur3_hash: "a4bbded48511dd547ded0b967dbfb829"
+          static_versions: ["4.4.7", "4.4.7.1"]
+        },
+        {
+          murmur3_hash: "17b03ffec8f81ab9fa00baa60d945fe1"
+          static_versions: ["4.4.8", "4.4.9", "4.4.10", "4.4.10.1", "4.4.11"]
+        },
+        {
+          murmur3_hash: "2939f15df4f6ae51b9323ebc319d6cc6"
+          static_versions: ["4.4.12"]
+        },
+        {
+          murmur3_hash: "7100f70bcbac47e03ae7a63a1af8729c"
+          static_versions: ["4.4.13"]
+        },
+        {
+          murmur3_hash: "6ed1a2477e56f8d7feb7267914705d73"
+          static_versions: ["4.4.14"]
+        },
+        {
+          murmur3_hash: "3fd0f285a57f4328a5e257f2250f3108"
+          static_versions: ["4.4.15"]
+        },
+        {
+          murmur3_hash: "b82b6294919ce1a6f39e7c5746088c74"
+          static_versions: ["4.4.16", "4.4.16.1"]
+        },
+        {
+          murmur3_hash: "dad3fb60f6eb2233e6332ef057af24c5"
+          static_versions: ["4.4.17"]
+        },
+        {
+          murmur3_hash: "73ab8a3da21314f369e8d22bc0a4f111"
+          static_versions: ["4.5.0-beta.1"]
+        },
+        {
+          murmur3_hash: "c0ec05f5db730cd0e121c649163f0465"
+          static_versions: ["4.5.0-beta.2"]
+        },
+        {
+          murmur3_hash: "ef82b250ec83d1ec85de79e8ba7df85e"
+          static_versions: ["4.5.0"]
+        },
+        {
+          murmur3_hash: "6e3d96763d31c04e42c1320d9a1d30ef"
+          static_versions: ["4.5.1"]
+        },
+        {
+          murmur3_hash: "1f963b5829833c109ebfd853e74afa91"
+          static_versions: ["4.5.2"]
+        },
+        {
+          murmur3_hash: "a0ac0a9f1fc37ac665782f9a96472909"
+          static_versions: ["4.5.3"]
+        },
+        {
+          murmur3_hash: "8fa60b3232e481b2d19526bb59566d5f"
+          static_versions: ["4.5.4"]
+        },
+        {
+          murmur3_hash: "1f6c99477f0c1e75a9273f133d6ab133"
+          static_versions: ["4.5.5"]
+        },
+        {
+          murmur3_hash: "b138e56529e39ffb352dfb1a90a9cacd"
+          static_versions: ["4.5.6"]
+        },
+        {
+          murmur3_hash: "36ab27d4e1f20a2fd5bf9ce3f4076e06"
+          static_versions: ["4.5.6.1"]
+        },
+        {
+          murmur3_hash: "e051a79a3b25c9c79af4bb714a2d4e64"
+          static_versions: ["4.5.7"]
+        },
+        {
+          murmur3_hash: "b8257ab248b0106fb818b080ccf7ac63"
+          static_versions: ["4.5.8", "4.5.9", "4.5.10", "4.5.11", "4.5.11.1"]
+        },
+        {
+          murmur3_hash: "81a54389ce7a51530b30c5913913febb"
+          static_versions: ["4.5.12"]
+        },
+        {
+          murmur3_hash: "6f2179d7e0c3b844b882ae315f45730e"
+          static_versions: ["4.5.13"]
+        },
+        {
+          murmur3_hash: "c863c271d10f702231c723930f9d5428"
+          static_versions: ["4.5.14"]
+        },
+        {
+          murmur3_hash: "c2eb0f7c32edd858c6b9b7ec8abe9fce"
+          static_versions: ["4.5.15"]
+        },
+        {
+          murmur3_hash: "df33c02bf0de163f64fb2aadad4d854f"
+          static_versions: ["4.6.0-RC1"]
+        },
+        {
+          murmur3_hash: "762caf60305d1092c472dfce991e4882"
+          static_versions: ["4.6.0"]
+        },
+        {
+          murmur3_hash: "1e00bc493b90c07eb3cb9b0ea7ce3abc"
+          static_versions: ["4.6.1", "4.7.0", "4.7.1"]
+        },
+        {
+          murmur3_hash: "65c8cadacf62a81f0563b8b56d4f194b"
+          static_versions: ["4.7.2", "4.7.2.1"]
+        },
+        {
+          murmur3_hash: "4ed63abe11570aac43877dbcf7fae76d"
+          static_versions: ["4.7.3"]
+        },
+        {
+          murmur3_hash: "76656b02eb5cc1ea9c2d8a27e947d15c"
+          static_versions: ["4.7.4"]
+        },
+        {
+          murmur3_hash: "bca2a614277bb6ff716a66a13261afde"
+          static_versions: ["4.8.0"]
+        },
+        {
+          murmur3_hash: "333413ef819ceb2f25c51d60d2d76c72"
+          static_versions: ["4.8.1"]
+        },
+        {
+          murmur3_hash: "3f96c6d35a1644a4bfffcbec2b2929bb"
+          static_versions: ["4.8.2", "4.8.3", "4.8.4"]
+        }
+      ]
+    }
+  },
+  # Standalone Control Panel login check (when /cpresources/ assets are served from an external CDN).
+  {
+    name: "craftcms_admin_login"
+    path_suffix: "/admin/login"
+    response: {
+      status_codes: [200, 503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.LoginForm"
+          },
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            regexp: "Craft isn(?:'|’)t installed yet"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+    }
+  },
+  # Standalone pending-install or offline 503 root page check (when /cpresources/ is on an external CDN).
+  {
+    name: "craftcms_offline_root"
+    path: "/"
+    response: {
+      status_codes: [503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+    }
+  },
+  # Standalone Control Panel web installer check (when /cpresources/ is on an external CDN).
+  {
+    name: "craftcms_admin_install"
+    path_suffix: "/admin/install"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:install|cp)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.Installer"
+          },
+          {
+            body: {}
+            contains: "<title>Install Craft CMS"
+          },
+          {
+            body: {}
+            contains: "begininstall"
+          }
+        ]
+      }
+    }
+  },
+  # Default Welcome template rendered on freshly installed Craft CMS 3.x, 4.x, and 5.x instances.
+  {
+    name: "craftcms_welcome_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Welcome to Craft CMS</title>"
+          },
+          {
+            body: {}
+            contains: "Thanks for installing Craft CMS!"
+          },
+          {
+            body: {}
+            regexp: "href=[\"']https://craftcms\\.com/docs/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/"
+          },
+          {
+            body: {}
+            regexp: "(?i)Go to your control panel"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          }
+        ]
+      }
+    }
+  },
+  # Anonymous UsersController::actionSessionInfo JSON endpoint (/actions/users/session-info).
+  # Detects installed Craft CMS 3.x, 4.x, and 5.x sites even when front-end templates are customized
+  # and the Control Panel trigger (/admin) is renamed or restricted.
+  {
+    name: "craftcms_users_session_info"
+    path: "/actions/users/session-info"
+    headers: [
+      { name: "Accept" value: "application/json" }
+    ]
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"isGuest\"\\s*:\\s*(?:true|false)"
+          },
+          {
+            body: {}
+            contains: "\"csrfTokenValue\""
+          },
+          {
+            body: {}
+            contains: "\"timeout\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"CRAFT_CSRF_TOKEN\""
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Standalone non-rewrite Control Panel login check (/index.php?p=admin/login).
+  {
+    name: "craftcms_index_php_admin_login"
+    path: "/index.php?p=admin/login"
+    response: {
+      status_codes: [200, 503]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:cp|garnish)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.LoginForm"
+          },
+          {
+            body: {}
+            contains: "CRAFT_CSRF_TOKEN"
+          },
+          {
+            body: {}
+            regexp: "Craft isn(?:'|’)t installed yet"
+          },
+          {
+            body: {}
+            contains: "<title>Service Unavailable"
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          }
+        ]
+      }
+    }
+  },
+  # Standalone non-rewrite Control Panel installer check (/index.php?p=admin/install).
+  {
+    name: "craftcms_index_php_admin_install"
+    path: "/index.php?p=admin/install"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.Craft\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\"baseApiUrl\"\\s*:\\s*\"https?:\\\\?/\\\\?/api\\.craftcms\\.com\\\\?/v[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "/cpresources/[0-9a-f]+/(?:install|cp)\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Craft.Installer"
+          },
+          {
+            body: {}
+            contains: "<title>Install Craft CMS"
+          },
+          {
+            body: {}
+            contains: "begininstall"
+          }
+        ]
+      }
+    }
+  },
+  # Non-rewrite UsersController::actionSessionInfo JSON endpoint (/index.php?p=actions/users/session-info).
+  {
+    name: "craftcms_index_php_users_session_info"
+    path: "/index.php?p=actions/users/session-info"
+    headers: [
+      { name: "Accept" value: "application/json" }
+    ]
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"isGuest\"\\s*:\\s*(?:true|false)"
+          },
+          {
+            body: {}
+            contains: "\"csrfTokenValue\""
+          },
+          {
+            body: {}
+            contains: "\"timeout\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"CRAFT_CSRF_TOKEN\""
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:CRAFT_CSRF_TOKEN|CraftSessionId)="
+          },
+          {
+            header: { name: "X-Powered-By" }
+            contains: "Craft CMS"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Non-rewrite pending-install JSON 503 check on Control Panel session-info route
+  # (/index.php?p=admin/actions/users/session-info returns {"message":"Craft isn’t installed yet."}).
+  {
+    name: "craftcms_index_php_admin_session_info_uninstalled"
+    path: "/index.php?p=admin/actions/users/session-info"
+    headers: [
+      { name: "Accept" value: "application/json" }
+    ]
+    response: {
+      status_codes: [503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"Service Unavailable\""
+          },
+          {
+            body: {}
+            regexp: "\"message\"\\s*:\\s*\"Craft isn(?:'|’)t installed yet\\.\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery and cryptographic verification via Craft CMS Control Panel favicon
+  # (identical SHA-256 across Craft CMS 3.x, 4.x, and 5.x).
+  {
+    name: "craftcms_cpresources_favicon"
+    path_regexp: "/cpresources/[0-9a-f]+/images/icons/favicon\\.ico$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "0d9545cf81cfb8ee346dea824d7953c61a40b604ad51b06e476a04156a8b7551"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Control Panel login (200 installed / 503 pending-install or offline) + cp.js version extraction.
+  {
+    steps: [
+      "craftcms_admin_login_extract_cp_js",
+      "craftcms_cp_js_version"
+    ]
+  },
+  # Pending-install / offline 503 root page + cp.js version extraction.
+  {
+    steps: [
+      "craftcms_offline_root_extract_cp_js",
+      "craftcms_cp_js_version"
+    ]
+  },
+  # Pending-install web installer (/admin/install) + cp.js version extraction.
+  {
+    steps: [
+      "craftcms_admin_install_extract_cp_js",
+      "craftcms_cp_js_version"
+    ]
+  },
+  # Non-rewrite Control Panel login (/index.php?p=admin/login) + cp.js version extraction.
+  {
+    steps: [
+      "craftcms_index_php_admin_login_extract_cp_js",
+      "craftcms_cp_js_version"
+    ]
+  },
+  # Non-rewrite Control Panel installer (/index.php?p=admin/install) + cp.js version extraction.
+  {
+    steps: [
+      "craftcms_index_php_admin_install_extract_cp_js",
+      "craftcms_cp_js_version"
+    ]
+  },
+  # Passive /cpresources/<hex>/ core JS asset detection and cp.js version extraction.
+  {
+    steps: ["craftcms_cpresources_js_asset"]
+  },
+  # Standalone Control Panel login fallback (e.g. external CDN for /cpresources/).
+  {
+    steps: ["craftcms_admin_login"]
+  },
+  # Standalone pending-install / offline 503 root page fallback.
+  {
+    steps: ["craftcms_offline_root"]
+  },
+  # Standalone Control Panel web installer fallback.
+  {
+    steps: ["craftcms_admin_install"]
+  },
+  # Default Welcome page on freshly installed Craft CMS root.
+  {
+    steps: ["craftcms_welcome_root"]
+  },
+  # Unauthenticated /actions/users/session-info JSON check (custom frontend + custom cpTrigger).
+  {
+    steps: ["craftcms_users_session_info"]
+  },
+  # Non-rewrite standalone Control Panel login fallback.
+  {
+    steps: ["craftcms_index_php_admin_login"]
+  },
+  # Non-rewrite standalone Control Panel installer fallback.
+  {
+    steps: ["craftcms_index_php_admin_install"]
+  },
+  # Non-rewrite installed session-info JSON fallback.
+  {
+    steps: ["craftcms_index_php_users_session_info"]
+  },
+  # Non-rewrite pending-install 503 JSON session-info fallback.
+  {
+    steps: ["craftcms_index_php_admin_session_info_uninstalled"]
+  },
+  # Passive /cpresources/<hex>/images/icons/favicon.ico paired with session-info or admin login.
+  {
+    steps: [
+      "craftcms_cpresources_favicon",
+      "craftcms_users_session_info"
+    ]
+  },
+  {
+    steps: [
+      "craftcms_cpresources_favicon",
+      "craftcms_admin_login"
+    ]
+  }
+]

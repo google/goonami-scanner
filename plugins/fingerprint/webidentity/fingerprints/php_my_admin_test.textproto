@@ -1,0 +1,351 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "php_my_admin"
+
+tests: [
+  {
+    name: "phpmyadmin_4_8_0_1_legacy_4x_login_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=8c91a4207b39f1e26b4a9d8172e63f10; path=/; HttpOnly" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\" />\n  <title>phpMyAdmin</title>\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"themes/pmahomme/css/theme.css?v=4.8.0.1&amp;nocache=4298123412ltr&amp;server=1\" />\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/whitelist.php?v=4.8.0.1\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/vendor/jquery/jquery.min.js?v=4.8.0.1\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/functions.js?v=4.8.0.1\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\n// <![CDATA[\nPMA_commonParams.setAll({common_query:\"\",opendb_url:\"db_structure.php\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"3b5f8e1a9d4c2b7e\",PMA_VERSION:\"4.8.0.1\",auth_type:\"cookie\"});\n// ]]>\n</script>\n</head>\n<body id=\"loginform\">\n<div class=\"container\">\n<h1>Welcome to <bdo dir=\"ltr\" lang=\"en\">phpMyAdmin</bdo></h1>\n<form method=\"post\" id=\"login_form\" action=\"index.php\" name=\"login_form\" class=\"disableAjax login hide js-show\">\n<input type=\"text\" name=\"pma_username\" id=\"input_username\" value=\"\" size=\"24\" class=\"textfield\"/>\n<input type=\"password\" name=\"pma_password\" id=\"input_password\" value=\"\" size=\"24\" class=\"textfield\" />\n</form>\n</div>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.8.0.1"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_0_2_default_cookie_auth_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=58ed7d2c8b2c9a80ddfc7564ddf1b6de; path=/; HttpOnly" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>phpMyAdmin</title>\n  <link rel=\"icon\" href=\"favicon.ico\" type=\"image/x-icon\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.0.2&nocache=4774166978ltr&server=1\">\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/vendor/jquery/jquery.min.js?v=5.0.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/whitelist.php?v=5.0.2&amp;lang=en\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/ajax.js?v=5.0.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/functions.js?v=5.0.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\n// <![CDATA[\nCommonParams.setAll({common_query:\"?lang=en\",opendb_url:\"db_structure.php\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"6038767650667b2e4e2e653f2a573d76\",text_dir:\"ltr\",show_databases_navigation_as_tree:true,pma_text_default_tab:\"Browse\",pma_text_left_default_tab:\"Structure\",pma_text_left_default_tab2:false,LimitChars:\"50\",pftext:\"\",confirm:true,LoginCookieValidity:\"1440\",session_gc_maxlifetime:\"1440\",logged_in:false,is_https:false,rootPath:\"/\",arg_separator:\"&\",PMA_VERSION:\"5.0.2\",auth_type:\"cookie\",user:\"root\"});\n// ]]>\n</script>\n</head>\n<body>\n<div class=\"container\">\n<h1>Welcome to <bdo dir=\"ltr\" lang=\"en\">phpMyAdmin</bdo></h1>\n<form method=\"post\" id=\"login_form\" action=\"index.php?route=/\" name=\"login_form\">\n<input type=\"text\" name=\"pma_username\" id=\"input_username\" value=\"\" size=\"24\" class=\"textfield\">\n<input type=\"password\" name=\"pma_password\" id=\"input_password\" value=\"\" size=\"24\" class=\"textfield\">\n</form>\n</div>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0.2"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_0_4_arbitrary_server_mode"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=578dd2e6b06795e127cf3f12cda976a4; path=/; HttpOnly" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>phpMyAdmin</title>\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.0.4&nocache=4818745183ltr&server=1\">\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/ajax.js?v=5.0.4\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\nCommonParams.setAll({common_query:\"?lang=en\",opendb_url:\"db_structure.php\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"6f2c2b3a363b322357405b3a45794954\",text_dir:\"ltr\",PMA_VERSION:\"5.0.4\",auth_type:\"cookie\",user:\"root\"});\n</script>\n</head>\n<body>\n<h1>Welcome to <bdo dir=\"ltr\" lang=\"en\">phpMyAdmin</bdo></h1>\n<form method=\"post\" id=\"login_form\" action=\"index.php?route=/\" name=\"login_form\">\n<input type=\"text\" name=\"pma_servername\" id=\"input_servername\" value=\"\" size=\"24\" class=\"textfield\">\n<input type=\"text\" name=\"pma_username\" id=\"input_username\" value=\"\" size=\"24\" class=\"textfield\">\n</form>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0.4"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_1_3_config_auth_db_error_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "pma_lang=en; expires=Sat, 05-Dec-2026 07:29:51 GMT; Max-Age=2592000; path=/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Access denied!</title>\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.1.3&nocache=347625645ltr&server=1\">\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/ajax.js?v=5.1.3\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/functions.js?v=5.1.3\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\nCommonParams.setAll({common_query:\"lang=en\",opendb_url:\"index.php?route=/database/structure&lang=en\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"604e2242703e605c6162427b7e693e48\",text_dir:\"ltr\",PMA_VERSION:\"5.1.3\",auth_type:\"config\",user:\"root\"});\n</script>\n</head>\n<body>\n<div id=\"page_content\">\n<h1>Welcome to  phpMyAdmin </h1>\n<div class=\"alert alert-danger\" role=\"alert\"><h1>Error</h1><p><strong>MySQL said: </strong><code>Cannot connect: invalid settings.</code></p><p>mysqli::real_connect(): (HY000/2002): Connection refused</p></div>\n</div>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.1.3"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_2_2_default_cookie_auth_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=4fc883e4c6f0caadfe551c8a9acd2650; path=/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <link rel=\"icon\" href=\"favicon.ico\" type=\"image/x-icon\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.2.2\">\n  <title>phpMyAdmin</title>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/vendor/jquery/jquery.min.js?v=5.2.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/ajax.js?v=5.2.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/functions.js?v=5.2.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\n// <![CDATA[\nCommonParams.setAll({common_query:\"lang=en\",opendb_url:\"index.php?route=/database/structure&lang=en\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"6a295a266b252f7428664e2a4a6b3c59\",text_dir:\"ltr\",LimitChars:\"50\",pftext:\"\",confirm:true,LoginCookieValidity:\"1440\",session_gc_maxlifetime:\"1440\",logged_in:false,is_https:false,rootPath:true,arg_separator:\"&\",version:\"5.2.2\",auth_type:\"cookie\",user:\"root\"});\n// ]]>\n</script>\n</head>\n<body>\n<div id=\"page_content\">\n<div class=\"container\">\n<h1>Welcome to <bdo dir=\"ltr\" lang=\"en\">phpMyAdmin</bdo></h1>\n<form method=\"post\" id=\"login_form\" action=\"index.php?route=/\" name=\"login_form\" class=\"disableAjax hide js-show\">\n<input type=\"text\" name=\"pma_username\" id=\"input_username\" value=\"\" class=\"form-control\" autocomplete=\"username\">\n<input type=\"password\" name=\"pma_password\" id=\"input_password\" value=\"\" class=\"form-control\" autocomplete=\"current-password\">\n</form>\n</div>\n</div>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.2"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_2_2_http_basic_auth_401"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate" value: "Basic realm=\"phpMyAdmin db\"" },
+          { name: "Set-Cookie" value: "phpMyAdmin=e9725826690eedae0f6a7c5d4bba2f5e; path=/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.2.2\">\n  <title>Access denied!</title>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/ajax.js?v=5.2.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\nCommonParams.setAll({common_query:\"lang=en\",opendb_url:\"index.php?route=/database/structure&lang=en\",lang:\"en\",server:\"1\",table:\"\",db:\"\",token:\"7827435a23425a7e51777c3a2227522a\",text_dir:\"ltr\",version:\"5.2.2\",auth_type:\"http\",user:\"root\"});\n</script>\n</head>\n<body>\n<h1>Welcome to  phpMyAdmin</h1>\n<div class=\"alert alert-danger\" role=\"alert\">Wrong username/password. Access denied.</div>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.2"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_2_2_setup_wizard_and_changelog_version"
+    mock_responses: [
+      {
+        uri: "/setup/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=0c8fdd7adeff4ccd246156ceff13a178; path=/setup/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!doctype html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>phpMyAdmin setup</title>\n  <link href=\"../favicon.ico\" rel=\"icon\" type=\"image/x-icon\">\n  <link href=\"../setup/styles.css\" rel=\"stylesheet\" type=\"text/css\">\n  <script type=\"text/javascript\" src=\"../js/vendor/jquery/jquery.min.js\"></script>\n  <script type=\"text/javascript\" src=\"../js/dist/setup/ajax.js\"></script>\n  <script type=\"text/javascript\" src=\"../js/dist/config.js\"></script>\n  <script type=\"text/javascript\" src=\"../js/dist/setup/scripts.js\"></script>\n  <script type=\"text/javascript\" src=\"../js/messages.php\"></script>\n</head>\n<body>\n<h1>\n  <span class=\"blue\">php</span><span class=\"orange\">MyAdmin</span>\n  setup\n</h1>\n<div id=\"page\" class=\"setup-page\">\n<form id=\"select_lang\" method=\"post\">\n<select id=\"lang\" name=\"lang\" class=\"autosubmit\" lang=\"en\" dir=\"ltr\"><option value=\"en\" selected>English</option></select>\n</form>\n<h2>Overview</h2>\n<div id=\"footer\">\n  <a href=\"../url.php?url=https://www.phpmyadmin.net/\">phpMyAdmin homepage</a>\n</div>\n</div>\n</body>\n</html>"
+      },
+      {
+        uri: "/ChangeLog"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "phpMyAdmin - ChangeLog\n======================\n\n5.2.2 (2025-01-21)\n- issue        [security] Fix for a path disclosure leak in the Monitoring tab\n- issue        Prevent the user from deleting system databases\n- issue        Fix escaping of <html> tags in SQL export\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.2"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_1_3_doc_html_index_fallback"
+    mock_responses: [
+      {
+        uri: "/doc/html/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>Welcome to phpMyAdmin’s documentation! &#8212; phpMyAdmin 5.1.3 documentation</title>\n    <link rel=\"stylesheet\" href=\"_static/pygments.css\" type=\"text/css\" />\n    <link rel=\"stylesheet\" href=\"_static/classic.css\" type=\"text/css\" />\n    <script id=\"documentation_options\" data-url_root=\"./\" src=\"_static/documentation_options.js\"></script>\n  </head>\n  <body>\n    <div class=\"document\">\n      <h1>Welcome to phpMyAdmin’s documentation!</h1>\n    </div>\n  </body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.1.3"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_0_4_readme_and_theme_json_fallback"
+    mock_responses: [
+      {
+        uri: "/themes/pmahomme/theme.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n    \"name\": \"pmahomme\",\n    \"version\": \"5.0\",\n    \"description\": \"Default phpMyAdmin theme\",\n    \"author\": \"phpMyAdmin developers\",\n    \"url\": \"https://www.phpmyadmin.net/\",\n    \"supports\": [\"5.0\"]\n}\n"
+      },
+      {
+        uri: "/README"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "phpMyAdmin - Readme\n===================\n\nVersion 5.0.4\n\nA web interface for MySQL and MariaDB.\n\nhttps://www.phpmyadmin.net/\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0.4"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_2_2_subpath_via_passive_js_and_root"
+    mock_responses: [
+      {
+        uri: "/phpmyadmin/js/dist/functions.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript" }
+        ]
+        body: "/* global firstDayOfCalendar, maxInputVars, mysqlDocTemplate, themeImagePath */\nfunction pma_navigation_init() { return $('#pma_navigation'); }\n"
+      },
+      {
+        uri: "/phpmyadmin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "phpMyAdmin=4db21a73a77186f6971e17eb7b61127a; path=/phpmyadmin/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\" dir=\"ltr\">\n<head>\n  <meta charset=\"utf-8\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"./themes/pmahomme/css/theme.css?v=5.2.2\">\n  <title>phpMyAdmin</title>\n  <script data-cfasync=\"false\" type=\"text/javascript\" src=\"js/dist/ajax.js?v=5.2.2\"></script>\n  <script data-cfasync=\"false\" type=\"text/javascript\">\nCommonParams.setAll({common_query:\"lang=en\",opendb_url:\"index.php?route=/database/structure&lang=en\",lang:\"en\",server:\"1\",version:\"5.2.2\",auth_type:\"cookie\",user:\"root\"});\n</script>\n</head>\n<body>\n<h1>Welcome to <bdo dir=\"ltr\" lang=\"en\">phpMyAdmin</bdo></h1>\n<form method=\"post\" id=\"login_form\" action=\"index.php?route=/\" name=\"login_form\">\n<input type=\"text\" name=\"pma_username\" id=\"input_username\" value=\"\">\n</form>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/phpmyadmin"
+        expected_versions: ["5.2.2"]
+      }
+    ]
+  },
+  {
+    name: "phpmyadmin_5_0_2_subpath_via_passive_css_and_package_json"
+    mock_responses: [
+      {
+        uri: "/pma/themes/pmahomme/css/theme.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/css" }
+        ]
+        body: "#pma_navigation { width: 240px; position: fixed; }\n#pma_navigation_tree { position: relative; }\n#pma_errors { padding: 0; }\n"
+      },
+      {
+        uri: "/pma/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"phpmyadmin\",\n  \"version\": \"5.0.2\",\n  \"description\": \"A web interface for MySQL and MariaDB\",\n  \"repository\": \"https://github.com/phpmyadmin/phpmyadmin.git\"\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/pma"
+        expected_versions: ["5.0.2"]
+      }
+    ]
+  },
+  {
+    name: "negative_generic_html_spa_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>App Portal</title></head><body><div id=\"root\">Loading SPA...</div></body></html>"
+      },
+      {
+        uri: "/ChangeLog"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>App Portal</title></head><body>phpMyAdmin - ChangeLog\n5.2.2 (2025-01-21)</body></html>"
+      },
+      {
+        uri: "/README"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>App Portal</title></head><body>phpMyAdmin - Readme\nVersion 5.2.2\nhttps://www.phpmyadmin.net/</body></html>"
+      },
+      {
+        uri: "/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"name\":\"phpmyadmin\",\"version\":\"5.2.2\",\"repository\":\"https://github.com/phpmyadmin/phpmyadmin.git\"}</body></html>"
+      },
+      {
+        uri: "/themes/pmahomme/theme.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"name\":\"pmahomme\",\"description\":\"Default phpMyAdmin theme\",\"url\":\"https://www.phpmyadmin.net/\"}</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_adminer_login_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie" value: "adminer_sid=edd1e55fe355f172be7620ebed6626bd; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Login - Adminer</title><link rel=\"stylesheet\" type=\"text/css\" href=\"?file=default.css&amp;version=4.8.1\"><script src=\"?file=functions.js&amp;version=4.8.1\"></script></head><body><div id=\"content\"><form action=\"\" method=\"post\"><input name=\"auth[username]\"></form></div></body></html>"
+      },
+      {
+        uri: "/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"name\": \"my-mysql-dashboard\", \"version\": \"1.2.3\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_basic_auth_401"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate" value: "Basic realm=\"Restricted Database Area\"" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>401 Unauthorized</title></head><body><h1>Access denied!</h1></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_article_mentioning_phpmyadmin"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>phpMyAdmin 5.2.2 vs Adminer</title></head><body><h1>Welcome to phpMyAdmin Tutorial</h1><p>In phpMyAdmin, assets are loaded from <code>themes/pmahomme/css/theme.css?v=5.2.2</code> and <code>js/dist/functions.js?v=5.2.2</code>.</p></body></html>"
+      }
+    ]
+  }
+]

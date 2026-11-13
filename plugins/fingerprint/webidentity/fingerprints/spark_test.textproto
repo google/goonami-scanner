@@ -1,0 +1,385 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "spark"
+
+tests: [
+  {
+    name: "spark_3_1_3_standalone_master_unconfigured_idle_ui"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" },
+          { name: "Cache-Control" value: "no-cache, no-store, must-revalidate" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html><html>\n      <head>\n        <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/><link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('')</script>\n        <title>Spark Master at spark://10.88.0.4:7077</title>\n      </head>\n      <body>\n        <div class=\"container-fluid\">\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <h3 style=\"vertical-align: middle; display: inline-block;\">\n                <a style=\"text-decoration: none\" href=\"/\">\n                  <img src=\"/static/spark-logo-77x50px-hd.png\"/>\n                  <span class=\"version\" style=\"margin-right: 15px;\">3.1.3</span>\n                </a>\n                Spark Master at spark://10.88.0.4:7077\n              </h3>\n            </div>\n          </div>\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <ul class=\"list-unstyled\">\n                <li><strong>URL:</strong> spark://10.88.0.4:7077</li>\n                <li><strong>Alive Workers:</strong> 0</li>\n                <li><strong>Status:</strong> ALIVE</li>\n              </ul>\n            </div>\n          </div>\n        </div>\n      </body>\n    </html>"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/json;charset=utf-8" }
+        ]
+        body: "{\n  \"url\" : \"spark://10.88.0.4:7077\",\n  \"workers\" : [ ],\n  \"aliveworkers\" : 0,\n  \"cores\" : 0,\n  \"coresused\" : 0,\n  \"memory\" : 0,\n  \"memoryused\" : 0,\n  \"activeapps\" : [ ],\n  \"completedapps\" : [ ],\n  \"activedrivers\" : [ ],\n  \"completeddrivers\" : [ ],\n  \"status\" : \"ALIVE\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.1.3"]
+      }
+    ]
+  },
+  {
+    name: "spark_3_3_0_standalone_master_configured_cluster_with_worker_and_rest_url"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html><html>\n      <head>\n        <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/><link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('')</script>\n        <title>Spark Master at spark://10.88.0.5:7077</title>\n      </head>\n      <body>\n        <div class=\"container-fluid\">\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <h3 style=\"vertical-align: middle; display: inline-block;\">\n                <a style=\"text-decoration: none\" href=\"/\">\n                  <img src=\"/static/spark-logo-77x50px-hd.png\"/>\n                  <span class=\"version\" style=\"margin-right: 15px;\">3.3.0</span>\n                </a>\n                Spark Master at spark://10.88.0.5:7077\n              </h3>\n            </div>\n          </div>\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <ul class=\"list-unstyled\">\n                <li><strong>URL:</strong> spark://10.88.0.5:7077</li>\n                <li><strong>REST URL:</strong> spark://10.88.0.5:6066 <span class=\"rest-uri\"> (cluster mode)</span></li>\n                <li><strong>Alive Workers:</strong> 1</li>\n                <li><strong>Status:</strong> ALIVE</li>\n              </ul>\n            </div>\n          </div>\n        </div>\n      </body>\n    </html>"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/json;charset=utf-8" }
+        ]
+        body: "{\n  \"url\" : \"spark://10.88.0.5:7077\",\n  \"workers\" : [ {\n    \"id\" : \"worker-20261105095512-10.88.0.5-36021\",\n    \"host\" : \"10.88.0.5\",\n    \"port\" : 36021,\n    \"webuiaddress\" : \"http://10.88.0.5:8081\",\n    \"cores\" : 2,\n    \"coresused\" : 0,\n    \"coresfree\" : 2,\n    \"memory\" : 1024,\n    \"memoryused\" : 0,\n    \"memoryfree\" : 1024,\n    \"state\" : \"ALIVE\",\n    \"lastheartbeat\" : 1793872515000\n  } ],\n  \"aliveworkers\" : 1,\n  \"cores\" : 2,\n  \"coresused\" : 0,\n  \"memory\" : 1024,\n  \"memoryused\" : 0,\n  \"activeapps\" : [ ],\n  \"completedapps\" : [ ],\n  \"activedrivers\" : [ ],\n  \"completeddrivers\" : [ ],\n  \"status\" : \"ALIVE\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.3.0"]
+      }
+    ]
+  },
+  {
+    name: "spark_3_4_4_standalone_worker_ui_and_json"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html><html>\n      <head>\n        <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/><link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('')</script>\n        <title>Spark Worker at 10.88.0.6:35093</title>\n      </head>\n      <body>\n        <div class=\"container-fluid\">\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <h3 style=\"vertical-align: middle; display: inline-block;\">\n                <a style=\"text-decoration: none\" href=\"/\">\n                  <img src=\"/static/spark-logo-77x50px-hd.png\"/>\n                  <span class=\"version\" style=\"margin-right: 15px;\">3.4.4</span>\n                </a>\n                Spark Worker at 10.88.0.6:35093\n              </h3>\n            </div>\n          </div>\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <ul class=\"list-unstyled\">\n                <li><strong>ID:</strong> worker-20261105095711-10.88.0.6-35093</li>\n                <li><strong>Master URL:</strong> spark://0.0.0.0:7077</li>\n              </ul>\n              <p><a href=\"http://10.88.0.6:8080\">Back to Master</a></p>\n            </div>\n          </div>\n        </div>\n      </body>\n    </html>"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/json;charset=utf-8" }
+        ]
+        body: "{\n  \"id\" : \"worker-20261105095711-10.88.0.6-35093\",\n  \"masterurl\" : \"spark://0.0.0.0:7077\",\n  \"masterwebuiurl\" : \"http://10.88.0.6:8080\",\n  \"cores\" : 2,\n  \"coresused\" : 0,\n  \"memory\" : 1024,\n  \"memoryused\" : 0,\n  \"executors\" : [ ],\n  \"finishedexecutors\" : [ ]\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.4.4"]
+      }
+    ]
+  },
+  {
+    name: "spark_3_5_4_history_server_ui_and_api_v1_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html><html>\n      <head>\n        <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/><link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('')</script>\n        <title>History Server</title>\n      </head>\n      <body>\n        <div class=\"container-fluid\">\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <h3 style=\"vertical-align: middle; display: inline-block;\">\n                <a style=\"text-decoration: none\" href=\"/\">\n                  <img src=\"/static/spark-logo-77x50px-hd.png\"/>\n                  <span class=\"version\" style=\"margin-right: 15px;\">3.5.4</span>\n                </a>\n                History Server\n              </h3>\n            </div>\n          </div>\n          <div class=\"row\">\n            <div class=\"col-12\">\n              <ul class=\"list-unstyled\">\n                <li><strong>Event log directory:</strong> file:/tmp/spark-events</li>\n              </ul>\n              <script src=\"/static/historypage-common.js\"></script>\n            </div>\n          </div>\n        </div>\n      </body>\n    </html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"spark\" : \"3.5.4\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.5.4"]
+      }
+    ]
+  },
+  {
+    name: "spark_4_0_0_application_driver_ui_redirect_to_jobs_and_rest_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location" value: "http://target.test:8080/jobs/" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/jobs/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options" value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html><html>\n      <head>\n        <meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\"/><link rel=\"stylesheet\" href=\"/static/bootstrap.min.css\" type=\"text/css\"/><link rel=\"stylesheet\" href=\"/static/webui.css\" type=\"text/css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('');setAppBasePath('')</script>\n        <title>Spark shell - Spark Jobs</title>\n      </head>\n      <body>\n        <nav class=\"navbar navbar-expand-md navbar-light bg-light\">\n          <div class=\"navbar-brand\">\n            <a href=\"/\" class=\"brand\">\n              <img src=\"/static/spark-logo-77x50px-hd.png\" title=\"Spark 4.0.0\"/>\n            </a>\n          </div>\n          <span class=\"navbar-text\">\n            <strong title=\"Spark shell\">Spark shell</strong> application UI\n          </span>\n          <div class=\"collapse navbar-collapse\">\n            <p class=\"navbar-text\" style=\"margin-bottom:0\">\n              <strong style=\"margin-right:5px;\">Spark</strong>\n              <span class=\"version\">4.0.0</span>\n            </p>\n          </div>\n        </nav>\n      </body>\n    </html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"spark\" : \"4.0.0\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.0.0"]
+      }
+    ]
+  },
+  {
+    name: "spark_4_0_0_standalone_rest_submission_server_root_error"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json;charset=utf-8" }
+        ]
+        body: "{\n  \"action\" : \"ErrorResponse\",\n  \"message\" : \"Missing protocol version. Please submit requests through http://[host]:[port]/v1/submissions/...\",\n  \"serverSparkVersion\" : \"4.0.0\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.0.0"]
+      }
+    ]
+  },
+  {
+    name: "spark_3_1_3_standalone_rest_submission_status_probe"
+    mock_responses: [
+      {
+        uri: "/v1/submissions/status/driver-0"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json;charset=utf-8" }
+        ]
+        body: "{\n  \"action\" : \"SubmissionStatusResponse\",\n  \"serverSparkVersion\" : \"3.1.3\",\n  \"submissionId\" : \"driver-0\",\n  \"success\" : false\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.1.3"]
+      }
+    ]
+  },
+  {
+    name: "spark_subpath_deployment_via_static_webui_js_and_api_v1_version"
+    mock_responses: [
+      {
+        uri: "/spark/static/webui.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var uiRoot = '';\nvar appBasePath = '';\nfunction setUIRoot(val) { uiRoot = val; }\nfunction setAppBasePath(val) { appBasePath = val; }\nvar collapsibleTables = ['collapse-aggregated-metrics','collapse-aggregated-executors','collapse-aggregated-workers','collapse-aggregated-sparkProperties'];\n"
+      },
+      {
+        uri: "/spark/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"spark\" : \"3.5.4\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/spark"
+        expected_versions: ["3.5.4"]
+      }
+    ]
+  },
+  {
+    name: "spark_subpath_yarn_proxy_via_static_webui_css_and_jobs_ui"
+    mock_responses: [
+      {
+        uri: "/proxy/application_1700000000_0001/static/webui.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/css" }
+        ]
+        body: "span.expand-dag-viz {\n  cursor: pointer;\n}\n.task-deserialization-time-checkbox-div {\n  display: inline;\n}\n.peak-execution-memory-checkbox-div {\n  display: inline;\n}\n"
+      },
+      {
+        uri: "/proxy/application_1700000000_0001/jobs/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"stylesheet\" href=\"/static/webui.css\"/><script src=\"/static/webui.js\"></script><script>setUIRoot('');setAppBasePath('/proxy/application_1700000000_0001')</script><title>PySparkShell - Spark Jobs</title></head><body><img src=\"/static/spark-logo-77x50px-hd.png\"/><span class=\"version\">3.4.4</span></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/proxy/application_1700000000_0001"
+        expected_versions: ["3.4.4"]
+      }
+    ]
+  },
+  {
+    name: "spark_master_json_only_when_html_ui_blocked"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body: "403 Forbidden"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/json;charset=utf-8" }
+        ]
+        body: "{\n  \"url\" : \"spark://10.88.0.4:7077\",\n  \"workers\" : [ ],\n  \"aliveworkers\" : 0,\n  \"cores\" : 0,\n  \"coresused\" : 0,\n  \"memory\" : 0,\n  \"memoryused\" : 0,\n  \"activeapps\" : [ ],\n  \"completedapps\" : [ ],\n  \"activedrivers\" : [ ],\n  \"completeddrivers\" : [ ],\n  \"status\" : \"ALIVE\"\n}"
+      },
+      {
+        uri: "/static/webui.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var uiRoot = '';\nvar appBasePath = '';\nfunction setUIRoot(val) { uiRoot = val; }\nfunction setAppBasePath(val) { appBasePath = val; }\nvar collapsibleTables = ['collapse-aggregated-metrics','collapse-aggregated-executors','collapse-aggregated-workers','collapse-aggregated-sparkProperties'];\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_catchall"
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body>{\"spark\" : \"3.5.4\"}</body></html>"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\"spark://\" \"cores\" \"memory\" \"aliveworkers\" \"activedrivers\"</body></html>"
+      },
+      {
+        uri: "/v1/submissions/status/driver-0"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\"action\" \"SubmissionStatusResponse\" \"serverSparkVersion\" : \"4.0.0\"</body></html>"
+      },
+      {
+        uri: "/static/webui.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>function setUIRoot( function setAppBasePath( collapse-aggregated-sparkProperties collapse-aggregated-executors</body></html>"
+      },
+      {
+        uri: "/static/webui.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>span.expand-dag-viz .task-deserialization-time-checkbox-div .peak-execution-memory-checkbox-div</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_api_v1_version_and_json"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Dashboard</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"3.5.4\",\"status\":\"ok\"}"
+      },
+      {
+        uri: "/json/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"ALIVE\",\"cores\":4,\"memory\":8192}"
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_static_webui_css"
+    mock_responses: [
+      {
+        uri: "/static/webui.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/css" }
+        ]
+        body: "span.expand-dag-viz {\n  cursor: pointer;\n}\n.task-deserialization-time-checkbox-div {\n  display: inline;\n}\n.peak-execution-memory-checkbox-div {\n  display: inline;\n}\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_api_v1_applications"
+    mock_responses: [
+      {
+        uri: "/api/v1/applications"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"id\":\"app-1\",\"attempts\":[{\"appSparkVersion\":\"3.5.4\",\"sparkUser\":\"spark\"}]}"
+      }
+    ]
+    expected_matches: []
+  }
+]

@@ -1,0 +1,608 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Grav CMS"
+  author: "Goonami team"
+  software: "gravcms"
+  description: "Detects Grav CMS flat-file content management system across configured, pending-admin-setup, and core-only deployments and extracts version."
+}
+
+steps: [
+  # Root CHANGELOG.md check (publicly served by default on bundled Nginx, Caddy, and IIS Grav configs).
+  # Extracts the exact installed Grav core version from the top-most `# vX.Y.Z` heading.
+  {
+    name: "gravcms_changelog"
+    path_suffix: "/CHANGELOG.md"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "^\\s*#\\s*v[0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?\\r?\\n"
+          },
+          {
+            body: {}
+            regexp: "1\\.\\s*\\[\\]\\(#(?:new|improved|bugfix)\\)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "github.com/getgrav/grav"
+          },
+          {
+            body: {}
+            contains: "bin/gpm"
+          },
+          {
+            body: {}
+            contains: "bin/grav"
+          },
+          {
+            body: {}
+            regexp: "(?i)\\bGrav\\b"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "^\\s*#\\s*v([0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?)\\r?\\n"
+        }
+      ]
+    }
+  },
+  # Generated core version manifest (/user/config/versions.yaml) exposed when webserver folder rewrite rules are absent.
+  {
+    name: "gravcms_versions_yaml"
+    path_suffix: "/user/config/versions.yaml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?s)core:\\s+grav:\\s+version:\\s*['\"]?[0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?['\"]?"
+          },
+          {
+            body: {}
+            contains: "schema:"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?s)core:\\s+grav:\\s+version:\\s*['\"]?([0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?)['\"]?"
+        }
+      ]
+    }
+  },
+  # Grav 2.x Admin2 panel (/admin) in both pending-admin-setup and configured login states.
+  # Extracts core Grav version from window.__GRAV_CONFIG__.grav.version when exposed (e.g. Grav 2.0.x).
+  {
+    name: "gravcms_admin2_page"
+    path_suffix: "/admin"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.__GRAV_CONFIG__\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            contains: "/user/plugins/admin2/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"admin\"\\s*:\\s*\\{[^}]*\"name\"\\s*:\\s*\"Admin2\""
+          },
+          {
+            body: {}
+            contains: "data-theme=\"grav\""
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"grav\"\\s*:\\s*\\{\\s*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Unconfigured Grav 2.x root page (GET / 302-redirects to /admin when no admin user exists yet).
+  {
+    name: "gravcms_root_admin2"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "window\\.__GRAV_CONFIG__\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            contains: "/user/plugins/admin2/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"admin\"\\s*:\\s*\\{[^}]*\"name\"\\s*:\\s*\"Admin2\""
+          },
+          {
+            body: {}
+            contains: "data-theme=\"grav\""
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"grav\"\\s*:\\s*\\{\\s*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+(?:\\.[0-9]+)*(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Grav 1.x classic Admin plugin (/admin) in both pending-admin-setup ("Grav Register Admin User")
+  # and configured ("Grav Admin Login") states.
+  {
+    name: "gravcms_classic_admin_page"
+    path_suffix: "/admin"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "id=[\"']admin-login(?:-wrapper)?[\"']"
+          },
+          {
+            body: {}
+            contains: "/user/plugins/admin/themes/grav/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Grav Admin Login"
+          },
+          {
+            body: {}
+            contains: "Grav Register Admin User"
+          },
+          {
+            body: {}
+            contains: "value=\"admin-login-register\""
+          },
+          {
+            body: {}
+            contains: "name=\"login-nonce\""
+          },
+          {
+            body: {}
+            contains: "data-grav-field="
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+(?:-admin)?="
+          }
+        ]
+      }
+    }
+  },
+  # Unconfigured Grav 1.x root page (GET / 302-redirects to /admin "Grav Register Admin User" wizard).
+  {
+    name: "gravcms_root_classic_admin"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "id=[\"']admin-login(?:-wrapper)?[\"']"
+          },
+          {
+            body: {}
+            contains: "/user/plugins/admin/themes/grav/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Grav Register Admin User"
+          },
+          {
+            body: {}
+            contains: "value=\"admin-login-register\""
+          },
+          {
+            body: {}
+            contains: "Grav Admin Login"
+          },
+          {
+            body: {}
+            contains: "data-grav-field="
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+(?:-admin)?="
+          }
+        ]
+      }
+    }
+  },
+  # Configured and core-only Grav CMS frontend root page across Grav 1.x and 2.x.
+  {
+    name: "gravcms_frontend_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']GravCMS(?:\\s+[^\"']+)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:href|src)=[\"'][^\"']*/(?:user/(?:themes|plugins)|system/assets)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+="
+          },
+          {
+            header: { name: "Link" }
+            contains: "rel=\"alternate\"; type=\"text/markdown\""
+          },
+          {
+            body: {}
+            regexp: "(?:href|src)=[\"'][^\"']*/user/themes/"
+          },
+          {
+            body: {}
+            regexp: "(?:href|src)=[\"'][^\"']*/system/assets/"
+          }
+        ]
+      }
+    }
+  },
+  # Frontend Login plugin page (/login) for passive subpath discovery and active fallback across Grav 1.x and 2.x.
+  {
+    name: "gravcms_login_page"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "id=[\"']grav-login[\"']"
+          },
+          {
+            body: {}
+            contains: "/user/plugins/login/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-grav-field="
+          },
+          {
+            body: {}
+            contains: "name=\"login-form-nonce\""
+          },
+          {
+            body: {}
+            contains: "value=\"login.login\""
+          },
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']GravCMS"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "grav-site-[0-9a-f]+="
+          }
+        ]
+      }
+    }
+  },
+  # Grav 2.x unauthenticated API setup-status endpoint (/api/v1/auth/setup).
+  # Paired in a 2-step workflow with gravcms_api_root_unauthorized to prevent false positives on generic JSON APIs.
+  {
+    name: "gravcms_api_auth_setup"
+    path_suffix: "/api/v1/auth/setup"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"setup_required\"\\s*:\\s*(?:true|false)"
+          },
+          {
+            body: {}
+            contains: "\"password_policy\""
+          },
+          {
+            body: {}
+            contains: "\"rules\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Grav 2.x API root endpoint (/api/v1) returning Grav's RFC 7807 problem+json 401 response.
+  {
+    name: "gravcms_api_root_unauthorized"
+    path: "/api/v1"
+    response: {
+      status_codes: [401]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/problem+json"
+          },
+          {
+            body: {}
+            contains: "Use an API key, JWT token, or active session."
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Universal core Grav static icon (/system/assets/grav.png) present across Grav 1.2.0 through 2.x
+  # regardless of theme, plugins, or generator meta configuration.
+  {
+    name: "gravcms_core_grav_png"
+    path_suffix: "/system/assets/grav.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              murmur3_hashes: [
+                "df6d918ffc3515ddbc6f7e392c8ced7d",
+                "fd9581e0418dc54196985a5a70f30775",
+                "6380d3dd737f5b80ce1f0618c5a658e4"
+              ]
+              body_sha256_hashes: [
+                "3bdf87db1bbeca22c1d45ef9de1e61af5394d00fca844c4ca1b93aed2e85e333"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery via Login plugin stylesheet (/user/plugins/login/css/login.css).
+  {
+    name: "gravcms_login_css_asset"
+    path_regexp: "/user/plugins/login/css/login\\.css$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "#grav-login"
+          },
+          {
+            body: {}
+            contains: "#grav-logout"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery via classic Admin plugin bundles (/user/plugins/admin/themes/grav/...).
+  {
+    name: "gravcms_classic_admin_asset"
+    path_regexp: "/user/plugins/admin/themes/grav/(?:js/(?:vendor|admin)(?:\\.min)?\\.js|css-compiled/template\\.css)$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "webpackChunkGrav"
+          },
+          {
+            body: {}
+            contains: "GravAdmin"
+          },
+          {
+            body: {}
+            regexp: "(?s)#admin-login[\\s,{].*data-grav-"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Version-extracting workflows first so Pass 2 attempts version extraction before stopping.
+  {
+    steps: ["gravcms_changelog"]
+  },
+  {
+    steps: ["gravcms_versions_yaml"]
+  },
+  {
+    steps: ["gravcms_admin2_page"]
+  },
+  {
+    steps: ["gravcms_root_admin2"]
+  },
+  # Version-agnostic identification workflows across pending-setup, configured, core-only, and subpath deployments.
+  {
+    steps: ["gravcms_classic_admin_page"]
+  },
+  {
+    steps: ["gravcms_root_classic_admin"]
+  },
+  {
+    steps: ["gravcms_frontend_root"]
+  },
+  {
+    steps: ["gravcms_login_page"]
+  },
+  {
+    steps: [
+      "gravcms_api_auth_setup",
+      "gravcms_api_root_unauthorized"
+    ]
+  },
+  {
+    steps: [
+      "gravcms_core_grav_png",
+      "gravcms_changelog"
+    ]
+  },
+  {
+    steps: [
+      "gravcms_core_grav_png",
+      "gravcms_frontend_root"
+    ]
+  },
+  {
+    steps: [
+      "gravcms_core_grav_png",
+      "gravcms_login_page"
+    ]
+  },
+  {
+    steps: ["gravcms_login_css_asset"]
+  },
+  {
+    steps: ["gravcms_classic_admin_asset"]
+  }
+]

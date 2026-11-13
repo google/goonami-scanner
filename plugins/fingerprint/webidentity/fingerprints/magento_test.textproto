@@ -1,0 +1,502 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "magento"
+
+tests: [
+  {
+    name: "magento_2_4_8_configured_pub_webroot"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Magento-Cache-Debug", value: "MISS" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n<head>\n<script>\n    var BASE_URL = 'http\\u003A\\u002F\\u002Ftarget.test\\u003A8080\\u002F';\n    var require = {'baseUrl': 'http\\u003A\\u002F\\u002Ftarget.test\\u003A8080\\u002Fstatic\\u002Fversion1793804278\\u002Ffrontend\\u002FMagento\\u002Fluma\\u002Fen_US'};\n</script>\n<link rel=\"stylesheet\" type=\"text/css\" media=\"all\" href=\"http://target.test:8080/static/version1793804278/frontend/Magento/luma/en_US/mage/calendar.css\" />\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1793804278/frontend/Magento/luma/en_US/requirejs/require.js\"></script>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1793804278/frontend/Magento/luma/en_US/mage/requirejs/mixins.js\"></script>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1793804278/frontend/Magento/luma/en_US/requirejs-config.js\"></script>\n<title>Home Page</title>\n</head>\n<body data-container=\"body\" data-mage-init='{\"loaderAjax\": {}, \"loader\": { \"icon\": \"http://target.test:8080/static/version1793804278/frontend/Magento/luma/en_US/images/loader-2.gif\"}}' class=\"cms-home cms-index-index page-layout-1column\">\n<script type=\"text/x-magento-init\">\n{\"*\": {\"Magento_Ui/js/core/app\": {\"components\": {}}}}\n</script>\n</body>\n</html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Magento-Cache-Debug", value: "MISS" }
+        ]
+        body: "Magento/2.4 (Community)"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.4"]
+      }
+    ]
+  },
+  {
+    name: "magento_2_4_8_configured_root_webroot_exact_setup_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><script src=\"http://target.test:8080/pub/static/version1793804278/frontend/Magento/luma/en_US/requirejs-config.js\"></script></head><body data-mage-init='{}'><script type=\"text/x-magento-init\">{\"*\": {\"Magento_Ui/js/core/app\": {}}}</script></body></html>"
+      },
+      {
+        uri: "/setup/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!--[if !IE]><!-->\n<html lang=\"en\">\n<!--<![endif]-->\n<head>\n    <meta charset=\"utf-8\">\n    <title>Magento</title>\n    <link href=\"/setup/pub/styles/setup.css\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" />\n    <script src=\"/setup/pub/scripts/main.js\"></script>\n</head>\n<body>\n<div class=\"container\">\n    <main class=\"page-content\">\n        <section data-section=\"landing\" class=\"page-landing\">\n            <img class=\"logo\" src=\"/setup/pub/images/magento-logo.svg\" alt=\"Magento\"/>\n            <p class=\"text-version\">Version 2.4.8</p>\n            <p class=\"text-welcome\">Welcome to Magento Admin, your online store headquarters.</p>\n        </section>\n    </main>\n</div>\n</body>\n</html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "Magento/2.4 (Community)"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.4.8"]
+      }
+    ]
+  },
+  {
+    name: "magento_2_4_7_p4_unconfigured_root_webroot_setup_landing"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "/pub/setup/" }
+        ]
+      },
+      {
+        uri: "/setup/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<html lang=\"en\"><head><title>Magento</title><link href=\"/setup/pub/styles/setup.css\" media=\"screen\" rel=\"stylesheet\" type=\"text/css\" /><script src=\"/setup/pub/scripts/main.js\"></script></head><body><section data-section=\"landing\" class=\"page-landing\"><img class=\"logo\" src=\"/setup/pub/images/magento-logo.svg\" alt=\"Magento\"/><p class=\"text-version\">Version 2.4.7-p4</p><p class=\"text-welcome\">Welcome to Magento Admin, your online store headquarters.</p></section></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.4.7-p4"]
+      }
+    ]
+  },
+  {
+    name: "magento_2_4_5_p10_unconfigured_pub_webroot_static_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "/setup/" }
+        ]
+      },
+      {
+        uri: "/setup/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "/setup/" }
+        ]
+      },
+      {
+        uri: "/magento_version"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "/setup/" }
+        ]
+      },
+      {
+        uri: "/errors/default/css/styles.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "/**\n * Copyright \xc2\xa9 Magento, Inc. All rights reserved.\n * See COPYING.txt for license details.\n */\nbody{background:#fff;color:#333}.error{border-color:#b30000;background-color:#fae5e5;background-image:url(../images/i_msg-error.gif);color:#b30000}.fieldset:after{content:attr(data-hasrequired);color:#e02b27}"
+      },
+      {
+        uri: "/opt/magento/var/resource_config.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"media_directory\":\"\\/opt\\/magento\\/pub\\/media\",\"allowed_resources\":[\"css\",\"css_secure\",\"js\",\"theme\",\"favicon\",\"wysiwyg\",\"catalog\",\"custom_options\",\"email\",\"captcha\",\"dhl\"],\"update_time\":\"3600\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "magento_2_3_7_p3_unconfigured_root_webroot_angular_wizard"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><!--[if !IE]><!-->\n<html lang=\"en\" ng-app=\"magento\">\n<!--<![endif]-->\n<head>\n    <meta charset=\"utf-8\">\n    <title>{{$state.current.title}}</title>\n    <link href=\"&#x2F;setup&#x2F;pub&#x2F;styles&#x2F;setup.css\" media=\"screen\" rel=\"stylesheet\" type=\"text&#x2F;css\">\n    <script src=\"&#x2F;setup&#x2F;pub&#x2F;magento&#x2F;setup&#x2F;app.js\"></script>\n    <script src=\"&#x2F;setup&#x2F;pub&#x2F;magento&#x2F;setup&#x2F;main.js\"></script>\n</head>\n<body>\n<div id=\"main\" ng-controller=\"mainController\"><div ui-view=\"root\"></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/setup/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\" ng-app=\"magento\"><head><title>{{$state.current.title}}</title><link href=\"&#x2F;setup&#x2F;pub&#x2F;styles&#x2F;setup.css\" media=\"screen\" rel=\"stylesheet\" type=\"text&#x2F;css\"><script src=\"&#x2F;setup&#x2F;pub&#x2F;magento&#x2F;setup&#x2F;app.js\"></script></head><body></body></html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\" ng-app=\"magento\"><head><title>{{$state.current.title}}</title><link href=\"&#x2F;setup&#x2F;pub&#x2F;styles&#x2F;setup.css\" media=\"screen\" rel=\"stylesheet\" type=\"text&#x2F;css\"></head><body></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "magento_2_3_7_p3_configured_pub_webroot"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n<head>\n<script>\n    var require = {\n        \"baseUrl\": \"http://target.test:8080/static/version1652001234/frontend/Magento/luma/en_US\"\n    };\n</script>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1652001234/frontend/Magento/luma/en_US/requirejs/require.js\"></script>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1652001234/frontend/Magento/luma/en_US/mage/requirejs/mixins.js\"></script>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1652001234/frontend/Magento/luma/en_US/requirejs-config.js\"></script>\n</head>\n<body data-mage-init='{\"loader\": {}}'>\n<script type=\"text/x-magento-init\">\n{\"*\": {\"Magento_Ui/js/core/app\": {\"components\": {}}}}\n</script>\n</body>\n</html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "Magento/2.3 (Community)"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.3"]
+      }
+    ]
+  },
+  {
+    name: "magento_2_4_7_p4_admin_login_enterprise_edition"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "Service Temporarily Unavailable"
+      },
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n<head>\n<script>\n    var BASE_URL = 'http://target.test:8080/admin/admin/index/index/key/117d01c4/';\n    var FORM_KEY = 'x7YTxzCB43COkj0W';\n    var require = {\"baseUrl\":\"http:\\/\\/target.test:8080\\/static\\/version1793804278\\/adminhtml\\/Magento\\/backend\\/en_US\"};\n</script>\n<meta name=\"title\" content=\"Magento Admin\"/>\n<title>Magento Admin</title>\n<script type=\"text/javascript\" src=\"http://target.test:8080/static/version1793804278/adminhtml/Magento/backend/en_US/requirejs-config.js\"></script>\n</head>\n<body class=\"adminhtml-auth-login page-layout-admin-login\">\n<form method=\"post\" action=\"\" id=\"login-form\" data-mage-init='{\"form\": {}, \"validation\": {}}'>\n<input id=\"username\" class=\"admin__control-text\" type=\"text\" name=\"login[username]\" />\n<input id=\"login\" class=\"admin__control-text\" type=\"password\" name=\"login[password]\" />\n</form>\n</body>\n</html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "Magento/2.4 (Enterprise)"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.4"]
+      }
+    ]
+  },
+  {
+    name: "magento_2_4_headless_pwa_rest_and_graphql"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html><head><title>Custom Storefront</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/rest/V1/directory/currency"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"base_currency_code\":\"USD\",\"base_currency_symbol\":\"$\",\"default_display_currency_code\":\"USD\",\"default_display_currency_symbol\":\"$\",\"available_currency_codes\":[\"USD\"],\"exchange_rates\":[{\"currency_to\":\"USD\",\"rate\":1}]}"
+      },
+      {
+        uri: "/graphql?query=%7BstoreConfig%7Bcode%20base_currency_code%7D%7D"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"data\":{\"storeConfig\":{\"code\":\"default\",\"base_currency_code\":\"USD\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "magento_subpath_via_customer_login"
+    mock_responses: [
+      {
+        uri: "/shop/customer/account/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Customer Login</title><script src=\"http://target.test:8080/shop/static/version1793804278/frontend/Magento/luma/en_US/requirejs-config.js\"></script></head><body class=\"customer-account-login page-layout-1column\"><form class=\"form form-login\" action=\"http://target.test:8080/shop/customer/account/loginPost/\" method=\"post\" id=\"login-form\"><input name=\"login[username]\" type=\"email\" class=\"input-text\"/></form><script type=\"text/x-magento-init\">{\"*\": {\"Magento_Ui/js/core/app\": {}}}</script></body></html>"
+      },
+      {
+        uri: "/shop/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "Magento/2.4 (Community)"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/shop"
+        expected_versions: ["2.4"]
+      }
+    ]
+  },
+  {
+    name: "magento_subpath_via_non_default_locale_static_js"
+    mock_responses: [
+      {
+        uri: "/store/pub/static/version1793804278/frontend/CustomVendor/custom_theme/de_DE/requirejs-config.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "(function(require){(function(){var config={map:{'*':{'ko':'knockoutjs/knockout','mageUtils':'mage/utils/main'}}};require.config(config);})();(function(){var config={deps:['Magento_Theme/js/theme']};require.config(config);})();})(require);"
+      },
+      {
+        uri: "/store/setup/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<html lang=\"en\"><head><link href=\"/store/setup/pub/styles/setup.css\" rel=\"stylesheet\" /></head><body><img class=\"logo\" src=\"/store/setup/pub/images/magento-logo.svg\" alt=\"Magento\"/><p class=\"text-version\">Version 2.4.5-p10</p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/store"
+        expected_versions: ["2.4.5-p10"]
+      }
+    ]
+  },
+  {
+    name: "magento_unconfigured_root_webroot_pub_static_fallback"
+    mock_responses: [
+      {
+        uri: "/pub/errors/default/css/styles.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "/**\n * Copyright \xc2\xa9 Magento, Inc. All rights reserved.\n */\n.error{background-image:url(../images/i_msg-error.gif)}.fieldset:after{content:attr(data-hasrequired)}"
+      },
+      {
+        uri: "/pub/opt/magento/var/resource_config.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"media_directory\":\"\\/opt\\/magento\\/pub\\/media\",\"allowed_resources\":[\"css\",\"js\",\"catalog\"],\"update_time\":\"3600\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_generic_spa_soft_200_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/setup/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/customer/account/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/rest/V1/directory/currency"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/graphql?query=%7BstoreConfig%7Bcode%20base_currency_code%7D%7D"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/errors/default/css/styles.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/opt/magento/var/resource_config.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/static/frontend/Magento/luma/en_US/requirejs-config.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body><div id=\"app\"></div></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_html_page_mentioning_magento_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Security Blog</title></head><body><h1>Checking /magento_version</h1><pre>Magento/2.4 (Community)</pre><p class=\"text-version\">Version 2.4.8</p></body></html>"
+      },
+      {
+        uri: "/magento_version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Magento/2.4 (Community)</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_partial_rest_currency_without_magento_graphql"
+    mock_responses: [
+      {
+        uri: "/rest/V1/directory/currency"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"base_currency_code\":\"USD\",\"default_display_currency_code\":\"USD\",\"available_currency_codes\":[\"USD\"],\"exchange_rates\":[]}"
+      },
+      {
+        uri: "/graphql?query=%7BstoreConfig%7Bcode%20base_currency_code%7D%7D"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"errors\":[{\"message\":\"Cannot query field \\\"storeConfig\\\" on type \\\"Query\\\".\"}]}"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_ecommerce_storefront"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta name=\"generator\" content=\"PrestaShop\" /><script src=\"/themes/classic/assets/js/theme.js\"></script></head><body><form id=\"login-form\"><input name=\"email\" type=\"email\" /></form></body></html>"
+      },
+      {
+        uri: "/customer/account/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html><body><h1>Customer Login</h1><form><input name=\"login[username]\" /></form></body></html>"
+      }
+    ]
+  }
+]

@@ -1,0 +1,166 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "MLflow"
+  author: "Goonami team"
+  software: "mlflow"
+  description: "Detects MLflow machine learning lifecycle platform."
+}
+
+steps: [
+  # Definitive experiments search REST API
+  {
+    name: "mlflow_experiments_api"
+    path: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"experiments\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # MLflow root HTML page that references the main JS bundle
+  {
+    name: "mlflow_root_html"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>MLflow</title>"
+          },
+          {
+            body: {}
+            contains: "static-files/static/js/main."
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "static-files/static/js/(main\\.[a-f0-9]+(?:\\.chunk)?\\.js)"
+          }
+        ]
+      }
+    }
+  },
+  # MLflow main JS bundle containing MLflow constants and version string
+  {
+    name: "mlflow_js_bundle"
+    path: "/static-files/static/js/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "https://www.mlflow.org/docs/"
+          },
+          {
+            body: {}
+            contains: "mlflow.log-model.history"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"([0-9]+\\.[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)\",[a-zA-Z0-9_$]+=\"https://www\\.mlflow\\.org/docs/"
+        },
+        {
+          from_body: {}
+          regexp: "MLFLOW_VERSION\\s*[:=]\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        }
+      ]
+    }
+  },
+  # Unauthenticated MLflow /version endpoint (Flask default Content-Type is text/html; charset=utf-8)
+  {
+    name: "mlflow_version_api"
+    path: "/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "^[0-9]+\\.[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?\\s*$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "^([0-9]+\\.[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)\\s*$"
+        }
+      ]
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: [
+      "mlflow_root_html",
+      "mlflow_js_bundle"
+    ]
+  },
+  {
+    steps: [
+      "mlflow_experiments_api",
+      "mlflow_version_api"
+    ]
+  },
+  {
+    steps: [
+      "mlflow_root_html",
+      "mlflow_experiments_api"
+    ]
+  }
+]

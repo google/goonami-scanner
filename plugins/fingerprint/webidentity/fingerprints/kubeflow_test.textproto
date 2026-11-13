@@ -1,0 +1,688 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "kubeflow"
+
+tests: [
+  {
+    name: "kubeflow_v1_6_0_configured_anonymous"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "X-Powered-By" value: "Express" },
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1,user-scalable=yes\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><meta name=\"theme-color\" content=\"#3f51b5\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><link rel=\"icon\" href=\"/assets/favicon-32x32.png\" sizes=\"32x32\"><base href=\"/\"><script src=\"webcomponentsjs/webcomponents-loader.js\"></script><script src=\"webcomponentsjs/custom-elements-es5-adapter.js\"></script><link href=\"app.css\" rel=\"stylesheet\"></head><body><main-page></main-page><noscript>Please enable JavaScript to view this website.</noscript><script src=\"vendor.bundle.js\" defer=\"defer\"></script><script src=\"app.bundle.js\" defer=\"defer\"></script><script src=\"dashboard_lib.bundle.js\" defer=\"defer\"></script></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,n){\"object\"==typeof exports?exports.centraldashboard=n():e.centraldashboard=n()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-39bd19\"},endpoints:[\"api/workgroup/env-info\",\"api/workgroup/exists\",\"api/dashboard-links\"],handler:\"CentralDashboardEventHandler\",platform:\"kubeflowVersion\",docs:\"https://www.kubeflow.org/\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"anonymous@kubeflow.org\",\"platform\":{\"kubeflowVersion\":\"v1.6.0\",\"provider\":\"gce://kf-proj/us-central1-a/node-1\",\"providerName\":\"gce\"},\"namespaces\":[{\"namespace\":\"kubeflow-user-example-com\",\"role\":\"contributor\",\"user\":\"anonymous@kubeflow.org\"}],\"isClusterAdmin\":true}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.6.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_7_0_unconfigured_no_cluster"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "X-Powered-By" value: "Express" },
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><meta name=\"theme-color\" content=\"#3f51b5\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><base href=\"/\"><link href=\"app.css\" rel=\"stylesheet\"></head><body><main-page></main-page><script src=\"vendor.bundle.js\" defer=\"defer\"></script><script src=\"app.bundle.js\" defer=\"defer\"></script><script src=\"dashboard_lib.bundle.js\" defer=\"defer\"></script></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,n){exports.centraldashboard=n()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-\"},endpoints:[\"api/workgroup/env-info\",\"api/workgroup/exists\",\"api/dashboard-links\"],handler:\"CentralDashboardEventHandler\",platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Unexpected error getting environment info\"}"
+      },
+      {
+        uri: "/api/workgroup/exists"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Unable to contact Profile Controller\"}"
+      },
+      {
+        uri: "/api/dashboard-links"
+        status_code: 500
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Cannot load dashboard menu link\"}"
+      },
+      {
+        uri: "/debug"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":{\"email\":\"anonymous@kubeflow.org\",\"username\":\"anonymous\",\"domain\":\"kubeflow.org\",\"hasAuth\":false},\"profilesServiceUrl\":\"http://profiles-kfam.kubeflow:8081/kfam\",\"codeEnvironment\":\"production\",\"registrationFlowAllowed\":true,\"headersForIdentity\":{\"USERID_HEADER\":\"X-Goog-Authenticated-User-Email\",\"USERID_PREFIX\":\"accounts.google.com:\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_8_0_configured_authenticated_user"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><base href=\"/\"></head><body><main-page></main-page><script src=\"vendor.bundle.js\" defer=\"defer\"></script><script src=\"app.bundle.js\" defer=\"defer\"></script><script src=\"dashboard_lib.bundle.js\" defer=\"defer\"></script></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,n){exports.centraldashboard=n()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-a1ea0e\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"user@example.com\",\"platform\":{\"kubeflowVersion\":\"v1.8.0\",\"provider\":\"gce://kf-proj/us-central1-a/node-1\",\"providerName\":\"gce\",\"logoutUrl\":\"/logout\"},\"namespaces\":[{\"user\":\"user@example.com\",\"namespace\":\"kubeflow-user-example-com\",\"role\":\"owner\"}],\"isClusterAdmin\":false}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.8.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_8_0_configured_unknown_kubeflow_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><base href=\"/\"></head><body><main-page></main-page><script src=\"vendor.bundle.js\" defer=\"defer\"></script><script src=\"app.bundle.js\" defer=\"defer\"></script><script src=\"dashboard_lib.bundle.js\" defer=\"defer\"></script></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,n){exports.centraldashboard=n()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-a1ea0e\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"anonymous@kubeflow.org\",\"platform\":{\"kubeflowVersion\":\"unknown\",\"provider\":\"other://\",\"providerName\":\"other\",\"logoutUrl\":\"/oauth2/sign_out\"},\"namespaces\":[{\"namespace\":\"kubeflow-user-example-com\",\"role\":\"contributor\",\"user\":\"anonymous@kubeflow.org\"}],\"isClusterAdmin\":true}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_9_0_configured_deferred_head_script"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "X-Powered-By" value: "Express" },
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><meta name=\"viewport\" content=\"width=device-width,minimum-scale=1,initial-scale=1,user-scalable=yes\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><meta name=\"theme-color\" content=\"#3f51b5\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><link rel=\"icon\" href=\"/assets/favicon-32x32.png\" sizes=\"32x32\"><base href=\"/\"><script src=\"webcomponentsjs/webcomponents-loader.js\"></script><script src=\"webcomponentsjs/custom-elements-es5-adapter.js\"></script><script defer=\"defer\" src=\"app.bundle.js\"></script><link href=\"app.css\" rel=\"stylesheet\"></head><body><main-page></main-page><noscript>Please enable JavaScript to view this website.</noscript></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "/*! For license information please see app.bundle.js.LICENSE.txt */\n!function(e,t){exports.centraldashboard=t()}(window,(function(){return{tpl:\"<html lang=\\\"en\\\">\",buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-48b864\"},endpoints:[\"api/workgroup/env-info\",\"api/workgroup/exists\",\"api/dashboard-links\"],handler:\"CentralDashboardEventHandler\",platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"user@example.com\",\"platform\":{\"kubeflowVersion\":\"v1.9.0\",\"provider\":\"gce://kf-proj/us-central1-a/node-1\",\"providerName\":\"gce\",\"logoutUrl\":\"/logout\"},\"namespaces\":[{\"user\":\"user@example.com\",\"namespace\":\"kubeflow-user-example-com\",\"role\":\"owner\"}],\"isClusterAdmin\":false}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.9.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_10_0_rc1_configured_prerelease_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><base href=\"/\"><script defer=\"defer\" src=\"app.bundle.js\"></script><link href=\"app.css\" rel=\"stylesheet\"></head><body><main-page></main-page></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "/*! For license information please see app.bundle.js.LICENSE.txt */\n!function(e,t){exports.centraldashboard=t()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-fc4826\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"user@example.com\",\"platform\":{\"kubeflowVersion\":\"v1.10.0-rc.1\",\"provider\":\"gce://kf-proj/us-central1-a/node-1\",\"providerName\":\"gce\",\"logoutUrl\":\"/logout\"},\"namespaces\":[{\"user\":\"user@example.com\",\"namespace\":\"kubeflow-user-example-com\",\"role\":\"owner\"}],\"isClusterAdmin\":false}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.10.0-rc.1"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_9_2_stamped_build_version_when_api_unconfigured"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Kubeflow Central Dashboard</title><base href=\"/\"><script defer=\"defer\" src=\"app.bundle.js\"></script></head><body><main-page></main-page></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,t){exports.centraldashboard=t()}(window,(function(){return{buildVersion:{type:String,value:\"v1.9.2\"},dashVersion:{type:String,value:\"0.0.2-315ee7\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Unexpected error getting environment info\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.9.2"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_subpath_deployment_via_index_html"
+    mock_responses: [
+      {
+        uri: "/kubeflow/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><title>Kubeflow Central Dashboard</title><base href=\"/kubeflow/\"><script defer=\"defer\" src=\"app.bundle.js\"></script></head><body><main-page></main-page></body></html>"
+      },
+      {
+        uri: "/kubeflow/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,t){exports.centraldashboard=t()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/kubeflow/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"anonymous@kubeflow.org\",\"platform\":{\"kubeflowVersion\":\"v1.9.0\",\"provider\":\"other://\",\"providerName\":\"other\",\"logoutUrl\":\"/logout\"},\"namespaces\":[],\"isClusterAdmin\":false}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/kubeflow"
+        expected_versions: ["1.9.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_subpath_passive_dashboard_lib_bundle"
+    mock_responses: [
+      {
+        uri: "/ml-portal/dashboard_lib.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,t){\"object\"==typeof exports&&\"object\"==typeof module?module.exports=t():\"object\"==typeof exports?exports.centraldashboard=t():e.centraldashboard=t()}(window,(function(){return{CentralDashboardEventHandler:function(){},CentralDashboard:{}}}));"
+      },
+      {
+        uri: "/ml-portal/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"user@example.com\",\"platform\":{\"kubeflowVersion\":\"v1.8.0\",\"provider\":\"aws:///us-west-2a/i-0123456\",\"providerName\":\"aws\"},\"namespaces\":[{\"user\":\"user@example.com\",\"namespace\":\"kubeflow-user\",\"role\":\"owner\"}],\"isClusterAdmin\":false}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ml-portal"
+        expected_versions: ["1.8.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_api_only_env_info_and_dashboard_links"
+    mock_responses: [
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":\"anonymous@kubeflow.org\",\"platform\":{\"kubeflowVersion\":\"v1.7.0\",\"provider\":\"gce://kf-proj/us-central1-a/node-1\",\"providerName\":\"gce\",\"logoutUrl\":\"/logout\"},\"namespaces\":[],\"isClusterAdmin\":false}"
+      },
+      {
+        uri: "/api/dashboard-links"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"menuLinks\":[{\"type\":\"item\",\"link\":\"/jupyter/\",\"text\":\"Notebooks\",\"icon\":\"book\"}],\"externalLinks\":[],\"quickLinks\":[{\"text\":\"Upload a pipeline\",\"desc\":\"Pipelines\",\"link\":\"/pipeline/\"}],\"documentationItems\":[{\"text\":\"Getting Started with Kubeflow\",\"link\":\"https://www.kubeflow.org/docs/started/getting-started/\"}]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.7.0"]
+      }
+    ]
+  },
+  {
+    name: "kubeflow_debug_and_healthz_endpoints"
+    mock_responses: [
+      {
+        uri: "/debug"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"user\":{\"email\":\"anonymous@kubeflow.org\",\"username\":\"anonymous\",\"domain\":\"kubeflow.org\",\"hasAuth\":false},\"profilesServiceUrl\":\"http://profiles-kfam.kubeflow:8081/kfam\",\"codeEnvironment\":\"production\",\"registrationFlowAllowed\":true,\"headersForIdentity\":{\"USERID_HEADER\":\"kubeflow-userid\",\"USERID_PREFIX\":\"\"}}"
+      },
+      {
+        uri: "/healthz"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"codeEnvironment\":\"production\",\"message\":\"I tick, therefore I am!\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kubeflow_v1_9_0_unconfigured_no_cluster"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "X-Powered-By" value: "Express" },
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"description\" content=\"Kubeflow Central Dashboard\"><title>Kubeflow Central Dashboard</title><link rel=\"shortcut icon\" href=\"/assets/favicon.ico\"><base href=\"/\"><script defer=\"defer\" src=\"app.bundle.js\"></script><link href=\"app.css\" rel=\"stylesheet\"></head><body><main-page></main-page></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "/*! For license information please see app.bundle.js.LICENSE.txt */\n!function(e,t){exports.centraldashboard=t()}(window,(function(){return{tpl:\"<html lang=\\\"en\\\">\",buildVersion:{type:String,value:\"dev_local\"},dashVersion:{type:String,value:\"0.0.2-48b864\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Unexpected error getting environment info\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kubeflow_subpath_passive_app_bundle_unconfigured"
+    mock_responses: [
+      {
+        uri: "/kf-ui/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,t){exports.centraldashboard=t()}(window,(function(){return{buildVersion:{type:String,value:\"dev_local\"},endpoints:[\"api/workgroup/env-info\",\"api/dashboard-links\"],handler:\"CentralDashboardEventHandler\",platform:\"kubeflowVersion\"}}));"
+      },
+      {
+        uri: "/kf-ui/api/workgroup/env-info"
+        status_code: 400
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"error\":\"Unexpected error getting environment info\"}"
+      },
+      {
+        uri: "/kf-ui/healthz"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"codeEnvironment\":\"production\",\"message\":\"I tick, therefore I am!\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/kf-ui"
+      }
+    ]
+  },
+  {
+    name: "negative_kubeflow_oauth2_proxy_front_door_root_redirect"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Set-Cookie" value: "oauth2_proxy_kubeflow_csrf=9f8e7d6c5b4a; Path=/; SameSite=Lax; HttpOnly; Secure" },
+          { name: "Location" value: "/dex/auth?client_id=kubeflow-oidc-authservice&redirect_uri=https%3A%2F%2Fkubeflow.example.com%2Foauth2%2Fcallback&response_type=code&scope=openid+email+profile+groups" }
+        ]
+        body: "<a href=\"/dex/auth\">Found</a>.\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_kubeflow_oauth2_proxy_start_credential_tester_flow"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":[\"AuthorizationException\",\"Authentication required\"]}"
+      },
+      {
+        uri: "/oauth2/start"
+        status_code: 200
+        headers: [
+          { name: "Set-Cookie" value: "oauth2ProxyKubeflowCsrf" },
+          { name: "Location" value: "/dex/auth?client_id=dex-client&response_type=code" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_kubeflow_oidc_authservice_redirect"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location" value: "/dex/auth?client_id=kubeflow-oidc-authservice&redirect_uri=%2Flogin%2Foidc&response_type=code&scope=openid+profile+email+groups&state=MTcwMDAwMDAwMA" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_oauth2_proxy_and_dex"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Set-Cookie" value: "_oauth2_proxy_csrf=1a2b3c4d5e; Path=/; SameSite=Lax; HttpOnly; Secure" },
+          { name: "Location" value: "/dex/auth?client_id=oauth2-proxy&redirect_uri=https%3A%2F%2Fportal.example.com%2Foauth2%2Fcallback&response_type=code&scope=openid+email+profile" }
+        ]
+        body: "<a href=\"/dex/auth\">Found</a>.\n"
+      },
+      {
+        uri: "/oauth2/start"
+        status_code: 302
+        headers: [
+          { name: "Set-Cookie" value: "_oauth2_proxy_csrf=1a2b3c4d5e; Path=/; HttpOnly" },
+          { name: "Location" value: "/dex/auth?client_id=oauth2-proxy&response_type=code" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/dex/auth"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>dex</title></head><body class=\"theme-body\"><div class=\"theme-panel\"><h2 class=\"theme-heading\">Log in to Your Account</h2><form method=\"post\" action=\"/dex/auth/local/login?back=&amp;state=ncgzcbyfxo\"><input name=\"login\" type=\"text\"/></form></div></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_oidc_authservice_non_kubeflow"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Set-Cookie" value: "authservice_session=D1EtyeQnMFozaaaa; Path=/; HttpOnly" },
+          { name: "Location" value: "/dex/auth?client_id=istio-ingressgateway-oidc&redirect_uri=%2Flogin%2Foidc&response_type=code&scope=openid+profile+email" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_kubernetes_dashboard"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>Kubernetes Dashboard</title><base href=\"/\"><link rel=\"icon\" type=\"image/png\" href=\"assets/images/kubernetes-logo.png\"></head><body><kd-root></kd-root><script src=\"runtime.js\" defer></script><script src=\"main.js\" defer></script></body></html>"
+      },
+      {
+        uri: "/main.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "console.log('Kubernetes Dashboard UI');"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spa_html_catch_all_soft_200"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Enterprise Portal</title><base href=\"/\"></head><body><div id=\"root\">centraldashboard CentralDashboardEventHandler api/workgroup/env-info api/dashboard-links kubeflowVersion app=\"kubeflow-centraldashboard\"</div><script src=\"app.bundle.js\"></script></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Enterprise Portal</title></head><body><div id=\"root\">centraldashboard CentralDashboardEventHandler api/workgroup/env-info api/dashboard-links kubeflowVersion</div></body></html>"
+      },
+      {
+        uri: "/dashboard_lib.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><body>exports.centraldashboard CentralDashboardEventHandler</body></html>"
+      },
+      {
+        uri: "/api/workgroup/env-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"platform\":{\"kubeflowVersion\":\"v1.9.0\"},\"namespaces\":[],\"isClusterAdmin\":false}</body></html>"
+      },
+      {
+        uri: "/debug"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"profilesServiceUrl\":\"http://x/kfam\",\"registrationFlowAllowed\":true,\"headersForIdentity\":{\"USERID_HEADER\":\"x\"}}</body></html>"
+      },
+      {
+        uri: "/prometheus/metrics"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>app=\"kubeflow-centraldashboard\"</body></html>"
+      },
+      {
+        uri: "/assets/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not found</body></html>"
+      },
+      {
+        uri: "/healthz"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"codeEnvironment\":\"production\",\"message\":\"I tick, therfore I am!\"}</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_title_spoof_without_kubeflow_bundle"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Kubeflow Central Dashboard</title><base href=\"/\"><script src=\"app.bundle.js\"></script></head><body><main-page></main-page></body></html>"
+      },
+      {
+        uri: "/app.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "console.log('unrelated custom dashboard');"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_dashboard_lib_bundle"
+    mock_responses: [
+      {
+        uri: "/dashboard_lib.bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "!function(e,t){exports.centraldashboard=t()}(window,(function(){return{CentralDashboardEventHandler:function(){},CentralDashboard:{}}}));"
+      }
+    ]
+    expected_matches: []
+  }
+]

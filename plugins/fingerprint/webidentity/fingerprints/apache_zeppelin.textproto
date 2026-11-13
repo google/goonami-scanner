@@ -1,0 +1,618 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Apache Zeppelin"
+  author: "Goonami team"
+  software: "apache_zeppelin"
+  description: "Detects Apache Zeppelin web-based notebook platform and extracts version."
+}
+
+steps: [
+  # Apache Zeppelin modern Angular UI root HTML (default at / in 0.12.x+) that references main.<hash>.js.
+  {
+    name: "zeppelin_angular_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Zeppelin</title>"
+          },
+          {
+            body: {}
+            contains: "<zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "</zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "assets/images/zeppelin.png"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "brand-title"
+          },
+          {
+            body: {}
+            contains: "zeppelin_svg_logo"
+          },
+          {
+            body: {}
+            contains: "zeppelin-theme"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "angular_bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?((?:assets/)?(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin modern Angular UI root shell fallback (without bundle path assumption).
+  {
+    name: "zeppelin_angular_root_shell"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Zeppelin</title>"
+          },
+          {
+            body: {}
+            contains: "<zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "</zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "assets/images/zeppelin.png"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "brand-title"
+          },
+          {
+            body: {}
+            contains: "zeppelin_svg_logo"
+          },
+          {
+            body: {}
+            contains: "zeppelin-theme"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin modern Angular UI index.html (supports /index.html, /next/index.html, and subpath deployments).
+  {
+    name: "zeppelin_angular_index_html"
+    path_regexp: "^(?P<root>.*?)(?:/next)?/index\\.html$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Zeppelin</title>"
+          },
+          {
+            body: {}
+            contains: "<zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "</zeppelin-root>"
+          },
+          {
+            body: {}
+            contains: "assets/images/zeppelin.png"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "brand-title"
+          },
+          {
+            body: {}
+            contains: "zeppelin_svg_logo"
+          },
+          {
+            body: {}
+            contains: "zeppelin-theme"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin modern Angular main JS bundle fetched via extracted script path.
+  {
+    name: "zeppelin_angular_bundle"
+    path: "/{{ angular_bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "zeppelin.apache.org"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "webpackChunkzeppelin"
+          },
+          {
+            body: {}
+            contains: "__zeppelinMessageListeners"
+          },
+          {
+            body: {}
+            contains: "zeppelin-about-zeppelin"
+          },
+          {
+            body: {}
+            contains: "zeppelin-note-create"
+          },
+          {
+            body: {}
+            contains: "getZeppelinVersion"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin modern Angular main JS bundle discovered passively (at /main.<hash>.js, /next/main.<hash>.js, or under subpath).
+  {
+    name: "zeppelin_passive_angular_bundle"
+    path_regexp: "^(?P<root>.*?)(?:/next)?/(?:assets/)?(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "zeppelin.apache.org"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "webpackChunkzeppelin"
+          },
+          {
+            body: {}
+            contains: "__zeppelinMessageListeners"
+          },
+          {
+            body: {}
+            contains: "zeppelin-about-zeppelin"
+          },
+          {
+            body: {}
+            contains: "zeppelin-note-create"
+          },
+          {
+            body: {}
+            contains: "getZeppelinVersion"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin classic AngularJS UI root HTML (default at / in 0.6.x through 0.11.x).
+  {
+    name: "zeppelin_classic_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title ng-bind=\"$root.pageTitle\">Zeppelin</title>"
+          },
+          {
+            body: {}
+            contains: "ng-controller=\"MainCtrl\""
+          },
+          {
+            body: {}
+            contains: "components/navbar/navbar.html"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "components/note-create/note-create.html"
+          },
+          {
+            body: {}
+            contains: "assets/styles/looknfeel/{{looknfeel}}.css"
+          },
+          {
+            body: {}
+            contains: "NoteCreateCtrl"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin classic AngularJS index.html (supports /index.html, /classic/index.html in 0.12.x, and subpaths).
+  {
+    name: "zeppelin_classic_index_html"
+    path_regexp: "^(?P<root>.*?)(?:/classic)?/index\\.html$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title ng-bind=\"$root.pageTitle\">Zeppelin</title>"
+          },
+          {
+            body: {}
+            contains: "ng-controller=\"MainCtrl\""
+          },
+          {
+            body: {}
+            contains: "components/navbar/navbar.html"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "components/note-create/note-create.html"
+          },
+          {
+            body: {}
+            contains: "assets/styles/looknfeel/{{looknfeel}}.css"
+          },
+          {
+            body: {}
+            contains: "NoteCreateCtrl"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin classic AngularJS application bundle (app.<hash>.js in 0.8.x-0.12.x, scripts/scripts.<hash>.js in 0.6.x-0.7.x).
+  {
+    name: "zeppelin_passive_classic_bundle"
+    path_regexp: "^(?P<root>.*?)(?:/classic)?/(?:app\\.[a-f0-9]{16,64}|scripts/scripts\\.[a-f0-9]{8,64})\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "zeppelinWebApp"
+          },
+          {
+            body: {}
+            contains: "zeppelin.apache.org"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "NotebookCtrl"
+          },
+          {
+            body: {}
+            contains: "baseUrlSrv"
+          },
+          {
+            body: {}
+            contains: "zeppelinVersion"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin classic AngularJS navbar HTML template.
+  {
+    name: "zeppelin_classic_navbar"
+    path_regexp: "^(?P<root>.*?)(?:/classic)?/components/navbar/navbar\\.html$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "assets/images/zepLogoW.png"
+          },
+          {
+            body: {}
+            contains: "alt=\"Zeppelin\""
+          },
+          {
+            body: {}
+            contains: "ng-controller=\"NavCtrl as navbar\""
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin classic static favicon (identical SHA-256 across 0.7.x through 0.12.x).
+  {
+    name: "zeppelin_favicon"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "8572dbdf0b03b5bd95aa5ab87e69d0e684f32284678401c7008994970100adea"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin official static PNG/SVG logo assets (identical SHA-256 across 0.8.x through 0.12.x).
+  {
+    name: "zeppelin_passive_logo"
+    path_regexp: "^(?P<root>.*?)(?:/next|/classic)?/assets/images/(?:zeppelin\\.png|zepLogoW?\\.png|zeppelin_svg_logo\\.svg)$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "562604c03f109555e90c95025bb8a7b76000ac07b73af4ceaf3d448c2580c3dc",
+                "6de76e3ee880e6975cc68e7b467c13c43c1ec2cdbcab531e954b640de1483a5d",
+                "b31f95bb562b97878328c293e1642d24e57bfc7c3cfbc9989ddabcd57c586d5f",
+                "85752065220d2511090b26e77d00abd093f711411968174e000deeb182fbaae5"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Zeppelin REST API version endpoint (serves JSON body with Content-Type: text/plain; unauthenticated by default in both anonymous and Shiro modes).
+  {
+    name: "zeppelin_version_api"
+    path: "/api/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"status\"\\s*:\\s*\"OK\""
+          },
+          {
+            body: {}
+            regexp: "\"message\"\\s*:\\s*\"Zeppelin version\""
+          },
+          {
+            body: {}
+            contains: "\"body\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "\"body\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  }
+]
+
+workflows: [
+  # Zeppelin 0.12.x+ modern Angular UI + JS bundle + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_angular_root",
+      "zeppelin_angular_bundle",
+      "zeppelin_version_api"
+    ]
+  },
+  # Zeppelin 0.6.x-0.11.x classic AngularJS UI + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_classic_root",
+      "zeppelin_version_api"
+    ]
+  },
+  # Passive Angular index.html (including /next/index.html or subpath) + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_angular_index_html",
+      "zeppelin_version_api"
+    ]
+  },
+  # Passive classic index.html (including /classic/index.html or subpath) + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_classic_index_html",
+      "zeppelin_version_api"
+    ]
+  },
+  # Passive Angular main JS bundle + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_passive_angular_bundle",
+      "zeppelin_version_api"
+    ]
+  },
+  # Passive classic AngularJS bundle + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_passive_classic_bundle",
+      "zeppelin_version_api"
+    ]
+  },
+  # Passive classic navbar HTML template + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_classic_navbar",
+      "zeppelin_version_api"
+    ]
+  },
+  # Cryptographic favicon SHA-256 + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_favicon",
+      "zeppelin_version_api"
+    ]
+  },
+  # Cryptographic logo SHA-256 + REST API version extraction.
+  {
+    steps: [
+      "zeppelin_passive_logo",
+      "zeppelin_version_api"
+    ]
+  },
+  # Direct Zeppelin REST API version endpoint (covers API-only backends and reverse-proxied REST services).
+  {
+    steps: ["zeppelin_version_api"]
+  },
+  # Zeppelin 0.12.x+ modern Angular UI + JS bundle (when /api/version is restricted by custom Shiro/proxy rules).
+  {
+    steps: [
+      "zeppelin_angular_root",
+      "zeppelin_angular_bundle"
+    ]
+  },
+  # Zeppelin modern Angular UI root shell fallback (when /api/version is restricted and bundle naming changes).
+  {
+    steps: ["zeppelin_angular_root_shell"]
+  },
+  # Zeppelin 0.6.x-0.11.x classic AngularJS root HTML (when /api/version is restricted by custom Shiro/proxy rules).
+  {
+    steps: ["zeppelin_classic_root"]
+  },
+  # Passive Angular index.html (enables subpath discovery and standalone UI match when /api/version is restricted).
+  {
+    steps: ["zeppelin_angular_index_html"]
+  },
+  # Passive classic index.html (enables subpath discovery and standalone UI match when /api/version is restricted).
+  {
+    steps: ["zeppelin_classic_index_html"]
+  },
+  # Passive Angular main JS bundle (enables subpath discovery and standalone match when /api/version is restricted).
+  {
+    steps: ["zeppelin_passive_angular_bundle"]
+  },
+  # Passive classic AngularJS bundle (enables subpath discovery and standalone match when /api/version is restricted).
+  {
+    steps: ["zeppelin_passive_classic_bundle"]
+  },
+  # Passive classic navbar template (enables subpath discovery and standalone match when /api/version is restricted).
+  {
+    steps: ["zeppelin_classic_navbar"]
+  }
+]

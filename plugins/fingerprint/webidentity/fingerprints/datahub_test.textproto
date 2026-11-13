@@ -1,0 +1,462 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "datahub"
+
+tests: [
+  {
+    name: "datahub_v0_8_45_disconnected_login_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"icon\" href=\"/assets/favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><meta name=\"theme-color\" content=\"#000000\"/><meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\"/><link rel=\"manifest\" href=\"/assets/manifest.json\"/><title>DataHub</title><link href=\"/assets/static/css/2.1c5b532a.chunk.css\" rel=\"stylesheet\"><link href=\"/assets/static/css/main.ac0c2fc5.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\" style=\"min-height:100%;display:flex;flex-direction:column\"></div><script>!function(e){var a={p:\"/assets/\"};var i=this[\"webpackJsonpdatahub-react-web\"]=this[\"webpackJsonpdatahub-react-web\"]||[];}([])</script><script src=\"/assets/static/js/2.7e5c9861.chunk.js\"></script><script src=\"/assets/static/js/main.c6296547.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"icon\" href=\"/assets/favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><meta name=\"theme-color\" content=\"#000000\"/><meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\"/><link rel=\"manifest\" href=\"/assets/manifest.json\"/><title>DataHub</title><link href=\"/assets/static/css/2.1c5b532a.chunk.css\" rel=\"stylesheet\"><link href=\"/assets/static/css/main.ac0c2fc5.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\" style=\"min-height:100%;display:flex;flex-direction:column\"></div><script>!function(e){var a={p:\"/assets/\"};var i=this[\"webpackJsonpdatahub-react-web\"]=this[\"webpackJsonpdatahub-react-web\"]||[];}([])</script><script src=\"/assets/static/js/2.7e5c9861.chunk.js\"></script><script src=\"/assets/static/js/main.c6296547.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/authenticate"
+        status_code: 303
+        headers: [
+          { name: "Location", value: "/login?redirect_uri=%2F" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/assets/static/js/main.c6296547.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "(this[\"webpackJsonpdatahub-react-web\"]=this[\"webpackJsonpdatahub-react-web\"]||[]).push([[0],{1524:function(e,n,t){\"use strict\";var u={graphql:\"/api/v2/graphql\",login:\"/logIn\",docs:\"https://datahubproject.io/docs\",platform:\"urn:li:dataPlatform:hive\",term:\"urn:li:glossaryTerm\"}}}]);"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"v0.8.45\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.8.45"]
+      }
+    ]
+  },
+  {
+    name: "datahub_v0_12_0_disconnected_unconfigured_zero_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"icon\" href=\"/assets/favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><meta name=\"theme-color\" content=\"#000000\"/><meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\"/><link rel=\"manifest\" href=\"/assets/manifest.json\"/><title>DataHub</title><link href=\"/assets/static/css/2.817923f1.chunk.css\" rel=\"stylesheet\"><link href=\"/assets/static/css/main.3c594326.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\" style=\"min-height:100%;display:flex;flex-direction:column\"></div><script>!function(e){var i=this[\"webpackJsonpdatahub-react-web\"]=this[\"webpackJsonpdatahub-react-web\"]||[];}([])</script><script src=\"/assets/static/js/2.ed2c2c86.chunk.js\"></script><script src=\"/assets/static/js/main.c348936e.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/assets/static/js/main.c348936e.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "(this[\"webpackJsonpdatahub-react-web\"]=this[\"webpackJsonpdatahub-react-web\"]||[]).push([[0],{130:function(e,n,t){e.exports={actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",docs:\"https://datahubproject.io\"}}}]);"
+      },
+      {
+        uri: "/sso"
+        status_code: 303
+        headers: [
+          { name: "Location", value: "/login?error_msg=SSO is not configured" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"0.0.0\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "datahub_v1_0_0_vite_ui_and_configured_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\" />\n        <link rel=\"icon\" href=\"assets/icons/favicon.ico\" />\n        <link rel=\"mask-icon\" href=\"assets/icons/favicon.ico\" />\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n        <meta name=\"theme-color\" content=\"#000000\" />\n        <meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" />\n        <link rel=\"manifest\" href=\"/manifest.json\" />\n        <title>DataHub</title>\n      <script type=\"module\" crossorigin src=\"/assets/index-790cfe93.js\"></script>\n      <link rel=\"stylesheet\" href=\"/assets/index-e018c8f6.css\">\n    </head>\n    <body>\n        <noscript>You need to enable JavaScript to run this app.</noscript>\n        <div id=\"root\" style=\"min-height: 100%; display: flex; flex-direction: column\"></div>\n    </body>\n</html>\n"
+      },
+      {
+        uri: "/assets/index-790cfe93.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "var MZ1=()=>{return{defaultActor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",mutation:\"resetNativeUserCredentials\",docs:\"https://datahubproject.io/docs\"}};"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"v1.0.0\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.0.0"]
+      }
+    ]
+  },
+  {
+    name: "datahub_v1_4_0_disconnected_unconfigured_placeholder_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\" />\n        <base href=\"/\" />\n        <link rel=\"icon\" href=\"assets/icons/favicon.ico\" id=\"favicon-link\" />\n        <link rel=\"mask-icon\" href=\"assets/icons/favicon.ico\" id=\"mask-icon-link\" />\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n        <meta name=\"theme-color\" content=\"#000000\" />\n        <meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" />\n        <link rel=\"manifest\" href=\"manifest.json\" id=\"manifest-link\" />\n        <title>DataHub</title>\n      <script type=\"module\" crossorigin src=\"assets/index-DNMAUCoB.js\"></script>\n      <link rel=\"stylesheet\" crossorigin href=\"assets/index-BjiT_qCz.css\">\n    </head>\n    <body>\n        <noscript>You need to enable JavaScript to run this app.</noscript>\n        <div id=\"root\" style=\"min-height: 100%; display: flex; flex-direction: column\"></div>\n    </body>\n</html>\n"
+      },
+      {
+        uri: "/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "function gI1(){return{actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",pkg:\"datahub-web-react\",docs:\"https://datahubproject.io/docs\"}}"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"v1.0.0\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"},\"basePath\":\"/\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "datahub_v1_4_0_connected_gms_no_auth_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\" />\n        <base href=\"/\" />\n        <link rel=\"icon\" href=\"assets/icons/favicon.ico\" id=\"favicon-link\" />\n        <link rel=\"mask-icon\" href=\"assets/icons/favicon.ico\" id=\"mask-icon-link\" />\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n        <meta name=\"theme-color\" content=\"#000000\" />\n        <meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" />\n        <link rel=\"manifest\" href=\"manifest.json\" id=\"manifest-link\" />\n        <title>DataHub</title>\n      <script type=\"module\" crossorigin src=\"assets/index-DNMAUCoB.js\"></script>\n      <link rel=\"stylesheet\" crossorigin href=\"assets/index-BjiT_qCz.css\">\n    </head>\n    <body>\n        <noscript>You need to enable JavaScript to run this app.</noscript>\n        <div id=\"root\" style=\"min-height: 100%; display: flex; flex-direction: column\"></div>\n    </body>\n</html>\n"
+      },
+      {
+        uri: "/authenticate"
+        status_code: 303
+        headers: [
+          { name: "Location", value: "/" },
+          { name: "Set-Cookie", value: "actor=urn:li:corpuser:datahub; Max-Age=86400; SameSite=Lax; Path=/" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "function gI1(){return{actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",pkg:\"datahub-web-react\",docs:\"https://datahubproject.io/docs\"}}"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"v1.4.0\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"},\"basePath\":\"/\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.4.0"]
+      }
+    ]
+  },
+  {
+    name: "datahub_v1_4_0_ui_bundle_only_config_restricted"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\" />\n        <base href=\"/\" />\n        <meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" />\n        <title>DataHub</title>\n      <script type=\"module\" crossorigin src=\"assets/index-DNMAUCoB.js\"></script>\n    </head>\n    <body><div id=\"root\"></div></body>\n</html>\n"
+      },
+      {
+        uri: "/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "function gI1(){return{actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",docs:\"https://datahubproject.io/docs\"}}"
+      },
+      {
+        uri: "/config"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"error\":\"forbidden\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "datahub_gms_v1_4_0_config_endpoint"
+    mock_responses: [
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"models\":{},\"patchCapable\":true,\"versions\":{\"acryldata/datahub\":{\"version\":\"v1.4.0\",\"commit\":\"abcdef1234567890abcdef1234567890abcdef12\"}},\"managedIngestion\":{\"defaultCliVersion\":\"v1.4.0\",\"enabled\":true},\"statefulIngestionCapable\":true,\"supportsImpactAnalysis\":true,\"telemetry\":{\"enabledCli\":true,\"enabledIngestion\":false},\"datasetUrnNameCasing\":false,\"datahub\":{\"serverType\":\"quickstart\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.4.0"]
+      }
+    ]
+  },
+  {
+    name: "datahub_v1_4_0_subpath_oidc_login_and_version"
+    mock_responses: [
+      {
+        uri: "/datahub/login"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "no-cache" },
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\" />\n        <base href=\"/datahub/\" />\n        <link rel=\"icon\" href=\"assets/icons/favicon.ico\" id=\"favicon-link\" />\n        <link rel=\"mask-icon\" href=\"assets/icons/favicon.ico\" id=\"mask-icon-link\" />\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n        <meta name=\"theme-color\" content=\"#000000\" />\n        <meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" />\n        <link rel=\"manifest\" href=\"manifest.json\" id=\"manifest-link\" />\n        <title>DataHub</title>\n      <script type=\"module\" crossorigin src=\"assets/index-DNMAUCoB.js\"></script>\n      <link rel=\"stylesheet\" crossorigin href=\"assets/index-BjiT_qCz.css\">\n    </head>\n    <body>\n        <noscript>You need to enable JavaScript to run this app.</noscript>\n        <div id=\"root\" style=\"min-height: 100%; display: flex; flex-direction: column\"></div>\n    </body>\n</html>\n"
+      },
+      {
+        uri: "/datahub/authenticate"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://idp.example.com/oauth2/authorize?response_type=code&redirect_uri=http%3A%2F%2Ftarget.test%3A8080%2Fdatahub%2Fcallback%2Foidc&state=b828266d90&client_id=datahub-client&scope=openid%20profile%20email" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/datahub/sso"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://idp.example.com/oauth2/authorize?response_type=code&redirect_uri=http%3A%2F%2Ftarget.test%3A8080%2Fdatahub%2Fcallback%2Foidc&state=48a0e36e33&client_id=datahub-client&scope=openid%20profile%20email" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/datahub/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "function gI1(){return{actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",pkg:\"datahub-web-react\",docs:\"https://datahubproject.io/docs\"}}"
+      },
+      {
+        uri: "/datahub/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"datahub-frontend\",\"appVersion\":\"v1.4.0\",\"isInternal\":false,\"shouldShowDatasetLineage\":true,\"suggestionConfidenceThreshold\":50,\"wikiLinks\":{\"appHelp\":\"https://github.com/datahub-project/datahub\",\"gdprPii\":\"\",\"tmsSchema\":\"\",\"gdprTaxonomy\":\"\",\"staleSearchIndex\":\"\",\"dht\":\"\",\"purgePolicies\":\"\",\"jitAcl\":\"\",\"metadataCustomRegex\":\"\",\"exportPolicy\":\"\",\"metadataHealth\":\"\",\"purgeKey\":\"\",\"datasetDecommission\":\"\"},\"tracking\":{\"trackers\":{\"piwik\":{\"piwikSiteId\":0,\"piwikUrl\":\"\"}},\"isEnabled\":true},\"isStagingBanner\":false,\"isLiveDataWarning\":false,\"showChangeManagement\":false,\"showPeople\":true,\"changeManagementLink\":\"\",\"isStaleSearch\":true,\"showAdvancedSearch\":true,\"useNewBrowseDataset\":true,\"showLineageGraph\":true,\"showInstitutionalMemory\":true,\"userEntityProps\":{\"aviUrlPrimary\":\"\",\"aviUrlFallback\":\"\"},\"basePath\":\"/datahub\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/datahub"
+        expected_versions: ["1.4.0"]
+      }
+    ]
+  },
+  {
+    name: "datahub_subpath_oidc_passive_bundle_only_when_html_redirects"
+    mock_responses: [
+      {
+        uri: "/catalog/login"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://idp.example.com/oauth2/authorize?client_id=datahub-client&redirect_uri=https%3A%2F%2Ftarget.test%2Fcatalog%2Fcallback%2Foidc" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/catalog/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=UTF-8" }
+        ]
+        body: "function gI1(){return{actor:\"urn:li:corpuser:datahub\",graphql:\"/api/v2/graphql\",login:\"/logIn\",docs:\"https://datahubproject.io/docs\"}}"
+      },
+      {
+        uri: "/catalog/config"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"error\":\"forbidden\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/catalog"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_portal_with_datahub_title_and_generic_config"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>DataHub</title><meta name=\"description\" content=\"Internal Data Portal\" /><script type=\"module\" src=\"/assets/index-12345678.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>DataHub</title><meta name=\"description\" content=\"Internal Data Portal\" /><script type=\"module\" src=\"/assets/index-12345678.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/assets/index-12345678.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "const app={title:\"DataHub\",api:\"/api/graphql\",login:\"/login\"};"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"config\":{\"application\":\"internal-data-portal\",\"appVersion\":\"v2.1.0\"}}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>DataHub</title><meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" /><script type=\"module\" src=\"/assets/index-DNMAUCoB.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>DataHub</title><meta name=\"description\" content=\"A Metadata Platform for the Modern Data Stack\" /><script type=\"module\" src=\"/assets/index-DNMAUCoB.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/assets/index-DNMAUCoB.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>SPA catch-all mentioning urn:li:corpuser and api/v2/graphql and datahubproject.io and /logIn</body></html>"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"application\":\"datahub-frontend\",\"appVersion\":\"v1.4.0\",\"shouldShowDatasetLineage\":true,\"versions\":{\"acryldata/datahub\":{\"version\":\"v1.4.0\"}},\"statefulIngestionCapable\":true}</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_play_healthcheck_and_unauthorized_graphql"
+    mock_responses: [
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" }
+        ]
+        body: "GOOD"
+      },
+      {
+        uri: "/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" }
+        ]
+        body: "GOOD"
+      },
+      {
+        uri: "/api/v2/graphql"
+        status_code: 401
+        headers: []
+        body: ""
+      }
+    ]
+    expected_matches: []
+  }
+]

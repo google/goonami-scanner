@@ -1,0 +1,360 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "locust"
+
+tests: [
+  {
+    name: "locust_2_47_0_modern_ui_idle_ready"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-light.png\" media=\"(prefers-color-scheme: light)\">\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-dark.png\" media=\"(prefers-color-scheme: dark)\">\n    <title>Locust</title>\n    <script type=\"module\" crossorigin src=\"./assets/src-Cl6CiemE.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script>\n      window.templateArgs = {\"available_shape_classes\": [\"Default\"], \"available_user_classes\": [\"ApiUser\", \"WebsiteUser\"], \"host\": \"http://127.0.0.1:8089\", \"is_distributed\": false, \"locustfile\": \"locustfile.py\", \"percentiles_to_chart\": [0.5, 0.95], \"show_userclass_picker\": true, \"state\": \"ready\", \"user_count\": 0, \"version\": \"2.47.0\", \"worker_count\": 0}\n    </script>\n  </body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.47.0"]
+      }
+    ]
+  },
+  {
+    name: "locust_2_47_0_modern_ui_running_swarm"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-light.png\">\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-dark.png\">\n    <title>Locust</title>\n    <script type=\"module\" crossorigin src=\"./assets/src-Cl6CiemE.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script>\n      window.templateArgs = {\"history\": [{\"current_rps\": [\"2026-11-04T14:29:28Z\", 1.25], \"user_count\": [\"2026-11-04T14:29:28Z\", 2]}], \"host\": \"http://127.0.0.1:8089\", \"locustfile\": \"locustfile.py\", \"num_users\": 2, \"percentiles_to_chart\": [0.5, 0.95], \"spawn_rate\": 2.0, \"state\": \"running\", \"user_count\": 2, \"version\": \"2.47.0\", \"worker_count\": 0}\n    </script>\n  </body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.47.0"]
+      }
+    ]
+  },
+  {
+    name: "locust_2_47_0_web_login_default_title"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "/login?next=%2F" }
+        ]
+        body: "<!doctype html><html lang=en><title>Redirecting...</title><h1>Redirecting...</h1>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-light.png\" media=\"(prefers-color-scheme: light)\">\n    <link rel=\"shortcut icon\" href=\"./assets/favicon-dark.png\" media=\"(prefers-color-scheme: dark)\">\n    <title>Locust</title>\n    <script type=\"module\" crossorigin src=\"./assets/src-Cl6CiemE.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script>\n        window.authArgs = {\"error\": null, \"info\": null, \"username_password_callback\": \"/login_submit\"}\n    </script>\n  </body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "locust_2_47_0_web_login_custom_title_verified_via_bundle"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Perf Portal Sign In</title><script type=\"module\" crossorigin src=\"./assets/src-Cl6CiemE.js\"></script></head><body><div id=\"root\"></div><script>window.authArgs = {\"error\": null, \"info\": null, \"username_password_callback\": \"/login_submit\"}</script></body></html>"
+      },
+      {
+        uri: "/assets/src-Cl6CiemE.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "const vi=!!window.authArgs&&pi(window.authArgs);const licenseUrl=`https://github.com/locustio/locust/blob/master/LICENSE`;const msg=`Locust is free and open source software`;"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "locust_2_15_1_classic_ui_class_picker_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Locust for locustfile.py</title>\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"./static/css/application.css?v=2.15.1\" media=\"screen\">\n    <link rel=\"shortcut icon\" href=\"./static/img/favicon.ico\" type=\"image/x-icon\"/>\n</head>\n<body class=\"ready\">\n    <img src=\"./static/img/logo.png?v=2.15.1\" class=\"logo\" />\n    <h2>Version <a href=\"https://github.com/locustio/locust/releases/tag/2.15.1\">2.15.1</a></h2>\n    <a href=\"https://locust.io/\">https://locust.io</a>\n    <script type=\"text/javascript\" src=\"./static/chart.js?v=2.15.1\"></script>\n    <script type=\"text/javascript\" src=\"./static/locust.js?v=2.15.1\"></script>\n    <script type=\"text/javascript\" src=\"./static/tasks.js?v=2.15.1\"></script>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.15.1"]
+      }
+    ]
+  },
+  {
+    name: "locust_1_6_0_classic_ui_running_state_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Locust</title>\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"./static/css/application.css?v=1.6.0\" media=\"screen\">\n    <link rel=\"shortcut icon\" href=\"./static/img/favicon.ico\" type=\"image/x-icon\"/>\n</head>\n<body class=\"running\">\n    <img src=\"./static/img/logo.png?v=1.6.0\" class=\"logo\" />\n    <h2>Version <a href=\"https://github.com/locustio/locust/releases/tag/1.6.0\">1.6.0</a></h2>\n    <a href=\"https://locust.io/\">https://locust.io</a>\n    <script type=\"text/javascript\" src=\"./static/chart.js?v=1.6.0\"></script>\n    <script type=\"text/javascript\" src=\"./static/locust.js?v=1.6.0\"></script>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.6.0"]
+      }
+    ]
+  },
+  {
+    name: "locust_1_6_0_basic_auth_unauthenticated_static_js"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"\"" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/stats/requests"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"\"" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/static/locust.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "var rpsChart = new LocustLineChart($(\".charts-container\"), \"Total Requests per Second\");\nvar responseTimeChart = new LocustLineChart($(\".charts-container\"), \"Response Times (ms)\");\n$.get('./stats/requests', function (report) {});\n$('#exceptions tbody').jqoteapp(exceptions_tpl, data.exceptions);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "locust_0_14_6_legacy_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n    <title>Locust</title>\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"./static/style.css?v=0.14.6\" media=\"screen\">\n    <link rel=\"shortcut icon\" href=\"./static/img/favicon.ico\" type=\"image/x-icon\"/>\n</head>\n<body class=\"ready\">\n    <img src=\"./static/img/logo.png?v=0.14.6\" class=\"logo\" />\n    <h2>Start new Locust swarm</h2>\n    <h2>Version <a href=\"https://github.com/locustio/locust/releases/tag/0.14.6\">0.14.6</a></h2>\n    <a href=\"https://locust.io/\">https://locust.io</a>\n    <script type=\"text/javascript\" src=\"./static/chart.js?v=0.14.6\"></script>\n    <script type=\"text/javascript\" src=\"./static/locust.js?v=0.14.6\"></script>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.14.6"]
+      }
+    ]
+  },
+  {
+    name: "locust_subpath_modern_web_base_path_and_version"
+    mock_responses: [
+      {
+        uri: "/locust/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Locust</title><script type=\"module\" crossorigin src=\"./assets/src-Cl6CiemE.js\"></script></head><body><div id=\"root\"></div><script>window.templateArgs = {\"locustfile\": \"locustfile.py\", \"percentiles_to_chart\": [0.5, 0.95], \"state\": \"ready\", \"version\": \"2.47.0\"}</script></body></html>"
+      },
+      {
+        uri: "/locust/assets/src-Cl6CiemE.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "const wT=window.templateArgs?pi(window.templateArgs):{};const repo=`https://github.com/locustio/locust`;"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/locust"
+        expected_versions: ["2.47.0"]
+      }
+    ]
+  },
+  {
+    name: "locust_subpath_modern_web_login_passive"
+    mock_responses: [
+      {
+        uri: "/loadtest/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><link rel=\"shortcut icon\" href=\"./assets/favicon-dark.png\"><title>Locust</title><script type=\"module\" crossorigin src=\"./assets/index-fcdc76c8.js\"></script></head><body><div id=\"root\"></div><script>window.authArgs = {\"error\": null, \"info\": null}</script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/loadtest"
+      }
+    ]
+  },
+  {
+    name: "locust_subpath_classic_js_and_version"
+    mock_responses: [
+      {
+        uri: "/swarm/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Locust for locustfile.py</title><link rel=\"stylesheet\" href=\"./static/css/application.css?v=2.15.1\"></head><body class=\"stopped\"><a href=\"https://locust.io/\">https://locust.io</a><script src=\"./static/locust.js?v=2.15.1\"></script></body></html>"
+      },
+      {
+        uri: "/swarm/static/locust.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "var rpsChart = new LocustLineChart($(\".charts-container\"), \"Total Requests per Second\");\nvar responseTimeChart = new LocustLineChart($(\".charts-container\"), \"Response Times (ms)\");\n$('#exceptions tbody').jqoteapp(exceptions_tpl, []);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/swarm"
+        expected_versions: ["2.15.1"]
+      }
+    ]
+  },
+  {
+    name: "negative_stats_requests_alone_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/stats/requests"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"current_fail_per_sec\":0,\"current_rps\":0,\"errors\":[],\"fail_ratio\":0.0,\"state\":\"ready\",\"stats\":[{\"name\":\"Aggregated\"}],\"total_rps\":0.0,\"user_count\":0}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_basic_auth_401_without_locust_assets"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"\"" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_login_and_react_app"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Load Runner Dashboard</title><script type=\"module\" src=\"./assets/index-a1b2c3d4.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Login</title></head><body><form action=\"/login\"></form></body></html>"
+      },
+      {
+        uri: "/assets/index-a1b2c3d4.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "console.log('generic vite react bundle');"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Generic SPA</title></head><body><div id=\"app\">rpsChart responseTimeChart jqoteapp LocustLineChart github.com/locustio/locust window.authArgs</div></body></html>"
+      },
+      {
+        uri: "/static/locust.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Generic SPA</title></head><body><div id=\"app\">rpsChart responseTimeChart jqoteapp LocustLineChart</div></body></html>"
+      },
+      {
+        uri: "/assets/src-Cl6CiemE.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Generic SPA</title></head><body><div id=\"app\">github.com/locustio/locust window.templateArgs</div></body></html>"
+      },
+      {
+        uri: "/stats/requests"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\"fail_ratio\" \"total_rps\" \"user_count\" \"state\" \"stats\" \"Aggregated\"</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

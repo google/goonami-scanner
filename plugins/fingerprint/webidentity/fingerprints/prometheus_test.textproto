@@ -1,0 +1,673 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "prometheus"
+
+tests: [
+  {
+    name: "prometheus_v2_19_3_classic_ui_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "/graph" }
+        ]
+        body: "<a href=\"/graph\">Found</a>.\n\n"
+      },
+      {
+        uri: "/graph"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n        <meta name=\"robots\" content=\"noindex,nofollow\">\n        <title>Prometheus Time Series Collection and Processing Server</title>\n        <link rel=\"shortcut icon\" href=\"/static/img/favicon.ico?v=657ba532e42f1db8d7c77bf802378643da0d3118\">\n        <link type=\"text/css\" rel=\"stylesheet\" href=\"/static/css/prometheus.css?v=657ba532e42f1db8d7c77bf802378643da0d3118\">\n        <link type=\"text/css\" rel=\"stylesheet\" href=\"/static/css/graph.css?v=657ba532e42f1db8d7c77bf802378643da0d3118\">\n        <script>\n            var PATH_PREFIX = \"\";\n            var BUILD_VERSION = \"657ba532e42f1db8d7c77bf802378643da0d3118\";\n        </script>\n    </head>\n    <body>\n    </body>\n</html>"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"2.19.3\",\"revision\":\"657ba532e42f1db8d7c77bf802378643da0d3118\",\"branch\":\"HEAD\",\"buildUser\":\"root@32727b944462\",\"buildDate\":\"20200707-17:04:01\",\"goVersion\":\"go1.14.4\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.19.3"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_19_3_classic_status_page_version_extraction"
+    mock_responses: [
+      {
+        uri: "/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n        <title>Prometheus Time Series Collection and Processing Server</title>\n        <link type=\"text/css\" rel=\"stylesheet\" href=\"/static/css/prometheus.css?v=657ba532e42f1db8d7c77bf802378643da0d3118\">\n        <script>\n            var PATH_PREFIX = \"\";\n            var BUILD_VERSION = \"657ba532e42f1db8d7c77bf802378643da0d3118\";\n        </script>\n    </head>\n    <body>\n        <div class=\"container-fluid\">\n            <h2>Build Information</h2>\n            <table class=\"table table-condensed table-bordered table-striped table-hover\">\n                <tbody>\n                    <tr>\n                        <th>Version</th>\n                        <td>2.19.3</td>\n                    </tr>\n                    <tr>\n                        <th>Revision</th>\n                        <td>657ba532e42f1db8d7c77bf802378643da0d3118</td>\n                    </tr>\n                </tbody>\n            </table>\n        </div>\n    </body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.19.3"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_19_3_experimental_new_react_ui_and_version_endpoint"
+    mock_responses: [
+      {
+        uri: "/new/graph"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><script>const GLOBAL_PATH_PREFIX=\"\",GLOBAL_CONSOLES_LINK=\"\"</script><link rel=\"manifest\" href=\"./manifest.json\"/><title>Prometheus Expression Browser</title><link href=\"./static/css/2.df42c974.chunk.css\" rel=\"stylesheet\"><link href=\"./static/css/main.58ea9927.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div><script src=\"./static/js/2.dfe05a07.chunk.js\"></script><script src=\"./static/js/main.0e34521a.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\"version\":\"2.19.3\",\"revision\":\"657ba532e42f1db8d7c77bf802378643da0d3118\",\"branch\":\"HEAD\",\"buildUser\":\"root@32727b944462\",\"buildDate\":\"20200707-17:04:01\",\"goVersion\":\"go1.14.4\"}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.19.3"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_55_1_react_ui_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "/graph" }
+        ]
+        body: "<a href=\"/graph\">Found</a>.\n\n"
+      },
+      {
+        uri: "/graph"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><script>const GLOBAL_CONSOLES_LINK=\"\",GLOBAL_AGENT_MODE=\"false\",GLOBAL_READY=\"true\"</script><link rel=\"manifest\" href=\"./manifest.json\" crossorigin=\"use-credentials\"/><title>Prometheus Time Series Collection and Processing Server</title><script defer=\"defer\" src=\"./static/js/main.4729a977.js\"></script><link href=\"./static/css/main.0eb1f61f.css\" rel=\"stylesheet\"></head><body class=\"bootstrap\"><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"2.55.1\",\"revision\":\"416ace0da276ebefec1c9adf22f8bdba2fbf8b1d\",\"branch\":\"HEAD\",\"buildUser\":\"root@bf84a69cd257\",\"buildDate\":\"20241105-11:51:43\",\"goVersion\":\"go1.23.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.55.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_55_1_agent_mode_ui_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "/agent" }
+        ]
+        body: "<a href=\"/agent\">Found</a>.\n\n"
+      },
+      {
+        uri: "/agent"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><script>const GLOBAL_CONSOLES_LINK=\"\",GLOBAL_AGENT_MODE=\"true\",GLOBAL_READY=\"true\"</script><link rel=\"manifest\" href=\"./manifest.json\" crossorigin=\"use-credentials\"/><title>Prometheus Time Series Collection and Processing Server</title><script defer=\"defer\" src=\"./static/js/main.4729a977.js\"></script><link href=\"./static/css/main.0eb1f61f.css\" rel=\"stylesheet\"></head><body class=\"bootstrap\"><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "Prometheus Agent is Healthy.\n"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"2.55.1\",\"revision\":\"416ace0da276ebefec1c9adf22f8bdba2fbf8b1d\",\"branch\":\"HEAD\",\"buildUser\":\"root@bf84a69cd257\",\"buildDate\":\"20241105-11:51:43\",\"goVersion\":\"go1.23.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.55.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_55_1_manifest_json_and_version_endpoint"
+    mock_responses: [
+      {
+        uri: "/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"short_name\": \"Prometheus UI\",\n  \"name\": \"Prometheus Server Web Interface\",\n  \"icons\": [\n    {\n      \"src\": \"favicon.ico\",\n      \"sizes\": \"64x64 32x32 24x24 16x16\",\n      \"type\": \"image/x-icon\"\n    }\n  ],\n  \"start_url\": \".\",\n  \"display\": \"standalone\",\n  \"theme_color\": \"#000000\",\n  \"background_color\": \"#ffffff\"\n}\n"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\"version\":\"2.55.1\",\"revision\":\"416ace0da276ebefec1c9adf22f8bdba2fbf8b1d\",\"branch\":\"HEAD\",\"buildUser\":\"root@bf84a69cd257\",\"buildDate\":\"20241105-11:51:43\",\"goVersion\":\"go1.23.2\"}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.55.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v3_0_0_mantine_ui_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "/query" }
+        ]
+        body: "<a href=\"/query\">Found</a>.\n\n"
+      },
+      {
+        uri: "/query"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"./favicon.svg\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <!--\n      Placeholders replaced by Prometheus during serving:\n      - GLOBAL_CONSOLES_LINK\n      - GLOBAL_AGENT_MODE\n      - GLOBAL_READY\n      - GLOBAL_LOOKBACKDELTA\n    -->\n    <script>\n      const GLOBAL_CONSOLES_LINK='';\n      const GLOBAL_AGENT_MODE='false';\n      const GLOBAL_READY='true';\n      const GLOBAL_LOOKBACKDELTA='5m';\n    </script>\n    <title>Prometheus Time Series Collection and Processing Server</title>\n    <script type=\"module\" crossorigin src=\"./assets/index-1SrvQFrd.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"./assets/index-Bm6642QA.css\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"3.0.0\",\"revision\":\"56cfe091c5fb6cb9f0b32b8d55fb542ca5e1320b\",\"branch\":\"HEAD\",\"buildUser\":\"root@e1f0a6953ca8\",\"buildDate\":\"20241114-11:36:14\",\"goVersion\":\"go1.23.3\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.0.0"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v3_15_1_mantine_ui_svg_favicon_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/query"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"./favicon.svg\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <!--\n      Placeholders replaced by Prometheus during serving:\n    -->\n    <script>\n      const GLOBAL_CONSOLES_LINK='';\n      const GLOBAL_AGENT_MODE='false';\n      const GLOBAL_READY='true';\n      const GLOBAL_LOOKBACKDELTA='5m';\n    </script>\n    <title>Prometheus Time Series Collection and Processing Server</title>\n    <script type=\"module\" crossorigin src=\"./assets/index-MKGKlG4_.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"./assets/index-BV7pz6k1.css\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n"
+      },
+      {
+        uri: "/favicon.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "image/svg+xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" sodipodi:docname=\"prometheus_logo_orange.svg\" viewBox=\"0 0 115.333 114\"></svg>"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"3.15.1\",\"revision\":\"dc8edbe68a638dbef9a6c8e0ff4eb0e9bf93d079\",\"branch\":\"HEAD\",\"buildUser\":\"root@72a76f93d0d5\",\"buildDate\":\"20260414-21:08:50\",\"goVersion\":\"go1.26.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.15.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v3_15_1_agent_mode_identification_without_version_api"
+    mock_responses: [
+      {
+        uri: "/agent"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"./favicon.svg\" />\n    <!--\n      Placeholders replaced by Prometheus during serving:\n    -->\n    <script>\n      const GLOBAL_CONSOLES_LINK='';\n      const GLOBAL_AGENT_MODE='true';\n      const GLOBAL_READY='true';\n      const GLOBAL_LOOKBACKDELTA='5m';\n    </script>\n    <title>Prometheus Time Series Collection and Processing Server</title>\n    <script type=\"module\" crossorigin src=\"./assets/index-MKGKlG4_.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "Prometheus Agent is Healthy.\n"
+      },
+      {
+        uri: "/-/ready"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "Prometheus Agent is Ready.\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "prometheus_v3_15_1_metrics_endpoint_only"
+    mock_responses: [
+      {
+        uri: "/metrics"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; version=0.0.4; charset=utf-8; escaping=underscores" }
+        ]
+        body: "# HELP prometheus_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion, builddate, and builduser, from which Prometheus was built.\n# TYPE prometheus_build_info gauge\nprometheus_build_info{branch=\"HEAD\",goversion=\"go1.26.2\",revision=\"dc8edbe68a638dbef9a6c8e0ff4eb0e9bf93d079\",tags=\"netgo,builtinassets,stringlabels\",version=\"3.15.1\"} 1\n# HELP prometheus_tsdb_head_chunks Total number of chunks in the head block.\n# TYPE prometheus_tsdb_head_chunks gauge\nprometheus_tsdb_head_chunks 124\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.15.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v3_15_1_subpath_v3_js_bundle_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/prometheus/assets/index-MKGKlG4_.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const c=GLOBAL_CONSOLES_LINK===\"CONSOLES_LINK_PLACEHOLDER\"||GLOBAL_CONSOLES_LINK===\"\"?null:GLOBAL_CONSOLES_LINK,d=GLOBAL_LOOKBACKDELTA===\"LOOKBACKDELTA_PLACEHOLDER\"?\"\":GLOBAL_LOOKBACKDELTA;function getPrometheusClient(){return\"https://prometheus.io/docs/prometheus/latest/getting_started/\"}"
+      },
+      {
+        uri: "/prometheus/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"3.15.1\",\"revision\":\"dc8edbe68a638dbef9a6c8e0ff4eb0e9bf93d079\",\"branch\":\"HEAD\",\"buildUser\":\"root@72a76f93d0d5\",\"buildDate\":\"20260414-21:08:50\",\"goVersion\":\"go1.26.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/prometheus"
+        expected_versions: ["3.15.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_55_1_subpath_v2_js_bundle_and_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/prometheus/static/js/main.4729a977.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const e=\"CONSOLES_LINK_PLACEHOLDER\"===GLOBAL_CONSOLES_LINK||\"\"===GLOBAL_CONSOLES_LINK?null:GLOBAL_CONSOLES_LINK,u=\"https://prometheus.io/docs/prometheus/latest/getting_started/\";"
+      },
+      {
+        uri: "/prometheus/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"2.55.1\",\"revision\":\"416ace0da276ebefec1c9adf22f8bdba2fbf8b1d\",\"branch\":\"HEAD\",\"buildUser\":\"root@bf84a69cd257\",\"buildDate\":\"20241105-11:51:43\",\"goVersion\":\"go1.23.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/prometheus"
+        expected_versions: ["2.55.1"]
+      }
+    ]
+  },
+  {
+    name: "prometheus_v2_19_3_subpath_classic_graph_js_and_version_endpoint"
+    mock_responses: [
+      {
+        uri: "/prometheus/static/js/graph/index.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var Prometheus = Prometheus || {};\nPrometheus.Graph = function(elem, options) {\n  var self = this;\n  self.pathPrefix = PATH_PREFIX;\n};\n"
+      },
+      {
+        uri: "/prometheus/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\"version\":\"2.19.3\",\"revision\":\"657ba532e42f1db8d7c77bf802378643da0d3118\",\"branch\":\"HEAD\",\"buildUser\":\"root@32727b944462\",\"buildDate\":\"20200707-17:04:01\",\"goVersion\":\"go1.14.4\"}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/prometheus"
+        expected_versions: ["2.19.3"]
+      }
+    ]
+  },
+  {
+    name: "negative_thanos_or_victoriametrics_standalone_buildinfo_api"
+    mock_responses: [
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"status\":\"success\",\"data\":{\"version\":\"0.36.1\",\"revision\":\"a1b2c3d4\",\"branch\":\"HEAD\",\"buildUser\":\"root@thanos\",\"buildDate\":\"20240901-00:00:00\",\"goVersion\":\"go1.22.5\"}}"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"0.36.1\",\"revision\":\"a1b2c3d4\",\"branch\":\"HEAD\",\"buildUser\":\"root@thanos\",\"buildDate\":\"20240901-00:00:00\",\"goVersion\":\"go1.22.5\"}"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "VictoriaMetrics is Healthy.\n"
+      },
+      {
+        uri: "/-/ready"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "OK"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_node_exporter_and_alertmanager_metrics"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<html><head><title>Node Exporter</title></head><body><h1>Node Exporter</h1><p><a href=\"/metrics\">Metrics</a></p></body></html>"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "OK"
+      },
+      {
+        uri: "/metrics"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; version=0.0.4; charset=utf-8" }
+        ]
+        body: "# HELP node_exporter_build_info A metric with a constant '1' value labeled by version, revision, branch, goversion from which node_exporter was built.\n# TYPE node_exporter_build_info gauge\nnode_exporter_build_info{branch=\"HEAD\",goversion=\"go1.22.5\",revision=\"f1e2d3\",version=\"1.8.2\"} 1\n# HELP alertmanager_build_info A metric with a constant '1' value labeled by version, revision, branch, and goversion from which alertmanager was built.\n# TYPE alertmanager_build_info gauge\nalertmanager_build_info{branch=\"HEAD\",goversion=\"go1.22.5\",revision=\"a1b2c3\",version=\"0.27.0\"} 1\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_exporter_toolkit_basic_auth_401"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/query"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/graph"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/metrics"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "Www-Authenticate" value: "Basic" }
+        ]
+        body: "Unauthorized\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_spa_catchall_html_on_all_paths"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/query"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/graph"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/assets/index-MKGKlG4_.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.4729a977.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/favicon.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/metrics"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/v1/status/buildinfo"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Generic App</title></head><body><div id=\"root\"></div></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_healthy_check_without_ready_or_ui"
+    mock_responses: [
+      {
+        uri: "/-/healthy"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "Prometheus Server is Healthy.\n"
+      },
+      {
+        uri: "/-/ready"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body: "404 page not found\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_manifest_json"
+    mock_responses: [
+      {
+        uri: "/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"short_name\": \"Prometheus UI\",\n  \"name\": \"Prometheus Server Web Interface\"\n}\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_favicon_svg"
+    mock_responses: [
+      {
+        uri: "/favicon.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "image/svg+xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" sodipodi:docname=\"prometheus_logo_orange.svg\" viewBox=\"0 0 115.333 114\"></svg>"
+      }
+    ]
+    expected_matches: []
+  }
+]

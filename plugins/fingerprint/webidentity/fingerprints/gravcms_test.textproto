@@ -1,0 +1,409 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "gravcms"
+
+tests: [
+  {
+    name: "gravcms_1_7_35_unconfigured_register_admin_at_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d-admin=8f2458fa78a92dbf3f102500bb8de613; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Grav Register Admin User | Grav</title><link rel=\"icon\" type=\"image/png\" href=\"/user/plugins/admin/themes/grav/images/favicon.png\"><link href=\"/user/plugins/admin/themes/grav/css-compiled/nucleus.css?91c8018700\" type=\"text/css\" rel=\"stylesheet\"><link href=\"/user/plugins/admin/themes/grav/css-compiled/template.css?91c8018700\" type=\"text/css\" rel=\"stylesheet\"><script src=\"/system/assets/jquery/jquery-3.x.min.js?91c8018700\"></script></head><body id=\"admin-login-wrapper\"><section id=\"admin-login\" class=\"default-glow-shadow\"><form method=\"post\" action=\"/admin\"><div class=\"form-data\" data-grav-field=\"text\"><input name=\"data[username]\" type=\"text\" /></div><input type=\"hidden\" name=\"__form-name__\" value=\"admin-login-register\" /></form></section></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gravcms_1_7_53_configured_frontend_and_classic_admin"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=5ef0018fdeee533347421f2dca984077; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Home | Grav</title><meta name=\"generator\" content=\"GravCMS\" /><meta name=\"description\" content=\"Grav is an easy to use, yet powerful, open source flat-file CMS\" /><link rel=\"icon\" type=\"image/png\" href=\"/user/themes/quark/images/favicon.png\" /><link href=\"/user/plugins/login/css/login.css\" type=\"text/css\" rel=\"stylesheet\"><link href=\"/user/themes/quark/css-compiled/spectre.min.css\" type=\"text/css\" rel=\"stylesheet\"><link href=\"/user/themes/quark/css-compiled/theme.min.css\" type=\"text/css\" rel=\"stylesheet\"><script src=\"/system/assets/jquery/jquery-3.x.min.js\"></script></head><body id=\"top\"><div id=\"page-wrapper\"><h1>Grav Running!</h1></div></body></html>"
+      },
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d-admin=3839b737f4a6c050b084f9d45f5c5ab5; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Grav Admin Login | Grav</title><link rel=\"icon\" type=\"image/png\" href=\"/user/plugins/admin/themes/grav/images/favicon.png\"><link href=\"/user/plugins/admin/themes/grav/css-compiled/template.css?9b9fa9f39d\" type=\"text/css\" rel=\"stylesheet\"></head><body id=\"admin-login-wrapper\"><section id=\"admin-login\" class=\"default-glow-shadow\"><form method=\"post\" action=\"/admin\"><div class=\"form-data\" data-grav-field=\"text\"><input name=\"data[username]\" type=\"text\" /></div><input type=\"hidden\" name=\"task\" value=\"login.login\" /><input type=\"hidden\" name=\"login-nonce\" value=\"a1b2c3d4\" /></form></section></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gravcms_2_0_0_unconfigured_admin2_version_extraction"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=9a1b2c3d4e5f60718293a4b5c6d7e8f9; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!doctype html><html lang=\"en\" data-theme=\"grav\"><head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" /><link href=\"/user/plugins/admin2/app/_app/immutable/assets/0.B9x8K1a2.css\" rel=\"stylesheet\"><script>window.__GRAV_CONFIG__ = {\"serverUrl\":\"http://target.test:8080\",\"apiPrefix\":\"/api/v1\",\"basePath\":\"/admin\",\"environment\":\"production\",\"grav\":{\"version\":\"2.0.0\"},\"admin\":{\"name\":\"Admin2\",\"version\":\"2.0.1\"}};</script></head><body data-sveltekit-preload-data=\"hover\"><div style=\"display: contents\"><script type=\"module\" src=\"/user/plugins/admin2/app/_app/immutable/entry/start.C1a2B3c4.js\"></script></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.0.0"]
+      }
+    ]
+  },
+  {
+    name: "gravcms_2_2_22_configured_quark2_and_admin2"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Link", value: "<http://target.test:8080/index.md>; rel=\"alternate\"; type=\"text/markdown\"" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=11223344556677889900aabbccddeeff; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Home | Grav</title><meta name=\"generator\" content=\"GravCMS\" /><link rel=\"alternate\" type=\"text/markdown\" href=\"http://target.test:8080/index.md\" /><link href=\"/user/themes/quark2/css/theme.css\" type=\"text/css\" rel=\"stylesheet\" /><script src=\"/user/themes/quark2/js/theme-toggle.js\"></script></head><body><main><h1>Grav 2 Running</h1></main></body></html>"
+      },
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=fedcba9876543210fedcba9876543210; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!doctype html><html lang=\"en\" data-theme=\"grav\"><head><meta charset=\"utf-8\" /><link href=\"/user/plugins/admin2/app/_app/immutable/assets/0.D7z9Q2m1.css\" rel=\"stylesheet\"><script>window.__GRAV_CONFIG__ = {\"serverUrl\":\"http://target.test:8080\",\"apiPrefix\":\"/api/v1\",\"basePath\":\"/admin\",\"admin\":{\"name\":\"Admin2\"}};</script></head><body><script type=\"module\" src=\"/user/plugins/admin2/app/_app/immutable/entry/start.F4e5D6c7.js\"></script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gravcms_core_only_without_admin_plugin"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=778899aabbccddeeff00112233445566; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Typography | Grav</title><meta name=\"generator\" content=\"GravCMS\" /><link href=\"/user/themes/quark/css-compiled/theme.min.css\" type=\"text/css\" rel=\"stylesheet\"><script src=\"/system/assets/jquery/jquery-3.x.min.js\"></script></head><body><div id=\"page-wrapper\"><h1>Core Grav</h1></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gravcms_nginx_changelog_version_extraction"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-40d1b2d=0123456789abcdef0123456789abcdef; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"generator\" content=\"GravCMS\" /><link href=\"/user/themes/quark/css-compiled/theme.min.css\" rel=\"stylesheet\"></head><body><h1>Home</h1></body></html>"
+      },
+      {
+        uri: "/CHANGELOG.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown; charset=utf-8" }
+        ]
+        body: "# v1.7.48\n## 01/15/2025\n\n1. [](#improved)\n    * Improved compatibility with PHP 8.4 [#3880](https://github.com/getgrav/grav/pull/3880)\n1. [](#bugfix)\n    * Fixed `<html lang=\"en\">` attribute escaping in `bin/grav` Twig templates\n\n# v1.7.47\n## 11/20/2024\n\n1. [](#bugfix)\n    * Fixed Twig cache issue\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.7.48"]
+      }
+    ]
+  },
+  {
+    name: "gravcms_exposed_versions_yaml_extraction"
+    mock_responses: [
+      {
+        uri: "/user/config/versions.yaml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/yaml; charset=utf-8" }
+        ]
+        body: "core:\n  grav:\n    version: 2.2.22\n    schema: 2.0.0_2025-01-01_1\n    history:\n      - version: 2.2.22\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.2.22"]
+      }
+    ]
+  },
+  {
+    name: "gravcms_2_api_auth_setup_custom_frontend"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Acme Docs</title></head><body><h1>Custom Headless Frontend</h1></body></html>"
+      },
+      {
+        uri: "/api/v1/auth/setup"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"data\":{\"setup_required\":false,\"password_policy\":{\"min_length\":8,\"rules\":[{\"id\":\"length\",\"label\":\"At least 8 characters\",\"pattern\":\".{8,}\"}]}}}"
+      },
+      {
+        uri: "/api/v1"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/problem+json" },
+          { name: "WWW-Authenticate", value: "Bearer" }
+        ]
+        body: "{\"status\":401,\"title\":\"Unauthorized\",\"detail\":\"No valid authentication credentials provided. Use an API key, JWT token, or active session.\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gravcms_subpath_via_login_page_and_changelog"
+    mock_responses: [
+      {
+        uri: "/cms/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-9f8e7d6=8ecf0f2233ae18fc3291616d46702e21; path=/cms; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\" /><title>Login | Grav</title><meta name=\"generator\" content=\"GravCMS\" /><link href=\"/cms/user/plugins/login/css/login.css\" type=\"text/css\" rel=\"stylesheet\"></head><body><section id=\"grav-login\"><form method=\"post\" action=\"/cms/login\"><div data-grav-field=\"text\"><input name=\"username\" type=\"text\" /></div><input type=\"hidden\" name=\"task\" value=\"login.login\" /><input type=\"hidden\" name=\"login-form-nonce\" value=\"deadbeef\" /></form></section></body></html>"
+      },
+      {
+        uri: "/cms/CHANGELOG.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "# v1.7.53\n## 06/16/2026\n\n1. [](#bugfix)\n    * [security] Hardened `user/config` folder rules in Grav webserver configs\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cms"
+        expected_versions: ["1.7.53"]
+      }
+    ]
+  },
+  {
+    name: "gravcms_subpath_via_login_css_and_admin2"
+    mock_responses: [
+      {
+        uri: "/grav/user/plugins/login/css/login.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "#grav-login {\n    max-width: 30rem;\n    margin: 5rem auto;\n}\n#grav-logout {\n    text-align: center;\n}\n"
+      },
+      {
+        uri: "/grav/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" },
+          { name: "Set-Cookie", value: "grav-site-1a2b3c4=abcdef0123456789abcdef0123456789; path=/grav; HttpOnly" }
+        ]
+        body: "<!doctype html><html lang=\"en\" data-theme=\"grav\"><head><link href=\"/grav/user/plugins/admin2/app/_app/immutable/assets/0.abc.css\" rel=\"stylesheet\"><script>window.__GRAV_CONFIG__ = {\"serverUrl\":\"http://target.test:8080/grav\",\"apiPrefix\":\"/api/v1\",\"basePath\":\"/grav/admin\",\"grav\":{\"version\":\"2.0.0\"},\"admin\":{\"name\":\"Admin2\",\"version\":\"2.0.1\"}};</script></head><body></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/grav"
+        expected_versions: ["2.0.0"]
+      }
+    ]
+  },
+  {
+    name: "gravcms_subpath_via_classic_admin_js_asset"
+    mock_responses: [
+      {
+        uri: "/docs/user/plugins/admin/themes/grav/js/vendor.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "(self[\"webpackChunkGrav\"] = self[\"webpackChunkGrav\"] || []).push([[121],{1:function(){return \"<html><body>preview</body></html>\";}}]);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/docs"
+      }
+    ]
+  },
+  {
+    name: "negative_spa_soft_200_html_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/admin"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/CHANGELOG.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\n# v1.7.53\n1. [](#bugfix)\ngithub.com/getgrav/grav\n</body></html>"
+      },
+      {
+        uri: "/user/config/versions.yaml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>core:\n  grav:\n    version: 2.2.22\n    schema: 1\n</body></html>"
+      },
+      {
+        uri: "/api/v1/auth/setup"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>{\"setup_required\":true,\"password_policy\":{}}</body></html>"
+      },
+      {
+        uri: "/system/assets/grav.png"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Not Found</body></html>"
+      },
+      {
+        uri: "/user/plugins/login/css/login.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>#grav-login #grav-logout</body></html>"
+      },
+      {
+        uri: "/user/plugins/admin/themes/grav/js/vendor.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>webpackChunkGrav GravAdmin</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spectre_css_and_generic_json_auth_app"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "session_id=abc123; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title><link rel=\"stylesheet\" href=\"/assets/spectre.min.css\"></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><form id=\"login\"><input name=\"username\" /><input name=\"password\" type=\"password\" /></form></body></html>"
+      },
+      {
+        uri: "/api/v1/auth/setup"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"data\":{\"setup_required\":false,\"password_policy\":{\"min_length\":10,\"rules\":[]}}}"
+      },
+      {
+        uri: "/api/v1"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"error\":\"unauthorized\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_blog_post_discussing_gravcms"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Reviewing GravCMS 2.0</title><meta name=\"generator\" content=\"Hugo 0.125.0\" /><link rel=\"stylesheet\" href=\"/static/blog.css\"></head><body><article><h1>How GravCMS Works</h1><p>By default Grav renders &lt;meta name=&quot;generator&quot; content=&quot;GravCMS&quot; /&gt; and loads themes from /user/themes/quark/ and window.__GRAV_CONFIG__ on /admin.</p></article></body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

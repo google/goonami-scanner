@@ -1,0 +1,704 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Apache Hadoop YARN"
+  author: "Goonami team"
+  software: "hadoop_yarn"
+  description: "Detects Apache Hadoop YARN ResourceManager web UI and REST API and extracts version."
+}
+
+steps: [
+  # YARN ResourceManager Cluster Information REST API (/ws/v1/cluster/info) in JSON or XML format.
+  {
+    name: "yarn_ws_cluster_info"
+    path_suffix: "/ws/v1/cluster/info"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "clusterInfo"
+          },
+          {
+            body: {}
+            contains: "resourceManagerVersion"
+          },
+          {
+            body: {}
+            contains: "hadoopVersion"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            header: { name: "Content-Type" }
+            contains: "application/xml"
+          },
+          {
+            body: {}
+            contains: "rmStateStoreName"
+          },
+          {
+            body: {}
+            contains: "resourceManagerBuildVersion"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"resourceManagerVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "<resourceManagerVersion>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\\s*</resourceManagerVersion>"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager Cluster Info REST API using Hadoop PseudoAuthenticationHandler (?user.name=dr.who)
+  # when AuthenticationFilterInitializer is enabled with simple auth and anonymous access disabled.
+  {
+    name: "yarn_ws_cluster_info_pseudo_auth"
+    path: "/ws/v1/cluster/info?user.name=dr.who"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "clusterInfo"
+          },
+          {
+            body: {}
+            contains: "resourceManagerVersion"
+          },
+          {
+            body: {}
+            contains: "hadoopVersion"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            header: { name: "Content-Type" }
+            contains: "application/xml"
+          },
+          {
+            body: {}
+            contains: "rmStateStoreName"
+          },
+          {
+            body: {}
+            contains: "resourceManagerBuildVersion"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"resourceManagerVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "<resourceManagerVersion>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\\s*</resourceManagerVersion>"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager "About the Cluster" page (/cluster/cluster) exposing ResourceManager version in HTML.
+  {
+    name: "yarn_cluster_about_page"
+    path_suffix: "/cluster/cluster"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*About the Cluster\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.css"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.dt.plugins.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "ResourceManager state:"
+          },
+          {
+            body: {}
+            contains: "ResourceManager version:"
+          },
+          {
+            body: {}
+            contains: "Cluster Metrics"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "ResourceManager version:\\s*</th>\\s*<td>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager "About the Cluster" page via PseudoAuthenticationHandler (?user.name=dr.who)
+  # when /ws/v1/* REST endpoints are restricted by proxy ACLs.
+  {
+    name: "yarn_cluster_about_page_pseudo_auth"
+    path: "/cluster/cluster?user.name=dr.who"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*About the Cluster\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.css"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.dt.plugins.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "ResourceManager state:"
+          },
+          {
+            body: {}
+            contains: "ResourceManager version:"
+          },
+          {
+            body: {}
+            contains: "Cluster Metrics"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "ResourceManager version:\\s*</th>\\s*<td>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager main /cluster page ("All Applications" in 2.x-3.4.x, "About the Cluster" in 3.5.0+).
+  {
+    name: "yarn_cluster_page"
+    path_suffix: "/cluster"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "/static/yarn.css"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.dt.plugins.js"
+          },
+          {
+            body: {}
+            contains: "/cluster/cluster"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*All Applications\\s*</title>"
+          },
+          {
+            body: {}
+            regexp: "<title>\\s*About the Cluster\\s*</title>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "ResourceManager version:\\s*</th>\\s*<td>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager root / HTML when HTTP client follows the 302 redirect to /cluster.
+  {
+    name: "yarn_root_cluster_html"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "/static/yarn.css"
+          },
+          {
+            body: {}
+            contains: "/static/yarn.dt.plugins.js"
+          },
+          {
+            body: {}
+            contains: "/cluster/cluster"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*All Applications\\s*</title>"
+          },
+          {
+            body: {}
+            regexp: "<title>\\s*About the Cluster\\s*</title>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "ResourceManager version:\\s*</th>\\s*<td>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # YARN ResourceManager root redirect (/ -> /cluster), used only as a pre-filter before a YARN-specific step.
+  {
+    name: "yarn_root_redirect"
+    path: "/"
+    response: {
+      status_codes: [301, 302, 303, 307, 308]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Location" }
+            regexp: "(?:^|/)cluster/?$"
+          }
+        ]
+      }
+    }
+  },
+  # Hadoop HttpServer2 AuthenticationFilter 401 challenge on /, used only as a pre-filter before PseudoAuth YARN steps.
+  {
+    name: "yarn_http_pseudo_auth_challenge"
+    path: "/"
+    response: {
+      status_codes: [401]
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "WWW-Authenticate" }
+            contains: "PseudoAuth"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            contains: "hadoop.auth="
+          }
+        ]
+      }
+    }
+  },
+  # Classic YARN WebApp DataTables JS plugin (/static/yarn.dt.plugins.js).
+  # Note: Also served by MapReduce JobHistoryServer, so NEVER used as a standalone 1-step workflow.
+  {
+    name: "yarn_static_dt_plugins_js"
+    path_suffix: "/static/yarn.dt.plugins.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "dataTableExt"
+          },
+          {
+            body: {}
+            contains: "parseHadoopID"
+          },
+          {
+            body: {}
+            contains: "parseHadoopProgress"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Classic YARN WebApp stylesheet (/static/yarn.css).
+  # Note: Also served by MapReduce JobHistoryServer, so NEVER used as a standalone 1-step workflow.
+  {
+    name: "yarn_static_css"
+    path_suffix: "/static/yarn.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "/* Styles for YARN */"
+          },
+          {
+            body: {}
+            contains: "#themeswitcher"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Hadoop YARN UI v2 index.html (/ui2/index.html, exclusive to YARN ResourceManager UI2).
+  {
+    name: "yarn_ui2_index"
+    path_suffix: "/ui2/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "assets/yarn-ui.css"
+          },
+          {
+            body: {}
+            contains: "assets/yarn-ui.js"
+          },
+          {
+            body: {}
+            contains: "config/configs.env"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>YARN</title>"
+          },
+          {
+            body: {}
+            contains: "<title>YarnUi</title>"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Hadoop YARN UI v2 directory root (/ui2/) when passively crawled.
+  {
+    name: "yarn_ui2_dir"
+    path_regexp: "^(?P<root>.*?)/ui2/$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "assets/yarn-ui.css"
+          },
+          {
+            body: {}
+            contains: "assets/yarn-ui.js"
+          },
+          {
+            body: {}
+            contains: "config/configs.env"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>YARN</title>"
+          },
+          {
+            body: {}
+            contains: "<title>YarnUi</title>"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Hadoop YARN UI v2 Ember application bundle (/ui2/assets/yarn-ui.js, exclusive to YARN UI2).
+  {
+    name: "yarn_ui2_js"
+    path_suffix: "/ui2/assets/yarn-ui.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "yarn-ui/adapters/"
+          },
+          {
+            body: {}
+            contains: "rmWebAddress"
+          },
+          {
+            body: {}
+            contains: "ws/v1/cluster"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"name\":\"yarn-ui\""
+          },
+          {
+            body: {}
+            contains: "yarn-ui/app"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Direct YARN ResourceManager REST API check (identifies YARN RM and extracts exact version in 1 request).
+  {
+    steps: ["yarn_ws_cluster_info"]
+  },
+  # Root / -> /cluster redirect paired with YARN REST API or About page (covers default & 2.x PseudoAuth modes).
+  {
+    steps: [
+      "yarn_root_redirect",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_root_redirect",
+      "yarn_ws_cluster_info_pseudo_auth"
+    ]
+  },
+  {
+    steps: [
+      "yarn_root_redirect",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: [
+      "yarn_root_redirect",
+      "yarn_cluster_about_page_pseudo_auth"
+    ]
+  },
+  # Hadoop AuthenticationFilter 401 challenge on / paired with PseudoAuth YARN endpoints (3.x+ PseudoAuth mode).
+  {
+    steps: [
+      "yarn_http_pseudo_auth_challenge",
+      "yarn_ws_cluster_info_pseudo_auth"
+    ]
+  },
+  {
+    steps: [
+      "yarn_http_pseudo_auth_challenge",
+      "yarn_cluster_about_page_pseudo_auth"
+    ]
+  },
+  # Classic YARN WebApp HTML pages (/cluster/cluster, /cluster, or / when redirects are followed).
+  {
+    steps: ["yarn_cluster_about_page"]
+  },
+  {
+    steps: [
+      "yarn_cluster_page",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_cluster_page",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: ["yarn_cluster_page"]
+  },
+  {
+    steps: [
+      "yarn_root_cluster_html",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_root_cluster_html",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: ["yarn_root_cluster_html"]
+  },
+  # Static YARN WebApp v1 assets paired with YARN ResourceManager endpoints (prevents MapReduce JHS false positives).
+  {
+    steps: [
+      "yarn_static_dt_plugins_js",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_static_dt_plugins_js",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: [
+      "yarn_static_css",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_static_css",
+      "yarn_cluster_about_page"
+    ]
+  },
+  # Apache Hadoop YARN UI v2 (/ui2/index.html, /ui2/, /ui2/assets/yarn-ui.js) with version extraction & fallbacks.
+  {
+    steps: [
+      "yarn_ui2_index",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_ui2_index",
+      "yarn_ws_cluster_info_pseudo_auth"
+    ]
+  },
+  {
+    steps: [
+      "yarn_ui2_index",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: ["yarn_ui2_index"]
+  },
+  {
+    steps: [
+      "yarn_ui2_dir",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: ["yarn_ui2_dir"]
+  },
+  {
+    steps: [
+      "yarn_ui2_js",
+      "yarn_ws_cluster_info"
+    ]
+  },
+  {
+    steps: [
+      "yarn_ui2_js",
+      "yarn_ws_cluster_info_pseudo_auth"
+    ]
+  },
+  {
+    steps: [
+      "yarn_ui2_js",
+      "yarn_cluster_about_page"
+    ]
+  },
+  {
+    steps: ["yarn_ui2_js"]
+  }
+]

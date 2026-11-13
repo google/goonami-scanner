@@ -1,0 +1,606 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Joomla"
+  author: "Goonami team"
+  software: "joomla"
+  description: "Detects Joomla! content management system across pending-install and installed states and extracts full version."
+}
+
+steps: [
+  # Core Joomla fileset manifest (accessible in both pending-install and installed states across Joomla 3.x-6.x+).
+  {
+    name: "joomla_manifest_xml"
+    path_suffix: "/administrator/manifests/files/joomla.xml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<name>files_joomla</name>"
+          },
+          {
+            body: {}
+            regexp: "(?i)<extension\\b[^>]*\\btype=[\"']file[\"']"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<author>Joomla! Project</author>"
+          },
+          {
+            body: {}
+            contains: "Open Source Matters"
+          },
+          {
+            body: {}
+            contains: "update.joomla.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<version>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</version>"
+        }
+      ]
+    }
+  },
+  # Public site language metadata manifest in Joomla 4.x, 5.x, and 6.x+ (accessible even if /administrator/ is IP-restricted).
+  {
+    name: "joomla_langmetadata_xml"
+    path_suffix: "/language/en-GB/langmetadata.xml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<metafile\\b[^>]*\\bclient=[\"']site[\"']"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<author>Joomla! Project</author>"
+          },
+          {
+            body: {}
+            contains: "Open Source Matters"
+          },
+          {
+            body: {}
+            contains: "admin@joomla.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<version>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</version>"
+        }
+      ]
+    }
+  },
+  # Public site language metadata manifest in Joomla 2.5 and 3.x (accessible even if /administrator/ is IP-restricted).
+  {
+    name: "joomla_en_gb_xml"
+    path_suffix: "/language/en-GB/en-GB.xml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<metafile\\b[^>]*\\bclient=[\"']site[\"']"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<author>Joomla! Project</author>"
+          },
+          {
+            body: {}
+            contains: "Open Source Matters"
+          },
+          {
+            body: {}
+            contains: "admin@joomla.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<version>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</version>"
+        }
+      ]
+    }
+  },
+  # Core site language extension install manifest present across Joomla 3.x, 4.x, 5.x, and 6.x+.
+  {
+    name: "joomla_language_install_xml"
+    path_suffix: "/language/en-GB/install.xml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<extension\\b[^>]*\\btype=[\"']language[\"']"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<author>Joomla! Project</author>"
+          },
+          {
+            body: {}
+            contains: "Open Source Matters"
+          },
+          {
+            body: {}
+            contains: "admin@joomla.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<version>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</version>"
+        }
+      ]
+    }
+  },
+  # Unconfigured / pending-install Joomla web installer wizard across Joomla 3.x-6.x+.
+  {
+    name: "joomla_web_installer"
+    path_suffix: "/installation/index.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "/installation/template/"
+          },
+          {
+            body: {}
+            regexp: "/media/(?:system|jui|vendor)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']Joomla!\\s*-\\s*Open Source Content Management"
+          },
+          {
+            body: {}
+            regexp: "<title>\\s*Joomla!?\\s+(?:Web\\s+)?Installer\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "joomla-script-options"
+          }
+        ]
+      }
+    }
+  },
+  # Joomla Administrator backend login page across Joomla 3.x-6.x+.
+  {
+    name: "joomla_administrator_login"
+    path_suffix: "/administrator/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "name=[\"']option[\"']\\s+value=[\"']com_login[\"']"
+          },
+          {
+            body: {}
+            regexp: "/media/system/js/core(?:\\.min)?\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']Joomla!\\s*-\\s*Open Source Content Management"
+          },
+          {
+            body: {}
+            contains: "joomla-script-options"
+          },
+          {
+            body: {}
+            contains: "Joomla Administrator Login"
+          },
+          {
+            body: {}
+            regexp: "/(?:administrator/templates/isis|media/templates/administrator/atum)/"
+          }
+        ]
+      }
+    }
+  },
+  # Frontend root page (handles both installed sites and pending-install sites where the crawler follows 302 to /installation/index.php).
+  {
+    name: "joomla_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:href|src)=[\"'][^\"']*/(?:media/(?:system|jui|templates|vendor)|templates/[^\"']+/(?:css|js|favicon)|installation/template)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']Joomla!\\s*-\\s*Open Source Content Management"
+          },
+          {
+            body: {}
+            regexp: "<script[^>]+class=[\"']joomla-script-options\\b"
+          },
+          {
+            body: {}
+            contains: "/media/system/images/joomla-favicon.svg"
+          }
+        ]
+      }
+    }
+  },
+  # Joomla 4.x-6.x+ Web Services REST API endpoint (matches X-Powered-By: JoomlaAPI/ header or pending-install API error).
+  {
+    name: "joomla_rest_api"
+    path_suffix: "/api/index.php/v1/content/articles"
+    headers: [
+      {
+        name: "Accept"
+        value: "application/vnd.api+json, application/json, */*"
+      }
+    ]
+    response: {
+      status_codes: [200, 401, 406, 500]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?s)^\\s*(?:\\{.*\"(?:errors|data|error)\"\\s*:|Could not match accept header\\s*$)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "X-Powered-By" }
+            contains: "JoomlaAPI/"
+          },
+          {
+            body: {}
+            contains: "\"You must install Joomla to use the API\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Joomla RSS 2.0 syndication feed across Joomla 3.x-6.x+.
+  {
+    name: "joomla_rss_feed"
+    path: "/index.php?format=feed&type=rss"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<rss"
+          },
+          {
+            body: {}
+            regexp: "<generator>\\s*Joomla!\\s*-\\s*Open Source Content Management\\s*</generator>"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Static database-independent README.txt fallback across Joomla 3.x-6.x+.
+  {
+    name: "joomla_readme_txt"
+    path_suffix: "/README.txt"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/plain"
+          },
+          {
+            body: {}
+            regexp: "This is a Joomla!(?:\\s+[0-9]+\\.x)?\\s+installation/upgrade package"
+          },
+          {
+            body: {}
+            contains: "2- What is Joomla?"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Joomla 4.x-6.x+ minified core JavaScript bundle (passive subpath discovery and XML-blocked fallback).
+  {
+    name: "joomla_core_min_js"
+    path_suffix: "/media/system/js/core.min.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\\bJoomla\\.(?:Text|editors|request|loadOptions|getOptions)\\b"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "JLIB_JS_AJAX_ERROR_PARSE"
+          },
+          {
+            body: {}
+            contains: "joomla-script-options"
+          },
+          {
+            body: {}
+            regexp: "[\"']X-Ajax-Engine[\"']\\s*,\\s*[\"']Joomla![\"']"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Joomla 3.x-6.x+ core JavaScript bundle (passive subpath discovery for 3.x and universal JS fallback).
+  {
+    name: "joomla_core_js"
+    path_suffix: "/media/system/js/core.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\\bJoomla\\.(?:Text|editors|request|loadOptions|getOptions)\\b"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "JLIB_JS_AJAX_ERROR_PARSE"
+          },
+          {
+            body: {}
+            contains: "joomla-script-options"
+          },
+          {
+            body: {}
+            regexp: "[\"']X-Ajax-Engine[\"']\\s*,\\s*[\"']Joomla![\"']"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Official Joomla core favicon (identical SHA-256 across Joomla 3.x, 4.x, 5.x, and 6.x) for passive subpath discovery.
+  {
+    name: "joomla_favicon"
+    path_regexp: "^(?P<root>.*?)(?:/media/system/images|/installation|/administrator/templates/isis|/templates/protostar)/favicon\\.ico$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "7bd9b59d14b126e8c5abcb1c89b60c79e2b2e17c15745fe8d385204d87c40765"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["joomla_manifest_xml"]
+  },
+  {
+    steps: ["joomla_langmetadata_xml"]
+  },
+  {
+    steps: ["joomla_en_gb_xml"]
+  },
+  {
+    steps: ["joomla_language_install_xml"]
+  },
+  {
+    steps: ["joomla_web_installer"]
+  },
+  {
+    steps: ["joomla_administrator_login"]
+  },
+  {
+    steps: ["joomla_root_page"]
+  },
+  {
+    steps: ["joomla_rest_api"]
+  },
+  {
+    steps: ["joomla_rss_feed"]
+  },
+  {
+    steps: ["joomla_readme_txt"]
+  },
+  {
+    steps: ["joomla_core_min_js"]
+  },
+  {
+    steps: ["joomla_core_js"]
+  },
+  {
+    steps: [
+      "joomla_favicon",
+      "joomla_manifest_xml"
+    ]
+  },
+  {
+    steps: [
+      "joomla_favicon",
+      "joomla_core_min_js"
+    ]
+  },
+  {
+    steps: [
+      "joomla_favicon",
+      "joomla_core_js"
+    ]
+  }
+]

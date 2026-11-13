@@ -1,0 +1,349 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Adminer"
+  author: "Goonami team"
+  software: "adminer"
+  description: "Detects Adminer database management web UI and extracts full version."
+}
+
+steps: [
+  # Main HTML page at candidate root (covers default standalone containers, dedicated vhosts,
+  # custom themes/plugins via ADMINER_DESIGN/ADMINER_PLUGINS, and authenticated DB sessions
+  # across Adminer 4.x, 5.x, and 6.x+).
+  {
+    name: "adminer_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<link\\s+[^>]*href=[\"'][^\"']*\\?file=default\\.css"
+          },
+          {
+            body: {}
+            regexp: "<script\\s+[^>]*src=[\"'][^\"']*\\?file=functions\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "name=[\"']auth\\[(?:driver|server|username)\\][\"']"
+          },
+          {
+            body: {}
+            regexp: "id=[\"']h1[\"'][^>]*>(?:<img[^>]*>)?\\s*Adminer\\s*</a>"
+          },
+          {
+            body: {}
+            contains: "partial(verifyVersion,"
+          },
+          {
+            body: {}
+            regexp: "<div\\s+id=[\"']help[\"']\\s+class=[\"']jush-"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            contains: "adminer_sid="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<span\\s+class=[\"']version[\"']>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "verifyVersion,\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=(?:default|dark)\\.css&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=functions\\.js&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Single-file adminer.php deployment check (passive subpath discovery and active probe fallback
+  # when Adminer is dropped into an existing webroot or subdirectory as adminer.php).
+  {
+    name: "adminer_php_page"
+    path_suffix: "/adminer.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<link\\s+[^>]*href=[\"'][^\"']*\\?file=default\\.css"
+          },
+          {
+            body: {}
+            regexp: "<script\\s+[^>]*src=[\"'][^\"']*\\?file=functions\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "name=[\"']auth\\[(?:driver|server|username)\\][\"']"
+          },
+          {
+            body: {}
+            regexp: "id=[\"']h1[\"'][^>]*>(?:<img[^>]*>)?\\s*Adminer\\s*</a>"
+          },
+          {
+            body: {}
+            contains: "partial(verifyVersion,"
+          },
+          {
+            body: {}
+            regexp: "<div\\s+id=[\"']help[\"']\\s+class=[\"']jush-"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            contains: "adminer_sid="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<span\\s+class=[\"']version[\"']>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "verifyVersion,\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=(?:default|dark)\\.css&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=functions\\.js&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Passive check for versioned/variant release filenames (e.g. /adminer-4.8.1-en.php, /db/adminer-5.4.2-mysql.php).
+  {
+    name: "adminer_versioned_php_page"
+    path_regexp: "/adminer-[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?\\.php$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<link\\s+[^>]*href=[\"'][^\"']*\\?file=default\\.css"
+          },
+          {
+            body: {}
+            regexp: "<script\\s+[^>]*src=[\"'][^\"']*\\?file=functions\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "name=[\"']auth\\[(?:driver|server|username)\\][\"']"
+          },
+          {
+            body: {}
+            regexp: "id=[\"']h1[\"'][^>]*>(?:<img[^>]*>)?\\s*Adminer\\s*</a>"
+          },
+          {
+            body: {}
+            contains: "partial(verifyVersion,"
+          },
+          {
+            body: {}
+            regexp: "<div\\s+id=[\"']help[\"']\\s+class=[\"']jush-"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            contains: "adminer_sid="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<span\\s+class=[\"']version[\"']>\\s*([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "verifyVersion,\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=(?:default|dark)\\.css&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "\\?file=functions\\.js&(?:amp;)?version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Built-in Web App Manifest endpoint introduced in Adminer 6.x (/?manifest=).
+  {
+    name: "adminer_manifest_json"
+    path: "/?manifest="
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "manifest+json"
+          },
+          {
+            body: {}
+            regexp: "\"short_name\"\\s*:\\s*\"Adminer\""
+          },
+          {
+            body: {}
+            contains: "Database management in a single PHP file"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\\?file=logo\\.(?:svg|png)&version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Embedded Adminer JavaScript bundle handler (/?file=functions.js across Adminer 4.x, 5.x, and 6.x+).
+  {
+    name: "adminer_functions_js"
+    path: "/?file=functions.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "verifyVersion("
+          },
+          {
+            body: {}
+            contains: "https://www.adminer.org/version/?current="
+          },
+          {
+            body: {}
+            contains: "adminer_version="
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "alterClass("
+          },
+          {
+            body: {}
+            contains: "selectValue("
+          },
+          {
+            body: {}
+            contains: "jush"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery and verification via custom or bundled Adminer CSS designs
+  # (e.g. /adminer.css, /db/adminer-dark.css, /designs/nette/adminer.css, /db/designs/dracula/adminer-dark.css).
+  {
+    name: "adminer_design_css"
+    path_regexp: "(?:/designs/[a-zA-Z0-9_-]+)?/adminer(?:-dark)?\\.css$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: ".jush"
+          },
+          {
+            body: {}
+            regexp: "(?s)#tables\\b.*#(?:dbs|logins|schema|breadcrumb)\\b|#(?:dbs|logins|schema|breadcrumb)\\b.*#tables\\b"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["adminer_root_page"]
+  },
+  {
+    steps: ["adminer_php_page"]
+  },
+  {
+    steps: ["adminer_versioned_php_page"]
+  },
+  {
+    steps: ["adminer_manifest_json"]
+  },
+  {
+    steps: ["adminer_functions_js"]
+  },
+  {
+    steps: ["adminer_design_css"]
+  }
+]

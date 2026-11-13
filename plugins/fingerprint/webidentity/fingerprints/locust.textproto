@@ -1,0 +1,534 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Locust"
+  author: "Goonami team"
+  software: "locust"
+  description: "Detects Locust load testing web interfaces and extracts version."
+}
+
+steps: [
+  # Modern React/Vite Web UI root page (Locust 2.22+ through 2.47+ across ready, running, and stopped states).
+  {
+    name: "locust_modern_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.templateArgs"
+          },
+          {
+            body: {}
+            contains: "\"locustfile\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Locust"
+          },
+          {
+            body: {}
+            contains: "\"show_userclass_picker\""
+          },
+          {
+            body: {}
+            contains: "\"percentiles_to_chart\""
+          },
+          {
+            body: {}
+            contains: "assets/favicon"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Classic and Legacy Jinja2/jQuery Web UI root page (Locust 0.12.x through 2.21.0 across ready, running, stopped, and --class-picker states).
+  {
+    name: "locust_classic_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Locust\\b[^<]*</title>"
+          },
+          {
+            body: {}
+            regexp: "static/locust\\.js(?:\\?v=[^\"]+)?"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "https://locust.io"
+          },
+          {
+            body: {}
+            contains: "http://locust.io"
+          },
+          {
+            body: {}
+            contains: "github.com/locustio/locust"
+          },
+          {
+            body: {}
+            contains: "Start new Locust swarm"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "github\\.com/locustio/locust/releases/tag/v?([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)"
+        },
+        {
+          from_body: {}
+          regexp: "static/(?:locust\\.js|chart\\.js|style\\.css|css/application\\.css|img/logo\\.png)\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)"
+        },
+        {
+          from_body: {}
+          regexp: "<h2>\\s*Version\\s+(?:<[^>]+>\\s*)*v?([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)"
+        }
+      ]
+    }
+  },
+  # Modern React/Vite --web-login page with default Locust title (supports passive subpath discovery on /<subpath>/login).
+  {
+    name: "locust_modern_login_standalone"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Locust</title>"
+          },
+          {
+            body: {}
+            contains: "window.authArgs"
+          },
+          {
+            body: {}
+            regexp: "src=\"(?:[^\"]*/)?assets/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\\.js\""
+          }
+        ]
+      }
+    }
+  },
+  # Modern React/Vite --web-login page extracting the Vite JS bundle (supports custom auth_args title).
+  {
+    name: "locust_modern_login"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.authArgs"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "src=\"(?:[^\"]*/)?(assets/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Modern React/Vite JS bundle fetched dynamically from extracted bundle_path.
+  {
+    name: "locust_modern_js_bundle_fetched"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "github.com/locustio/locust"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.templateArgs"
+          },
+          {
+            body: {}
+            contains: "window.authArgs"
+          },
+          {
+            body: {}
+            contains: "Locust is free and open source software"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive discovery of Modern React/Vite JS bundle (assets/index-<hash>.js in 2.22-2.3x and assets/src-<hash>.js in 2.4x+).
+  {
+    name: "locust_modern_js_bundle_passive"
+    path_regexp: "/assets/(?:index|src)-[a-zA-Z0-9_-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "github.com/locustio/locust"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.templateArgs"
+          },
+          {
+            body: {}
+            contains: "window.authArgs"
+          },
+          {
+            body: {}
+            contains: "Locust is free and open source software"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Classic and Legacy /static/locust.js asset (remains unauthenticated when --web-auth Basic Auth is enabled; also supports subpath discovery).
+  {
+    name: "locust_classic_js"
+    path_suffix: "/static/locust.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "rpsChart"
+          },
+          {
+            body: {}
+            contains: "responseTimeChart"
+          },
+          {
+            body: {}
+            contains: "jqoteapp"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "LocustLineChart"
+          },
+          {
+            body: {}
+            contains: "locust_count"
+          },
+          {
+            body: {}
+            contains: "./stats/requests"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Modern Locust dark-mode PNG favicon (2.31.4 through 2.47+, unauthenticated under /assets/).
+  {
+    name: "locust_modern_favicon_dark"
+    path_suffix: "/assets/favicon-dark.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "eb356446d8917d4e39a901af1217f572ada735ab85b3f256e5223bf704f46243"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Modern Locust light-mode PNG favicon (2.31.4 through 2.47+, unauthenticated under /assets/).
+  {
+    name: "locust_modern_favicon_light"
+    path_suffix: "/assets/favicon-light.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "55d1b6199c9e4c238c2fbc5f89ebeea413f8121987a14aa5542c3eb57aa4bf15"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Early Modern Locust ICO favicon (2.18.1 through 2.31.2, unauthenticated under /assets/).
+  {
+    name: "locust_modern_favicon_ico"
+    path_suffix: "/assets/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "21497ead8a9fa47755dfc7beb346e498521e2d2fa7dd48340d0c64fa1db4da12"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Classic and Legacy Locust ICO favicon (0.12.1 through 2.21.0, unauthenticated under /static/img/).
+  {
+    name: "locust_classic_favicon"
+    path_suffix: "/static/img/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "21497ead8a9fa47755dfc7beb346e498521e2d2fa7dd48340d0c64fa1db4da12"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Locust request statistics JSON endpoint (corroborates Locust favicons when custom HTML templates override index.html).
+  {
+    name: "locust_stats_requests"
+    path_suffix: "/stats/requests"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"fail_ratio\""
+          },
+          {
+            body: {}
+            contains: "\"total_rps\""
+          },
+          {
+            body: {}
+            contains: "\"user_count\""
+          },
+          {
+            body: {}
+            contains: "\"state\""
+          },
+          {
+            body: {}
+            contains: "\"stats\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Aggregated\""
+          },
+          {
+            body: {}
+            contains: "\"current_response_time_percentile"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Modern React/Vite UI root page with exact version extraction (2.22+ through 2.47+).
+  {
+    steps: ["locust_modern_root"]
+  },
+  # Classic and Legacy Jinja2/jQuery UI root page with exact version extraction (0.12.x through 2.21.0).
+  {
+    steps: ["locust_classic_root"]
+  },
+  # Passive subpath discovery via Modern JS bundle + active root fetch for version extraction.
+  {
+    steps: [
+      "locust_modern_js_bundle_passive",
+      "locust_modern_root"
+    ]
+  },
+  # Passive subpath discovery via Classic JS asset + active root fetch for version extraction.
+  {
+    steps: [
+      "locust_classic_js",
+      "locust_classic_root"
+    ]
+  },
+  # Modern --web-login page (default Locust title, supports passive subpath discovery).
+  {
+    steps: ["locust_modern_login_standalone"]
+  },
+  # Modern --web-login page (custom title) verified via extracted Vite JS bundle.
+  {
+    steps: [
+      "locust_modern_login",
+      "locust_modern_js_bundle_fetched"
+    ]
+  },
+  # Passive Modern JS bundle match (when root and /login are behind auth/SSO).
+  {
+    steps: ["locust_modern_js_bundle_passive"]
+  },
+  # Classic /static/locust.js match (unauthenticated even when --web-auth HTTP Basic Auth is enabled).
+  {
+    steps: ["locust_classic_js"]
+  },
+  # Cryptographic Modern dark + light favicons (when / and /login redirect to external SSO).
+  {
+    steps: [
+      "locust_modern_favicon_dark",
+      "locust_modern_favicon_light"
+    ]
+  },
+  # Early Modern favicon.ico + /stats/requests JSON endpoint (2.18.1-2.31.2 custom HTML template fallback).
+  {
+    steps: [
+      "locust_modern_favicon_ico",
+      "locust_stats_requests"
+    ]
+  },
+  # Classic favicon.ico + /stats/requests JSON endpoint (0.12.1-2.21.0 custom HTML template fallback).
+  {
+    steps: [
+      "locust_classic_favicon",
+      "locust_stats_requests"
+    ]
+  }
+]

@@ -1,0 +1,511 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "flyte"
+
+tests: [
+  {
+    name: "flyte_v1_5_0_open_mode_console_and_unstamped_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" },
+          { name: "X-Content-Type-Options" value: "nosniff" }
+        ]
+        body: "Not Found\n"
+      },
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Flyte Console</title><meta name=\"viewport\" content=\"width=device-width\"><link href=\"https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:400,700\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"/console/assets/manifest.webmanifest\" crossorigin=\"use-credentials\"><link rel=\"icon\" href=\"/console/assets/favicon.ico\" sizes=\"any\"><link rel=\"icon\" href=\"/console/assets/favicon.svg\" type=\"image/svg+xml\"><link rel=\"apple-touch-icon\" href=\"/console/assets/apple-touch-icon.png\"></head><script>window.env={\"BASE_URL\":\"/console\",\"ENABLE_GA\":\"false\",\"GA_TRACKING_ID\":\"\",\"NODE_ENV\":\"production\",\"FLYTE_NAVIGATION\":\"\"}</script><body><div id=\"react-app\"></div><script crossorigin src=\"//unpkg.com/react@16.13.1/umd/react.production.min.js\"></script><script crossorigin src=\"//unpkg.com/react-dom@16.13.1/umd/react-dom.production.min.js\"></script><script defer=\"defer\" src=\"/console/assets/vendor.069d329b20ea74e68f6c.js\"></script><script defer=\"defer\" src=\"/console/assets/main.408e8cf12920f08e72f4.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main.408e8cf12920f08e72f4.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_flyteconsole_client_app=self.webpackChunk_flyteconsole_client_app||[]).push([[179],{env:{ADMIN_API_URL:void 0,BASE_URL:\"/console\"},defaultExecutionPrincipal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\",proto:\"flyteidl/core/security.proto\"}]);"
+      },
+      {
+        uri: "/api/v1/openapi"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"title\": \"flyteidl/service/admin.proto\",\n    \"version\": \"version not set\"\n  },\n  \"paths\": {\n    \"/api/v1/active_launch_plans/{id.project}/{id.domain}/{id.name}\": {\n      \"get\": {\n        \"summary\": \"Fetch the active version of a :ref:`ref_flyteidl.admin.LaunchPlan`.\",\n        \"operationId\": \"GetActiveLaunchPlan\"\n      }\n    }\n  }\n}"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"control_plane_version\":{\"Build\":\"unknown\",\"Version\":\"unknown\",\"BuildTime\":\"2026-11-03 14:53:48.99069932 +0000 UTC m=+0.025547189\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "flyte_v1_10_0_open_mode_console_and_stamped_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "Not Found\n"
+      },
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Flyte Console</title><meta name=\"viewport\" content=\"width=device-width\"><link href=\"https://fonts.googleapis.com/css?family=Lato:300,400,700|Open+Sans:400,700\" rel=\"stylesheet\"><link rel=\"manifest\" href=\"/console/assets/manifest.webmanifest\" crossorigin=\"use-credentials\"><link rel=\"icon\" href=\"/console/assets/favicon.ico\" sizes=\"any\"><link rel=\"icon\" href=\"/console/assets/favicon.svg\" type=\"image/svg+xml\"><link rel=\"apple-touch-icon\" href=\"/console/assets/apple-touch-icon.png\"></head><body><div id=\"react-app\"></div><script crossorigin src=\"//unpkg.com/react@16.13.1/umd/react.production.min.js\"></script><script crossorigin src=\"//unpkg.com/react-dom@16.13.1/umd/react-dom.production.min.js\"></script><script defer=\"defer\" src=\"/console/assets/vendor.1b18e4a6f9d93d597716.js\"></script><script defer=\"defer\" src=\"/console/assets/main.45f88a8b477bfdbb918d.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main.45f88a8b477bfdbb918d.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_flyteconsole_client_app=self.webpackChunk_flyteconsole_client_app||[]).push([[179],{env:{ADMIN_API_URL:void 0,BASE_URL:\"/console\"},defaultExecutionPrincipal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\"}]);"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"control_plane_version\":{\"Build\":\"7e2c1a9\",\"Version\":\"v1.10.0\",\"BuildTime\":\"2023-10-20 17:42:11 +0000 UTC\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.10.0"]
+      }
+    ]
+  },
+  {
+    name: "flyte_v1_13_1_open_mode_dashboard_and_camel_case_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"code\":5, \"message\":\"Not Found\", \"details\":[]}"
+      },
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><link rel=\"icon\" href=\"/console/assets/favicon.ico\" sizes=\"any\"><link rel=\"icon\" href=\"/console/assets/favicon.svg\" type=\"image/svg+xml\"><link rel=\"apple-touch-icon\" href=\"/console/assets/apple-touch-icon.png\"><link rel=\"manifest\" href=\"/console/assets/manifest.webmanifest\" crossorigin=\"use-credentials\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"description\" content=\"Dashboard values to monitor your FlyteConsole instance\"><title>Flyte Dashboard</title></head><body style=\"margin:0\"><div id=\"root\"></div><script defer=\"defer\" src=\"/console/assets/runtime-eff48a41.js\"></script><script defer=\"defer\" src=\"/console/assets/main-eff48a41.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main-eff48a41.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_clients_console=self.webpackChunk_clients_console||[]).push([[179],{env:{NODE_ENV:\"production\",PORT:8080,ADMIN_API:\"\",ADMIN_API_URL:\"\",BASE_URL:\"/console\"},principal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\",repo:\"https://github.com/flyteorg/flyte\"}]);"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"controlPlaneVersion\":{\"Build\":\"8f3d41c\", \"Version\":\"v1.13.1\", \"BuildTime\":\"2024-08-20 18:12:00 +0000 UTC\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.13.1"]
+      }
+    ]
+  },
+  {
+    name: "flyte_v1_16_4_oidc_auth_mode_console_and_openapi"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"code\":5, \"message\":\"Not Found\", \"details\":[]}"
+      },
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><link rel=\"icon\" href=\"/console/assets/favicon.ico\" sizes=\"any\"><link rel=\"icon\" href=\"/console/assets/favicon.svg\" type=\"image/svg+xml\"><meta charset=\"utf-8\"><meta name=\"description\" content=\"Dashboard values to monitor your FlyteConsole instance\"><title>Flyte Dashboard</title></head><body style=\"margin:0\"><div id=\"root\"></div><script defer=\"defer\" src=\"/console/assets/runtime-af194a18.js\"></script><script defer=\"defer\" src=\"/console/assets/main-af194a18.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main-af194a18.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_clients_console=self.webpackChunk_clients_console||[]).push([[179],{env:{NODE_ENV:\"production\",ADMIN_API_URL:\"\",BASE_URL:\"/console\"},principal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\",repo:\"https://github.com/flyteorg/flyte\"}]);"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"code\":16, \"message\":\"token parse error id token err: access token err: [JWT_VERIFICATION_FAILED] Could not retrieve bearer token from metadata, caused by: rpc error: code = Unauthenticated desc = Request unauthenticated with Bearer\", \"details\":[]}"
+      },
+      {
+        uri: "/api/v1/openapi"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"title\": \"flyteidl/service/admin.proto\",\n    \"version\": \"version not set\"\n  },\n  \"tags\": [\n    {\n      \"name\": \"AdminService\"\n    }\n  ],\n  \"paths\": {\n    \"/api/v1/active_launch_plans/{id.project}/{id.domain}/{id.name}\": {\n      \"get\": {\n        \"summary\": \"Fetch the active version of a :ref:`ref_flyteidl.admin.LaunchPlan`.\"\n      }\n    }\n  }\n}"
+      },
+      {
+        uri: "/config/v1/flyte_client"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"clientId\":\"flytectl\", \"redirectUri\":\"http://localhost:53593/callback\", \"scopes\":[\"all\", \"offline\"], \"authorizationMetadataKey\":\"flyte-authorization\", \"serviceHttpEndpoint\":\"\", \"audience\":\"\"}"
+      },
+      {
+        uri: "/login"
+        status_code: 307
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "https://idp.example.com/authorize?client_id=flyte&redirect_uri=https%3A%2F%2Fflyte.example.com%2Fcallback&response_type=code&scope=profile+openid&state=042e045cb1c317d4" },
+          { name: "Set-Cookie" value: "flyte_csrf_state=385WIAnyozHNQMkV7-7JoaIV8HK6j0bnboS9_6og7HI=; HttpOnly; Secure; SameSite=Lax" }
+        ]
+        body: "<a href=\"https://idp.example.com/authorize?client_id=flyte\">Temporary Redirect</a>.\n\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "flyte_standalone_console_at_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><link rel=\"icon\" href=\"/assets/favicon.ico\" sizes=\"any\"><meta charset=\"utf-8\"><meta name=\"description\" content=\"Dashboard values to monitor your FlyteConsole instance\"><title>Flyte Dashboard</title></head><body><div id=\"root\"></div><script defer=\"defer\" src=\"/assets/main-af194a18.js\"></script></body></html>"
+      },
+      {
+        uri: "/assets/main-af194a18.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_clients_console=self.webpackChunk_clients_console||[]).push([[179],{env:{ADMIN_API_URL:\"https://admin.flyte.example.com\",BASE_URL:\"\"},principal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\"}]);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "flyte_api_only_open_mode_openapi_and_version"
+    mock_responses: [
+      {
+        uri: "/api/v1/openapi"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/plain; charset=utf-8" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"title\": \"flyteidl/service/admin.proto\",\n    \"version\": \"version not set\"\n  },\n  \"tags\": [\n    {\n      \"name\": \"AdminService\"\n    }\n  ],\n  \"paths\": {\n    \"/api/v1/active_launch_plans/{id.project}/{id.domain}/{id.name}\": {\n      \"get\": {\n        \"summary\": \"Fetch the active version of a :ref:`ref_flyteidl.admin.LaunchPlan`.\"\n      }\n    }\n  }\n}"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"controlPlaneVersion\":{\"Build\":\"f09c3b1\", \"Version\":\"v1.16.4\", \"BuildTime\":\"2025-09-18 11:05:22 +0000 UTC\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.16.4"]
+      }
+    ]
+  },
+  {
+    name: "flyte_api_only_oidc_auth_client_config"
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"error\":\"token parse error [JWT_VERIFICATION_FAILED] Could not retrieve id token from metadata\",\"code\":16,\"message\":\"token parse error\"}"
+      },
+      {
+        uri: "/config/v1/flyte_client"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"client_id\":\"flytectl\",\"redirect_uri\":\"http://localhost:53593/callback\",\"scopes\":[\"all\",\"offline\"],\"authorization_metadata_key\":\"flyte-authorization\"}"
+      },
+      {
+        uri: "/login"
+        status_code: 307
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" },
+          { name: "Location" value: "https://idp.example.com/authorize?client_id=flyte&redirect_uri=https%3A%2F%2Fflyte.example.com%2Fcallback&response_type=code&scope=profile+openid&state=042e045cb1c317d4" },
+          { name: "Set-Cookie" value: "flyte_csrf_state=385WIAnyozHNQMkV7-7JoaIV8HK6j0bnboS9_6og7HI=; HttpOnly; Secure; SameSite=Lax" }
+        ]
+        body: "<a href=\"https://idp.example.com/authorize?client_id=flyte\">Temporary Redirect</a>.\n\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "flyte_subpath_console_login_and_version"
+    mock_responses: [
+      {
+        uri: "/flyte/console/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><link rel=\"icon\" href=\"/flyte/console/assets/favicon.ico\" sizes=\"any\"><meta charset=\"utf-8\"><meta name=\"description\" content=\"Dashboard values to monitor your FlyteConsole instance\"><title>Flyte Dashboard</title></head><body><div id=\"root\"></div><script defer=\"defer\" src=\"/flyte/console/assets/main-af194a18.js\"></script></body></html>"
+      },
+      {
+        uri: "/flyte/console/assets/main-af194a18.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_clients_console=self.webpackChunk_clients_console||[]).push([[179],{env:{ADMIN_API_URL:\"/flyte\",BASE_URL:\"/flyte/console\"},principal:\"flyteconsole\",docs:\"https://docs.flyte.org/en/latest/\"}]);"
+      },
+      {
+        uri: "/flyte/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"controlPlaneVersion\":{\"Build\":\"f09c3b1\", \"Version\":\"v1.16.4\", \"BuildTime\":\"2025-09-18 11:05:22 +0000 UTC\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/flyte"
+        expected_versions: ["1.16.4"]
+      }
+    ]
+  },
+  {
+    name: "flyte_subpath_passive_bundle_and_version"
+    mock_responses: [
+      {
+        uri: "/ml-platform/flyte/console/assets/main.45f88a8b477bfdbb918d.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_flyteconsole_client_app=self.webpackChunk_flyteconsole_client_app||[]).push([[179],{env:{ADMIN_API_URL:\"/ml-platform/flyte\",BASE_URL:\"/ml-platform/flyte/console\"},defaultExecutionPrincipal:\"flyteconsole\",proto:\"flyteidl\"}]);"
+      },
+      {
+        uri: "/ml-platform/flyte/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"control_plane_version\":{\"Build\":\"7e2c1a9\",\"Version\":\"v1.10.0\",\"BuildTime\":\"2023-10-20 17:42:11 +0000 UTC\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ml-platform/flyte"
+        expected_versions: ["1.10.0"]
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_console_dashboard_app"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Operations Console</title><link rel=\"icon\" href=\"/assets/favicon.ico\"></head><body><div id=\"root\"></div><script src=\"/assets/main-11223344.js\"></script></body></html>"
+      },
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Operations Console</title><link rel=\"icon\" href=\"/console/assets/favicon.ico\"></head><body><div id=\"root\"></div><script src=\"/console/assets/main-11223344.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main-11223344.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "(self.webpackChunk_ops_console=self.webpackChunk_ops_console||[]).push([[0],{api:\"/api/v1/clusters\",env:{BASE_URL:\"/console\"}}]);"
+      },
+      {
+        uri: "/api/v1/openapi"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"swagger\":\"2.0\",\"info\":{\"title\":\"Operations API\",\"version\":\"1.0.0\"},\"paths\":{\"/api/v1/clusters\":{}}}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_api_v1_version_and_oauth_login"
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"version\":\"v1.16.4\",\"BuildTime\":\"2025-09-18T11:05:22Z\",\"gitCommit\":\"abcdef123456\"}"
+      },
+      {
+        uri: "/login"
+        status_code: 307
+        headers: [
+          { name: "Location" value: "https://idp.example.com/authorize?client_id=webapp&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback" },
+          { name: "Set-Cookie" value: "csrf_state=randomtoken123; HttpOnly; Secure" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_catch_all"
+    mock_responses: [
+      {
+        uri: "/console"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Flyte Dashboard</title><link rel=\"icon\" href=\"/console/assets/favicon.ico\"></head><body><div id=\"root\"></div><script src=\"/console/assets/main-af194a18.js\"></script></body></html>"
+      },
+      {
+        uri: "/console/assets/main-af194a18.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>SPA catch-all mentioning ADMIN_API_URL flyteconsole flyteidl docs.flyte.org</body></html>"
+      },
+      {
+        uri: "/console/assets/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>SPA catch-all</body></html>"
+      },
+      {
+        uri: "/api/v1/openapi"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"swagger\":\"2.0\",\"info\":{\"title\":\"flyteidl/service/admin.proto\"},\"paths\":{\"/api/v1/active_launch_plans/\":{}}} \"AdminService\"</body></html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"controlPlaneVersion\":{\"Version\":\"v1.16.4\",\"BuildTime\":\"now\"}}</body></html>"
+      },
+      {
+        uri: "/config/v1/flyte_client"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"clientId\":\"flytectl\",\"redirectUri\":\"http://localhost\",\"authorizationMetadataKey\":\"flyte-authorization\"}</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_grpc_gateway_client_config"
+    mock_responses: [
+      {
+        uri: "/config/v1/flyte_client"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Grpc-Metadata-Content-Type" value: "application/grpc" }
+        ]
+        body: "{\"clientId\":\"my-cli\",\"redirectUri\":\"http://localhost:8080/callback\",\"authorizationMetadataKey\":\"authorization\"}"
+      },
+      {
+        uri: "/login"
+        status_code: 307
+        headers: [
+          { name: "Location" value: "https://idp.example.com/authorize?client_id=my-cli" },
+          { name: "Set-Cookie" value: "flyte_csrf_state=abc; HttpOnly" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  }
+]

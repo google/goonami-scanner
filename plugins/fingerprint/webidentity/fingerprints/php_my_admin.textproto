@@ -1,0 +1,549 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "phpMyAdmin"
+  author: "Goonami team"
+  software: "php_my_admin"
+  description: "Detects phpMyAdmin database management web interface across configured and unconfigured states and extracts full version."
+}
+
+steps: [
+  # Main phpMyAdmin entry page at candidate root (covers default cookie-auth login page,
+  # PMA_ARBITRARY=1 arbitrary server login, unconfigured fallback without config.inc.php,
+  # auth_type='config' database connection error page, and auth_type='http' 401 page
+  # across phpMyAdmin 4.x and 5.x+).
+  {
+    name: "phpmyadmin_root_page"
+    path: "/"
+    response: {
+      status_codes: [200, 401]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:<link\\s+[^>]*href=[\"'][^\"']*themes/(?:pmahomme|original|metro|bootstrap)/|<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/|vendor/)?(?:functions|ajax|keyhandler|common|config|whitelist\\.php|messages\\.php)|(?:PMA_commonParams|CommonParams)\\.setAll\\()"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*phpMyAdmin[^<]*</title>"
+          },
+          {
+            body: {}
+            regexp: "<h1>\\s*Welcome to\\s+(?:<bdo[^>]*>)?\\s*phpMyAdmin"
+          },
+          {
+            body: {}
+            regexp: "<input\\s+[^>]*name=[\"']pma_(?:username|servername|password)[\"']"
+          },
+          {
+            body: {}
+            regexp: "<form\\s+[^>]*name=[\"']login_form[\"']"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:^|[,;\\s])(?:phpMyAdmin|pma_lang|pmaAuth-|pmaUser-)="
+          },
+          {
+            header: { name: "WWW-Authenticate" }
+            regexp: "(?i)Basic\\s+realm=[\"']phpMyAdmin"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:PMA_commonParams|CommonParams)\\.setAll\\(\\{[^}]*?(?:PMA_VERSION|version)\\s*:\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "<link\\s+[^>]*href=[\"'][^\"']*themes/(?:pmahomme|original|metro|bootstrap)/css/[^\"'?]+\\.css\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/|vendor/[^\"'?]+/)?(?:functions|ajax|keyhandler|common|config|messages\\.php|whitelist\\.php|jquery\\.min\\.js|codemirror\\.js)(?:\\.js)?\\?(?:[^\"']*?&(?:amp;)?)?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Direct index.php endpoint check (passive subpath discovery and active fallback).
+  {
+    name: "phpmyadmin_index_php"
+    path_suffix: "/index.php"
+    response: {
+      status_codes: [200, 401]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:<link\\s+[^>]*href=[\"'][^\"']*themes/(?:pmahomme|original|metro|bootstrap)/|<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/|vendor/)?(?:functions|ajax|keyhandler|common|config|whitelist\\.php|messages\\.php)|(?:PMA_commonParams|CommonParams)\\.setAll\\()"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*phpMyAdmin[^<]*</title>"
+          },
+          {
+            body: {}
+            regexp: "<h1>\\s*Welcome to\\s+(?:<bdo[^>]*>)?\\s*phpMyAdmin"
+          },
+          {
+            body: {}
+            regexp: "<input\\s+[^>]*name=[\"']pma_(?:username|servername|password)[\"']"
+          },
+          {
+            body: {}
+            regexp: "<form\\s+[^>]*name=[\"']login_form[\"']"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            regexp: "(?:^|[,;\\s])(?:phpMyAdmin|pma_lang|pmaAuth-|pmaUser-)="
+          },
+          {
+            header: { name: "WWW-Authenticate" }
+            regexp: "(?i)Basic\\s+realm=[\"']phpMyAdmin"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:PMA_commonParams|CommonParams)\\.setAll\\(\\{[^}]*?(?:PMA_VERSION|version)\\s*:\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "<link\\s+[^>]*href=[\"'][^\"']*themes/(?:pmahomme|original|metro|bootstrap)/css/[^\"'?]+\\.css\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/|vendor/[^\"'?]+/)?(?:functions|ajax|keyhandler|common|config|messages\\.php|whitelist\\.php|jquery\\.min\\.js|codemirror\\.js)(?:\\.js)?\\?(?:[^\"']*?&(?:amp;)?)?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # HTTP Basic authentication mode check (auth_type='http') when 401 response body is minimal or custom.
+  {
+    name: "phpmyadmin_http_auth_401"
+    path: "/"
+    response: {
+      status_codes: [401]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "WWW-Authenticate" }
+            regexp: "(?i)Basic\\s+realm=[\"']phpMyAdmin[^\"']*[\"']"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:PMA_commonParams|CommonParams)\\.setAll\\(\\{[^}]*?(?:PMA_VERSION|version)\\s*:\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "<link\\s+[^>]*href=[\"'][^\"']*themes/(?:pmahomme|original|metro|bootstrap)/css/[^\"'?]+\\.css\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Unconfigured / web-based Setup Wizard endpoint (/setup/index.php across phpMyAdmin 4.x and 5.x+).
+  {
+    name: "phpmyadmin_setup_page"
+    path_suffix: "/setup/index.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>phpMyAdmin setup</title>"
+          },
+          {
+            body: {}
+            regexp: "<span\\s+class=[\"']blue[\"']>php</span><span\\s+class=[\"']orange[\"']>MyAdmin</span>\\s*setup"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/)?setup/(?:scripts|ajax)\\.js"
+          },
+          {
+            body: {}
+            contains: "url.php?url=https://www.phpmyadmin.net/"
+          },
+          {
+            body: {}
+            regexp: "<form\\s+[^>]*id=[\"']select_lang[\"']"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:PMA_commonParams|CommonParams)\\.setAll\\(\\{[^}]*?(?:PMA_VERSION|version)\\s*:\\s*[\"']([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "<script\\s+[^>]*src=[\"'][^\"']*js/(?:dist/|vendor/[^\"'?]+/)?[^\"'?]+\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Bundled Sphinx HTML documentation index (outputs exact version across phpMyAdmin 4.x and 5.x+).
+  {
+    name: "phpmyadmin_doc_index"
+    path_suffix: "/doc/html/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Welcome to phpMyAdmin(?:'s|’s|&#8217;s)\\s+documentation!\\s*(?:&#8212;|—|&mdash;|-)\\s*phpMyAdmin\\s+[0-9]+\\.[0-9]+"
+          },
+          {
+            body: {}
+            regexp: "<link\\s+[^>]*href=[\"']_static/(?:classic|default|pygments)\\.css[\"']"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<title>Welcome to phpMyAdmin(?:'s|’s|&#8217;s)\\s+documentation!\\s*(?:&#8212;|—|&mdash;|-)\\s*phpMyAdmin\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s+documentation</title>"
+        }
+      ]
+    }
+  },
+  # Plain-text ChangeLog file at application root (outputs exact release version at top of file).
+  {
+    name: "phpmyadmin_changelog"
+    path_suffix: "/ChangeLog"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "phpMyAdmin - ChangeLog"
+          },
+          {
+            body: {}
+            regexp: "(?m)^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?\\s+\\((?:[0-9]{4}-[0-9]{2}-[0-9]{2}|not yet released)\\)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "phpMyAdmin - ChangeLog\\s*=+\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s+\\("
+        }
+      ]
+    }
+  },
+  # Plain-text README file at application root (outputs exact Version X.Y.Z line).
+  {
+    name: "phpmyadmin_readme"
+    path_suffix: "/README"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "phpMyAdmin - Readme"
+          },
+          {
+            body: {}
+            contains: "https://www.phpmyadmin.net/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?m)^Version\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*$"
+        }
+      ]
+    }
+  },
+  # Static package.json manifest (present across phpMyAdmin 4.8+ and 5.x+ with exact version).
+  {
+    name: "phpmyadmin_package_json"
+    path_suffix: "/package.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"name\"\\s*:\\s*\"phpmyadmin\""
+          },
+          {
+            body: {}
+            contains: "https://github.com/phpmyadmin/phpmyadmin"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Default pmahomme theme metadata manifest (/themes/pmahomme/theme.json).
+  {
+    name: "phpmyadmin_theme_json"
+    path_suffix: "/themes/pmahomme/theme.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"name\"\\s*:\\s*\"pmahomme\""
+          },
+          {
+            body: {}
+            contains: "Default phpMyAdmin theme"
+          },
+          {
+            body: {}
+            contains: "https://www.phpmyadmin.net/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Core phpMyAdmin JavaScript assets (passive subpath discovery and JS verification across
+  # 4.x/5.0 /js/{functions,config,ajax}.js and 5.1+/5.2+ /js/dist/{functions,config,ajax}.js).
+  {
+    name: "phpmyadmin_core_js"
+    path_regexp: "/js/(?:dist/)?(?:functions|config|ajax)\\.js$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?s)(?:mysqlDocTemplate|PMA_commonParams|CommonParams).*pma_navigation|pma_navigation.*(?:mysqlDocTemplate|PMA_commonParams|CommonParams)"
+          },
+          {
+            body: {}
+            regexp: "(?s)configInlineParams.*configScriptLoaded.*isStorageSupported|isStorageSupported.*configInlineParams"
+          },
+          {
+            body: {}
+            regexp: "(?s)var\\s+AJAX\\s*=.*(?:PMA_commonParams|CommonParams)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Bundled phpMyAdmin theme CSS stylesheet (passive subpath discovery across 4.x and 5.x+).
+  {
+    name: "phpmyadmin_theme_css"
+    path_regexp: "/themes/(?:pmahomme|original|metro|bootstrap)/css/(?:theme|printview)\\.css$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "#pma_navigation"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "#pma_navigation_tree"
+          },
+          {
+            body: {}
+            contains: "#pma_errors"
+          },
+          {
+            body: {}
+            contains: "#pma_console"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Official phpMyAdmin favicon.ico (passive subpath discovery and static icon verification).
+  {
+    name: "phpmyadmin_favicon"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              murmur3_hashes: [
+                "66e32d964ea319c4afe611e8d7b8bf5d",
+                "35b654a58c277d695f32384303254d5d"
+              ]
+              body_sha256_hashes: [
+                "e2905705920b2636309d785c2df3f155d6379b0aa9a44dc7831524505fa2defd"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["phpmyadmin_root_page"]
+  },
+  {
+    steps: ["phpmyadmin_index_php"]
+  },
+  {
+    steps: ["phpmyadmin_http_auth_401"]
+  },
+  {
+    steps: ["phpmyadmin_setup_page"]
+  },
+  {
+    steps: ["phpmyadmin_doc_index"]
+  },
+  {
+    steps: ["phpmyadmin_changelog"]
+  },
+  {
+    steps: ["phpmyadmin_readme"]
+  },
+  {
+    steps: ["phpmyadmin_package_json"]
+  },
+  {
+    steps: ["phpmyadmin_theme_json"]
+  },
+  {
+    steps: ["phpmyadmin_core_js"]
+  },
+  {
+    steps: ["phpmyadmin_theme_css"]
+  },
+  {
+    steps: [
+      "phpmyadmin_favicon",
+      "phpmyadmin_root_page"
+    ]
+  },
+  {
+    steps: [
+      "phpmyadmin_favicon",
+      "phpmyadmin_index_php"
+    ]
+  },
+  {
+    steps: [
+      "phpmyadmin_favicon",
+      "phpmyadmin_theme_json"
+    ]
+  }
+]

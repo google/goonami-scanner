@@ -1,0 +1,474 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "mantisbt"
+
+tests: [
+  {
+    name: "mantisbt_1_3_20_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n\t<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/css/admin.css\" />\n\t<meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />\n\t<title>Administration - Installation - MantisBT</title>\n\t<script type=\"text/javascript\" src=\"/js/jquery-1.12.4.min.js\"></script>\n\t<script type=\"text/javascript\" src=\"/js/install.js\"></script>\n</head>\n<body>\n<table width=\"100%\"><tr class=\"top-bar\"><td class=\"title\">Pre-Installation Check</td></tr><tr><td><input name=\"go\" type=\"submit\" class=\"button\" value=\"Install/Upgrade Database\"></td></tr></table>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n\t<title>Administration - Installation - MantisBT</title>\n\t<script type=\"text/javascript\" src=\"/js/install.js\"></script>\n</head>\n<body>Pre-Installation Check <input name=\"go\" type=\"submit\" value=\"Install/Upgrade Database\"></body>\n</html>\n"
+      },
+      {
+        uri: "/api/soap/mantisconnect.php"
+        status_code: 307
+        headers: [
+          { name: "Location", value: "admin/install.php" },
+          { name: "Content-Type", value: "text/html;charset=UTF-8" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "mantisbt_1_3_20_configured_soap_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n\t<meta http-equiv=\"Content-type\" content=\"text/html; charset=utf-8\" />\n\t<title>MantisBT</title>\n\t<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/css/default.css\" />\n\t<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/css/status_config.php\" />\n\t<link rel=\"shortcut icon\" href=\"/images/favicon.ico\" type=\"image/x-icon\" />\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: full-text search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\"/>\n\t<script type=\"text/javascript\" src=\"/javascript_config.php\"></script>\n\t<script type=\"text/javascript\" src=\"/javascript_translations.php\"></script>\n\t<script type=\"text/javascript\" src=\"/js/common.js\"></script>\n</head>\n<body>\n<div id=\"mantis\" class=\"centered_page\">\n<div id=\"login-div\" class=\"form-container\"><form id=\"login-form\" method=\"post\" action=\"login.php\"></form></div>\n<div id=\"footer\"><address id=\"version\">Powered by <a href=\"http://www.mantisbt.org\" title=\"bug tracking software\">MantisBT </a></address></div>\n</div>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/api/soap/mantisconnect.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/xml; charset=utf-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ns1=\"http://futureware.biz/mantisconnect\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:SOAP-ENC=\"http://schemas.xmlsoap.org/soap/encoding/\" SOAP-ENV:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><SOAP-ENV:Body><ns1:mc_versionResponse><return xsi:type=\"xsd:string\">1.3.20</return></ns1:mc_versionResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.3.20"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_3_0_configured_php_deprecation_in_soap"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n\t<title>MantisBT</title>\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: Text Search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\" />\n\t<script type=\"text/javascript\" src=\"/javascript_config.php\"></script>\n\t<script type=\"text/javascript\" src=\"/js/common.js\"></script>\n</head>\n<body class=\"login-layout light-login\">\n<form id=\"login-form\" method=\"post\" action=\"login.php\"></form>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/api/rest/swagger.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"version\": \"1.0.0\",\n    \"title\": \"MantisBT REST API\"\n  },\n  \"basePath\": \"/api/rest\"\n}\n"
+      },
+      {
+        uri: "/api/soap/mantisconnect.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/xml; charset=utf-8" }
+        ]
+        body: "<div class=\"alert alert-warning\">DEPRECATED: 'The each() function is deprecated.' in '/var/www/html/library/adodb/adodb.inc.php' line 1167</div><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ns1=\"http://futureware.biz/mantisconnect\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><SOAP-ENV:Body><ns1:mc_versionResponse><return xsi:type=\"xsd:string\">2.3.0</return></ns1:mc_versionResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.3.0"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_24_3_configured_rest_header_401"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n\t<title>MantisBT</title>\n\t<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/css/ace-mantis.css\" />\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: Text Search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\" />\n\t<script type=\"text/javascript\" src=\"/javascript_config.php?cache_key=56866b66cf114e4200b9ef7d2d0e3876\"></script>\n</head>\n<body class=\"login-layout light-login\">\n<form id=\"login-form\" method=\"post\" action=\"login_password_page.php\"></form>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/api/rest/index.php/issues"
+        status_code: 401
+        headers: [
+          { name: "X-Mantis-Version", value: "2.24.3" },
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.24.3"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_27_3_pending_install_with_admin_check_version"
+    mock_responses: [
+      {
+        uri: "/admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<title>Administration - Installation - MantisBT</title>\n\t<script src=\"/js/install.js\"></script>\n</head>\n<body><h4>Pre-Installation Check</h4><input name=\"go\" type=\"submit\" value=\"Install/Upgrade Database\"></body>\n</html>\n"
+      },
+      {
+        uri: "/admin/check/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<title>MantisBT Administration - Check Installation - MantisBT</title>\n</head>\n<body>\n<p>Checking your MantisBT installation...</p>\n<p>MantisBT 2.27.3 has not been fully tested with PHP 8.4 yet, please <a href=\"https://mantisbt.org/bugs/bug_report_page.php?project_id=1&amp;category_id=67&amp;product_version=2.27.3\">report a new Issue</a>.</p>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/api/rest/swagger.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"version\": \"1.0.0\",\n    \"title\": \"MantisBT REST API\"\n  },\n  \"basePath\": \"/api/rest\"\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.27.3"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_28_4_configured_admin_removed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<title>Login - MantisBT</title>\n\t<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/css/ace-mantis.css?cache_key=0cb693bb07ced776b97d65dbf059d239\" />\n\t<link rel=\"shortcut icon\" href=\"/images/favicon.ico\" type=\"image/x-icon\" />\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: full-text search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\"/>\n\t<script src=\"/javascript_config.php?cache_key=cd181d2b5ef91324b7cc7970fc4325ba\"></script>\n\t<script src=\"/javascript_translations.php?cache_key=e2666b25b55da4619b2b759c2152e5b4\"></script>\n\t<script src=\"/js/common.js\"></script>\n</head>\n<body class=\"login-layout light-login\">\n<form id=\"login-form\" method=\"post\" action=\"login_password_page.php\"></form>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/login_page.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<title>Login - MantisBT</title>\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: full-text search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\"/>\n\t<script src=\"/javascript_config.php?cache_key=cd181d2b5ef91324b7cc7970fc4325ba\"></script>\n</head>\n<body><form id=\"login-form\" method=\"post\" action=\"login_password_page.php\"></form></body>\n</html>\n"
+      },
+      {
+        uri: "/api/rest/index.php/issues"
+        status_code: 401
+        headers: [
+          { name: "X-Mantis-Version", value: "2.28.4" },
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.28.4"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_28_4_anonymous_public_tracker_show_version_footer"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<title>My View - MantisBT</title>\n\t<link rel=\"search\" type=\"application/opensearchdescription+xml\" title=\"MantisBT: full-text search\" href=\"http://target.test:8080/browser_search_plugin.php?type=text\"/>\n\t<script src=\"/javascript_config.php?cache_key=20ac85b04c242bd9978762e3a9e56de6\"></script>\n\t<script src=\"/js/common.js\"></script>\n</head>\n<body class=\"skin-3\">\n<div class=\"footer noprint\"><address><strong>Powered by <a href=\"https://www.mantisbt.org\" title=\"bug tracking software\">MantisBT  2.28.4</a></strong><br><small>Copyright &copy; 2000 - 2026 MantisBT Team</small></address></div>\n</body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.28.4"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_2_28_4_subpath_via_common_js_and_rest_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Example Engineering Portal</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/mantis/js/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "/*\n# Mantis - a php based bugtracking system\n# Copyright 2000 - 2002  Kenzaburo Ito - kenito@300baud.org\n# Copyright 2002 MantisBT Team   - mantisbt-dev@lists.sourceforge.net\n */\n/* Initialized in javascript_config.php */\nfunction ToggleDiv( p_div ) {}\n"
+      },
+      {
+        uri: "/mantis/api/rest/index.php/issues"
+        status_code: 401
+        headers: [
+          { name: "X-Mantis-Version", value: "2.28.4" },
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/mantis"
+        expected_versions: ["2.28.4"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_1_3_20_subpath_via_common_js_and_soap_version"
+    mock_responses: [
+      {
+        uri: "/bugs/js/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "/*\n# Mantis - a php based bugtracking system\n# Copyright 2002 MantisBT Team   - mantisbt-dev@lists.sourceforge.net\n */\nfunction setDisplay(idTag, state) {}\n"
+      },
+      {
+        uri: "/bugs/api/soap/mantisconnect.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/xml; charset=utf-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:ns1=\"http://futureware.biz/mantisconnect\"><SOAP-ENV:Body><ns1:mc_versionResponse><return xsi:type=\"xsd:string\">1.3.20</return></ns1:mc_versionResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/bugs"
+        expected_versions: ["1.3.20"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_rest_rewrite_fallback_when_path_info_disabled"
+    mock_responses: [
+      {
+        uri: "/api/rest/issues"
+        status_code: 200
+        headers: [
+          { name: "X-Mantis-Version", value: "2.27.3" },
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"issues\":[]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.27.3"]
+      }
+    ]
+  },
+  {
+    name: "mantisbt_swagger_and_wsdl_when_database_offline"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 500
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>MantisBT</title></head><body><p>APPLICATION ERROR #400: Database connection failed.</p></body></html>"
+      },
+      {
+        uri: "/api/rest/swagger.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"version\": \"1.0.0\",\n    \"title\": \"MantisBT REST API\"\n  },\n  \"basePath\": \"/api/rest\"\n}\n"
+      },
+      {
+        uri: "/api/soap/mantisconnect.wsdl"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/wsdl+xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<definitions targetNamespace=\"http://futureware.biz/mantisconnect\">\n<service name=\"MantisConnect\"></service>\n</definitions>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_spa_html_catchall_on_all_paths"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/login_page.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Login</title></head><body><form id=\"login-form\"></form></body></html>"
+      },
+      {
+        uri: "/admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Not Found</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/admin/check/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Not Found</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/api/rest/index.php/issues"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>SPA Fallback</body></html>"
+      },
+      {
+        uri: "/api/rest/issues"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>SPA Fallback</body></html>"
+      },
+      {
+        uri: "/api/soap/mantisconnect.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>http://futureware.biz/mantisconnect <mc_versionResponse><return>2.28.4</return></mc_versionResponse></body></html>"
+      },
+      {
+        uri: "/api/rest/swagger.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\"swagger\": \"2.0\", \"title\": \"MantisBT REST API\", \"basePath\": \"/api/rest\"</body></html>"
+      },
+      {
+        uri: "/api/soap/mantisconnect.wsdl"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>targetNamespace=\"http://futureware.biz/mantisconnect\" <service name=\"MantisConnect\"></body></html>"
+      },
+      {
+        uri: "/js/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Mantis - a php based bugtracking system MantisBT Team ToggleDiv</body></html>"
+      },
+      {
+        uri: "/images/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Not an icon</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_swagger_and_wsdl_services"
+    mock_responses: [
+      {
+        uri: "/api/rest/swagger.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"swagger\": \"2.0\",\n  \"info\": {\n    \"version\": \"2.4.0\",\n    \"title\": \"Internal Issue Tracker API\"\n  },\n  \"basePath\": \"/api/rest\"\n}\n"
+      },
+      {
+        uri: "/api/soap/mantisconnect.wsdl"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/wsdl+xml" }
+        ]
+        body: "<?xml version=\"1.0\"?>\n<definitions targetNamespace=\"http://example.com/soap\">\n<service name=\"IssueService\"></service>\n</definitions>\n"
+      },
+      {
+        uri: "/js/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "// Common utilities\nfunction ToggleDiv(el) { return el; }\n"
+      }
+    ]
+  },
+  {
+    name: "negative_blog_article_mentioning_mantisbt"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Bug Tracker Review - MantisBT</title></head><body><h1>Comparing Jira and MantisBT 2.28.4</h1><p>Visit <a href=\"https://www.mantisbt.org\">MantisBT</a> for more details.</p></body></html>"
+      }
+    ]
+  }
+]

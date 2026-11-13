@@ -1,0 +1,385 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Gradio"
+  author: "Goonami team"
+  software: "gradio"
+  description: "Detects Gradio machine learning web applications and extracts version."
+}
+
+steps: [
+  # Gradio HTML shell (Gradio 3.x through 6.x in both open and auth-protected modes)
+  {
+    name: "gradio_root_html"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            contains: "window.gradio_config"
+          },
+          {
+            body: {}
+            contains: "<gradio-app"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.__gradio_mode__"
+          },
+          {
+            body: {}
+            contains: "content=\"https://gradio.app/\""
+          },
+          {
+            body: {}
+            contains: "content=\"@teamGradio\""
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "window\\.gradio_config\\s*=\\s*\\{[^{}\\[\\]]*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "gradio\\.s3-us-west-2\\.amazonaws\\.com/([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)/"
+        }
+      ]
+    }
+  },
+  # Unauthenticated Gradio Blocks/Interface configuration JSON endpoint (Gradio 3.x through 6.x)
+  {
+    name: "gradio_config_api"
+    path_suffix: "/config"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"version\""
+          },
+          {
+            body: {}
+            contains: "\"dev_mode\""
+          },
+          {
+            body: {}
+            contains: "\"components\""
+          },
+          {
+            body: {}
+            contains: "\"dependencies\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"api_prefix\""
+          },
+          {
+            body: {}
+            contains: "\"analytics_enabled\""
+          },
+          {
+            body: {}
+            regexp: "\"mode\"\\s*:\\s*\"(?:blocks|interface|chat_interface)\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "^\\s*\\{[^{}\\[\\]]*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Compiled Gradio frontend JS bundle (enables passive subpath root discovery in open and auth modes)
+  {
+    name: "gradio_js_bundle"
+    path_regexp: "^(?P<root>.*?)/assets/index-[a-zA-Z0-9_-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "gradio_config"
+          },
+          {
+            body: {}
+            contains: "__gradio_mode__"
+          },
+          {
+            body: {}
+            contains: "gradio-app"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Gradio 6.x dedicated API OpenAPI schema endpoint exposing exact Gradio version in info.version
+  {
+    name: "gradio_api_openapi"
+    path_suffix: "/gradio_api/openapi.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"openapi\""
+          },
+          {
+            body: {}
+            contains: "\"paths\""
+          },
+          {
+            body: {}
+            contains: "\"components\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"info\"\\s*:\\s*\\{[^{}]*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Unauthenticated Gradio SVG favicon (Gradio 3.x and Gradio 4.x-6.x exact SHA-256 hashes)
+  {
+    name: "gradio_favicon"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "1a7cafda04be35eeb442cdb25ecda84d0f0e7af4d90f34ad632295a4d722f52e",
+                "3d131bff3fe15bcbb3e6e6552a8bee25377c3666723a9cbe68ceca953ea613df"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated Gradio static SVG logo (Gradio 3.x and Gradio 4.x-6.x exact SHA-256 hashes)
+  {
+    name: "gradio_logo_svg"
+    path_suffix: "/static/img/logo.svg"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "1a7cafda04be35eeb442cdb25ecda84d0f0e7af4d90f34ad632295a4d722f52e",
+                "3d131bff3fe15bcbb3e6e6552a8bee25377c3666723a9cbe68ceca953ea613df"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated FastAPI OpenAPI schema exposing Gradio-specific routes and Pydantic models
+  # Note: info.version is FastAPI's default "0.1.0", so no version extractor is attached here.
+  {
+    name: "gradio_openapi_spec"
+    path_suffix: "/openapi.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"openapi\""
+          },
+          {
+            body: {}
+            contains: "\"/theme.css\""
+          },
+          {
+            body: {}
+            contains: "\"ResetBody\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"/gradio_api/\""
+          },
+          {
+            body: {}
+            contains: "\"PredictBody\""
+          },
+          {
+            body: {}
+            contains: "\"SimplePredictBody\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["gradio_root_html"]
+  },
+  {
+    steps: [
+      "gradio_js_bundle",
+      "gradio_config_api"
+    ]
+  },
+  {
+    steps: [
+      "gradio_js_bundle",
+      "gradio_api_openapi"
+    ]
+  },
+  {
+    steps: [
+      "gradio_favicon",
+      "gradio_config_api"
+    ]
+  },
+  {
+    steps: [
+      "gradio_logo_svg",
+      "gradio_config_api"
+    ]
+  },
+  {
+    steps: [
+      "gradio_js_bundle",
+      "gradio_favicon"
+    ]
+  },
+  {
+    steps: [
+      "gradio_js_bundle",
+      "gradio_openapi_spec"
+    ]
+  },
+  {
+    steps: [
+      "gradio_favicon",
+      "gradio_openapi_spec"
+    ]
+  },
+  {
+    steps: [
+      "gradio_logo_svg",
+      "gradio_openapi_spec"
+    ]
+  }
+]

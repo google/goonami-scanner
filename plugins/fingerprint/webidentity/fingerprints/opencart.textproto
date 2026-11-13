@@ -1,0 +1,423 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "OpenCart"
+  author: "Goonami team"
+  software: "opencart"
+  description: "Detects OpenCart e-commerce platform across pending-install and installed states."
+}
+
+steps: [
+  # Unconfigured / pending-install OpenCart web installer and upgrade wizard across OpenCart 2.x-4.x+.
+  {
+    name: "opencart_install_wizard"
+    path_suffix: "/install/index.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<base\\s+href=[\"'][^\"']*/install/[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:<link[^>]+href=[\"']view/stylesheet/stylesheet\\.css[\"']|<img[^>]+src=[\"']view/image/logo\\.png[\"'])"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<img[^>]+alt=[\"']OpenCart[\"'][^>]+title=[\"']OpenCart[\"']"
+          },
+          {
+            body: {}
+            contains: "Please read the OpenCart licence agreement"
+          },
+          {
+            body: {}
+            regexp: "<a\\s+href=[\"']https?://(?:www\\.|docs\\.|forum\\.)?opencart\\.com"
+          }
+        ]
+      }
+    }
+  },
+  # Pending-install root page when the HTTP client follows 302 redirect from / to /install/index.php.
+  {
+    name: "opencart_install_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<base\\s+href=[\"'][^\"']*/install/[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:<link[^>]+href=[\"']view/stylesheet/stylesheet\\.css[\"']|<img[^>]+src=[\"']view/image/logo\\.png[\"'])"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<img[^>]+alt=[\"']OpenCart[\"'][^>]+title=[\"']OpenCart[\"']"
+          },
+          {
+            body: {}
+            contains: "Please read the OpenCart licence agreement"
+          },
+          {
+            body: {}
+            regexp: "<a\\s+href=[\"']https?://(?:www\\.|docs\\.|forum\\.)?opencart\\.com"
+          }
+        ]
+      }
+    }
+  },
+  # Configured OpenCart storefront root page across OpenCart 2.x, 3.x, and 4.x+.
+  {
+    name: "opencart_storefront_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<script[^>]+src=[\"'][^\"']*catalog/view/javascript/common\\.js(?:\\?[^\"']*)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:href|action)=[\"'][^\"']*index\\.php\\?route=(?:common/|account/|product/|checkout/|information/)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)Powered\\s+By\\s+<a\\s+href=[\"']https?://(?:www\\.)?opencart\\.com[\"'][^>]*>OpenCart</a>"
+          },
+          {
+            body: {}
+            contains: "OpenCart is open source software"
+          },
+          {
+            body: {}
+            regexp: "<link[^>]+href=[\"'][^\"']*catalog/view/(?:theme/[^/\"']+/stylesheet|stylesheet)/stylesheet\\.css"
+          },
+          {
+            body: {}
+            contains: "data-oc-toggle="
+          },
+          {
+            body: {}
+            regexp: "<link[^>]+href=[\"'][^\"']*/image/catalog/(?:opencart\\.ico|cart\\.png|logo\\.png)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Configured OpenCart customer login controller across OpenCart 2.x, 3.x, and 4.x+ (handles custom splash homepages).
+  {
+    name: "opencart_account_login"
+    path: "/index.php?route=account/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<script[^>]+src=[\"'][^\"']*catalog/view/javascript/common\\.js(?:\\?[^\"']*)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "<form[^>]+action=[\"'][^\"']*index\\.php\\?route=account/login(?:\\.login|\\|login|[\"'&])"
+          },
+          {
+            body: {}
+            regexp: "href=[\"'][^\"']*index\\.php\\?route=account/forgotten"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<link[^>]+href=[\"'][^\"']*catalog/view/(?:theme/[^/\"']+/stylesheet|stylesheet)/stylesheet\\.css"
+          },
+          {
+            body: {}
+            regexp: "(?i)Powered\\s+By\\s+<a\\s+href=[\"']https?://(?:www\\.)?opencart\\.com[\"'][^>]*>OpenCart</a>"
+          },
+          {
+            body: {}
+            contains: "data-oc-toggle="
+          }
+        ]
+      }
+    }
+  },
+  # OpenCart Administration backend login page across OpenCart 2.x, 3.x, and 4.x+.
+  {
+    name: "opencart_admin_login"
+    path_suffix: "/admin/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<base\\s+href=[\"'][^\"']*/admin/[\"']"
+          },
+          {
+            body: {}
+            regexp: "<script[^>]+src=[\"']view/javascript/common\\.js(?:\\?[^\"']*)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "<link[^>]+href=[\"']view/stylesheet/stylesheet\\.css(?:\\?[^\"']*)?[\"']"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<form[^>]+action=[\"'][^\"']*index\\.php\\?route=common/login"
+          },
+          {
+            body: {}
+            regexp: "<img[^>]+alt=[\"']OpenCart[\"']"
+          },
+          {
+            body: {}
+            regexp: "<a\\s+href=[\"']https?://(?:www\\.)?opencart\\.com[\"'][^>]*>OpenCart</a>"
+          },
+          {
+            header: { name: "Set-Cookie" }
+            contains: "OCSESSID="
+          }
+        ]
+      }
+    }
+  },
+  # OpenCart 4.x+ default extensions manifest (database-independent; works in pending-install and installed states even when /admin/ is renamed).
+  # Note: "version": "1.0" inside this manifest is the extension bundle schema version, not the OpenCart version.
+  {
+    name: "opencart_extension_manifest"
+    path_suffix: "/extension/opencart/install.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"name\"\\s*:\\s*\"OpenCart Default Extensions\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"author\"\\s*:\\s*\"OpenCart(?:\\s+Ltd)?\""
+          },
+          {
+            body: {}
+            contains: "https://www.opencart.com"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Core OpenCart storefront JavaScript bundle across OpenCart 2.x, 3.x, and 4.x+ (passive subpath discovery + database-independent fallback).
+  {
+    name: "opencart_catalog_common_js"
+    path_suffix: "/catalog/view/javascript/common.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "function\\s+getURLVar\\s*\\(\\s*key\\s*\\)"
+          },
+          {
+            body: {}
+            regexp: "#form-(?:currency|language)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "index\\.php\\?route=(?:checkout/cart|product/search)"
+          },
+          {
+            body: {}
+            regexp: "data-oc-(?:toggle|load|target)"
+          },
+          {
+            body: {}
+            regexp: "\\bvar\\s+cart\\s*=\\s*\\{"
+          },
+          {
+            body: {}
+            regexp: "\\bvar\\s+oc_tooltip\\s*="
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Core OpenCart admin JavaScript bundle across OpenCart 2.x, 3.x, and 4.x+ (passive subpath discovery + static fallback).
+  {
+    name: "opencart_admin_common_js"
+    path_suffix: "/admin/view/javascript/common.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "function\\s+getURLVar\\s*\\(\\s*key\\s*\\)"
+          },
+          {
+            body: {}
+            contains: "sessionStorage.getItem('menu')"
+          },
+          {
+            body: {}
+            contains: "#column-left"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "index\\.php\\?route=common/[a-zA-Z0-9_.]+&(?:user_)?token="
+          },
+          {
+            body: {}
+            regexp: "data-oc-(?:toggle|load|target)"
+          },
+          {
+            body: {}
+            contains: "$.fn.autocomplete"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Official OpenCart core icon (identical SHA-256 across OpenCart 2.x, 3.x, and 4.x) for passive subpath discovery and static verification.
+  {
+    name: "opencart_favicon_ico"
+    path_suffix: "/image/catalog/opencart.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "28115d56b434df42add647b764352806c1e6871379c6f8e62dbe0b8f6fffbe2d"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["opencart_install_wizard"]
+  },
+  {
+    steps: ["opencart_install_root"]
+  },
+  {
+    steps: ["opencart_storefront_root"]
+  },
+  {
+    steps: ["opencart_account_login"]
+  },
+  {
+    steps: ["opencart_admin_login"]
+  },
+  {
+    steps: ["opencart_extension_manifest"]
+  },
+  {
+    steps: ["opencart_catalog_common_js"]
+  },
+  {
+    steps: ["opencart_admin_common_js"]
+  },
+  {
+    steps: [
+      "opencart_favicon_ico",
+      "opencart_catalog_common_js"
+    ]
+  },
+  {
+    steps: [
+      "opencart_favicon_ico",
+      "opencart_storefront_root"
+    ]
+  }
+]

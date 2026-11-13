@@ -1,0 +1,460 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "kibana"
+
+tests: [
+  {
+    name: "configured_login_page_v7_17_24"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "kibana-prod-01" },
+          { name: "kbn-license-sig", value: "a91f4d2c75e3b1098d12c4e56f78a901b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7" },
+          { name: "Location", value: "/login?next=%2F" }
+        ]
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "kibana-prod-01" },
+          { name: "kbn-license-sig", value: "a91f4d2c75e3b1098d12c4e56f78a901b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;7.17.24&quot;,&quot;buildNumber&quot;:47676,&quot;branch&quot;:&quot;7.17&quot;,&quot;basePath&quot;:&quot;&quot;,&quot;serverBasePath&quot;:&quot;&quot;,&quot;csp&quot;:{&quot;strict&quot;:false}}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:false}\"></kbn-csp><div class=\"kibanaWelcomeView\" id=\"kbn_loading_message\"></div><script src=\"/bootstrap-anonymous.js\"></script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.17.24"]
+      }
+    ]
+  },
+  {
+    name: "configured_no_security_v8_8_2"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "kbn-8-8" },
+          { name: "Location", value: "/spaces/space_selector" }
+        ]
+      },
+      {
+        uri: "/app/home"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-8-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;8.8.2&quot;,&quot;buildNumber&quot;:63337,&quot;branch&quot;:&quot;8.8&quot;,&quot;basePath&quot;:&quot;&quot;,&quot;serverBasePath&quot;:&quot;&quot;}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:true}\"></kbn-csp><div id=\"kbn_loading_message\"></div><script src=\"/bootstrap.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-8-8" }
+        ]
+        body: "{\"name\":\"kbn-8-8\",\"uuid\":\"7d4e21a0-51bc-4e92-84c0-19b8a3f0e512\",\"version\":{\"number\":\"8.8.2\",\"build_hash\":\"686b5b49b036c077dd525506c3c600720030b817\",\"build_number\":63337,\"build_snapshot\":false},\"status\":{\"overall\":{\"level\":\"available\",\"summary\":\"All services are available\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["8.8.2"]
+      }
+    ]
+  },
+  {
+    name: "configured_login_and_redacted_status_v8_15_2"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "kbn-8-15" },
+          { name: "Location", value: "/login?next=%2F" }
+        ]
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-8-15" },
+          { name: "kbn-license-sig", value: "9d2c7e1a8f4b3c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;8.15.2&quot;,&quot;buildNumber&quot;:76632,&quot;branch&quot;:&quot;8.15&quot;,&quot;assetsHrefBase&quot;:&quot;/5a522bfe14bc&quot;,&quot;plugins&quot;:[{&quot;id&quot;:&quot;telemetry&quot;,&quot;version&quot;:&quot;1.0.0&quot;}]}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:true}\"></kbn-csp><div id=\"kbn_loading_message\"></div><script src=\"/bootstrap-anonymous.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "elastic-api-version", value: "2023-10-31" },
+          { name: "kbn-name", value: "kbn-8-15" }
+        ]
+        body: "{\"status\":{\"overall\":{\"level\":\"available\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["8.15.2"]
+      }
+    ]
+  },
+  {
+    name: "configured_login_page_v9_3_1"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "b6d5ca430ade" },
+          { name: "kbn-license-sig", value: "3181841d81b8d6c150f103e569dd1df89903eb0c5a5dc9a5818e0b5f5cf8e761" },
+          { name: "Location", value: "/login?next=%2F" }
+        ]
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "b6d5ca430ade" },
+          { name: "kbn-license-sig", value: "3181841d81b8d6c150f103e569dd1df89903eb0c5a5dc9a5818e0b5f5cf8e761" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;9.3.1&quot;,&quot;buildNumber&quot;:95740,&quot;branch&quot;:&quot;9.3&quot;,&quot;basePath&quot;:&quot;&quot;,&quot;serverBasePath&quot;:&quot;&quot;,&quot;assetsHrefBase&quot;:&quot;/342266a63c5c&quot;}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:true}\"></kbn-csp><div id=\"kbn_loading_message\"></div><script src=\"/bootstrap-anonymous.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "elastic-api-version", value: "2023-10-31" },
+          { name: "kbn-name", value: "b6d5ca430ade" }
+        ]
+        body: "{\"status\":{\"overall\":{\"level\":\"available\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["9.3.1"]
+      }
+    ]
+  },
+  {
+    name: "interactive_setup_wizard_v9_3_1"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "5446be9fa74f" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;9.3.1&quot;,&quot;buildNumber&quot;:95740,&quot;branch&quot;:&quot;9.3&quot;,&quot;basePath&quot;:&quot;&quot;,&quot;serverBasePath&quot;:&quot;&quot;,&quot;assetsHrefBase&quot;:&quot;/342266a63c5c&quot;}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:true}\"></kbn-csp><div id=\"kbn_loading_message\"></div><script src=\"/bootstrap.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "elastic-api-version", value: "2023-10-31" },
+          { name: "kbn-name", value: "5446be9fa74f" }
+        ]
+        body: "{\"status\":{\"overall\":{\"level\":\"unavailable\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["9.3.1"]
+      }
+    ]
+  },
+  {
+    name: "preboot_unreachable_es_v7_17_24"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-preboot-7" }
+        ]
+        body: "Kibana server is not ready yet"
+      },
+      {
+        uri: "/api/status"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-preboot-7" }
+        ]
+        body: "Kibana server is not ready yet"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "preboot_unreachable_es_redacted_status_v9_3_1"
+    mock_responses: [
+      {
+        uri: "/api/status"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "elastic-api-version", value: "2023-10-31" },
+          { name: "kbn-name", value: "b6d5ca430ade" }
+        ]
+        body: "{\"status\":{\"overall\":{\"level\":\"unavailable\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "full_api_status_only_v9_3_1"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "b6d5ca430ade" },
+          { name: "Location", value: "https://sso.example.com/oauth2/authorize" }
+        ]
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "elastic-api-version", value: "2023-10-31" },
+          { name: "kbn-name", value: "b6d5ca430ade" }
+        ]
+        body: "{\"name\":\"b6d5ca430ade\",\"uuid\":\"2b0d63ee-233a-4ec3-894f-fb74642283a7\",\"version\":{\"number\":\"9.3.1\",\"build_hash\":\"342266a63c5cedf139febf5a982ceb9a1c46690b\",\"build_number\":95740,\"build_snapshot\":false},\"status\":{\"overall\":{\"level\":\"degraded\",\"summary\":\"0 service(s) and 1 plugin(s) are degraded: taskManager\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["9.3.1"]
+      }
+    ]
+  },
+  {
+    name: "sso_redirect_bootstrap_anonymous_fallback"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 302
+        headers: [
+          { name: "kbn-name", value: "kbn-sso" },
+          { name: "Location", value: "https://idp.example.com/saml/sso" }
+        ]
+      },
+      {
+        uri: "/api/status"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-sso" }
+        ]
+        body: "{\"statusCode\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication required.\"}"
+      },
+      {
+        uri: "/bootstrap-anonymous.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-sso" }
+        ]
+        body: "function kbnBundlesLoader() { return {}; }\nwindow.__kbnPublicPath__ = {\"core\":\"/63337/bundles/core/\"};\nwindow.__kbnBundles__ = kbnBundlesLoader();"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "subpath_login_page_v8_8_2"
+    mock_responses: [
+      {
+        uri: "/kibana/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-subpath" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Elastic</title></head><body><kbn-injected-metadata data=\"{&quot;version&quot;:&quot;8.8.2&quot;,&quot;buildNumber&quot;:63337,&quot;branch&quot;:&quot;8.8&quot;,&quot;basePath&quot;:&quot;/kibana&quot;,&quot;serverBasePath&quot;:&quot;/kibana&quot;}\"></kbn-injected-metadata><kbn-csp data=\"{&quot;strictCsp&quot;:true}\"></kbn-csp><div id=\"kbn_loading_message\"></div><script src=\"/kibana/bootstrap-anonymous.js\"></script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/kibana"
+        expected_versions: ["8.8.2"]
+      }
+    ]
+  },
+  {
+    name: "subpath_passive_core_bundle_and_api_status"
+    mock_responses: [
+      {
+        uri: "/analytics/342266a63c5c/bundles/core/core.entry.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-analytics" }
+        ]
+        body: "(()=>{const i=__kbnSharedDeps__.ElasticApmRumCore;__kbnBundles__.define(\"entry/core/public\",{},4670)})();"
+      },
+      {
+        uri: "/analytics/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-analytics" }
+        ]
+        body: "{\"name\":\"kbn-analytics\",\"uuid\":\"2b0d63ee-233a-4ec3-894f-fb74642283a7\",\"version\":{\"number\":\"9.3.1\",\"build_hash\":\"342266a63c5cedf139febf5a982ceb9a1c46690b\",\"build_number\":95740},\"status\":{\"overall\":{\"level\":\"available\"}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/analytics"
+        expected_versions: ["9.3.1"]
+      }
+    ]
+  },
+  {
+    name: "subpath_bootstrap_anonymous_sso_only"
+    mock_responses: [
+      {
+        uri: "/elk/bootstrap-anonymous.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { name: "kbn-name", value: "kbn-elk" }
+        ]
+        body: "function kbnBundlesLoader() { return {}; }\nwindow.__kbnPublicPath__ = {\"core\":\"/elk/342266a63c5c/bundles/core/\"};\nwindow.__kbnBundles__ = kbnBundlesLoader();"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/elk"
+      }
+    ]
+  },
+  {
+    name: "negative_opensearch_dashboards_login_and_status"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "osd-name", value: "opensearch-dashboards" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>OpenSearch Dashboards</title></head><body><osd-injected-metadata data=\"{&quot;version&quot;:&quot;2.17.1&quot;,&quot;buildNumber&quot;:7950}\"></osd-injected-metadata><script src=\"/bootstrap-anonymous.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" },
+          { name: "osd-name", value: "opensearch-dashboards" }
+        ]
+        body: "{\"name\":\"opensearch-dashboards\",\"uuid\":\"11111111-2222-3333-4444-555555555555\",\"version\":{\"number\":\"2.17.1\",\"build_hash\":\"deadbeef\",\"build_number\":7950},\"status\":{\"overall\":{\"state\":\"green\"},\"statuses\":[{\"id\":\"core:opensearch@2.17.1\"}]}}"
+      },
+      {
+        uri: "/bootstrap-anonymous.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { name: "osd-name", value: "opensearch-dashboards" }
+        ]
+        body: "function osdBundlesLoader() { return {}; }\nwindow.__osdPublicPath__ = {};\nwindow.__osdBundles__ = osdBundlesLoader();"
+      }
+    ]
+  },
+  {
+    name: "negative_elasticsearch_rest_port_9200"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=UTF-8" },
+          { name: "X-Elastic-Product", value: "Elasticsearch" }
+        ]
+        body: "{\"name\":\"es-node-1\",\"cluster_name\":\"elastic-cluster\",\"cluster_uuid\":\"mock-cluster-uuid-1234\",\"version\":{\"number\":\"9.3.1\",\"build_flavor\":\"default\",\"build_type\":\"docker\",\"build_hash\":\"342266a63c5c\",\"lucene_version\":\"10.1.0\"},\"tagline\":\"You Know, for Search\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_login_and_api_status"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign In</title></head><body><form action=\"/login\"></form></body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"overall\":{\"level\":\"available\"}}}"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/bootstrap-anonymous.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Single Page Application Fallback function kbnBundlesLoader() __kbnBundles__ window.__kbnPublicPath__</body></html>"
+      },
+      {
+        uri: "/342266a63c5c/bundles/core/core.entry.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>__kbnBundles__.define( __kbnSharedDeps__</body></html>"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>{\"status\":{\"overall\":{\"level\":\"available\"}}}</body></html>"
+      }
+    ]
+  }
+]

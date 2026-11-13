@@ -1,0 +1,234 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "solr"
+
+tests: [
+  {
+    name: "solr_6_6_6_admin_index_and_xml_system_info"
+    mock_responses: [
+      {
+        uri: "/solr/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html ng-app=\"solrAdminApp\">\n<head>\n  <title>Solr Admin</title>\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"img/favicon.ico?_=6.6.6\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"css/angular/common.css?_=6.6.6\">\n  <script src=\"js/angular/app.js\"></script>\n</head>\n<body></body>\n</html>"
+      },
+      {
+        uri: "/solr/admin/info/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml; charset=UTF-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<response>\n<lst name=\"responseHeader\"><int name=\"status\">0</int><int name=\"QTime\">7</int></lst><str name=\"mode\">std</str><str name=\"solr_home\">/opt/solr/server/solr</str><lst name=\"lucene\"><str name=\"solr-spec-version\">6.6.6</str><str name=\"lucene-spec-version\">6.6.6</str></lst>\n</response>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.6.6"]
+      }
+    ]
+  },
+  {
+    name: "solr_6_6_6_legacy_old_html"
+    mock_responses: [
+      {
+        uri: "/solr/old.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html>\n<head>\n  <title>Solr Admin</title>\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"img/favicon.ico?_=6.6.6\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"css/styles/common.css?_=6.6.6\">\n</head>\n<body>\n  <script type=\"text/javascript\"> var require = { urlArgs: '_=6.6.6' }; </script>\n  <script src=\"js/require.js?_=6.6.6\" data-main=\"js/main\"></script>\n</body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.6.6"]
+      }
+    ]
+  },
+  {
+    name: "solr_7_7_3_system_info_json"
+    mock_responses: [
+      {
+        uri: "/solr/admin/info/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\n  \"responseHeader\":{\n    \"status\":0,\n    \"QTime\":6},\n  \"mode\":\"std\",\n  \"solr_home\":\"/opt/solr/server/solr\",\n  \"lucene\":{\n    \"solr-spec-version\":\"7.7.3\",\n    \"solr-impl-version\":\"7.7.3 1a0d2a901dfec93676b0fe8be425101ceb754b85 - noble - 2020-04-21 10:37:32\",\n    \"lucene-spec-version\":\"7.7.3\"\n  }\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.7.3"]
+      }
+    ]
+  },
+  {
+    name: "solr_8_11_2_configured_basic_auth_enabled"
+    mock_responses: [
+      {
+        uri: "/solr/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html ng-app=\"solrAdminApp\" ng-csp>\n<head>\n  <title>Solr Admin</title>\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"img/favicon.ico?_=8.11.2\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"css/angular/common.css?_=8.11.2\">\n  <script src=\"js/angular/app.js?_=8.11.2\"></script>\n</head>\n<body></body>\n</html>"
+      },
+      {
+        uri: "/solr/index.html"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"solr\"" }
+        ]
+        body: "<html><head><title>Error 401 require authentication</title></head><body><h2>HTTP ERROR 401 require authentication</h2></body></html>"
+      },
+      {
+        uri: "/solr/admin/info/system"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"solr\"" }
+        ]
+        body: "<html><head><title>Error 401 require authentication</title></head><body><h2>HTTP ERROR 401 require authentication</h2></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["8.11.2"]
+      }
+    ]
+  },
+  {
+    name: "solr_9_7_0_v2_node_system_api"
+    mock_responses: [
+      {
+        uri: "/api/node/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\n  \"responseHeader\":{\n    \"status\":0,\n    \"QTime\":5\n  },\n  \"mode\":\"std\",\n  \"solr_home\":\"/var/solr/data\",\n  \"core_root\":\"/var/solr/data\",\n  \"lucene\":{\n    \"solr-spec-version\":\"9.7.0\",\n    \"solr-impl-version\":\"9.7.0 675a41516e3f3bacfc975590773e7abdca444ff4\",\n    \"lucene-spec-version\":\"9.11.1\"\n  }\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["9.7.0"]
+      }
+    ]
+  },
+  {
+    name: "solr_subpath_deployment_via_index_html"
+    mock_responses: [
+      {
+        uri: "/search/solr/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01//EN\" \"http://www.w3.org/TR/html4/strict.dtd\">\n<html ng-app=\"solrAdminApp\" ng-csp>\n<head>\n  <title>Solr Admin</title>\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"img/favicon.ico?_=9.7.0\">\n  <link rel=\"stylesheet\" type=\"text/css\" href=\"css/angular/common.css?_=9.7.0\">\n</head>\n<body></body>\n</html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/search"
+        expected_versions: ["9.7.0"]
+      }
+    ]
+  },
+  {
+    name: "solr_subpath_deployment_via_angular_js_and_system_info"
+    mock_responses: [
+      {
+        uri: "/search/solr/js/angular/app.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var solrAdminApp = angular.module(\"solrAdminApp\", [\"ngResource\", \"ngRoute\", \"solrAdminServices\"]);\nsolrAdminApp.controller('MainController', function($scope) {});"
+      },
+      {
+        uri: "/search/solr/admin/info/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\"responseHeader\":{\"status\":0,\"QTime\":4},\"mode\":\"std\",\"lucene\":{\"solr-spec-version\":\"8.11.2\",\"lucene-spec-version\":\"8.11.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/search"
+        expected_versions: ["8.11.2"]
+      }
+    ]
+  },
+  {
+    name: "solr_angular_app_js_only_when_version_blocked"
+    mock_responses: [
+      {
+        uri: "/solr/js/angular/app.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var solrAdminApp = angular.module(\"solrAdminApp\", [\"ngResource\", \"ngRoute\", \"solrAdminServices\"]);\nsolrAdminApp.controller('MainController', function($scope) {});"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_application"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Admin Dashboard</title></head><body>Welcome</body></html>"
+      },
+      {
+        uri: "/api/node/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"version\":\"1.0.0\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_html_fallback"
+    mock_responses: [
+      {
+        uri: "/solr/js/angular/app.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>solrAdminApp solrAdminServices MainController</body></html>"
+      },
+      {
+        uri: "/solr/admin/info/system"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>responseHeader solr-spec-version lucene-spec-version</body></html>"
+      }
+    ]
+  }
+]

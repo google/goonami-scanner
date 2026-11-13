@@ -1,0 +1,410 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "gocd"
+
+tests: [
+  {
+    name: "gocd_v19_12_0_unconfigured_ui_about_and_version_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" },
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta name=\"gocd-params\"\n        data-timezone=\"0\"\n        data-page-refresh-interval=\"10000\"\n        data-page-timeout=\"60000\">\n  <title>Create a pipeline - Go</title>\n\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538.ico\"/>\n      <link href=\"/go/assets/webpack/single_page_apps/global-e759812361b11da2e74b.css\" media=\"screen\" rel=\"stylesheet\"/>\n      <script src=\"/go/assets/webpack/single_page_apps/global-fb0f0ba37aeb763d3b8b.js\"></script>\n      <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-646e844aa712ea72291b.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/pipelines-83bdcae647a9ea3285ce.js\"></script>\n</head>\n<body id=\"pipelines-page\"\n      data-controller-name=\"pipelines\"\n      data-current-gocd-version=\"19.12.0-10888\"\n      data-user-anonymous=\"true\"\n      data-meta=\"null\">\n</body>\n</html>"
+      },
+      {
+        uri: "/go/about"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"gocd-params\" data-timezone=\"0\" data-page-refresh-interval=\"10000\" data-page-timeout=\"60000\">\n  <title>Server Details - Go</title>\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538.ico\"/>\n  <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-646e844aa712ea72291b.js\"></script>\n  <script src=\"/go/assets/webpack/single_page_apps/server_info-c18a5cbd78b9a188a5c5.js\"></script>\n</head>\n<body id=\"server_info-page\"\n      data-controller-name=\"server_info\"\n      data-current-gocd-version=\"19.12.0-10888\"\n      data-meta=\"{&quot;database_schema_version&quot;:1910006,&quot;pipeline_count&quot;:0,&quot;go_server_version&quot;:&quot;19.12.0 (10888-29b0f854605987c8edab9dced4814b62dc751a11)&quot;,&quot;jvm_version&quot;:&quot;13.0.1&quot;}\">\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "{\n  \"_links\" : {\n    \"self\" : {\n      \"href\" : \"http://target.test:8080/go/api/version\"\n    },\n    \"doc\" : {\n      \"href\" : \"https://api.gocd.org/19.12.0/#version\"\n    }\n  },\n  \"version\" : \"19.12.0\",\n  \"build_number\" : \"10888\",\n  \"git_sha\" : \"29b0f854605987c8edab9dced4814b62dc751a11\",\n  \"full_version\" : \"19.12.0 (10888-29b0f854605987c8edab9dced4814b62dc751a11)\",\n  \"commit_url\" : \"https://github.com/gocd/gocd/commit/29b0f854605987c8edab9dced4814b62dc751a11\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["19.12.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v19_12_0_unconfigured_about_page_only_api_blocked"
+    mock_responses: [
+      {
+        uri: "/go/about"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"gocd-params\" data-timezone=\"0\" data-page-refresh-interval=\"10000\" data-page-timeout=\"60000\">\n  <title>Server Details - Go</title>\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538.ico\"/>\n  <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-646e844aa712ea72291b.js\"></script>\n</head>\n<body id=\"server_info-page\"\n      data-controller-name=\"server_info\"\n      data-meta=\"{&quot;database_schema_version&quot;:1910006,&quot;pipeline_count&quot;:0,&quot;go_server_version&quot;:&quot;19.12.0 (10888-29b0f854605987c8edab9dced4814b62dc751a11)&quot;}\">\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["19.12.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v21_4_0_auth_enabled_login_and_version_api"
+    mock_responses: [
+      {
+        uri: "/go/auth/login"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" },
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta name=\"gocd-params\"\n        data-timezone=\"0\"\n        data-page-refresh-interval=\"10000\"\n        data-page-timeout=\"60000\">\n  <title>Login - Go</title>\n\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538.ico\"/>\n      <link href=\"/go/assets/webpack/single_page_apps/global-24e7342eb7cc3162f846.css\" media=\"screen\" rel=\"stylesheet\"/>\n      <link href=\"/go/assets/webpack/0-24e7342eb7cc3162f846.css\" media=\"screen\" rel=\"stylesheet\"/>\n\n      <script src=\"/go/assets/webpack/single_page_apps/global-0bdd0d47017d803e186b.js\"></script>\n      <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-2d5f4abf86894d26cf41.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/polyfill-45a796ad0692f1a29434.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/login_page-a653288617f812264657.js\"></script>\n\n</head>\n\n<body id=\"login_page-page\"\n      data-controller-name=\"login_page\"\n      data-current-gocd-version=\"21.4.0-13469\"\n      data-user-display-name=\"anonymous\"\n      data-user-anonymous=\"true\"\n      data-server-site-urls=\"{}\"\n      data-is-server-in-maintenance-mode=\"false\"\n      data-meta=\"{&quot;hasWebBasedPlugins&quot;:false,&quot;hasPasswordPlugins&quot;:true,&quot;webBasedPlugins&quot;:[]}\"\n      >\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" },
+          { name: "X-Content-Type-Options", value: "nosniff" }
+        ]
+        body: "{\n  \"_links\" : {\n    \"self\" : {\n      \"href\" : \"http://target.test:8080/go/api/version\"\n    },\n    \"doc\" : {\n      \"href\" : \"https://api.gocd.org/21.4.0/#version\"\n    }\n  },\n  \"version\" : \"21.4.0\",\n  \"build_number\" : \"13469\",\n  \"git_sha\" : \"f3b865c5018dec2bddf98496e0e74e8e70a80cb6\",\n  \"full_version\" : \"21.4.0 (13469-f3b865c5018dec2bddf98496e0e74e8e70a80cb6)\",\n  \"commit_url\" : \"https://github.com/gocd/gocd/commit/f3b865c5018dec2bddf98496e0e74e8e70a80cb6\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["21.4.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v21_4_0_auth_enabled_login_html_version_when_api_blocked"
+    mock_responses: [
+      {
+        uri: "/go/auth/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"gocd-params\" data-timezone=\"0\" data-page-refresh-interval=\"10000\" data-page-timeout=\"60000\">\n  <title>Login - Go</title>\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538.ico\"/>\n  <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-2d5f4abf86894d26cf41.js\"></script>\n  <script src=\"/go/assets/webpack/single_page_apps/login_page-a653288617f812264657.js\"></script>\n</head>\n<body id=\"login_page-page\" data-controller-name=\"login_page\" data-current-gocd-version=\"21.4.0-13469\">\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["21.4.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v23_5_0_auth_enabled_ui_and_version_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"gocd-params\" data-timezone=\"0\" data-page-refresh-interval=\"10000\" data-page-timeout=\"60000\">\n  <title>Login - Go</title>\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-ec484adec24f124a589ec4b16dd32a9b071c01f5e57e949660c35aa2fa90e2ef.ico\"/>\n  <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-496991c28b374579c9c4.js\"></script>\n  <script src=\"/go/assets/webpack/single_page_apps/login_page-4edc7c5bf5b4d8590303.js\"></script>\n</head>\n<body id=\"login_page-page\"\n      data-controller-name=\"login_page\"\n      data-current-gocd-version=\"23.5.0-18179\"\n      data-user-anonymous=\"true\"\n      data-meta=\"{&quot;hasWebBasedPlugins&quot;:false,&quot;hasPasswordPlugins&quot;:true,&quot;webBasedPlugins&quot;:[]}\">\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" }
+        ]
+        body: "{\n  \"_links\" : {\n    \"self\" : {\n      \"href\" : \"http://target.test:8080/go/api/version\"\n    },\n    \"doc\" : {\n      \"href\" : \"https://api.gocd.org/23.5.0/#version\"\n    }\n  },\n  \"version\" : \"23.5.0\",\n  \"build_number\" : \"18179\",\n  \"git_sha\" : \"7702b283accd1f90f014f0087aa2e9bd8baf4a97\",\n  \"full_version\" : \"23.5.0 (18179-7702b283accd1f90f014f0087aa2e9bd8baf4a97)\",\n  \"commit_url\" : \"https://github.com/gocd/gocd/commit/7702b283accd1f90f014f0087aa2e9bd8baf4a97\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["23.5.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v25_4_0_unconfigured_ui_and_version_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta name=\"gocd-params\"\n        data-timezone=\"0\"\n        data-page-refresh-interval=\"5000\"\n        data-page-timeout=\"60000\">\n  <title>Create a pipeline - Go</title>\n\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-ec484adec24f124a589ec4b16dd32a9b071c01f5e57e949660c35aa2fa90e2ef.ico\"/>\n      <link href=\"/go/assets/webpack/single_page_apps/global-7b9f3f9d7993ac935bdf.css\" media=\"screen\" rel=\"stylesheet\"/>\n      <link href=\"/go/assets/webpack/vendor-and-helpers.chunk-cc22fd82cb113a6a1af8.css\" media=\"screen\" rel=\"stylesheet\"/>\n\n      <script src=\"/go/assets/webpack/single_page_apps/global-4031ef611b1c3e5df4bc.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/polyfill-669d5b94fdd93ff5ebbe.js\"></script>\n      <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-b3472f5f49b4a12a5e79.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/pipelines-eb893d2b47f2d5e04848.js\"></script>\n\n</head>\n\n<body id=\"pipelines-page\"\n      data-controller-name=\"pipelines\"\n      data-is-user-admin=\"true\"\n      data-user-display-name=\"anonymous\"\n      data-user-anonymous=\"true\"\n      data-server-site-urls=\"{}\"\n      data-is-server-in-maintenance-mode=\"false\"\n      data-meta=\"null\"\n      >\n</body>\n</html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" },
+          { name: "X-Content-Type-Options", value: "nosniff" }
+        ]
+        body: "{\n  \"_links\" : {\n    \"self\" : {\n      \"href\" : \"http://target.test:8080/go/api/version\"\n    },\n    \"doc\" : {\n      \"href\" : \"https://api.gocd.org/25.4.0/#version\"\n    }\n  },\n  \"version\" : \"25.4.0\",\n  \"build_number\" : \"21793\",\n  \"git_sha\" : \"c8358258163d7b9833ab3b18a2f459999936b03a\",\n  \"full_version\" : \"25.4.0 (21793-c8358258163d7b9833ab3b18a2f459999936b03a)\",\n  \"commit_url\" : \"https://github.com/gocd/gocd/commit/c8358258163d7b9833ab3b18a2f459999936b03a\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["25.4.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v25_4_0_strict_auth_login_and_bundle_version_when_api_blocked"
+    mock_responses: [
+      {
+        uri: "/go/auth/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Frame-Options", value: "SAMEORIGIN" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta name=\"gocd-params\"\n        data-timezone=\"0\"\n        data-page-refresh-interval=\"5000\"\n        data-page-timeout=\"60000\">\n  <title>Login - Go</title>\n\n  <link rel=\"shortcut icon\" href=\"/go/assets/cruise-ec484adec24f124a589ec4b16dd32a9b071c01f5e57e949660c35aa2fa90e2ef.ico\"/>\n      <link href=\"/go/assets/webpack/single_page_apps/global-7b9f3f9d7993ac935bdf.css\" media=\"screen\" rel=\"stylesheet\"/>\n      <link href=\"/go/assets/webpack/vendor-and-helpers.chunk-cc22fd82cb113a6a1af8.css\" media=\"screen\" rel=\"stylesheet\"/>\n\n      <script src=\"/go/assets/webpack/single_page_apps/global-4031ef611b1c3e5df4bc.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/polyfill-669d5b94fdd93ff5ebbe.js\"></script>\n      <script src=\"/go/assets/webpack/vendor-and-helpers.chunk-b3472f5f49b4a12a5e79.js\"></script>\n      <script src=\"/go/assets/webpack/single_page_apps/login_page-2e1899f3d79acc0280db.js\"></script>\n\n</head>\n\n<body id=\"login_page-page\"\n      data-controller-name=\"login_page\"\n      data-is-user-admin=\"false\"\n      data-can-user-view-admin=\"false\"\n      data-user-display-name=\"anonymous\"\n      data-user-anonymous=\"true\"\n      data-server-site-urls=\"{}\"\n      data-is-server-in-maintenance-mode=\"false\"\n      data-meta=\"{&quot;webBasedPlugins&quot;:[],&quot;hasWebBasedPlugins&quot;:false,&quot;hasPasswordPlugins&quot;:true}\"\n      >\n</body>\n</html>"
+      },
+      {
+        uri: "/go/assets/webpack/vendor-and-helpers.chunk-b3472f5f49b4a12a5e79.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "(self.webpackChunkgocd=self.webpackChunkgocd||[]).push([[216],{acceptHeader:\"application/vnd.go.cd+json\",v1:\"application/vnd.go.cd.v1+json\",init(e,t,n){\"use strict\";t.docsUrl=function(e){return\"https://docs.gocd.org/25.4.0/\".concat(e)},t.apiDocsUrl=function(e){return\"https://api.gocd.org/25.4.0/\".concat(e)},t.GoCDVersion={version:\"25.4.0\",buildNumber:\"21793\",gitSha:\"c8358258163d7b9833ab3b18a2f459999936b03a\",fullVersion:\"25.4.0-21793\",formattedVersion:\"25.4.0 (21793-c8358258163d7b9833ab3b18a2f459999936b03a)\"}}}]);"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["25.4.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_v25_4_0_api_health_only_without_version"
+    mock_responses: [
+      {
+        uri: "/go/api/v1/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/vnd.go.cd.v1+json;charset=utf-8" },
+          { name: "X-Content-Type-Options", value: "nosniff" }
+        ]
+        body: "{\n  \"health\": \"OK\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gocd_v23_5_0_cctray_basic_auth_only_without_version"
+    mock_responses: [
+      {
+        uri: "/go/cctray.xml"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/xml;charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"GoCD\"" }
+        ]
+        body: "<access-denied>\n  <message>You are not authenticated!</message>\n</access-denied>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gocd_subpath_login_and_version_api"
+    mock_responses: [
+      {
+        uri: "/ci/go/auth/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html class=\"no-js\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"gocd-params\" data-timezone=\"0\" data-page-refresh-interval=\"5000\" data-page-timeout=\"60000\">\n  <title>Login - Go</title>\n  <link rel=\"shortcut icon\" href=\"/ci/go/assets/cruise-ec484adec24f124a589ec4b16dd32a9b071c01f5e57e949660c35aa2fa90e2ef.ico\"/>\n  <script src=\"/ci/go/assets/webpack/vendor-and-helpers.chunk-b3472f5f49b4a12a5e79.js\"></script>\n  <script src=\"/ci/go/assets/webpack/single_page_apps/login_page-2e1899f3d79acc0280db.js\"></script>\n</head>\n<body id=\"login_page-page\" data-controller-name=\"login_page\" data-user-anonymous=\"true\">\n</body>\n</html>"
+      },
+      {
+        uri: "/ci/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Cache-Control", value: "max-age=0, private, must-revalidate" }
+        ]
+        body: "{\n  \"_links\" : {\n    \"self\" : {\n      \"href\" : \"http://target.test:8080/ci/go/api/version\"\n    },\n    \"doc\" : {\n      \"href\" : \"https://api.gocd.org/25.4.0/#version\"\n    }\n  },\n  \"version\" : \"25.4.0\",\n  \"build_number\" : \"21793\",\n  \"git_sha\" : \"c8358258163d7b9833ab3b18a2f459999936b03a\",\n  \"full_version\" : \"25.4.0 (21793-c8358258163d7b9833ab3b18a2f459999936b03a)\",\n  \"commit_url\" : \"https://github.com/gocd/gocd/commit/c8358258163d7b9833ab3b18a2f459999936b03a\"\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ci"
+        expected_versions: ["25.4.0"]
+      }
+    ]
+  },
+  {
+    name: "gocd_subpath_passive_vendor_bundle"
+    mock_responses: [
+      {
+        uri: "/cd/go/assets/webpack/vendor-and-helpers.chunk-496991c28b374579c9c4.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "Object.defineProperty(t,\"__esModule\",{value:!0}),t.Accept=\"application/vnd.go.cd.v1+json\",t.GoCDVersion={version:\"23.5.0\",buildNumber:\"18179\",gitSha:\"7702b283accd1f90f014f0087aa2e9bd8baf4a97\",fullVersion:\"23.5.0-18179\",formattedVersion:\"23.5.0 (18179-7702b283accd1f90f014f0087aa2e9bd8baf4a97)\",copyrightYear:\"2023\"};"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cd"
+        expected_versions: ["23.5.0"]
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_go_service_version_and_health"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Login - Go Service</title></head><body><div id=\"app\">Welcome to Go Portal</div><script src=\"/assets/vendor-and-helpers.js\"></script></body></html>"
+      },
+      {
+        uri: "/go/auth/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Login - Go</title></head><body><form action=\"/go/auth/login\" method=\"post\"><input name=\"username\"/></form></body></html>"
+      },
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"1.4.2\",\"build_number\":\"42\",\"git_sha\":\"abcdef1234567890\",\"full_version\":\"1.4.2-42\"}"
+      },
+      {
+        uri: "/go/api/v1/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"health\": \"OK\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_other_ci_server_cctray_xml"
+    mock_responses: [
+      {
+        uri: "/go/cctray.xml"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/xml; charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"Jenkins\"" }
+        ]
+        body: "<access-denied><message>Authentication required</message></access-denied>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/go/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>SPA catch-all mentioning \"version\":\"25.4.0\", \"build_number\":\"21793\", \"git_sha\":\"abc\", \"full_version\":\"25.4.0\", api.gocd.org and github.com/gocd/gocd</body></html>"
+      },
+      {
+        uri: "/go/api/v1/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>\"health\": \"OK\" application/vnd.go.cd</body></html>"
+      },
+      {
+        uri: "/go/assets/webpack/vendor-and-helpers.chunk-b3472f5f49b4a12a5e79.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>application/vnd.go.cd GoCDVersion={version:\"25.4.0\"} https://docs.gocd.org/25.4.0/</body></html>"
+      },
+      {
+        uri: "/go/assets/cruise-ec484adec24f124a589ec4b16dd32a9b071c01f5e57e949660c35aa2fa90e2ef.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not found</body></html>"
+      },
+      {
+        uri: "/go/cctray.xml"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "WWW-Authenticate", value: "Basic realm=\"GoCD\"" }
+        ]
+        body: "<!doctype html><html><body><access-denied>Unauthorized</access-denied></body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

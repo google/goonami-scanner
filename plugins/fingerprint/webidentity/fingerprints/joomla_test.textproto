@@ -1,0 +1,502 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "joomla"
+
+tests: [
+  {
+    name: "joomla_3_10_12_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\" />\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\" />\n\t<title>Joomla! Web Installer</title>\n\t<link href=\"/installation/favicon.ico\" rel=\"shortcut icon\" type=\"image/vnd.microsoft.icon\" />\n\t<link href=\"/media/jui/css/bootstrap.min.css?bb45e864e75a7df4223966240a68a356\" rel=\"stylesheet\" />\n\t<link href=\"/installation/template/css/template.css?bb45e864e75a7df4223966240a68a356\" rel=\"stylesheet\" />\n\t<script type=\"application/json\" class=\"joomla-script-options new\">{\"csrf.token\":\"8a3af04f275932dc14b2d4e041d3eda0\",\"system.paths\":{\"root\":\"\",\"base\":\"\\/installation\"}}</script>\n</head>\n<body><a href=\"#\" onclick=\"Install.submitform();\">Next</a></body>\n</html>"
+      },
+      {
+        uri: "/installation/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\" />\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\" />\n\t<title>Joomla! Web Installer</title>\n\t<link href=\"/media/jui/css/bootstrap.min.css?bb45e864e75a7df4223966240a68a356\" rel=\"stylesheet\" />\n\t<link href=\"/installation/template/css/template.css?bb45e864e75a7df4223966240a68a356\" rel=\"stylesheet\" />\n</head>\n<body><a href=\"#\" onclick=\"Install.submitform();\">Next</a></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<extension version=\"3.6\" type=\"file\" method=\"upgrade\">\n\t<name>files_joomla</name>\n\t<author>Joomla! Project</author>\n\t<authorEmail>admin@joomla.org</authorEmail>\n\t<authorUrl>www.joomla.org</authorUrl>\n\t<copyright>(C) 2019 Open Source Matters, Inc.</copyright>\n\t<license>GNU General Public License version 2 or later; see LICENSE.txt</license>\n\t<version>3.10.12</version>\n\t<creationDate>July 2023</creationDate>\n\t<description>FILES_JOOMLA_XML_DESCRIPTION</description>\n</extension>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.10.12"]
+      }
+    ]
+  },
+  {
+    name: "joomla_3_10_12_installed_admin_restricted_en_gb_xml"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\" />\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\" />\n\t<title>Home</title>\n\t<link href=\"/templates/protostar/favicon.ico\" rel=\"shortcut icon\" type=\"image/vnd.microsoft.icon\" />\n\t<link href=\"/templates/protostar/css/template.css?2395b4efcb1c586732c398fe0542aab8\" rel=\"stylesheet\" />\n\t<script src=\"/media/jui/js/jquery.min.js?2395b4efcb1c586732c398fe0542aab8\"></script>\n\t<script src=\"/media/system/js/caption.js?2395b4efcb1c586732c398fe0542aab8\"></script>\n</head>\n<body><p>&copy; 2026 Joomla!</p></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=iso-8859-1" }
+        ]
+        body: "<html><body>403 Forbidden</body></html>"
+      },
+      {
+        uri: "/language/en-GB/en-GB.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<metafile version=\"3.9\" client=\"site\">\n\t<name>English (en-GB)</name>\n\t<version>3.10.12</version>\n\t<creationDate>July 2023</creationDate>\n\t<author>Joomla! Project</author>\n\t<authorEmail>admin@joomla.org</authorEmail>\n\t<copyright>(C) 2006 Open Source Matters, Inc.</copyright>\n</metafile>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.10.12"]
+      }
+    ]
+  },
+  {
+    name: "joomla_4_4_14_pending_install"
+    mock_responses: [
+      {
+        uri: "/installation/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Joomla Installer</title>\n\t<link href=\"/media/system/css/fields/switcher.min.css?d8d005\" rel=\"stylesheet\">\n\t<link href=\"/installation/template/css/template.min.css?d8d005\" rel=\"stylesheet\">\n</head>\n<body data-basepath=\"\"><div class=\"j-install\"></div></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "403 Forbidden"
+      },
+      {
+        uri: "/language/en-GB/langmetadata.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<metafile client=\"site\">\n\t<name>English (en-GB)</name>\n\t<version>4.4.14</version>\n\t<creationDate>2025-07</creationDate>\n\t<author>Joomla! Project</author>\n\t<authorEmail>admin@joomla.org</authorEmail>\n\t<copyright>(C) 2006 Open Source Matters, Inc.</copyright>\n</metafile>\n"
+      },
+      {
+        uri: "/api/index.php/v1/content/articles"
+        status_code: 500
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "{\"error\":\"You must install Joomla to use the API\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.4.14"]
+      }
+    ]
+  },
+  {
+    name: "joomla_4_4_14_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Home</title>\n\t<link href=\"/media/system/images/joomla-favicon.svg\" rel=\"icon\" type=\"image/svg+xml\">\n\t<link href=\"/media/templates/site/cassiopeia/css/template.min.css?d8d005\" rel=\"stylesheet\" />\n</head>\n<body><input type=\"hidden\" name=\"option\" value=\"com_users\"></body>\n</html>"
+      },
+      {
+        uri: "/administrator/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Joomla Test - Administration</title>\n\t<link href=\"/media/templates/administrator/atum/css/template.min.css?d8d005\" rel=\"stylesheet\" />\n\t<script type=\"application/json\" class=\"joomla-script-options new\">{\"joomla.jtext\":{\"JSHOWPASSWORD\":\"Show Password\"}}</script>\n\t<script src=\"/media/system/js/core.min.js?d8d005\"></script>\n</head>\n<body><form id=\"form-login\"><input type=\"hidden\" name=\"option\" value=\"com_login\"><input type=\"hidden\" name=\"task\" value=\"login\"></form></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<extension type=\"file\" method=\"upgrade\">\n\t<name>files_joomla</name>\n\t<author>Joomla! Project</author>\n\t<copyright>(C) 2019 Open Source Matters, Inc.</copyright>\n\t<version>4.4.14</version>\n\t<creationDate>2025-07</creationDate>\n\t<description>FILES_JOOMLA_XML_DESCRIPTION</description>\n</extension>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.4.14"]
+      }
+    ]
+  },
+  {
+    name: "joomla_5_2_6_pending_install_language_install_xml"
+    mock_responses: [
+      {
+        uri: "/installation/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Joomla Installer</title>\n\t<link href=\"/media/system/css/fields/switcher.min.css?8d9e2a\" rel=\"stylesheet\">\n\t<link href=\"/installation/template/css/template.min.css?e9027d\" rel=\"stylesheet\">\n\t<script type=\"application/json\" class=\"joomla-script-options new\">{\"system.paths\":{\"root\":\"\",\"base\":\"\\/installation\"}}</script>\n</head>\n<body><div class=\"j-install\"></div></body>\n</html>"
+      },
+      {
+        uri: "/language/en-GB/install.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<extension client=\"site\" type=\"language\" method=\"upgrade\">\n\t<name>English (en-GB)</name>\n\t<tag>en-GB</tag>\n\t<version>5.2.6</version>\n\t<creationDate>2025-04</creationDate>\n\t<author>Joomla! Project</author>\n\t<authorEmail>admin@joomla.org</authorEmail>\n\t<copyright>(C) 2013 Open Source Matters, Inc.</copyright>\n</extension>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.6"]
+      }
+    ]
+  },
+  {
+    name: "joomla_5_2_6_installed_subpath_via_core_min_js"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Example Corp</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/cms/media/system/js/core.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "(function(){\"use strict\";Joomla.request=t=>{};Joomla.ajaxErrorsMessages=(t,e)=>{const o={};o.error=[Joomla.Text._(\"JLIB_JS_AJAX_ERROR_PARSE\")];return o}})();"
+      },
+      {
+        uri: "/cms/administrator/manifests/files/joomla.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<extension type=\"file\" method=\"upgrade\">\n\t<name>files_joomla</name>\n\t<author>Joomla! Project</author>\n\t<copyright>(C) 2019 Open Source Matters, Inc.</copyright>\n\t<version>5.2.6</version>\n\t<creationDate>2025-04</creationDate>\n\t<updateservers><server name=\"Joomla! Core\" type=\"collection\">https://update.joomla.org/core/list.xml</server></updateservers>\n</extension>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cms"
+        expected_versions: ["5.2.6"]
+      }
+    ]
+  },
+  {
+    name: "joomla_3_10_12_subpath_via_core_js"
+    mock_responses: [
+      {
+        uri: "/joomla/media/system/js/core.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "Joomla=window.Joomla||{},Joomla.editors=Joomla.editors||{},function(e,t){\"use strict\";e.loadOptions=function(){var i=t.querySelectorAll(\".joomla-script-options.new\");};e.request=function(t){var o=new XMLHttpRequest;o.setRequestHeader(\"X-Ajax-Engine\",\"Joomla!\");};}(Joomla,document);"
+      },
+      {
+        uri: "/joomla/language/en-GB/en-GB.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<metafile version=\"3.9\" client=\"site\">\n\t<name>English (en-GB)</name>\n\t<version>3.10.12</version>\n\t<author>Joomla! Project</author>\n</metafile>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/joomla"
+        expected_versions: ["3.10.12"]
+      }
+    ]
+  },
+  {
+    name: "joomla_6_2_0_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Joomla Installer</title>\n\t<link href=\"/media/system/css/fields/switcher.min.css?b031a4\" rel=\"stylesheet\">\n\t<link href=\"/installation/template/css/template.min.css?b031a4\" rel=\"stylesheet\">\n\t<script src=\"/installation/template/js/template.min.js?b031a4\" defer></script>\n</head>\n<body data-basepath=\"\"><div class=\"j-install\"></div></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<extension type=\"file\" method=\"upgrade\">\n\t<name>files_joomla</name>\n\t<author>Joomla! Project</author>\n\t<authorEmail>admin@joomla.org</authorEmail>\n\t<copyright>(C) 2019 Open Source Matters, Inc.</copyright>\n\t<version>6.2.0</version>\n\t<creationDate>2026-10</creationDate>\n\t<description>FILES_JOOMLA_XML_DESCRIPTION</description>\n</extension>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.2.0"]
+      }
+    ]
+  },
+  {
+    name: "joomla_6_2_0_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\">\n<head>\n\t<meta charset=\"utf-8\">\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>Home</title>\n\t<link href=\"/media/system/images/joomla-favicon.svg\" rel=\"icon\" type=\"image/svg+xml\">\n\t<link href=\"/media/templates/site/cassiopeia/css/template.min.css?0991a0\" rel=\"stylesheet\">\n</head>\n<body><input type=\"hidden\" name=\"option\" value=\"com_users\"></body>\n</html>"
+      },
+      {
+        uri: "/administrator/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en-gb\" dir=\"ltr\" data-color-scheme-os>\n<head>\n\t<meta name=\"generator\" content=\"Joomla! - Open Source Content Management\">\n\t<title>GoonamiTest - Administration</title>\n\t<link href=\"/media/templates/administrator/atum/css/template.min.css?0991a0\" rel=\"stylesheet\">\n\t<script type=\"application/json\" class=\"joomla-script-options new\">{\"joomla.jtext\":{\"JSHOWPASSWORD\":\"Show Password\"}}</script>\n\t<script src=\"/media/system/js/core.min.js?0991a0\"></script>\n</head>\n<body><h1 class=\"visually-hidden\">Joomla Administrator Login</h1><form action=\"/administrator/index.php\" method=\"post\" id=\"form-login\"><input type=\"hidden\" name=\"option\" value=\"com_login\"><input type=\"hidden\" name=\"task\" value=\"login\"></form></body>\n</html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "Forbidden"
+      },
+      {
+        uri: "/language/en-GB/langmetadata.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<metafile client=\"site\">\n\t<name>English (en-GB)</name>\n\t<version>6.2.0</version>\n\t<creationDate>2026-10</creationDate>\n\t<author>Joomla! Project</author>\n\t<copyright>(C) 2006 Open Source Matters, Inc.</copyright>\n</metafile>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.2.0"]
+      }
+    ]
+  },
+  {
+    name: "joomla_hardened_xml_blocked_admin_and_api_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Custom Frontend</title></head><body>Welcome</body></html>"
+      },
+      {
+        uri: "/administrator/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Administration</title><link href=\"/media/templates/administrator/atum/css/template.min.css\" rel=\"stylesheet\"><script type=\"application/json\" class=\"joomla-script-options new\">{}</script><script src=\"/media/system/js/core.min.js\"></script></head><body><form id=\"form-login\"><input type=\"hidden\" name=\"option\" value=\"com_login\"><input type=\"hidden\" name=\"task\" value=\"login\"></form></body></html>"
+      },
+      {
+        uri: "/api/index.php/v1/content/articles"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/vnd.api+json; charset=utf-8" },
+          { name: "X-Powered-By", value: "JoomlaAPI/1.0" }
+        ]
+        body: "{\"errors\":[{\"title\":\"Forbidden\"}]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "joomla_rss_and_readme_fallback"
+    mock_responses: [
+      {
+        uri: "/index.php?format=feed&type=rss"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/rss+xml; charset=utf-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- generator=\"Joomla! - Open Source Content Management\" -->\n<rss version=\"2.0\">\n\t<channel>\n\t\t<title>Home</title>\n\t\t<generator>Joomla! - Open Source Content Management</generator>\n\t</channel>\n</rss>\n"
+      },
+      {
+        uri: "/README.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "Joomla! CMS\n\n1- Overview\n\t* This is a Joomla! 5.x installation/upgrade package.\n\t* Joomla! Official site: https://www.joomla.org\n\n2- What is Joomla?\n\t* Joomla! is a Content Management System (CMS).\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_spa_html_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/administrator/manifests/files/joomla.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><extension type=\"file\"><name>files_joomla</name><author>Joomla! Project</author><version>5.2.6</version></extension></body></html>"
+      },
+      {
+        uri: "/language/en-GB/langmetadata.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><metafile client=\"site\"><author>Joomla! Project</author><version>5.2.6</version></metafile></body></html>"
+      },
+      {
+        uri: "/language/en-GB/en-GB.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/language/en-GB/install.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/api/index.php/v1/content/articles"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>{\"error\":\"You must install Joomla to use the API\"}</body></html>"
+      },
+      {
+        uri: "/index.php?format=feed&type=rss"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><rss><generator>Joomla! - Open Source Content Management</generator></rss></body></html>"
+      },
+      {
+        uri: "/README.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>This is a Joomla! 5.x installation/upgrade package. 2- What is Joomla?</body></html>"
+      },
+      {
+        uri: "/media/system/js/core.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Joomla.Text JLIB_JS_AJAX_ERROR_PARSE</body></html>"
+      },
+      {
+        uri: "/media/system/js/core.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Joomla.editors joomla-script-options</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_other_cms_and_generic_jsonapi"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"generator\" content=\"WordPress 6.7.1\" /></head><body><script src=\"/wp-includes/js/wp-embed.min.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/index.php/v1/content/articles"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "application/vnd.api+json; charset=utf-8" }
+        ]
+        body: "{\"errors\":[{\"title\":\"Forbidden\"}]}"
+      },
+      {
+        uri: "/README.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "Application README\n1- Overview\nGeneric web service.\n"
+      }
+    ]
+  },
+  {
+    name: "negative_blog_article_mentioning_joomla"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>CMS Comparison</title><link href=\"/static/blog.css\" rel=\"stylesheet\"></head><body><h1>Comparing Joomla! - Open Source Content Management with Drupal</h1><p>Joomla stores manifests in /administrator/manifests/files/joomla.xml and scripts in /media/system/js/core.min.js.</p></body></html>"
+      }
+    ]
+  }
+]

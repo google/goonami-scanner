@@ -1,0 +1,517 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Magento"
+  author: "Goonami team"
+  software: "magento"
+  description: "Detects Magento Open Source and Adobe Commerce e-commerce platforms across configured and unconfigured deployments."
+}
+
+steps: [
+  # Magento /setup/ landing page (both unconfigured and configured when project root is reachable).
+  # - Magento 2.4.x renders the CLI installation landing page displaying "<p class=\"text-version\">Version 2.4.x</p>".
+  # - Magento 2.0-2.3 renders the AngularJS Web Setup Wizard (`ng-app="magento"`).
+  {
+    name: "magento_setup_page"
+    path_suffix: "/setup/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:&#x2[fF];|/)setup(?:&#x2[fF];|/)pub(?:&#x2[fF];|/)styles(?:&#x2[fF];|/)setup\\.css"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<html[^>]*\\bng-app=[\"']magento[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:&#x2[fF];|/)setup(?:&#x2[fF];|/)pub(?:&#x2[fF];|/)images(?:&#x2[fF];|/)magento-logo\\.svg"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<p\\s+class=[\"']text-version[\"']>\\s*Version\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</p>"
+        }
+      ]
+    }
+  },
+  # Root path serving or redirecting directly to the Magento /setup/ wizard (e.g. unconfigured 2.0-2.3 root webroot).
+  {
+    name: "magento_setup_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:&#x2[fF];|/)setup(?:&#x2[fF];|/)pub(?:&#x2[fF];|/)styles(?:&#x2[fF];|/)setup\\.css"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<html[^>]*\\bng-app=[\"']magento[\"']"
+          },
+          {
+            body: {}
+            regexp: "(?:&#x2[fF];|/)setup(?:&#x2[fF];|/)pub(?:&#x2[fF];|/)images(?:&#x2[fF];|/)magento-logo\\.svg"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<p\\s+class=[\"']text-version[\"']>\\s*Version\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</p>"
+        }
+      ]
+    }
+  },
+  # Public Magento_Version module endpoint (/magento_version).
+  # Outputs "Magento/2.4 (Community)" (or Enterprise / B2B, or full 2.0.x on early releases).
+  # Note: PHP sends default Content-Type text/html; charset=UTF-8 on RawResponse, so we anchor the
+  # entire body from ^ to $ and reject HTML document tags via expect_none.
+  {
+    name: "magento_version_endpoint"
+    path_suffix: "/magento_version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "^\\s*Magento/[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?\\s+\\((?:Community|Enterprise|B2B|Magento Open Source|Adobe Commerce|Mage-OS)[^)\\r\\n]*\\)\\s*$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]|<head[\\s>]|<body[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "^\\s*Magento/([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s+\\("
+        }
+      ]
+    }
+  },
+  # Configured Magento 2 storefront root page (theme- and locale-agnostic).
+  {
+    name: "magento_storefront_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<script\\s+type=[\"']text/x-magento-init[\"']>"
+          },
+          {
+            body: {}
+            regexp: "(?:/pub)?/static/(?:version[0-9]+/)?frontend/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Magento_Ui/js/core/app"
+          },
+          {
+            body: {}
+            regexp: "requirejs-config(?:\\.min)?\\.js"
+          },
+          {
+            body: {}
+            contains: "data-mage-init"
+          }
+        ]
+      }
+    }
+  },
+  # Magento customer account login page (passive subpath crawl discovery via /login suffix and active fallback).
+  {
+    name: "magento_customer_login"
+    path_suffix: "/customer/account/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<script\\s+type=[\"']text/x-magento-init[\"']>"
+          },
+          {
+            body: {}
+            regexp: "(?:/pub)?/static/(?:version[0-9]+/)?frontend/"
+          },
+          {
+            body: {}
+            regexp: "name=[\"']login\\[username\\][\"']|customer-account-login"
+          }
+        ]
+      }
+    }
+  },
+  # Magento Admin backend login page (returns HTTP 200 directly in Magento 2.4+).
+  {
+    name: "magento_admin_login"
+    path_suffix: "/admin"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:/pub)?/static/(?:version[0-9]+/)?adminhtml/"
+          },
+          {
+            body: {}
+            contains: "data-mage-init"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Magento Admin</title>"
+          },
+          {
+            body: {}
+            contains: "content=\"Magento Admin\""
+          },
+          {
+            body: {}
+            regexp: "name=[\"']login\\[username\\][\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Anonymous Magento_Directory REST API endpoint (step 1 of headless/PWA API workflow).
+  {
+    name: "magento_rest_currency"
+    path_suffix: "/rest/V1/directory/currency"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"base_currency_code\""
+          },
+          {
+            body: {}
+            contains: "\"default_display_currency_code\""
+          },
+          {
+            body: {}
+            contains: "\"available_currency_codes\""
+          },
+          {
+            body: {}
+            contains: "\"exchange_rates\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Anonymous Magento_Store GraphQL storeConfig query (step 2 of headless/PWA API workflow).
+  {
+    name: "magento_graphql_store_config"
+    path: "/graphql?query=%7BstoreConfig%7Bcode%20base_currency_code%7D%7D"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"data\"\\s*:\\s*\\{\\s*\"storeConfig\"\\s*:\\s*\\{"
+          },
+          {
+            body: {}
+            contains: "\"base_currency_code\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Database-independent static error stylesheet when pub/ is webroot (works in unconfigured pub/ state
+  # where all PHP routes redirect-loop to /setup/, as well as when DB is unreachable).
+  {
+    name: "magento_errors_css"
+    path: "/errors/default/css/styles.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Copyright"
+          },
+          {
+            body: {}
+            contains: "Magento"
+          },
+          {
+            body: {}
+            contains: "url(../images/i_msg-error.gif)"
+          },
+          {
+            body: {}
+            contains: "content:attr(data-hasrequired)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Database-independent static media resource configuration when pub/ is webroot (paired with magento_errors_css).
+  {
+    name: "magento_resource_config"
+    path: "/opt/magento/var/resource_config.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"media_directory\""
+          },
+          {
+            body: {}
+            regexp: "\"\\\\/opt\\\\/magento\\\\/pub\\\\/media\"|\"/opt/magento/pub/media\""
+          },
+          {
+            body: {}
+            contains: "\"allowed_resources\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Database-independent static error stylesheet when project root is webroot.
+  {
+    name: "magento_pub_errors_css"
+    path: "/pub/errors/default/css/styles.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Copyright"
+          },
+          {
+            body: {}
+            contains: "Magento"
+          },
+          {
+            body: {}
+            contains: "url(../images/i_msg-error.gif)"
+          },
+          {
+            body: {}
+            contains: "content:attr(data-hasrequired)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Database-independent static media resource configuration when project root is webroot.
+  {
+    name: "magento_pub_resource_config"
+    path: "/pub/opt/magento/var/resource_config.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"media_directory\""
+          },
+          {
+            body: {}
+            regexp: "\"\\\\/opt\\\\/magento\\\\/pub\\\\/media\"|\"/opt/magento/pub/media\""
+          },
+          {
+            body: {}
+            contains: "\"allowed_resources\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery on core Magento 2 RequireJS assets across any theme, vendor, or locale.
+  {
+    name: "magento_core_static_js"
+    path_regexp: "^(?P<root>(?:/[^/]+)*?)(?:/pub)?/static/(?:version[0-9]+/)?(?:frontend|adminhtml)/[^/]+/[^/]+/[a-zA-Z]{2}_[a-zA-Z]{2}/(?:requirejs-config|mage/(?:requirejs/mixins|cookies|common))(?:\\.min)?\\.js$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?s)require\\.config\\(.*Magento_(?:Theme|Customer|Checkout|Ui|Directory|Catalog)/js/"
+          },
+          {
+            body: {}
+            regexp: "(?s)rjsMixins|processNames.*mixins!"
+          },
+          {
+            body: {}
+            contains: "$.mage.cookies"
+          },
+          {
+            body: {}
+            regexp: "(?s)data-post.*form_key"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["magento_setup_page"]
+  },
+  {
+    steps: ["magento_setup_root"]
+  },
+  {
+    steps: ["magento_version_endpoint"]
+  },
+  {
+    steps: ["magento_storefront_root"]
+  },
+  {
+    steps: ["magento_customer_login"]
+  },
+  {
+    steps: ["magento_admin_login"]
+  },
+  {
+    steps: ["magento_rest_currency", "magento_graphql_store_config"]
+  },
+  {
+    steps: ["magento_errors_css", "magento_resource_config"]
+  },
+  {
+    steps: ["magento_pub_errors_css", "magento_pub_resource_config"]
+  },
+  {
+    steps: ["magento_core_static_js"]
+  }
+]

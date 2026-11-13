@@ -1,0 +1,617 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "GoCD"
+  author: "Goonami team"
+  software: "gocd"
+  description: "Detects GoCD continuous delivery server UI and REST API and extracts version."
+}
+
+steps: [
+  # GoCD Version REST API (/go/api/version).
+  # Accessible unauthenticated in both default (unconfigured) and security-enabled (auth configured)
+  # states across GoCD v16.6+ through v25.x+ when requested with Accept: application/vnd.go.cd.v1+json.
+  # Note: Jetty/GoCD omits the Content-Type response header on /go/api/version across v19.x-v25.x,
+  # so we match the GoCD-specific HAL JSON payload and guard against HTML fallbacks in expect_none.
+  {
+    name: "gocd_api_version"
+    path: "/go/api/version"
+    headers: [
+      {
+        name: "Accept"
+        value: "application/vnd.go.cd.v1+json"
+      }
+    ]
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"version\""
+          },
+          {
+            body: {}
+            contains: "\"build_number\""
+          },
+          {
+            body: {}
+            contains: "\"git_sha\""
+          },
+          {
+            body: {}
+            contains: "\"full_version\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "api.gocd.org"
+          },
+          {
+            body: {}
+            contains: "github.com/gocd/gocd"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+        }
+      ]
+    }
+  },
+  # GoCD Server Details page (/go/about), served with HTTP 200 on unconfigured / anonymous instances
+  # and embedding go_server_version across v19.x-v25.x+.
+  {
+    name: "gocd_about_page"
+    path_suffix: "/go/about"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            contains: "<meta name=\"gocd-params\""
+          },
+          {
+            body: {}
+            contains: "/go/assets/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Server Details - Go</title>"
+          },
+          {
+            body: {}
+            contains: "data-controller-name=\"server_info\""
+          },
+          {
+            body: {}
+            contains: "go_server_version"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:&quot;|\")go_server_version(?:&quot;|\")\\s*:\\s*(?:&quot;|\")([0-9]+\\.[0-9]+\\.[0-9]+)"
+        },
+        {
+          from_body: {}
+          regexp: "data-current-gocd-version=\"([0-9]+\\.[0-9]+\\.[0-9]+)(?:-[0-9]+)?\""
+        }
+      ]
+    }
+  },
+  # GoCD Login page (/go/auth/login), served when security/authentication is configured.
+  # Supports passive subpath discovery (e.g. /go/auth/login -> "", /ci/go/auth/login -> "/ci")
+  # and extracts data-current-gocd-version directly from HTML on v19.x-v23.x.
+  {
+    name: "gocd_login_page"
+    path_suffix: "/go/auth/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            contains: "<meta name=\"gocd-params\""
+          },
+          {
+            body: {}
+            contains: "/go/assets/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-controller-name=\"login_page\""
+          },
+          {
+            body: {}
+            contains: "single_page_apps/login_page-"
+          },
+          {
+            body: {}
+            contains: "<title>Login - Go</title>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "data-current-gocd-version=\"([0-9]+\\.[0-9]+\\.[0-9]+)(?:-[0-9]+)?\""
+        }
+      ]
+    }
+  },
+  # GoCD Login page extracting the webpack vendor-and-helpers bundle path for version extraction
+  # on v24+/v25+ when /go/api/version is blocked by a reverse proxy.
+  {
+    name: "gocd_login_with_bundle"
+    path_suffix: "/go/auth/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            contains: "<meta name=\"gocd-params\""
+          },
+          {
+            body: {}
+            contains: "/go/assets/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-controller-name=\"login_page\""
+          },
+          {
+            body: {}
+            contains: "single_page_apps/login_page-"
+          },
+          {
+            body: {}
+            contains: "<title>Login - Go</title>"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "vendor_bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"'][^\"']*?(go/assets/webpack/vendor-and-helpers\\.chunk-[a-zA-Z0-9._-]+\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # GoCD root UI shell after redirect resolution (/ -> /go/pipelines -> create pipeline or /go/auth/login).
+  {
+    name: "gocd_root_ui"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            contains: "<meta name=\"gocd-params\""
+          },
+          {
+            body: {}
+            contains: "/go/assets/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "/go/assets/cruise-"
+          },
+          {
+            body: {}
+            contains: "/go/assets/webpack/single_page_apps/"
+          },
+          {
+            body: {}
+            contains: "data-current-gocd-version="
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "data-current-gocd-version=\"([0-9]+\\.[0-9]+\\.[0-9]+)(?:-[0-9]+)?\""
+        },
+        {
+          from_body: {}
+          regexp: "(?:&quot;|\")go_server_version(?:&quot;|\")\\s*:\\s*(?:&quot;|\")([0-9]+\\.[0-9]+\\.[0-9]+)"
+        }
+      ]
+    }
+  },
+  # GoCD root UI shell extracting webpack vendor-and-helpers bundle path.
+  {
+    name: "gocd_root_with_bundle"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            contains: "<meta name=\"gocd-params\""
+          },
+          {
+            body: {}
+            contains: "/go/assets/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "/go/assets/cruise-"
+          },
+          {
+            body: {}
+            contains: "/go/assets/webpack/single_page_apps/"
+          },
+          {
+            body: {}
+            contains: "data-current-gocd-version="
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "vendor_bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"'][^\"']*?(go/assets/webpack/vendor-and-helpers\\.chunk-[a-zA-Z0-9._-]+\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # GoCD webpack vendor-and-helpers bundle extracted from HTML (embeds GoCDVersion across v19.x-v25.x+).
+  {
+    name: "gocd_vendor_bundle"
+    path: "/{{ vendor_bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "application/vnd.go.cd"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "GoCDVersion"
+          },
+          {
+            body: {}
+            contains: "docs.gocd.org/"
+          },
+          {
+            body: {}
+            contains: "api.gocd.org/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "GoCDVersion\\s*=\\s*\\{[^{}]*version\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+        },
+        {
+          from_body: {}
+          regexp: "formattedVersion\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\\s*\\("
+        },
+        {
+          from_body: {}
+          regexp: "https://(?:docs|api)\\.gocd\\.org/([0-9]+\\.[0-9]+\\.[0-9]+)/"
+        }
+      ]
+    }
+  },
+  # Passive subpath discovery & version extraction on crawled GoCD vendor-and-helpers webpack bundles.
+  {
+    name: "gocd_passive_vendor_bundle"
+    path_regexp: "/go/assets/webpack/vendor-and-helpers\\.chunk-[a-f0-9]{16,64}\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "application/vnd.go.cd"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "GoCDVersion"
+          },
+          {
+            body: {}
+            contains: "docs.gocd.org/"
+          },
+          {
+            body: {}
+            contains: "api.gocd.org/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "GoCDVersion\\s*=\\s*\\{[^{}]*version\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\""
+        },
+        {
+          from_body: {}
+          regexp: "formattedVersion\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\\s*\\("
+        },
+        {
+          from_body: {}
+          regexp: "https://(?:docs|api)\\.gocd\\.org/([0-9]+\\.[0-9]+\\.[0-9]+)/"
+        }
+      ]
+    }
+  },
+  # Passive discovery on GoCD's static Cruise favicon (/go/assets/cruise-<digest>.ico),
+  # whose 1150-byte body SHA-256 is invariant across v17.x through v25.x+.
+  {
+    name: "gocd_cruise_favicon"
+    path_regexp: "/go/assets/cruise-[a-f0-9]{16,64}\\.ico$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "1592088ba651470e554a54371b6be6b1336462c2186e74fb24f54f177377b538"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated GoCD health check endpoint (/go/api/v1/health) returning GoCD's vendor media type.
+  {
+    name: "gocd_api_health"
+    path: "/go/api/v1/health"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/vnd.go.cd"
+          },
+          {
+            body: {}
+            regexp: "\"health\"\\s*:\\s*\"OK\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Auth-enabled GoCD CCTray feed (/go/cctray.xml) returning Basic realm="GoCD" and <access-denied> XML.
+  {
+    name: "gocd_cctray_unauthorized"
+    path: "/go/cctray.xml"
+    response: {
+      status_codes: [401]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "WWW-Authenticate" }
+            contains: "Basic realm=\"GoCD\""
+          },
+          {
+            header: { name: "Content-Type" }
+            contains: "application/xml"
+          },
+          {
+            body: {}
+            contains: "<access-denied>"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Primary REST API version probe (unauthenticated across both fresh and auth-enabled GoCD).
+  {
+    steps: ["gocd_api_version"]
+  },
+  # Server Details page (/go/about) on unconfigured/anonymous deployments.
+  {
+    steps: ["gocd_about_page"]
+  },
+  # Login page (supports subpath discovery) + REST API version probe.
+  {
+    steps: [
+      "gocd_login_page",
+      "gocd_api_version"
+    ]
+  },
+  # Login page + webpack vendor bundle fallback (extracts version on v24+/v25+ even if /go/api/version is blocked).
+  {
+    steps: [
+      "gocd_login_with_bundle",
+      "gocd_vendor_bundle"
+    ]
+  },
+  # Root UI (after redirect resolution) + REST API version probe.
+  {
+    steps: [
+      "gocd_root_ui",
+      "gocd_api_version"
+    ]
+  },
+  # Root UI + webpack vendor bundle version extraction fallback.
+  {
+    steps: [
+      "gocd_root_with_bundle",
+      "gocd_vendor_bundle"
+    ]
+  },
+  # Passive subpath discovery & version extraction from crawled webpack vendor bundle.
+  {
+    steps: ["gocd_passive_vendor_bundle"]
+  },
+  # Passive Cruise favicon discovery + REST API version probe.
+  {
+    steps: [
+      "gocd_cruise_favicon",
+      "gocd_api_version"
+    ]
+  },
+  # Standalone Login page match (extracts version on v19-v23 via data-current-gocd-version; promotes subpath roots).
+  {
+    steps: ["gocd_login_page"]
+  },
+  # Standalone Root UI match.
+  {
+    steps: ["gocd_root_ui"]
+  },
+  # Passive Cruise favicon discovery + health check fallback.
+  {
+    steps: [
+      "gocd_cruise_favicon",
+      "gocd_api_health"
+    ]
+  },
+  # API-only health check fallback using GoCD vendor media type.
+  {
+    steps: ["gocd_api_health"]
+  },
+  # Locked-down CCTray XML Basic realm="GoCD" fallback.
+  {
+    steps: ["gocd_cctray_unauthorized"]
+  }
+]

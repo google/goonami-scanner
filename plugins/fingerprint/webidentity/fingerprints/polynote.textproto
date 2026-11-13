@@ -1,0 +1,818 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Polynote"
+  author: "Goonami team"
+  software: "polynote"
+  description: "Detects Polynote polyglot notebook environment across open, authenticated, and subpath deployments and extracts version."
+}
+
+steps: [
+  # Polynote root HTML page across all versions (0.2.x through 0.5.x+) and states (open, header-authenticated, websocket_key, and subpath base_uri).
+  # Extracts the webpack bundle path (app.<hash>.js in 0.2.x-0.3.3 or static/app.<hash>.js in 0.3.4+).
+  {
+    name: "polynote_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Polynote</title>"
+          },
+          {
+            body: {}
+            contains: "<base href="
+          },
+          {
+            body: {}
+            contains: "id=\"Main\""
+          },
+          {
+            body: {}
+            contains: "data-ws-key="
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "vendor/katex/katex.min."
+          },
+          {
+            body: {}
+            contains: "style/styles.css"
+          },
+          {
+            body: {}
+            contains: "id=\"polynote-color-theme\""
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "src=\"\\.?/?((?:static/)?app\\.[0-9a-fA-Z_-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Polynote root HTML shell fallback without assuming a specific JS bundle filename.
+  {
+    name: "polynote_root_shell"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Polynote</title>"
+          },
+          {
+            body: {}
+            contains: "<base href="
+          },
+          {
+            body: {}
+            contains: "id=\"Main\""
+          },
+          {
+            body: {}
+            contains: "data-ws-key="
+          },
+          {
+            body: {}
+            contains: "vendor/katex/katex.min."
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "style/styles.css"
+          },
+          {
+            body: {}
+            contains: "id=\"polynote-color-theme\""
+          }
+        ]
+      }
+    }
+  },
+  # Polynote webpack application JS bundle fetched via extracted bundle_path (/app.<hash>.js or /static/app.<hash>.js).
+  {
+    name: "polynote_js_bundle_active"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Polynote"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-ws-key"
+          },
+          {
+            body: {}
+            contains: "ws-key"
+          },
+          {
+            body: {}
+            contains: "polynote-color-theme"
+          },
+          {
+            body: {}
+            contains: "polynote.svg"
+          },
+          {
+            body: {}
+            contains: "polynote-logo"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:polynoteVersion|POLYNOTE_VERSION|\"polynote_version\")\\s*[:=]\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          murmur3_hash: "90bf8e8d081deceb572de860e93bf51f"
+          static_versions: ["0.2.11"]
+        },
+        {
+          murmur3_hash: "035a9a254443b141fe05c24b4f206887"
+          static_versions: ["0.2.12"]
+        },
+        {
+          murmur3_hash: "ec89987f1ed0769678183d7303fb4a16"
+          static_versions: ["0.2.13"]
+        },
+        {
+          murmur3_hash: "da77b9e3473fc1c5788766a3a7835665"
+          static_versions: ["0.2.14", "0.2.15"]
+        },
+        {
+          murmur3_hash: "15e0c41ccaf7435ef367861be702d1ec"
+          static_versions: ["0.2.16"]
+        },
+        {
+          murmur3_hash: "e4e566517c158255a7fdca829da86e12"
+          static_versions: ["0.2.17"]
+        },
+        {
+          murmur3_hash: "a436bf0057b02ee470448965840b6627"
+          static_versions: ["0.3.0"]
+        },
+        {
+          murmur3_hash: "f763a9bdb929d6dd90e41c3d4f64cfd8"
+          static_versions: ["0.3.1"]
+        },
+        {
+          murmur3_hash: "b33b7d4eedf1fe100eee306dfe367f8d"
+          body_sha256_hash: "982623e91179ff895a4e52ed08b672b3b41b97360215f9bb5afd2bcf41d64ac6"
+          static_versions: ["0.3.2"]
+        },
+        {
+          murmur3_hash: "c7c627ad02d9fe995ab0a36d1783730e"
+          static_versions: ["0.3.3"]
+        },
+        {
+          murmur3_hash: "a83758c407f0b14795589356b6e0f72f"
+          static_versions: ["0.3.4"]
+        },
+        {
+          murmur3_hash: "3d47ed4dfce861074bc0db450f5a6c73"
+          static_versions: ["0.3.5"]
+        },
+        {
+          murmur3_hash: "3ba6d81570c834c85ecf2d48ecb6bd13"
+          static_versions: ["0.3.6"]
+        },
+        {
+          murmur3_hash: "c871abd6a4c3cca039de8f3d7272374c"
+          static_versions: ["0.3.7"]
+        },
+        {
+          murmur3_hash: "5c0293c2b701eb3de7ce1b1ab0acb17f"
+          static_versions: ["0.3.8"]
+        },
+        {
+          murmur3_hash: "40894f619c2a836336d7d25567886e4c"
+          static_versions: ["0.3.9"]
+        },
+        {
+          murmur3_hash: "2940ac12492c04c08fc2ede4a47e7b8c"
+          static_versions: ["0.3.10"]
+        },
+        {
+          murmur3_hash: "8fad5df8c48e57e3f000f9f8fb74b683"
+          static_versions: ["0.3.11"]
+        },
+        {
+          body_sha256_hash: "c4c006791885cd44a63ef3a054c980b44eceb4ab7dd0f8930b5bc99a552c78a5"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "374ddf3814e31e21cb226bb22f37c13db310687403efe8c082df2845c7a182c5"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "022db89ca7460030b644473c75e6e9c5a882bd08f4cffe8154d6a679091d4bdc"
+          static_versions: ["0.4.10"]
+        },
+        {
+          body_sha256_hash: "0404c40c47a73069e1fc7ac264a6f33ec821d5666cef6699a6845409352397e0"
+          static_versions: ["0.5.2"]
+        }
+      ]
+    }
+  },
+  # Passive subpath discovery and bundle identification via crawled Polynote JS bundle URL (/app.<hash>.js or /static/app.<hash>.js).
+  {
+    name: "polynote_js_bundle_passive"
+    path_regexp: "^(?P<root>.*?)/(?:static/)?app\\.[0-9a-f]{16,20}\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Polynote"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-ws-key"
+          },
+          {
+            body: {}
+            contains: "ws-key"
+          },
+          {
+            body: {}
+            contains: "polynote-color-theme"
+          },
+          {
+            body: {}
+            contains: "polynote.svg"
+          },
+          {
+            body: {}
+            contains: "polynote-logo"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?:polynoteVersion|POLYNOTE_VERSION|\"polynote_version\")\\s*[:=]\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          murmur3_hash: "90bf8e8d081deceb572de860e93bf51f"
+          static_versions: ["0.2.11"]
+        },
+        {
+          murmur3_hash: "035a9a254443b141fe05c24b4f206887"
+          static_versions: ["0.2.12"]
+        },
+        {
+          murmur3_hash: "ec89987f1ed0769678183d7303fb4a16"
+          static_versions: ["0.2.13"]
+        },
+        {
+          murmur3_hash: "da77b9e3473fc1c5788766a3a7835665"
+          static_versions: ["0.2.14", "0.2.15"]
+        },
+        {
+          murmur3_hash: "15e0c41ccaf7435ef367861be702d1ec"
+          static_versions: ["0.2.16"]
+        },
+        {
+          murmur3_hash: "e4e566517c158255a7fdca829da86e12"
+          static_versions: ["0.2.17"]
+        },
+        {
+          murmur3_hash: "a436bf0057b02ee470448965840b6627"
+          static_versions: ["0.3.0"]
+        },
+        {
+          murmur3_hash: "f763a9bdb929d6dd90e41c3d4f64cfd8"
+          static_versions: ["0.3.1"]
+        },
+        {
+          murmur3_hash: "b33b7d4eedf1fe100eee306dfe367f8d"
+          body_sha256_hash: "982623e91179ff895a4e52ed08b672b3b41b97360215f9bb5afd2bcf41d64ac6"
+          static_versions: ["0.3.2"]
+        },
+        {
+          murmur3_hash: "c7c627ad02d9fe995ab0a36d1783730e"
+          static_versions: ["0.3.3"]
+        },
+        {
+          murmur3_hash: "a83758c407f0b14795589356b6e0f72f"
+          static_versions: ["0.3.4"]
+        },
+        {
+          murmur3_hash: "3d47ed4dfce861074bc0db450f5a6c73"
+          static_versions: ["0.3.5"]
+        },
+        {
+          murmur3_hash: "3ba6d81570c834c85ecf2d48ecb6bd13"
+          static_versions: ["0.3.6"]
+        },
+        {
+          murmur3_hash: "c871abd6a4c3cca039de8f3d7272374c"
+          static_versions: ["0.3.7"]
+        },
+        {
+          murmur3_hash: "5c0293c2b701eb3de7ce1b1ab0acb17f"
+          static_versions: ["0.3.8"]
+        },
+        {
+          murmur3_hash: "40894f619c2a836336d7d25567886e4c"
+          static_versions: ["0.3.9"]
+        },
+        {
+          murmur3_hash: "2940ac12492c04c08fc2ede4a47e7b8c"
+          static_versions: ["0.3.10"]
+        },
+        {
+          murmur3_hash: "8fad5df8c48e57e3f000f9f8fb74b683"
+          static_versions: ["0.3.11"]
+        },
+        {
+          body_sha256_hash: "c4c006791885cd44a63ef3a054c980b44eceb4ab7dd0f8930b5bc99a552c78a5"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "374ddf3814e31e21cb226bb22f37c13db310687403efe8c082df2845c7a182c5"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "022db89ca7460030b644473c75e6e9c5a882bd08f4cffe8154d6a679091d4bdc"
+          static_versions: ["0.4.10"]
+        },
+        {
+          body_sha256_hash: "0404c40c47a73069e1fc7ac264a6f33ec821d5666cef6699a6845409352397e0"
+          static_versions: ["0.5.2"]
+        }
+      ]
+    }
+  },
+  # Polynote 0.3.4+ static HTML template (/static/index.html) containing un-interpolated $BASE_URI and $WS_KEY placeholders.
+  # Deterministic per release because $WS_KEY is not replaced with a per-boot UUID on /static/index.html.
+  {
+    name: "polynote_static_index_html"
+    path_suffix: "/static/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Polynote</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\"$BASE_URI\""
+          },
+          {
+            body: {}
+            contains: "id=\"Main\""
+          },
+          {
+            body: {}
+            contains: "data-ws-key=\"$WS_KEY\""
+          },
+          {
+            body: {}
+            contains: "static/vendor/katex/katex.min."
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          body_sha256_hash: "bc38c525ca7c6203a17d96ea7677974134d26cda842189e5f9c44da096a75f63"
+          static_versions: ["0.3.4"]
+        },
+        {
+          body_sha256_hash: "af13c2ffb584b6b43d701365c89230398650dd0da7e86ccd186e4770c56f5747"
+          static_versions: ["0.3.5"]
+        },
+        {
+          body_sha256_hash: "bd13447e3b9188a70204c171bc557b4740794781d710072fd8aa02134fec873c"
+          static_versions: ["0.3.6"]
+        },
+        {
+          body_sha256_hash: "2a061f4acdfb149f1bab2e3d21a3e8026b417a1a5c434a56da7ce0aff7858eac"
+          static_versions: ["0.3.7"]
+        },
+        {
+          body_sha256_hash: "7ea03cfd5687ed1bdcc75d917b4243f68923dc7606fade5d24930b21c5390559"
+          static_versions: ["0.3.8"]
+        },
+        {
+          body_sha256_hash: "e432c9cf853096aab9f08e8470b1f2f1c336a0f925fb55f69ce504f9c8c81f40"
+          static_versions: ["0.3.9"]
+        },
+        {
+          body_sha256_hash: "ea1c654192fabd7f7231542ff71ca8c3b69cf9ce4caebc9e6cfa644c6b4904f1"
+          static_versions: ["0.3.10"]
+        },
+        {
+          body_sha256_hash: "0e8149ac5528267143d28e34d3b9e7f09636f2392e168dd15e91b891c8720a16"
+          static_versions: ["0.3.11"]
+        },
+        {
+          body_sha256_hash: "27f41823caf3e8f1d62fb1e59b50153317d9635f09561c81bca78b21640b4526"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "50d93d0949ca127815adc1fce067b6e886a588bd215886807a33cdc616d1b02e"
+          static_versions: ["0.4.10"]
+        },
+        {
+          body_sha256_hash: "bf22c828850d55940e893d4e08f82687e79d609624f9a2d11be53545f8912b3d"
+          static_versions: ["0.5.2"]
+        }
+      ]
+    }
+  },
+  # Polynote 0.2.11-0.3.3 static HTML template (/index.html) containing un-interpolated $BASE_URI and $WS_KEY placeholders.
+  {
+    name: "polynote_legacy_index_html"
+    path_suffix: "/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Polynote</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\"$BASE_URI\""
+          },
+          {
+            body: {}
+            contains: "id=\"Main\""
+          },
+          {
+            body: {}
+            contains: "data-ws-key=\"$WS_KEY\""
+          },
+          {
+            body: {}
+            contains: "vendor/katex/katex.min."
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          murmur3_hash: "150aa40c5ebe381fca56115622be6bc9"
+          body_sha256_hash: "162a868cfef3fd51da0d1d0370ca5e9afa7122f2339b0a80a32935a572f79a4e"
+          static_versions: ["0.2.11"]
+        },
+        {
+          murmur3_hash: "bf020e289ac21864687562f6c9c8f66e"
+          body_sha256_hash: "4772cdcd9b0f7ce1fa95537cf660a0b049bcecaa158ad0aaa0075529d7fb016e"
+          static_versions: ["0.2.12"]
+        },
+        {
+          murmur3_hash: "2c76f991e70d777e72864fa949e32558"
+          body_sha256_hash: "4d8b67d73568fd11f5697c8dcbb9d400428979e499279d1e68ce2dc12650b19f"
+          static_versions: ["0.2.13"]
+        },
+        {
+          murmur3_hash: "fc28924dcf6aa04b8357211647ba6852"
+          body_sha256_hash: "15357b03be629aa4c254d46868e1e2b296111aa25d3e62180c8059d91da85ffd"
+          static_versions: ["0.2.14", "0.2.15"]
+        },
+        {
+          murmur3_hash: "426a1614ea180f047c0c6d77b20a3052"
+          body_sha256_hash: "028dda341a3c5f3394ef860202043e96b133ebda5eee34f22b4a1e107e89f553"
+          static_versions: ["0.2.16"]
+        },
+        {
+          murmur3_hash: "2ba837e555bce6515992ee55fb7f444b"
+          body_sha256_hash: "0cad5a87d833cdfb9ec0dd3b8b874c8ffd849ea5e733242b102c922d357c50e7"
+          static_versions: ["0.2.17"]
+        },
+        {
+          murmur3_hash: "e3bcae0069e3e7b8eb14d0569e7c6ce4"
+          body_sha256_hash: "f29c3f19b829b26b71d186313ffa6e7a19672a8949da0e0b9f39d66258554a38"
+          static_versions: ["0.3.0"]
+        },
+        {
+          murmur3_hash: "de9f62f6e4efac906da68606fc82f406"
+          body_sha256_hash: "3e59085d0a282ed78f3af7353e34996ad4e0337050a2c26c4e47f23e49800847"
+          static_versions: ["0.3.1"]
+        },
+        {
+          murmur3_hash: "f89bd02438f70ee9bb1ce4ce7ca72377"
+          body_sha256_hash: "3cb647d1027c8cbd66980e1879d7f464f123f2bc42e84bcc50995aa2b72ab696"
+          static_versions: ["0.3.2"]
+        },
+        {
+          murmur3_hash: "dd114f266dcd2eba4154cf980437bdd1"
+          body_sha256_hash: "971ded4c32c822a45fa562f81ff469cad9dcb0ef5bf0d1018b8b60bc5343a8db"
+          static_versions: ["0.3.3"]
+        }
+      ]
+    }
+  },
+  # Polynote main stylesheet (/style/styles.css in 0.2.x-0.3.3 and /static/style/styles.css in 0.3.4+).
+  {
+    name: "polynote_styles_css"
+    path_regexp: "^(?P<root>.*?)/(?:static/)?style/styles\\.css$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "font-family: Hasklig"
+          },
+          {
+            body: {}
+            contains: ".toolbar-container"
+          },
+          {
+            body: {}
+            contains: ".new-cell-divider"
+          },
+          {
+            body: {}
+            contains: "Presence colors (other people's cursors)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          murmur3_hash: "57e015111bf079ba87e8f3a7c9fcc9af"
+          static_versions: ["0.2.11"]
+        },
+        {
+          murmur3_hash: "76c93a36cde690501b39d76a8f2144a3"
+          static_versions: ["0.2.12"]
+        },
+        {
+          murmur3_hash: "3464af92548568cb9670926364a8cfad"
+          static_versions: ["0.2.13"]
+        },
+        {
+          murmur3_hash: "bb91cbab6a364a2a139a83acad365abb"
+          static_versions: ["0.2.14", "0.2.15", "0.2.16", "0.2.17"]
+        },
+        {
+          murmur3_hash: "792778342e50484433de139ad67ea219"
+          static_versions: ["0.3.0", "0.3.1"]
+        },
+        {
+          murmur3_hash: "81a96c12d7824e69a84f6c5e5f4bb78f"
+          body_sha256_hash: "0a5b56f4c6f4c59918d021b9efa6706c59806e4aa2b29aff575b67d25e84e01d"
+          static_versions: ["0.3.2"]
+        },
+        {
+          murmur3_hash: "5b4035722149dd4b532c0fab2f497924"
+          static_versions: ["0.3.3"]
+        },
+        {
+          murmur3_hash: "b0cfb4866168f999db62a2a8e8d51762"
+          static_versions: ["0.3.4", "0.3.5", "0.3.6"]
+        },
+        {
+          murmur3_hash: "13a4dd59e66fab35d1a5e905a5f7c83d"
+          static_versions: ["0.3.7"]
+        },
+        {
+          murmur3_hash: "c824f729a0e5ff7b79905158fe8af8a9"
+          static_versions: ["0.3.8", "0.3.9"]
+        },
+        {
+          murmur3_hash: "3629c9d48f561637846b8de220cd03a1"
+          static_versions: ["0.3.10", "0.3.11", "0.3.12"]
+        },
+        {
+          body_sha256_hash: "83fc6a84b504593117bf6d38d4b420af974719d20af9a7ff8515cb233a911c2a"
+          static_versions: ["0.3.12"]
+        },
+        {
+          body_sha256_hash: "916cdd504645606e746e8b987982e8109b36df7ff7f087808e6bb8d24374eed3"
+          static_versions: ["0.4.10"]
+        },
+        {
+          body_sha256_hash: "6acb5ba9a0ce41b20b88f9c8080dcdd2441581f9104b47a27f64e8a4c91e70c8"
+          static_versions: ["0.5.2"]
+        }
+      ]
+    }
+  },
+  # Polynote static favicon (/favicon.ico, invariant across 0.2.11 through 0.5.2+).
+  {
+    name: "polynote_favicon_ico"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              murmur3_hashes: [
+                "9221e83eed5a962bb3d06f285d2c3d2c"
+              ]
+              body_sha256_hashes: [
+                "68d3e539205e2a61c5066c9a98606cef3fc20f3e7e972dac084f40a672a87e74",
+                "ac9565d893780bf720fb64970837f1e3d2bdbdea19d066782bc031aeb2228d61"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Polynote 0.3.4+ SVG logo (/static/style/logo/polynote.svg).
+  {
+    name: "polynote_logo_svg"
+    path_suffix: "/static/style/logo/polynote.svg"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              murmur3_hashes: [
+                "9754a6c67069993508024e6032ad113a"
+              ]
+              body_sha256_hashes: [
+                "900efee6a9ebad606d549b20e0b817dbcf5318f3f0a77cdd7899cd05f5ccb668"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Polynote 0.2.11-0.3.3 SVG logo (/style/polynote.svg).
+  {
+    name: "polynote_legacy_logo_svg"
+    path_suffix: "/style/polynote.svg"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              murmur3_hashes: [
+                "9754a6c67069993508024e6032ad113a"
+              ]
+              body_sha256_hashes: [
+                "900efee6a9ebad606d549b20e0b817dbcf5318f3f0a77cdd7899cd05f5ccb668"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Active root HTML + extracted webpack JS bundle verification & version extraction.
+  {
+    steps: [
+      "polynote_root_page",
+      "polynote_js_bundle_active"
+    ]
+  },
+  # Active root HTML + 0.3.4+ /static/index.html static template version extraction.
+  {
+    steps: [
+      "polynote_root_shell",
+      "polynote_static_index_html"
+    ]
+  },
+  # Active root HTML + 0.2.11-0.3.3 /index.html static template version extraction.
+  {
+    steps: [
+      "polynote_root_shell",
+      "polynote_legacy_index_html"
+    ]
+  },
+  # Passive subpath discovery and bundle identification via crawled Polynote JS bundle.
+  {
+    steps: ["polynote_js_bundle_passive"]
+  },
+  # Passive subpath discovery and static template identification via /static/index.html (0.3.4+).
+  {
+    steps: ["polynote_static_index_html"]
+  },
+  # Passive subpath discovery and static template identification via /index.html (0.2.11-0.3.3).
+  {
+    steps: ["polynote_legacy_index_html"]
+  },
+  # Passive subpath discovery and stylesheet identification via /style/styles.css or /static/style/styles.css + favicon corroboration.
+  {
+    steps: [
+      "polynote_styles_css",
+      "polynote_favicon_ico"
+    ]
+  },
+  # Standalone Polynote stylesheet identification when favicon is not served.
+  {
+    steps: ["polynote_styles_css"]
+  },
+  # Fallback root shell + 0.3.4+ SVG logo verification when bundle naming changes.
+  {
+    steps: [
+      "polynote_root_shell",
+      "polynote_logo_svg"
+    ]
+  },
+  # Fallback root shell + 0.2.11-0.3.3 SVG logo verification when bundle naming changes.
+  {
+    steps: [
+      "polynote_root_shell",
+      "polynote_legacy_logo_svg"
+    ]
+  }
+]

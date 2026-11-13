@@ -1,0 +1,654 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Flyte"
+  author: "Goonami team"
+  software: "flyte"
+  description: "Detects Flyte workflow orchestration platform (Flyte Console UI and FlyteAdmin API/gRPC-Gateway) across open and OIDC-authenticated deployments and extracts control-plane version."
+}
+
+steps: [
+  # Flyte Console SPA entry page at /console (standard flyte-binary and flyte-core Helm ingress,
+  # served unauthenticated in both open and OIDC auth modes across v0.x and v1.x+).
+  # v0.x-v1.12 render <title>Flyte Console</title> with <div id="react-app"></div> and main.<hash>.js;
+  # v1.13+ render <title>Flyte Dashboard</title> with FlyteConsole meta description, <div id="root"></div>, and main-<hash>.js.
+  # Always corroborated by flyte_ui_bundle.
+  {
+    name: "flyte_console_page"
+    path_suffix: "/console"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Flyte (?:Console|Dashboard)</title>"
+          },
+          {
+            body: {}
+            contains: "assets/favicon.ico"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"react-app\""
+          },
+          {
+            body: {}
+            contains: "id=\"root\""
+          },
+          {
+            body: {}
+            contains: "FlyteConsole"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"[^\"]*?(console/assets/(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Flyte Console SPA /console/login route (supports passive subpath discovery, e.g. /flyte/console/login).
+  # Always corroborated by flyte_ui_bundle.
+  {
+    name: "flyte_console_login"
+    path_suffix: "/console/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Flyte (?:Console|Dashboard)</title>"
+          },
+          {
+            body: {}
+            contains: "assets/favicon.ico"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"react-app\""
+          },
+          {
+            body: {}
+            contains: "id=\"root\""
+          },
+          {
+            body: {}
+            contains: "FlyteConsole"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"[^\"]*?(console/assets/(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Standalone Flyte Console deployment mounted at / with BASE_URL="" (assets under /assets/).
+  # Always corroborated by flyte_ui_bundle.
+  {
+    name: "flyte_standalone_console_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Flyte (?:Console|Dashboard)</title>"
+          },
+          {
+            body: {}
+            contains: "assets/favicon.ico"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"react-app\""
+          },
+          {
+            body: {}
+            contains: "id=\"root\""
+          },
+          {
+            body: {}
+            contains: "FlyteConsole"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?(assets/(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Flyte Console HTML shell without script-name assumptions, paired with flyte_console_favicon.
+  {
+    name: "flyte_console_shell"
+    path_suffix: "/console"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>Flyte (?:Console|Dashboard)</title>"
+          },
+          {
+            body: {}
+            contains: "assets/favicon.ico"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"react-app\""
+          },
+          {
+            body: {}
+            contains: "id=\"root\""
+          },
+          {
+            body: {}
+            contains: "FlyteConsole"
+          }
+        ]
+      }
+    }
+  },
+  # Flyte Console main JavaScript bundle extracted from HTML (verified across v1.5, v1.10, v1.13, v1.16+).
+  {
+    name: "flyte_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "ADMIN_API_URL"
+          },
+          {
+            body: {}
+            contains: "flyteconsole"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "flyteidl"
+          },
+          {
+            body: {}
+            contains: "docs.flyte.org"
+          },
+          {
+            body: {}
+            contains: "webpackChunk_flyteconsole_client_app"
+          },
+          {
+            body: {}
+            contains: "github.com/flyteorg/flyte"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery on crawled Flyte Console JS bundles
+  # (e.g. /flyte/console/assets/main-af194a18.js or /console/assets/main.408e8cf12920f08e72f4.js).
+  {
+    name: "flyte_passive_js_bundle"
+    path_regexp: "^(?P<root>.*?)(?:/console)?/assets/(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "ADMIN_API_URL"
+          },
+          {
+            body: {}
+            contains: "flyteconsole"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "flyteidl"
+          },
+          {
+            body: {}
+            contains: "docs.flyte.org"
+          },
+          {
+            body: {}
+            contains: "webpackChunk_flyteconsole_client_app"
+          },
+          {
+            body: {}
+            contains: "github.com/flyteorg/flyte"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Flyte Console static favicon.ico (invariant SHA-256 across v0.19 through v1.16+), paired with flyte_console_shell.
+  {
+    name: "flyte_console_favicon"
+    path: "/console/assets/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "53529bd148df81c0c42b5969a475b63fa0c50b1089dccc934810c1198945c900"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # FlyteAdmin embedded OpenAPI/Swagger specification at /api/v1/openapi.
+  # Served unauthenticated in BOTH open mode (useAuth: false) and OIDC auth mode (useAuth: true).
+  {
+    name: "flyte_openapi_spec"
+    path_suffix: "/api/v1/openapi"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"(?:swagger|openapi)\"\\s*:"
+          },
+          {
+            body: {}
+            contains: "flyteidl/service/admin.proto"
+          },
+          {
+            body: {}
+            contains: "\"/api/v1/active_launch_plans/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "flyteidl.admin.LaunchPlan"
+          },
+          {
+            body: {}
+            contains: "\"AdminService\""
+          },
+          {
+            body: {}
+            contains: "\"/api/v1/workflows\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"info\"\\s*:\\s*\\{[^{}]*\"version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # FlyteAdmin control-plane version endpoint (/api/v1/version), accessible in open mode (useAuth: false).
+  # Supports both grpc-gateway v1 ("control_plane_version") and v2 ("controlPlaneVersion") JSON keys,
+  # and only extracts semantic versions (ignoring unstamped "unknown" values).
+  # Always paired with a Flyte UI, OpenAPI, or AuthMetadataService step.
+  {
+    name: "flyte_api_version"
+    path: "/api/v1/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"(?:control_plane_version|controlPlaneVersion)\"\\s*:\\s*\\{"
+          },
+          {
+            body: {}
+            contains: "\"BuildTime\""
+          },
+          {
+            body: {}
+            contains: "\"Version\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"(?:control_plane_version|controlPlaneVersion)\"\\s*:\\s*\\{[^{}]*\"Version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # FlyteAdmin PublicClientAuthConfig endpoint (/config/v1/flyte_client) when OIDC/OAuth2 auth is enabled (useAuth: true).
+  # Always served unauthenticated so flytectl/pyflyte can discover OAuth client settings before login.
+  # Supports both grpc-gateway v1 (snake_case) and v2 (camelCase) protojson serialization.
+  {
+    name: "flyte_client_config_auth"
+    path_suffix: "/config/v1/flyte_client"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"(?:authorization_metadata_key|authorizationMetadataKey)\"\\s*:"
+          },
+          {
+            body: {}
+            regexp: "\"(?:client_id|clientId)\"\\s*:"
+          },
+          {
+            body: {}
+            regexp: "\"(?:redirect_uri|redirectUri)\"\\s*:"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "flyte-authorization"
+          },
+          {
+            body: {}
+            contains: "flytectl"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # FlyteAdmin PublicClientAuthConfig endpoint (/config/v1/flyte_client) when auth is disabled (useAuth: false).
+  # Returns HTTP 501 JSON naming flyteidl.service.AuthMetadataService across grpc-gateway v1 and v2.
+  {
+    name: "flyte_client_config_open"
+    path_suffix: "/config/v1/flyte_client"
+    response: {
+      status_codes: [501]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "flyteidl.service.AuthMetadataService"
+          },
+          {
+            body: {}
+            regexp: "\"code\"\\s*:\\s*12"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # FlyteAdmin OIDC /login redirect setting the Flyte-specific flyte_csrf_state cookie (useAuth: true).
+  {
+    name: "flyte_oidc_login_redirect"
+    path_suffix: "/login"
+    response: {
+      status_codes: [302, 303, 307]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Set-Cookie" }
+            contains: "flyte_csrf_state="
+          },
+          {
+            header: { name: "Location" }
+            regexp: "(?:client_id=|redirect_uri=)"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Standard /console UI + JS bundle + FlyteAdmin /api/v1/version (open mode with version extraction).
+  {
+    steps: [
+      "flyte_console_page",
+      "flyte_ui_bundle",
+      "flyte_api_version"
+    ]
+  },
+  # Subpath /console/login UI + JS bundle + FlyteAdmin /api/v1/version.
+  {
+    steps: [
+      "flyte_console_login",
+      "flyte_ui_bundle",
+      "flyte_api_version"
+    ]
+  },
+  # Passive crawled JS bundle + FlyteAdmin /api/v1/version.
+  {
+    steps: [
+      "flyte_passive_js_bundle",
+      "flyte_api_version"
+    ]
+  },
+  # Passive crawled JS bundle + FlyteAdmin OpenAPI spec version extraction.
+  {
+    steps: [
+      "flyte_passive_js_bundle",
+      "flyte_openapi_spec"
+    ]
+  },
+  # FlyteAdmin OpenAPI spec + /api/v1/version (API-only open-mode deployments).
+  {
+    steps: [
+      "flyte_openapi_spec",
+      "flyte_api_version"
+    ]
+  },
+  # FlyteAdmin OpenAPI spec + authenticated client config.
+  {
+    steps: [
+      "flyte_openapi_spec",
+      "flyte_client_config_auth"
+    ]
+  },
+  # FlyteAdmin OpenAPI spec + open client config.
+  {
+    steps: [
+      "flyte_openapi_spec",
+      "flyte_client_config_open"
+    ]
+  },
+  # FlyteAdmin AuthMetadataService 501 signature + /api/v1/version (open mode when /api/v1/openapi is blocked).
+  {
+    steps: [
+      "flyte_client_config_open",
+      "flyte_api_version"
+    ]
+  },
+  # Standard /console UI + JS bundle (OIDC auth mode when /api/v1/version returns 401, or standalone console).
+  {
+    steps: [
+      "flyte_console_page",
+      "flyte_ui_bundle"
+    ]
+  },
+  # Standalone flyteconsole mounted at / (BASE_URL="") + JS bundle.
+  {
+    steps: [
+      "flyte_standalone_console_root",
+      "flyte_ui_bundle"
+    ]
+  },
+  # Subpath /console/login UI + JS bundle (passive subpath discovery and OIDC auth mode).
+  {
+    steps: [
+      "flyte_console_login",
+      "flyte_ui_bundle"
+    ]
+  },
+  # Fallback /console HTML shell + Flyte static favicon SHA-256.
+  {
+    steps: [
+      "flyte_console_shell",
+      "flyte_console_favicon"
+    ]
+  },
+  # Passive crawled JS bundle + /console shell verification.
+  {
+    steps: [
+      "flyte_passive_js_bundle",
+      "flyte_console_shell"
+    ]
+  },
+  # Passive crawled JS bundle + /console static favicon verification.
+  {
+    steps: [
+      "flyte_passive_js_bundle",
+      "flyte_console_favicon"
+    ]
+  },
+  # Passively crawled OIDC /login redirect + Flyte client auth config.
+  {
+    steps: [
+      "flyte_oidc_login_redirect",
+      "flyte_client_config_auth"
+    ]
+  }
+]

@@ -1,0 +1,569 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Jenkins"
+  author: "Goonami team"
+  software: "jenkins"
+  description: "Detects Jenkins automation server instances and extracts version."
+}
+
+steps: [
+  # Root response header check (matches 200 open dashboard and 401/403 setup wizard or locked security realm).
+  {
+    name: "jenkins_root_header"
+    path: "/"
+    response: {
+      status_codes: [200, 401, 403]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "X-Jenkins" }
+            regexp: "^[0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?$"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "X-Hudson" }
+          },
+          {
+            header: { name: "X-Jenkins-Session" }
+          },
+          {
+            body: {}
+            contains: "data-resurl="
+          },
+          {
+            body: {}
+            contains: "/login?from="
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Who Am I"
+          },
+          {
+            body: {}
+            contains: "<title>Not Found"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        },
+        {
+          from_body: {}
+          regexp: "data-version=\"([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "jenkins_ver[^>]*>\\s*(?:<a[^>]*>\\s*)?Jenkins\\s+(?:ver\\.\\s*)?([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Open Jenkins dashboard HTML check (handles reverse proxies stripping X-Jenkins / X-Hudson headers).
+  {
+    name: "jenkins_root_dashboard"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?:data-resurl|resURL)=\"[^\"]*/static/[a-fA-F0-9]{8}\""
+          },
+          {
+            body: {}
+            contains: "Jenkins-Crumb"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>[^<]*(?:\\[Jenkins\\]|-\\s*Jenkins)</title>"
+          },
+          {
+            body: {}
+            contains: "jenkins_ver"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Who Am I"
+          },
+          {
+            body: {}
+            contains: "<title>Not Found"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        },
+        {
+          from_body: {}
+          regexp: "data-version=\"([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "jenkins_ver[^>]*>\\s*(?:<a[^>]*>\\s*)?Jenkins\\s+(?:ver\\.\\s*)?([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Login & Unlock Jenkins setup wizard page (supports passive subpath discovery across 1.x/2.x through 2.5xx+).
+  {
+    name: "jenkins_login_page"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?:data-resurl|resURL)=\"[^\"]*/static/[a-fA-F0-9]{8}\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "j_spring_security_check"
+          },
+          {
+            body: {}
+            contains: "j_acegi_security_check"
+          },
+          {
+            body: {}
+            contains: "<title>Sign in [Jenkins]</title>"
+          },
+          {
+            body: {}
+            contains: "<title>Sign in - Jenkins</title>"
+          },
+          {
+            body: {}
+            contains: "<h1>Unlock Jenkins</h1>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        },
+        {
+          from_body: {}
+          regexp: "data-version=\"([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "jenkins_ver[^>]*>\\s*(?:<a[^>]*>\\s*)?Jenkins\\s+(?:ver\\.\\s*)?([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Unauthenticated /whoAmI/ diagnostic page (accessible even when allowAnonymousRead=false; embeds version in HTML).
+  {
+    name: "jenkins_whoami_page"
+    path: "/whoAmI/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?:data-resurl|resURL)=\"[^\"]*/static/[a-fA-F0-9]{8}\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Who Am I [Jenkins]</title>"
+          },
+          {
+            body: {}
+            contains: "<title>Who Am I - Jenkins</title>"
+          },
+          {
+            body: {}
+            contains: "Jenkins-Crumb"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        },
+        {
+          from_body: {}
+          regexp: "data-version=\"([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "jenkins_ver[^>]*>\\s*(?:<a[^>]*>\\s*)?Jenkins\\s+(?:ver\\.\\s*)?([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Jenkins root REST API (/api/json, accessible when anonymous read is enabled).
+  {
+    name: "jenkins_api_json"
+    path: "/api/json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"_class\"\\s*:\\s*\"hudson\\.model\\.Hudson\""
+          },
+          {
+            body: {}
+            contains: "\"numExecutors\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Unauthenticated /whoAmI/api/json endpoint (accessible across setup wizard, open, and locked security realms).
+  {
+    name: "jenkins_whoami_api"
+    path: "/whoAmI/api/json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"_class\"\\s*:\\s*\"hudson\\.security\\.WhoAmI\""
+          },
+          {
+            body: {}
+            contains: "\"authorities\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Unauthenticated /oops/ themed 404 error page on Jenkins 2.4xx+ / 2.5xx+ (embeds version in HTML).
+  {
+    name: "jenkins_oops_page"
+    path: "/oops/"
+    response: {
+      status_codes: [404]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?:data-resurl|resURL)=\"[^\"]*/static/[a-fA-F0-9]{8}\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Not Found [Jenkins]</title>"
+          },
+          {
+            body: {}
+            contains: "<title>Not Found - Jenkins</title>"
+          },
+          {
+            body: {}
+            contains: "Jenkins-Crumb"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Jenkins" }
+          regexp: "^([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)$"
+        },
+        {
+          from_body: {}
+          regexp: "data-version=\"([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "jenkins_ver[^>]*>\\s*(?:<a[^>]*>\\s*)?Jenkins\\s+(?:ver\\.\\s*)?([0-9]+(?:\\.[0-9]+)+(?:-[A-Za-z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Passive subpath discovery and static bundle verification on Jenkins JS/CSS assets (/static/<8hex>/...).
+  {
+    name: "jenkins_static_bundle"
+    path_regexp: "/static/[a-fA-F0-9]{8}/(?:scripts/hudson-behavior\\.js|(?:css|jsbundles)/simple-page\\.css)$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "JavaScript for Jenkins"
+          },
+          {
+            body: {}
+            contains: "hudsonRules"
+          },
+          {
+            body: {}
+            contains: "jenkinsHelpButton"
+          },
+          {
+            body: {}
+            contains: ".jenkins-spinner"
+          },
+          {
+            body: {}
+            contains: ".jenkins-checkbox"
+          },
+          {
+            body: {}
+            contains: ".app-jenkins-booting"
+          },
+          {
+            body: {}
+            regexp: "CloudBees,\\s*Inc\\.[\\s\\S]*\\.simple-page"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive discovery on Jenkins butler favicon.ico / favicon.svg across root and /static/<8hex>/.
+  {
+    name: "jenkins_favicon"
+    path_regexp: "(?:/static/[a-fA-F0-9]{8})?/favicon\\.(?:ico|svg)$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "4fec1ee82f0dc4a8e4e9bb26954cf54cf9bf1e6a009516cb6c49ff16924e8caa",
+                "7f31f0cdeebe5621397f6ae60526be0fd0a7805f5e00f0a7ea415eb533273a0c"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Inbound TCP agent listener handshake endpoint (/tcpSlaveAgentListener/).
+  {
+    name: "jenkins_agent_listener"
+    path: "/tcpSlaveAgentListener/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/plain"
+          },
+          {
+            header: { name: "X-Jenkins-Agent-Protocols" }
+            contains: "JNLP"
+          },
+          {
+            body: {}
+            contains: "Jenkins"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Single-request identification and version extraction via X-Jenkins header on root (200/401/403).
+  {
+    steps: ["jenkins_root_header"]
+  },
+  # Open dashboard HTML identification and version extraction when headers are stripped by a proxy.
+  {
+    steps: ["jenkins_root_dashboard"]
+  },
+  # Login page (passive subpath discovery) + /whoAmI/ HTML version extraction when headers are stripped.
+  {
+    steps: [
+      "jenkins_login_page",
+      "jenkins_whoami_page"
+    ]
+  },
+  # Standalone login / Unlock Jenkins setup wizard page match.
+  {
+    steps: ["jenkins_login_page"]
+  },
+  # Unauthenticated /whoAmI/ diagnostic page (identifies and extracts version even when locked down and header-stripped).
+  {
+    steps: ["jenkins_whoami_page"]
+  },
+  # Open REST API (/api/json).
+  {
+    steps: ["jenkins_api_json"]
+  },
+  # Unauthenticated /whoAmI/api/json diagnostic API.
+  {
+    steps: ["jenkins_whoami_api"]
+  },
+  # Jenkins 2.4xx+/2.5xx+ /oops/ 404 error page fallback.
+  {
+    steps: ["jenkins_oops_page"]
+  },
+  # Passive static asset subpath discovery + /whoAmI/ version extraction.
+  {
+    steps: [
+      "jenkins_static_bundle",
+      "jenkins_whoami_page"
+    ]
+  },
+  # Passive favicon subpath discovery + /whoAmI/ version extraction.
+  {
+    steps: [
+      "jenkins_favicon",
+      "jenkins_whoami_page"
+    ]
+  },
+  # Standalone static bundle fallback (promotes subpath roots in Pass 1).
+  {
+    steps: ["jenkins_static_bundle"]
+  },
+  # Passive favicon subpath discovery + /oops/ or /whoAmI/api/json fallback.
+  {
+    steps: [
+      "jenkins_favicon",
+      "jenkins_oops_page"
+    ]
+  },
+  {
+    steps: [
+      "jenkins_favicon",
+      "jenkins_whoami_api"
+    ]
+  },
+  # Inbound TCP agent listener endpoint fallback.
+  {
+    steps: ["jenkins_agent_listener"]
+  }
+]

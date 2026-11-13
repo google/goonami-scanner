@@ -1,0 +1,402 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Apache Solr"
+  author: "Goonami team"
+  software: "solr"
+  description: "Detects Apache Solr search platform and extracts version."
+}
+
+steps: [
+  # AngularJS Solr Admin UI index.html page (Solr 5.x through 9.x+).
+  {
+    name: "solr_admin_index_html"
+    path_suffix: "/solr/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "ng-app=\"solrAdminApp\""
+          },
+          {
+            body: {}
+            contains: "<title>Solr Admin</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "css/angular/common.css"
+          },
+          {
+            body: {}
+            contains: "js/angular/app.js"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "img/favicon\\.ico\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        },
+        {
+          from_body: {}
+          regexp: "css/angular/[a-zA-Z0-9_.-]+\\.css\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        }
+      ]
+    }
+  },
+  # AngularJS Solr Admin UI root path (/solr/), which remains accessible (200 OK)
+  # even when security.json BasicAuthPlugin (blockUnknown: true) is enabled.
+  {
+    name: "solr_admin_ui"
+    path_suffix: "/solr/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "ng-app=\"solrAdminApp\""
+          },
+          {
+            body: {}
+            contains: "<title>Solr Admin</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "css/angular/common.css"
+          },
+          {
+            body: {}
+            contains: "js/angular/app.js"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "img/favicon\\.ico\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        },
+        {
+          from_body: {}
+          regexp: "css/angular/[a-zA-Z0-9_.-]+\\.css\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        }
+      ]
+    }
+  },
+  # Solr Admin system info endpoint (returns XML by default in 5.x/6.x and JSON in 7.x/8.x/9.x+).
+  {
+    name: "solr_system_info_api"
+    path_suffix: "/solr/admin/info/system"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "responseHeader"
+          },
+          {
+            body: {}
+            contains: "solr-spec-version"
+          },
+          {
+            body: {}
+            contains: "lucene-spec-version"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            header: { name: "Content-Type" }
+            contains: "application/xml"
+          },
+          {
+            header: { name: "Content-Type" }
+            contains: "text/xml"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"solr-spec-version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "<str name=\"solr-spec-version\">([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)</str>"
+        }
+      ]
+    }
+  },
+  # Solr v2 Node System Info API (available in Solr 7.x, 8.x, and 9.x+).
+  {
+    name: "solr_v2_node_system_api"
+    path_suffix: "/api/node/system"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"responseHeader\""
+          },
+          {
+            body: {}
+            contains: "\"solr-spec-version\""
+          },
+          {
+            body: {}
+            contains: "\"lucene-spec-version\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"solr-spec-version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Legacy RequireJS Solr Admin UI (/solr/old.html in Solr 5.x and 6.x).
+  {
+    name: "solr_legacy_old_html"
+    path_suffix: "/solr/old.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Solr Admin</title>"
+          },
+          {
+            body: {}
+            contains: "js/require.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "css/styles/common.css"
+          },
+          {
+            body: {}
+            contains: "Solr Query Syntax"
+          },
+          {
+            body: {}
+            contains: "Apache Solr"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "js/require\\.js\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        },
+        {
+          from_body: {}
+          regexp: "urlArgs:\\s*'_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)'"
+        },
+        {
+          from_body: {}
+          regexp: "img/favicon\\.ico\\?_=([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)"
+        }
+      ]
+    }
+  },
+  # Solr AngularJS Admin application bundle (accessible unauthenticated even with BasicAuth enabled).
+  {
+    name: "solr_angular_app_js"
+    path_suffix: "/solr/js/angular/app.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "solrAdminApp"
+          },
+          {
+            body: {}
+            contains: "solrAdminServices"
+          },
+          {
+            body: {}
+            contains: "MainController"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Solr AngularJS common stylesheet (accessible unauthenticated even with BasicAuth enabled).
+  {
+    name: "solr_angular_common_css"
+    path_suffix: "/solr/css/angular/common.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "#header #solr"
+          },
+          {
+            body: {}
+            contains: "img/solr.svg"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Solr static favicon SHA-256 (covers Solr 5.x-8.x and Solr 9.x+).
+  {
+    name: "solr_favicon"
+    path_suffix: "/solr/img/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "67c622c9cc37a299b7fff717cdda6ae509540fff89e41d68b385482b3cf689db",
+                "e17bc1f5cb5d80443c1067c09212496832df55b97ad67c2876073fe84d803956"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["solr_admin_index_html"]
+  },
+  {
+    steps: ["solr_admin_ui"]
+  },
+  {
+    steps: ["solr_system_info_api"]
+  },
+  {
+    steps: ["solr_v2_node_system_api"]
+  },
+  {
+    steps: ["solr_legacy_old_html"]
+  },
+  {
+    steps: [
+      "solr_angular_app_js",
+      "solr_system_info_api"
+    ]
+  },
+  {
+    steps: [
+      "solr_angular_app_js",
+      "solr_admin_ui"
+    ]
+  },
+  {
+    steps: [
+      "solr_favicon",
+      "solr_system_info_api"
+    ]
+  },
+  {
+    steps: [
+      "solr_favicon",
+      "solr_admin_ui"
+    ]
+  },
+  {
+    steps: ["solr_angular_app_js"]
+  },
+  {
+    steps: [
+      "solr_favicon",
+      "solr_angular_common_css"
+    ]
+  }
+]

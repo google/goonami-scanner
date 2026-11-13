@@ -1,0 +1,538 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "moodle"
+
+tests: [
+  {
+    name: "moodle_3_11_18_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "Location", value: "install.php" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\"><html dir=\"ltr\">\n<head>\n<link rel=\"shortcut icon\" href=\"http://target.test:8080/theme/boost/pix/favicon.ico\" /><link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/install/css.php\" />\n<title>Installation - Moodle 3.11.18 (Build: 20231211)</title>\n</head><body class=\"notloggedin\"><div id=\"page\" class=\"mt-0 container stage0\"><div id=\"page-footer\"><div class=\"sitelink\"><a title=\"Moodle 3.11.18 (Build: 20231211)\" href=\"http://docs.moodle.org/en/Administrator_documentation\"><img src=\"pix/moodlelogo.png\" alt=\"Moodle logo\" /></a></div></div></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.11.18"]
+      }
+    ]
+  },
+  {
+    name: "moodle_3_11_18_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "MoodleSession=25f8643a71784ce4cc29d3639d7c0e4b; path=/" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\" xml:lang=\"en\">\n<head>\n<title>Test Moodle</title>\n<meta name=\"keywords\" content=\"moodle, Test Moodle\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/yui_combo.php?rollup/3.17.2/yui-moodlesimple-min.css\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/styles.php/boost/1793807864_1793807876/all\" />\n<script>\n//<![CDATA[\nvar M = {}; M.yui = {};\nM.cfg = {\"wwwroot\":\"http:\\/\\/target.test:8080\",\"sesskey\":\"MxicbpPsCv\",\"sessiontimeout\":\"28800\",\"themerev\":\"1793807864\",\"slasharguments\":1,\"theme\":\"boost\",\"iconsystemmodule\":\"core\\/icon_system_fontawesome\",\"jsrev\":\"1793807864\"};\n//]]>\n</script>\n<script src=\"http://target.test:8080/lib/javascript.php/1793807864/lib/javascript-static.js\"></script>\n</head>\n<body id=\"page-site-index\" class=\"format-site course path-site dir-ltr lang-en yui-skin-sam pagelayout-frontpage notloggedin\"></body></html>"
+      },
+      {
+        uri: "/lib/upgrade.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "This files describes API changes in core libraries and APIs,\ninformation provided here is intended especially for developers.\n\n=== 3.11.18 ===\n* In enrollib.php, the method enrol_get_course_users() got an optional 5th parameter $usergroups.\n\n=== 3.11.17 ===\n* New Behat step added (MDL-76543).\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.11.18"]
+      }
+    ]
+  },
+  {
+    name: "moodle_4_5_0_pending_install_crawled_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\"><html dir=\"ltr\">\n<head>\n<link rel=\"shortcut icon\" href=\"http://target.test:8080/theme/boost/pix/favicon.ico\" /><link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/install/css.php\" />\n<title>Installation | Moodle 4.5 (Build: 20241007)</title>\n</head><body class=\"notloggedin\"><div id=\"page-footer\"><div class=\"sitelink\"><a title=\"Moodle 4.5 (Build: 20241007)\" href=\"http://docs.moodle.org/en/Administrator_documentation\"><img src=\"pix/moodlelogo.png\" alt=\"Moodle logo\" /></a></div></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.5"]
+      }
+    ]
+  },
+  {
+    name: "moodle_4_5_0_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "MoodleSession=2c1071473548411a3e489d2d2920d6fc; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<title>Home | Moodle45</title>\n<meta name=\"keywords\" content=\"moodle, Home | Moodle45\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/styles.php/boost/1793808268_1793808283/all\" />\n<script>\nvar M = {}; M.yui = {};\nM.cfg = {\"wwwroot\":\"http:\\/\\/target.test:8080\",\"apibase\":\"http:\\/\\/target.test:8080\\/r.php\\/api\",\"sesskey\":\"KnBJFHjzcO\",\"themerev\":\"1793808268\",\"jsrev\":\"1793808268\"};\n</script>\n</head>\n<body id=\"page-site-index\" class=\"format-site course path-site yui-skin-sam pagelayout-frontpage notloggedin\"><div>Powered by <a href=\"https://moodle.com\">Moodle</a></div></body></html>"
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown" }
+        ]
+        body: "# Moodle Upgrade notes\n\nThis file contains important information for developers on changes to the Moodle codebase.\n\nMore detailed information on key changes can be found in the [Developer update notes](https://moodledev.io/docs/devupdate) for your version of Moodle.\n\n## 4.5\n\n### core\n\n#### Added\n\n- A new method, `\\core_user::get_name_placeholders()`, has been added.\n  For more information see [MDL-64148](https://tracker.moodle.org/browse/MDL-64148)\n"
+      },
+      {
+        uri: "/lib/upgrade.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "=== 4.5 Onwards ===\n\nThis file has been replaced by UPGRADING.md. See MDL-81125 for further information.\n\n===\n\nThis files describes API changes in core libraries and APIs,\ninformation provided here is intended especially for developers.\n\n=== 4.4 ===\n\n* New modinfo methods related to delegated sections.\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.5"]
+      }
+    ]
+  },
+  {
+    name: "moodle_4_5_0_md_blocked_upgrade_txt_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "MoodleSession=2c1071473548411a3e489d2d2920d6fc; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/styles.php/boost/1793808268_1793808283/all\" />\n<script>M.cfg = {\"wwwroot\":\"http:\\/\\/target.test:8080\",\"sesskey\":\"KnBJFHjzcO\",\"themerev\":\"1793808268\",\"jsrev\":\"1793808268\"};</script>\n</head>\n<body id=\"page-site-index\" class=\"yui-skin-sam\"></body></html>"
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<html><body>403 Forbidden</body></html>"
+      },
+      {
+        uri: "/lib/UPGRADING.md"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<html><body>403 Forbidden</body></html>"
+      },
+      {
+        uri: "/lib/upgrade.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "=== 4.5 Onwards ===\n\nThis file has been replaced by UPGRADING.md. See MDL-81125 for further information.\n\n===\n\nThis files describes API changes in core libraries and APIs,\ninformation provided here is intended especially for developers.\n\n=== 4.4 ===\n\n* New modinfo methods related to delegated sections.\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "moodle_5_0_0_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "MoodleSession=91ab4f2c0031e19ad0023c1b2992ab11; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<title>Home | Moodle50</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/styles.php/boost/1793808600_1793808612/all\" />\n<script>M.cfg = {\"wwwroot\":\"http:\\/\\/target.test:8080\",\"apibase\":\"http:\\/\\/target.test:8080\\/r.php\\/api\",\"sesskey\":\"Z9xKl01PqR\",\"themerev\":\"1793808600\",\"jsrev\":\"1793808600\"};</script>\n</head>\n<body id=\"page-site-index\" class=\"yui-skin-sam pagelayout-frontpage\"></body></html>"
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown" }
+        ]
+        body: "# Moodle Upgrade notes\n\nThis file contains important information for developers on changes to the Moodle codebase.\n\nMore detailed information on key changes can be found in the [Developer update notes](https://moodledev.io/docs/devupdate) for your version of Moodle.\n\n## 5.0\n\n### core\n\n#### Removed\n\n- Final removal of deprecated core functions. See [MDL-80000](https://tracker.moodle.org/browse/MDL-80000)\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0"]
+      }
+    ]
+  },
+  {
+    name: "moodle_5_2_4_pending_install_public_webroot"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "Location", value: "install.php" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\"><html dir=\"ltr\">\n<head>\n<link rel=\"shortcut icon\" href=\"http://target.test:8080/theme/boost/pix/favicon.ico\" /><link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/install/css.php\" />\n<title>Installation | Moodle 5.2.4 (Build: 20261005)</title>\n</head><body class=\"notloggedin\"><div id=\"page-footer\"><div class=\"sitelink\"><a title=\"Moodle 5.2.4 (Build: 20261005)\" href=\"http://docs.moodle.org/en/Administrator_documentation\"><img src=\"pix/moodlelogo.png\" alt=\"Moodle logo\" /></a></div></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.4"]
+      }
+    ]
+  },
+  {
+    name: "moodle_5_2_4_installed_public_webroot"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 303
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "http://target.test:8080/login/index.php" },
+          { name: "Set-Cookie", value: "MoodleSession=6a6f8907035108ccda5f9ab7f38f374b; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/install.php"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "Location", value: "admin/index.php?lang=en" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1></body></html>"
+      },
+      {
+        uri: "/lib/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown" }
+        ]
+        body: "# core (subsystem) Upgrade notes\n\n## 5.2.4\n\n### Added\n\n- Closes an operational-visibility gap in \\core\\update\\checker.\n\n  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)\n"
+      },
+      {
+        uri: "/login/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "MoodleSession=85424ef9e251557543c8dbf253f13df8; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<title>Log in to the site | Moodle52</title>\n<meta name=\"keywords\" content=\"moodle, Log in to the site | Moodle52\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"http://target.test:8080/theme/styles.php/boost/1793808913_1793808927/all\" />\n<script>\nvar M = {}; M.yui = {};\nM.cfg = {\"wwwroot\":\"http:\\/\\/target.test:8080\",\"apibase\":\"http:\\/\\/target.test:8080\\/r.php\\/api\",\"homeurl\":{},\"sesskey\":\"fFyacQslHr\",\"themerev\":\"1793808913\",\"jsrev\":\"1793808913\"};\n</script>\n<script src=\"http://target.test:8080/lib/javascript.php/1793808913/lib/javascript-static.js\"></script>\n</head>\n<body id=\"page-login-index\" class=\"format-site path-login dir-ltr lang-en yui-skin-sam pagelayout-login notloggedin theme\"><div>Powered by <a href=\"https://moodle.com\">Moodle</a></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.2.4"]
+      }
+    ]
+  },
+  {
+    name: "moodle_sso_redirect_mobile_ajax_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://sso.example.org/saml2/authn" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login/index.php"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://sso.example.org/saml2/authn" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/lib/ajax/service-nologin.php?info=tool_mobile_get_public_config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "[{\"error\":false,\"data\":{\"wwwroot\":\"http:\\/\\/target.test:8080\",\"httpswwwroot\":\"http:\\/\\/target.test:8080\",\"sitename\":\"Enterprise LMS\",\"enablewebservices\":0,\"enablemobilewebservice\":0,\"launchurl\":\"http:\\/\\/target.test:8080\\/admin\\/tool\\/mobile\\/launch.php\",\"tool_mobile_iosappid\":\"633359593\",\"tool_mobile_androidappid\":\"com.moodle.moodlemobile\"}}]"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "moodle_hardened_environment_xml_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://sso.example.org/oidc/auth" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/admin/environment.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<COMPATIBILITY_MATRIX>\n  <MOODLE version=\"5.2\" requires=\"4.4\">\n    <CUSTOM_CHECKS>\n      <CUSTOM_CHECK file=\"lib/upgradelib.php\" function=\"check_database_storage_engine\" level=\"required\" />\n    </CUSTOM_CHECKS>\n  </MOODLE>\n  <MOODLE version=\"5.3\" requires=\"4.4\">\n    <CUSTOM_CHECKS>\n      <CUSTOM_CHECK file=\"lib/upgradelib.php\" function=\"check_db_prefix_length\" level=\"required\" />\n    </CUSTOM_CHECKS>\n  </MOODLE>\n</COMPATIBILITY_MATRIX>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "moodle_5_2_4_subpath_deployment"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>University Portal</title></head><body><a href=\"/moodle/\">Learning Portal</a></body></html>"
+      },
+      {
+        uri: "/moodle/lib/javascript.php/1793808913/lib/javascript-static.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "M.yui.add_module=function(modules){for(var modname in modules){YUI_config.modules[modname]=modules[modname]}Y.applyConfig(YUI_config)};M.util=M.util||{};M.util.image_url=function(imagename,component){var url=M.cfg.wwwroot+'/theme/image.php';return url};"
+      },
+      {
+        uri: "/moodle/lib/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown" }
+        ]
+        body: "# core (subsystem) Upgrade notes\n\n## 5.2.4\n\n### Added\n\n- Closes an operational-visibility gap.\n  For more information see [MDL-89513](https://tracker.moodle.org/browse/MDL-89513)\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/moodle"
+        expected_versions: ["5.2.4"]
+      }
+    ]
+  },
+  {
+    name: "moodle_3_11_18_subpath_via_amd_first_js"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Main Site</title></head><body>Welcome</body></html>"
+      },
+      {
+        uri: "/lms/lib/amd/build/first.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "define(\"core/first\",[\"jquery\"],(function($){$(document).bind(\"ajaxStart\",(function(){M.util.js_pending(\"jq\")})).bind(\"ajaxStop\",(function(){M.util.js_complete(\"jq\")}))}));"
+      },
+      {
+        uri: "/lms/lib/upgrade.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "This files describes API changes in core libraries and APIs,\ninformation provided here is intended especially for developers.\n\n=== 3.11.18 ===\n* In enrollib.php, added optional $usergroups parameter.\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/lms"
+        expected_versions: ["3.11.18"]
+      }
+    ]
+  },
+  {
+    name: "negative_spa_html_catch_all"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\n# Moodle Upgrade notes\non changes to the Moodle codebase MDL-89513\n## 5.2.4\n</body></html>"
+      },
+      {
+        uri: "/lib/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\n# core (subsystem) Upgrade notes\nMDL-89513\n## 5.2.4\n</body></html>"
+      },
+      {
+        uri: "/lib/upgrade.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>This files describes API changes in core libraries MDL-12345 === 3.11.18 ===</body></html>"
+      },
+      {
+        uri: "/login/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign In</title></head><body><form><input name=\"username\"></form></body></html>"
+      },
+      {
+        uri: "/lib/ajax/service-nologin.php?info=tool_mobile_get_public_config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>\"httpswwwroot\" com.moodle.moodlemobile</body></html>"
+      },
+      {
+        uri: "/admin/environment.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><COMPATIBILITY_MATRIX><MOODLE version=\"5.2\">file=\"lib/upgradelib.php\"</MOODLE></COMPATIBILITY_MATRIX></body></html>"
+      },
+      {
+        uri: "/lib/amd/build/first.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>define(\"core/first\") M.util.js_pending(\"jq\")</body></html>"
+      },
+      {
+        uri: "/theme/boost/style/moodle.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>[[font:core|fa.woff2]]</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_php_app_and_changelog"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "PHPSESSID=abcdef123456; path=/" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Acme Portal</title><link rel=\"stylesheet\" href=\"/assets/app.css\"></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Installation Wizard</title></head><body><h1>Install Acme PHP</h1></body></html>"
+      },
+      {
+        uri: "/login/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Log in</title></head><body id=\"login-page\"><form action=\"/login/index.php\" method=\"post\"><input name=\"username\"><input type=\"password\" name=\"password\"></form></body></html>"
+      },
+      {
+        uri: "/UPGRADING.md"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/markdown" }
+        ]
+        body: "# Upgrade Notes\n\n## 2.4.0\n\n- Upgraded PHP requirement to 8.2.\n"
+      }
+    ]
+  },
+  {
+    name: "negative_blog_article_mentioning_moodle"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>LMS Security Guide</title><link rel=\"stylesheet\" href=\"/static/blog.css\"></head><body><h1>Hardening Moodle 5.2.4 (Build: 20261005)</h1><p>Moodle pages define M.cfg = {\"wwwroot\":\"https://lms.example.com\"} and load /lib/javascript.php and /install/css.php.</p></body></html>"
+      }
+    ]
+  }
+]

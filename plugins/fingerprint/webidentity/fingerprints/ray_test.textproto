@@ -1,0 +1,291 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "ray"
+
+tests: [
+  {
+    name: "ray_1_13_1_idle_cluster_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "Server", value: "Python/3.7 aiohttp/3.8.1" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Ray Dashboard</title><link href=\"./static/css/2.65aa3b33.chunk.css\" rel=\"stylesheet\"><link href=\"./static/css/main.209b3f5e.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div><script src=\"./static/js/2.c7ecb373.chunk.js\"></script><script src=\"./static/js/main.96d021bc.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/static/js/main.96d021bc.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var cfgUrl=\"api/ray_config\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"1\", \"ray_version\": \"1.13.1\", \"ray_commit\": \"da2a91cd34ac58df4c49b2fa65a5bd25bc1e2057\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.13.1"]
+      }
+    ]
+  },
+  {
+    name: "ray_2_7_1_idle_cluster_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "Server", value: "Python/3.8 aiohttp/3.8.5" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Ray Dashboard</title><script defer=\"defer\" src=\"./static/js/main.a25f0a80.js\"></script><link href=\"./static/css/main.388a904b.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.a25f0a80.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var clusterStatus=\"api/cluster_status\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"4\", \"ray_version\": \"2.7.1\", \"ray_commit\": \"9f07c12615958c3af3760604f6dcacc4b3758a47\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.7.1"]
+      }
+    ]
+  },
+  {
+    name: "ray_2_10_0_active_cluster_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "Server", value: "Python/3.9 aiohttp/3.8.6" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Ray Dashboard</title><script defer=\"defer\" src=\"./static/js/main.f7757344.js\"></script><link href=\"./static/css/main.388a904b.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.f7757344.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var clusterStatus=\"api/cluster_status\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"4\", \"ray_version\": \"2.10.0\", \"ray_commit\": \"09abba26b5bf2707639bb637c208d062a47b46f6\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.0"]
+      }
+    ]
+  },
+  {
+    name: "ray_2_43_0_active_cluster_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "Server", value: "Python/3.9 aiohttp/3.9.5" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><title>Ray Dashboard</title><script defer=\"defer\" src=\"./static/js/main.1fd87515.js\"></script><link href=\"./static/css/main.388a904b.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.1fd87515.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var clusterStatus=\"api/cluster_status\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"4\", \"ray_version\": \"2.43.0\", \"ray_commit\": \"ecdcdc6a6e63dc4bcd6ea16aae256ce4d32a7e2c\", \"session_name\": \"session_2026-11-05_00-13-55_844353_2\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.43.0"]
+      }
+    ]
+  },
+  {
+    name: "ray_ui_and_bundle_without_version_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./favicon.ico\"/><title>Ray Dashboard</title><script defer=\"defer\" src=\"./static/js/main.1fd87515.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.1fd87515.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "ray_headless_api_version_and_cluster_status"
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"4\", \"ray_version\": \"2.43.0\", \"ray_commit\": \"ecdcdc6a6e63dc4bcd6ea16aae256ce4d32a7e2c\"}"
+      },
+      {
+        uri: "/api/cluster_status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"result\": true, \"msg\": \"Got cluster status.\", \"data\": {\"autoscalingStatus\": \"Cluster status: 0 nodes\", \"autoscalingError\": null, \"clusterStatus\": {\"loadMetricsReport\": {\"usage\": {\"CPU\": [0.0, 48.0]}}}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.43.0"]
+      }
+    ]
+  },
+  {
+    name: "ray_subpath_js_bundle_and_version"
+    mock_responses: [
+      {
+        uri: "/ray/static/js/main.1fd87515.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      },
+      {
+        uri: "/ray/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"version\": \"4\", \"ray_version\": \"2.43.0\", \"ray_commit\": \"ecdcdc6a6e63dc4bcd6ea16aae256ce4d32a7e2c\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ray"
+        expected_versions: ["2.43.0"]
+      }
+    ]
+  },
+  {
+    name: "ray_subpath_js_bundle_only"
+    mock_responses: [
+      {
+        uri: "/ray-dashboard/static/js/main.96d021bc.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var title=\"Ray Dashboard\";var summaryUrl=\"nodes?view=summary\";var docs=\"https://docs.ray.io\";var app=\"ray-dashboard\";"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ray-dashboard"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_application"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html><head><title>Cluster Dashboard</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\": \"2.43.0\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/static/js/main.1fd87515.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Ray Dashboard nodes?view=summary docs.ray.io ray-dashboard</body></html>"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>\"ray_version\": \"2.43.0\", \"ray_commit\": \"deadbeef\"</body></html>"
+      }
+    ]
+  }
+]

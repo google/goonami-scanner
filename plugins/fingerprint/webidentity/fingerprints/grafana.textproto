@@ -1,0 +1,222 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Grafana"
+  author: "Goonami team"
+  software: "grafana"
+  description: "Detects Grafana monitoring dashboards and extracts version."
+}
+
+steps: [
+  # HTML login page check (Grafana v4+ AngularJS through v10-v13+ React)
+  {
+    name: "grafana_login_page"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.grafanaBootData"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "app-grafana"
+          },
+          {
+            body: {}
+            contains: "grafana-app"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"buildInfo\"\\s*:\\s*\\{[^}]*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        },
+        {
+          from_body: {}
+          regexp: "\"grafana_version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        },
+        {
+          from_body: {}
+          regexp: "Grafana v([0-9]+\\.[0-9]+\\.[0-9]+[^\"(\\s]*)"
+        }
+      ]
+    }
+  },
+  # Frontend settings API (accessible when anonymous access is enabled)
+  {
+    name: "grafana_frontend_settings"
+    path: "/api/frontend/settings"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"defaultDatasource\""
+          },
+          {
+            body: {}
+            contains: "\"buildInfo\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"-- Grafana --\""
+          },
+          {
+            body: {}
+            contains: "\"grafana\""
+          },
+          {
+            body: {}
+            contains: "grafana.com"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"buildInfo\"\\s*:\\s*\\{[^}]*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        },
+        {
+          from_body: {}
+          regexp: "\"grafana_version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        }
+      ]
+    }
+  },
+  # Static asset bundle check (passive subpath discovery and bundle verification)
+  {
+    name: "grafana_js_bundle"
+    path_regexp: "/public/build/(?:grafana\\.(?:app|dark|light)|app|runtime)\\.[a-f0-9]+\\.(?:js|css)$"
+    response: {
+      status_codes: [200]
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "webpackChunkgrafana"
+          },
+          {
+            body: {}
+            contains: "grafanaBootData"
+          },
+          {
+            body: {}
+            contains: ".grafana-tooltip"
+          },
+          {
+            body: {}
+            contains: "grafana-icons"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # API health check (extracts version or corroborates grafana_mask_icon when /login redirects to external OAuth)
+  {
+    name: "grafana_api_health"
+    path: "/api/health"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"database\"\\s*:\\s*\"ok\""
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[^\"]*)\""
+        }
+      ]
+    }
+  },
+  # Unauthenticated Grafana SVG mask icon (corroborates grafana_api_health when /login is disabled)
+  {
+    name: "grafana_mask_icon"
+    path_suffix: "/public/img/grafana_mask_icon.svg"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<svg"
+          },
+          {
+            body: {}
+            contains: "grafana_icon"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["grafana_login_page"]
+  },
+  {
+    steps: ["grafana_frontend_settings"]
+  },
+  {
+    steps: [
+      "grafana_js_bundle",
+      "grafana_api_health"
+    ]
+  },
+  {
+    steps: ["grafana_js_bundle"]
+  },
+  {
+    steps: [
+      "grafana_mask_icon",
+      "grafana_api_health"
+    ]
+  }
+]

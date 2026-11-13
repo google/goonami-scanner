@@ -1,0 +1,370 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "DataHub"
+  author: "Goonami team"
+  software: "datahub"
+  description: "Detects DataHub metadata platform frontend (datahub-frontend-react) and Metadata Service (datahub-gms) and extracts version."
+}
+
+steps: [
+  # Unauthenticated DataHub Play/Pekko frontend configuration endpoint (v0.7+ through v1.4+).
+  # Served across JAAS, Native, OIDC SSO, and No-Auth modes regardless of GMS connectivity.
+  # Ignores unconfigured placeholder defaults ("0.0.0", "1.0", and "v1.0.0" when "basePath" is present).
+  {
+    name: "datahub_frontend_config"
+    path_suffix: "/config"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"application\"\\s*:\\s*\"datahub-frontend\""
+          },
+          {
+            body: {}
+            contains: "\"appVersion\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"shouldShowDatasetLineage\""
+          },
+          {
+            body: {}
+            contains: "datahub-project/datahub"
+          },
+          {
+            body: {}
+            contains: "\"showLineageGraph\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"appVersion\"\\s*:\\s*\"v?((?:0\\.[1-9][0-9]*\\.[0-9]+|0\\.0\\.[1-9][0-9]*|1\\.0\\.[1-9][0-9]*|1\\.0\\.0\\.[0-9]+|1\\.0\\.0-[a-zA-Z0-9._+-]+|1\\.(?:[1-9][0-9]*|0[0-9]+)\\.[0-9]+|(?:[2-9]|[1-9][0-9]+)\\.[0-9]+\\.[0-9]+)(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "(?s)\"appVersion\"\\s*:\\s*\"v?(1\\.0\\.0)\".*\"userEntityProps\"\\s*:\\s*\\{[^}]*\\}\\s*\\}\\s*\\}\\s*$"
+        }
+      ]
+    }
+  },
+  # Unauthenticated DataHub GMS (Metadata Service) configuration endpoint on port 8080.
+  {
+    name: "datahub_gms_config"
+    path_suffix: "/config"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"versions\""
+          },
+          {
+            body: {}
+            regexp: "\"(?:acryldata|linkedin)/datahub\"\\s*:\\s*\\{"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"statefulIngestionCapable\""
+          },
+          {
+            body: {}
+            contains: "\"managedIngestion\""
+          },
+          {
+            body: {}
+            contains: "\"datasetUrnNameCasing\""
+          },
+          {
+            body: {}
+            contains: "\"patchCapable\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"(?:acryldata|linkedin)/datahub\"\\s*:\\s*\\{[^{}]*\"version\"\\s*:\\s*\"v?((?:[1-9][0-9]*\\.[0-9]+\\.[0-9]+|0\\.[1-9][0-9]*\\.[0-9]+|0\\.0\\.[1-9][0-9]*)(?:\\.[0-9]+)?(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # DataHub SPA root HTML shell (CRA/Webpack v0.7-v0.15, Vite v1.0+, and legacy Ember v0.4-v0.7).
+  # Always corroborated by datahub_ui_bundle.
+  {
+    name: "datahub_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>DataHub</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "A Metadata Platform for the Modern Data Stack"
+          },
+          {
+            body: {}
+            contains: "webpackJsonpdatahub-react-web"
+          },
+          {
+            body: {}
+            contains: "datahub-web/config/environment"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"'](?:[^\"']*?/)?((?:assets/static/js/main\\.[a-zA-Z0-9._-]+\\.chunk|assets/index-[a-zA-Z0-9._-]+|assets/(?:datahub|wherehows)-web-[a-zA-Z0-9._-]+)\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # DataHub SPA /login route (supports passive subpath discovery, e.g. /datahub/login).
+  # Always corroborated by datahub_ui_bundle.
+  {
+    name: "datahub_ui_login"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>DataHub</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "A Metadata Platform for the Modern Data Stack"
+          },
+          {
+            body: {}
+            contains: "webpackJsonpdatahub-react-web"
+          },
+          {
+            body: {}
+            contains: "datahub-web/config/environment"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"'](?:[^\"']*?/)?((?:assets/static/js/main\\.[a-zA-Z0-9._-]+\\.chunk|assets/index-[a-zA-Z0-9._-]+|assets/(?:datahub|wherehows)-web-[a-zA-Z0-9._-]+)\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # DataHub main JS bundle extracted from HTML shell.
+  {
+    name: "datahub_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "urn:li:(?:corpuser|dataPlatform|dataset|glossaryTerm)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/v2/graphql"
+          },
+          {
+            body: {}
+            contains: "datahubproject.io"
+          },
+          {
+            body: {}
+            contains: "webpackJsonpdatahub-react-web"
+          },
+          {
+            body: {}
+            contains: "datahub-project/datahub"
+          },
+          {
+            body: {}
+            contains: "datahub-web/config/environment"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery on crawled DataHub JS bundles (CRA, Vite, and legacy Ember).
+  {
+    name: "datahub_passive_js_bundle"
+    path_regexp: "/assets/(?:static/js/main\\.[a-zA-Z0-9._-]{6,32}\\.chunk|index-[a-zA-Z0-9._-]{6,32}|(?:datahub|wherehows)-web-[a-f0-9]{16,64})\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "urn:li:(?:corpuser|dataPlatform|dataset|glossaryTerm)"
+          },
+          {
+            body: {}
+            regexp: "datahubproject\\.io|datahub-project/datahub|webpackJsonpdatahub-react-web|datahub-web/config/environment"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/v2/graphql"
+          },
+          {
+            body: {}
+            contains: "resetNativeUserCredentials"
+          },
+          {
+            body: {}
+            contains: "/logIn"
+          },
+          {
+            body: {}
+            contains: "datahub-web"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Primary single-request DataHub frontend config check + version extraction.
+  {
+    steps: ["datahub_frontend_config"]
+  },
+  # Direct DataHub GMS (Metadata Service) config check + version extraction.
+  {
+    steps: ["datahub_gms_config"]
+  },
+  # Login/subpath HTML + JS bundle + frontend config version extraction.
+  {
+    steps: [
+      "datahub_ui_login",
+      "datahub_ui_bundle",
+      "datahub_frontend_config"
+    ]
+  },
+  # Passive JS bundle + frontend config version extraction.
+  {
+    steps: [
+      "datahub_passive_js_bundle",
+      "datahub_frontend_config"
+    ]
+  },
+  # Root UI + JS bundle (when /config is restricted at a reverse proxy).
+  {
+    steps: [
+      "datahub_ui_root",
+      "datahub_ui_bundle"
+    ]
+  },
+  # Login/subpath UI + JS bundle (passive subpath discovery and fallback identification).
+  {
+    steps: [
+      "datahub_ui_login",
+      "datahub_ui_bundle"
+    ]
+  },
+  # Passive JS bundle standalone match (OIDC SSO subpath discovery when HTML routes redirect).
+  {
+    steps: ["datahub_passive_js_bundle"]
+  }
+]

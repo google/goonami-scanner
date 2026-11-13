@@ -1,0 +1,175 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "mlflow"
+
+tests: [
+  {
+    name: "v2_22_4_live_full_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./static-files/favicon.ico\"/><title>MLflow</title><script defer=\"defer\" src=\"static-files/static/js/main.817b9685.js\"></script><link href=\"static-files/static/css/main.77d6e1cb.css\" rel=\"stylesheet\"></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static-files/static/js/main.817b9685.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript; charset=utf-8" }
+        ]
+        body: "var i={INTERNAL_ERROR:\"INTERNAL_ERROR\",PERMISSION_DENIED:\"PERMISSION_DENIED\",RESOURCE_CONFLICT:\"RESOURCE_CONFLICT\"},a=\"2.22.4\",s=\"https://www.mlflow.org/docs/latest\";const tag=\"mlflow.log-model.history\";"
+      },
+      {
+        uri: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"experiments\": [\n    {\n      \"experiment_id\": \"0\",\n      \"name\": \"Default\",\n      \"artifact_location\": \"mlflow-artifacts:/0\",\n      \"lifecycle_stage\": \"active\"\n    }\n  ]\n}"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "2.22.4"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.22.4"]
+      }
+    ]
+  },
+  {
+    name: "v1_30_0_live_bundle_and_experiments_api_without_version_endpoint"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><link rel=\"shortcut icon\" href=\"./static-files/favicon.ico\"/><title>MLflow</title><script defer=\"defer\" src=\"static-files/static/js/main.0de244d3.js\"></script><link href=\"static-files/static/css/main.ef33a5e7.css\" rel=\"stylesheet\"></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static-files/static/js/main.0de244d3.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var i={INTERNAL_ERROR:\"INTERNAL_ERROR\",PERMISSION_DENIED:\"PERMISSION_DENIED\"},a=\"1.30.0\",s=\"https://www.mlflow.org/docs/\".concat(\"latest\");var k=\"mlflow.log-model.history\",tpl=\"<html><body>pdf</body></html>\";"
+      },
+      {
+        uri: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"experiments\": [\n    {\n      \"experiment_id\": \"0\",\n      \"name\": \"Default\",\n      \"artifact_location\": \"./mlruns/0\",\n      \"lifecycle_stage\": \"active\"\n    }\n  ]\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.30.0"]
+      }
+    ]
+  },
+  {
+    name: "v2_8_1_api_experiments_and_version_identification"
+    mock_responses: [
+      {
+        uri: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"experiments\":[{\"experiment_id\":\"0\",\"name\":\"Default\"}]}"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "2.8.1"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.8.1"]
+      }
+    ]
+  },
+  {
+    name: "v2_16_2_root_and_experiments_api_workflow"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>MLflow</title><script defer=\"defer\" src=\"static-files/static/js/main.4147aad8.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static-files/static/js/main.4147aad8.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var a=\"2.16.2\",s=\"https://www.mlflow.org/docs/latest\";var t=\"mlflow.log-model.history\";"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.16.2"]
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_experiments_search_without_version_or_ui"
+    mock_responses: [
+      {
+        uri: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"experiments\":[{\"experiment_id\":\"0\",\"name\":\"Default\"}]}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spa_html_catchall_on_version"
+    mock_responses: [
+      {
+        uri: "/ajax-api/2.0/mlflow/experiments/search?max_results=1"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"experiments\":[{\"experiment_id\":\"0\",\"name\":\"Default\"}]}"
+      },
+      {
+        uri: "/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not Found</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

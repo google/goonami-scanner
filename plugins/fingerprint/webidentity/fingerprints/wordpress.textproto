@@ -1,0 +1,420 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "WordPress"
+  author: "Goonami team"
+  software: "wordpress"
+  description: "Detects WordPress content management system and extracts full version."
+}
+
+steps: [
+  # Core installer check (unconfigured, pending installation, and already installed).
+  # When unconfigured (no wp-config.php), redirects to /wp-admin/setup-config.php.
+  # When pending install (empty DB), renders language chooser or installation form.
+  # When installed, renders "Already Installed" page.
+  # All states return HTTP 200 with wp-core-ui and unaggregated core CSS with ?ver=X.Y.Z.
+  {
+    name: "wordpress_install_page"
+    path_suffix: "/wp-admin/install.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "wp-core-ui"
+          },
+          {
+            body: {}
+            regexp: "/wp-(?:admin|includes)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<p\\s+id=[\"']logo[\"']>(?:\\s*<a\\s+[^>]*>)?\\s*WordPress\\s*(?:</a>\\s*)?</p>"
+          },
+          {
+            body: {}
+            contains: "You appear to have already installed WordPress."
+          },
+          {
+            body: {}
+            contains: "Setup Configuration File"
+          },
+          {
+            body: {}
+            contains: "<title>WordPress &rsaquo;"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/wp-includes/css/(?:dashicons|buttons)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/css/(?:install|forms|l10n)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/js/language-chooser(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/load-(?:styles|scripts)\\.php\\?[^\"']*ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Front/root page check.
+  # Unconfigured/uninstalled sites 302-redirect to /wp-admin/setup-config.php or /wp-admin/install.php,
+  # which the crawler follows and caches under /.
+  # Installed sites return 200 with WordPress generator meta tag, REST API link, and core /wp-includes/ or /wp-content/ assets.
+  {
+    name: "wordpress_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "/wp-(?:content|includes|admin)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']WordPress(?:\\s+[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "<p\\s+id=[\"']logo[\"']>(?:\\s*<a\\s+[^>]*>)?\\s*WordPress\\s*(?:</a>\\s*)?</p>"
+          },
+          {
+            body: {}
+            regexp: "rel=[\"']https://api\\.w\\.org/[\"']"
+          },
+          {
+            body: {}
+            regexp: "/wp-includes/js/wp-emoji-release(?:\\.min)?\\.js"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?i)<meta\\s+name=[\"']generator[\"']\\s+content=[\"']WordPress\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)[\"']"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-includes/js/wp-emoji-release(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-includes/css/(?:dashicons|buttons|dist/block-library/style)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/css/(?:install|login|forms|l10n)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/js/language-chooser(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # User login page check (passive subpath discovery and active fallback).
+  {
+    name: "wordpress_login_page"
+    path_suffix: "/wp-login.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "wp-core-ui"
+          },
+          {
+            body: {}
+            regexp: "/wp-(?:admin|includes)/"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"loginform\""
+          },
+          {
+            body: {}
+            contains: "name=\"wp-submit\""
+          },
+          {
+            body: {}
+            regexp: "<p\\s+id=[\"']logo[\"']>(?:\\s*<a\\s+[^>]*>)?\\s*WordPress\\s*(?:</a>\\s*)?</p>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/wp-admin/load-(?:styles|scripts)\\.php\\?[^\"']*ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-includes/css/(?:dashicons|buttons)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/css/(?:login|install|forms|l10n)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-includes/js/(?:wp-util|zxcvbn-async)(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/js/(?:user-profile|password-strength-meter|language-chooser)(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Setup configuration endpoint (unconfigured setup wizard or 409 error when wp-config.php exists).
+  {
+    name: "wordpress_setup_config"
+    path_suffix: "/wp-admin/setup-config.php"
+    response: {
+      status_codes: [200, 409]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "wp-core-ui"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "The file <code>wp-config.php</code> already exists."
+          },
+          {
+            body: {}
+            regexp: "<p\\s+id=[\"']logo[\"']>(?:\\s*<a\\s+[^>]*>)?\\s*WordPress\\s*(?:</a>\\s*)?</p>"
+          },
+          {
+            body: {}
+            contains: "Setup Configuration File"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/wp-includes/css/(?:dashicons|buttons)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/css/(?:install|forms|l10n)(?:\\.min)?\\.css\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/wp-admin/js/language-chooser(?:\\.min)?\\.js\\?ver=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # WordPress OPML link export endpoint (outputs XML comment with exact WordPress/X.Y.Z version).
+  {
+    name: "wordpress_opml"
+    path_suffix: "/wp-links-opml.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<opml"
+          },
+          {
+            body: {}
+            regexp: "<!--\\s*generator=\"WordPress/[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?\"\\s*-->"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<!--\\s*generator=\"WordPress/([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\"\\s*-->"
+        }
+      ]
+    }
+  },
+  # WordPress RSS2 feed endpoint (outputs <generator>https://wordpress.org/?v=X.Y.Z</generator>).
+  {
+    name: "wordpress_rss_feed"
+    path: "/?feed=rss2"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<rss"
+          },
+          {
+            body: {}
+            regexp: "<generator>https?://(?:www\\.)?wordpress\\.org/\\?v=[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?</generator>"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<generator>https?://(?:www\\.)?wordpress\\.org/\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)</generator>"
+        }
+      ]
+    }
+  },
+  # Static WordPress ReadMe page (database-independent fallback).
+  {
+    name: "wordpress_readme"
+    path_suffix: "/readme.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Semantic Personal Publishing Platform"
+          },
+          {
+            body: {}
+            contains: "wp-admin/install.php"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>WordPress\\s*(?:&rsaquo;|&#8250;|›)\\s*ReadMe</title>"
+          },
+          {
+            body: {}
+            contains: "wp-admin/images/wordpress-logo.png"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?i)<br\\s*/?>\\s*Version\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # WordPress core JavaScript asset (passive subpath discovery and core JS verification).
+  {
+    name: "wordpress_core_asset"
+    path_regexp: "/wp-includes/js/(?:wp-embed|wp-emoji-release)(?:\\.min)?\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "wp-embedded-content|wp-smiley"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "wp.receiveEmbedMessage"
+          },
+          {
+            body: {}
+            contains: "_wpemojiSettings"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["wordpress_install_page"]
+  },
+  {
+    steps: ["wordpress_root_page"]
+  },
+  {
+    steps: ["wordpress_login_page"]
+  },
+  {
+    steps: ["wordpress_setup_config"]
+  },
+  {
+    steps: ["wordpress_opml"]
+  },
+  {
+    steps: ["wordpress_rss_feed"]
+  },
+  {
+    steps: ["wordpress_readme"]
+  },
+  {
+    steps: ["wordpress_core_asset"]
+  }
+]

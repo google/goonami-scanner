@@ -1,0 +1,300 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "polynote"
+
+tests: [
+  {
+    name: "polynote_v0_3_2_legacy_root_and_index_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <title>Polynote</title>\n    <meta charset=\"utf-8\" />\n    <base href=\"/\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"style/styles.css\" />\n    <link rel=\"stylesheet\" href=\"vendor/katex/katex.min.css\">\n    <script defer src=\"vendor/katex/katex.min.js\"></script>\n    <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n  </head>\n  <body>\n    <div id=\"Main\" data-ws-key=\"733ab277-ee15-4db5-aa77-f129e717c585\" />\n  <script type=\"text/javascript\" src=\"app.7b3fefbb5c1bd4a372e8.js\"></script></body>\n</html>\n"
+      },
+      {
+        uri: "/app.7b3fefbb5c1bd4a372e8.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var el=document.getElementById(\"Main\"),k=el.getAttribute(\"data-ws-key\"),logo=\"style/polynote.svg\";}([]);"
+      },
+      {
+        uri: "/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <title>Polynote</title>\n    <meta charset=\"utf-8\" />\n    <base href=\"$BASE_URI\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"style/styles.css\" />\n    <link rel=\"stylesheet\" href=\"vendor/katex/katex.min.css\">\n    <script defer src=\"vendor/katex/katex.min.js\"></script>\n    <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n  </head>\n  <body>\n    <div id=\"Main\" data-ws-key=\"$WS_KEY\" />\n  <script type=\"text/javascript\" src=\"app.7b3fefbb5c1bd4a372e8.js\"></script></body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.3.2"]
+      }
+    ]
+  },
+  {
+    name: "polynote_v0_3_12_static_root_and_index_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <title>Polynote</title>\n    <meta charset=\"utf-8\" />\n    <base href=\"/\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"static/style/styles.css\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"static/style/colors-light.css\" id=\"polynote-color-theme\" />\n    <link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css\">\n    <script defer src=\"static/vendor/katex/katex.min.js\"></script>\n    <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n  </head>\n  <body>\n    <div id=\"Main\" data-ws-key=\"ab8c8937-5334-42dd-a181-f0871fdbd994\" />\n  <script type=\"text/javascript\" src=\"static/app.83a47ce5b56c033b2df2.js\"></script></body>\n</html>\n"
+      },
+      {
+        uri: "/static/app.83a47ce5b56c033b2df2.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var theme=document.getElementById(\"polynote-color-theme\"),wsKey=document.getElementById(\"Main\").getAttribute(\"data-ws-key\");}([]);"
+      },
+      {
+        uri: "/static/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <title>Polynote</title>\n    <meta charset=\"utf-8\" />\n    <base href=\"$BASE_URI\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"static/style/styles.css\" />\n    <link rel=\"stylesheet\" type=\"text/css\" href=\"static/style/colors-light.css\" id=\"polynote-color-theme\" />\n    <link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css\">\n    <script defer src=\"static/vendor/katex/katex.min.js\"></script>\n    <meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" />\n  </head>\n  <body>\n    <div id=\"Main\" data-ws-key=\"$WS_KEY\" />\n  <script type=\"text/javascript\" src=\"static/app.83a47ce5b56c033b2df2.js\"></script></body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.3.12"]
+      }
+    ]
+  },
+  {
+    name: "polynote_v0_4_10_authenticated_ws_key_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"/\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"static/style/styles.css?v0.4.8\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css?v0.4.8\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css?v0.4.8\"><link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\"><link rel=\"alternate icon\" href=\"/favicon.ico\"><script defer=\"defer\" src=\"static/vendor/katex/katex.min.js\"></script><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/></head><body><div id=\"Main\" data-ws-key=\"secret_test_key\"/><script src=\"static/app.19d45e32e636a4c88322.js\"></script></body></html>"
+      },
+      {
+        uri: "/static/app.19d45e32e636a4c88322.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var theme=\"polynote-color-theme\",logo=\"polynote-logo\",wsKey=\"data-ws-key\";}([]);"
+      },
+      {
+        uri: "/static/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"$BASE_URI\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"static/style/styles.css?v0.4.8\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css?v0.4.8\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css?v0.4.8\"><link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\"><link rel=\"alternate icon\" href=\"/favicon.ico\"><script defer=\"defer\" src=\"static/vendor/katex/katex.min.js\"></script><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/></head><body><div id=\"Main\" data-ws-key=\"$WS_KEY\"/><script src=\"static/app.19d45e32e636a4c88322.js\"></script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.4.10"]
+      }
+    ]
+  },
+  {
+    name: "polynote_v0_5_2_latest_root_and_index_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"/\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"static/style/styles.css?v=0.5.1\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css?v=0.5.1\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css?v=0.5.1\"><link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\"><link rel=\"alternate icon\" href=\"/favicon.ico\"><script defer=\"defer\" src=\"static/vendor/katex/katex.min.js\"></script><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/><script defer=\"defer\" src=\"static/app.90d8e98af1b982f6.js\"></script></head><body><div id=\"Main\" data-ws-key=\"f0ec026e-0ef5-4e7b-a893-1dcf8327060d\"/></body></html>"
+      },
+      {
+        uri: "/static/app.90d8e98af1b982f6.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var theme=\"polynote-color-theme\",logo=\"polynote-logo\",wsKey=\"data-ws-key\";}([]);"
+      },
+      {
+        uri: "/static/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"$BASE_URI\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"static/style/styles.css?v=0.5.1\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css?v=0.5.1\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css?v=0.5.1\"><link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\"><link rel=\"alternate icon\" href=\"/favicon.ico\"><script defer=\"defer\" src=\"static/vendor/katex/katex.min.js\"></script><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/><script defer=\"defer\" src=\"static/app.90d8e98af1b982f6.js\"></script></head><body><div id=\"Main\" data-ws-key=\"$WS_KEY\"/></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.5.2"]
+      }
+    ]
+  },
+  {
+    name: "polynote_subpath_passive_bundle_and_index_identification"
+    mock_responses: [
+      {
+        uri: "/polynote/static/app.90d8e98af1b982f6.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var theme=\"polynote-color-theme\",logo=\"polynote-logo\",wsKey=\"data-ws-key\";}([]);"
+      },
+      {
+        uri: "/polynote/static/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"$BASE_URI\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><link rel=\"stylesheet\" href=\"static/style/styles.css?v=0.5.1\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css?v=0.5.1\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css?v=0.5.1\"><link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\"><link rel=\"alternate icon\" href=\"/favicon.ico\"><script defer=\"defer\" src=\"static/vendor/katex/katex.min.js\"></script><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/><script defer=\"defer\" src=\"static/app.90d8e98af1b982f6.js\"></script></head><body><div id=\"Main\" data-ws-key=\"$WS_KEY\"/></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/polynote"
+        expected_versions: ["0.5.2"]
+      }
+    ]
+  },
+  {
+    name: "polynote_subpath_styles_css_identification"
+    mock_responses: [
+      {
+        uri: "/notebooks/static/style/styles.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "@font-face {\n  font-family: Hasklig;\n  font-weight: 400;\n}\n/*\n  Presence colors (other people's cursors) – taken mostly from https://vega.github.io/vega/docs/schemes/\n */\n.toolbar-container {\n  height: 68px;\n}\n.new-cell-divider {\n  height: 10px;\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/notebooks"
+      }
+    ]
+  },
+  {
+    name: "polynote_future_version_bundle_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>Polynote</title><meta charset=\"utf-8\"/><base href=\"/\"/><link rel=\"stylesheet\" href=\"static/style/styles.css\"/><link rel=\"stylesheet\" href=\"static/style/colors-light.css\" id=\"polynote-color-theme\"/><link rel=\"stylesheet\" href=\"static/vendor/katex/katex.min.css\"><script defer=\"defer\" src=\"static/app.deadbeefcafebabe1234.js\"></script></head><body><div id=\"Main\" data-ws-key=\"11111111-2222-3333-4444-555555555555\"/></body></html>"
+      },
+      {
+        uri: "/static/app.deadbeefcafebabe1234.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){document.title=\"Polynote\";var theme=\"polynote-color-theme\",wsKey=\"data-ws-key\";}([]);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_application"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Dashboard</title></head><body><div id=\"Main\">Welcome</div></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spa_soft_200_html_fallback_on_assets"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>App</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/static/app.90d8e98af1b982f6.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Polynote data-ws-key polynote-color-theme</body></html>"
+      },
+      {
+        uri: "/static/style/styles.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>font-family: Hasklig .toolbar-container .new-cell-divider Presence colors (other people's cursors)</body></html>"
+      },
+      {
+        uri: "/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Not Found</body></html>"
+      },
+      {
+        uri: "/static/style/logo/polynote.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Not Found</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_katex_notebook_page_without_polynote_markers"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Math Notebook</title><base href=\"/\" /><link rel=\"stylesheet\" href=\"vendor/katex/katex.min.css\"><script defer src=\"vendor/katex/katex.min.js\"></script></head><body><div id=\"Main\"></div><script src=\"app.1234567890abcdef1234.js\"></script></body></html>"
+      },
+      {
+        uri: "/app.1234567890abcdef1234.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "console.log('Math Notebook App');"
+      }
+    ]
+    expected_matches: []
+  }
+]

@@ -1,0 +1,783 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Prometheus"
+  author: "Goonami team"
+  software: "prometheus"
+  description: "Detects Prometheus monitoring system and time series database and extracts version."
+}
+
+steps: [
+  {
+    # Prometheus 3.x Mantine/Vite UI shell at /query (default redirect target in 3.x Server mode).
+    name: "prometheus_spa_ui_query"
+    path_suffix: "/query"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Prometheus (?:Time Series Collection and Processing Server|Expression Browser)\\s*</title>|Placeholders replaced by Prometheus during serving:"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.x React (CRA) UI shell at /graph (default redirect target in 2.23–2.55 Server mode).
+    name: "prometheus_spa_ui_graph"
+    path_suffix: "/graph"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Prometheus (?:Time Series Collection and Processing Server|Expression Browser)\\s*</title>|Placeholders replaced by Prometheus during serving:"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.32+ React UI and 3.x Mantine UI shell at /agent (default redirect target in Agent mode).
+    name: "prometheus_spa_ui_agent"
+    path_suffix: "/agent"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Prometheus (?:Time Series Collection and Processing Server|Expression Browser)\\s*</title>|Placeholders replaced by Prometheus during serving:"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.14–2.22 experimental React UI shell at /new/graph.
+    name: "prometheus_spa_ui_new_graph"
+    path_suffix: "/new/graph"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Prometheus (?:Time Series Collection and Processing Server|Expression Browser)\\s*</title>|Placeholders replaced by Prometheus during serving:"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus SPA UI shell served directly at / when a reverse proxy follows redirects or rewrites root.
+    name: "prometheus_spa_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Prometheus (?:Time Series Collection and Processing Server|Expression Browser)\\s*</title>|Placeholders replaced by Prometheus during serving:"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 1.x and 2.0–2.22 Classic Bootstrap/jQuery/Rickshaw UI at /graph.
+    name: "prometheus_classic_ui_graph"
+    path_suffix: "/graph"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            contains: "<title>Prometheus Time Series Collection and Processing Server</title>"
+          },
+          {
+            body: {}
+            contains: "static/css/prometheus.css"
+          },
+          {
+            body: {}
+            regexp: "var\\s+(?:PATH_PREFIX|BUILD_VERSION)\\s*="
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.23–2.42 Classic Bootstrap/jQuery/Rickshaw UI at /classic/graph.
+    name: "prometheus_classic_ui_classic_graph"
+    path_suffix: "/classic/graph"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            contains: "<title>Prometheus Time Series Collection and Processing Server</title>"
+          },
+          {
+            body: {}
+            contains: "static/css/prometheus.css"
+          },
+          {
+            body: {}
+            regexp: "var\\s+(?:PATH_PREFIX|BUILD_VERSION)\\s*="
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus Classic UI served directly at / when a reverse proxy follows redirects or rewrites root.
+    name: "prometheus_classic_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            contains: "<title>Prometheus Time Series Collection and Processing Server</title>"
+          },
+          {
+            body: {}
+            contains: "static/css/prometheus.css"
+          },
+          {
+            body: {}
+            regexp: "var\\s+(?:PATH_PREFIX|BUILD_VERSION)\\s*="
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 1.x and 2.0–2.22 Classic UI /status page, which embeds the server version in the Build Information table.
+    name: "prometheus_classic_ui_status"
+    path_suffix: "/status"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            contains: "<title>Prometheus Time Series Collection and Processing Server</title>"
+          },
+          {
+            body: {}
+            contains: "static/css/prometheus.css"
+          },
+          {
+            body: {}
+            regexp: "(?s)<h2[^>]*>\\s*Build Information\\s*</h2>"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?s)<th[^>]*>\\s*Version\\s*</th>\\s*<td[^>]*>\\s*([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\\s*</td>"
+        }
+      ]
+    }
+  },
+  {
+    # Prometheus 3.x Mantine/Vite main JavaScript bundle (/assets/index-<hash>.js).
+    name: "prometheus_v3_js_bundle"
+    path_regexp: "^(?P<root>.*?)/assets/index-[a-zA-Z0-9_-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)(?:application|text)/(?:x-)?javascript"
+          },
+          {
+            body: {}
+            contains: "CONSOLES_LINK_PLACEHOLDER"
+          },
+          {
+            body: {}
+            contains: "LOOKBACKDELTA_PLACEHOLDER"
+          },
+          {
+            body: {}
+            contains: "getPrometheusClient"
+          },
+          {
+            body: {}
+            contains: "prometheus.io/docs/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.x React (Create React App) main JavaScript bundle (/static/js/main.<hash>.js or /new/static/js/main.<hash>.chunk.js).
+    name: "prometheus_v2_js_bundle"
+    path_regexp: "^(?P<root>.*?)(?:/new)?/static/js/main\\.[a-f0-9]{8}(?:\\.chunk)?\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)(?:application|text)/(?:x-)?javascript"
+          },
+          {
+            body: {}
+            contains: "GLOBAL_CONSOLES_LINK"
+          },
+          {
+            body: {}
+            contains: "CONSOLES_LINK_PLACEHOLDER"
+          },
+          {
+            body: {}
+            contains: "prometheus.io/docs/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 1.x/2.x Classic UI graph JavaScript (/static/js/graph/index.js or /static/js/graph.js or /classic/static/js/graph/index.js).
+    name: "prometheus_classic_graph_js"
+    path_regexp: "^(?P<root>.*?)(?:/classic)?/static/js/graph(?:/index)?\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)(?:application|text)/(?:x-)?javascript"
+          },
+          {
+            body: {}
+            contains: "var Prometheus = Prometheus || {};"
+          },
+          {
+            body: {}
+            contains: "Prometheus.Graph"
+          },
+          {
+            body: {}
+            contains: "PATH_PREFIX"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.x React UI web app manifest (/manifest.json).
+    name: "prometheus_manifest_json"
+    path_suffix: "/manifest.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"short_name\": \"Prometheus UI\""
+          },
+          {
+            body: {}
+            contains: "\"name\": \"Prometheus Server Web Interface\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 3.x SVG favicon (/favicon.svg).
+    name: "prometheus_favicon_svg"
+    path_suffix: "/favicon.svg"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)image/svg\\+xml"
+          },
+          {
+            body: {}
+            contains: "<svg"
+          },
+          {
+            body: {}
+            contains: "sodipodi:docname=\"prometheus_logo_orange.svg\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 2.x ICO favicon (/favicon.ico) — used only with corroborating steps.
+    name: "prometheus_favicon_ico"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "d72fc7b0bd1a4c1c4a016dfa4bfd594b2fb65a409575ec8f857864d4bdc658be"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus 1.x/2.x Classic UI ICO favicon (/static/img/favicon.ico) — used only with corroborating steps.
+    name: "prometheus_static_favicon_ico"
+    path_suffix: "/static/img/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "d72fc7b0bd1a4c1c4a016dfa4bfd594b2fb65a409575ec8f857864d4bdc658be"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus health check endpoint (/-/healthy).
+    # Returns "Prometheus is Healthy.\n" (<=2.26), "Prometheus Server is Healthy.\n" (2.27+ & 3.x),
+    # or "Prometheus Agent is Healthy.\n" (Agent mode).
+    name: "prometheus_healthy_check"
+    path_suffix: "/-/healthy"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/plain"
+          },
+          {
+            body: {}
+            regexp: "^Prometheus(?: (?:Server|Agent))? is Healthy\\."
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus readiness check endpoint (/-/ready).
+    name: "prometheus_ready_check"
+    path_suffix: "/-/ready"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/plain"
+          },
+          {
+            body: {}
+            regexp: "^Prometheus(?: (?:Server|Agent))? is Ready\\."
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    # Prometheus self-scraped /metrics endpoint exposing prometheus_build_info and core engine/TSDB/SD metrics.
+    name: "prometheus_metrics_endpoint"
+    path_suffix: "/metrics"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/plain|application/openmetrics-text"
+          },
+          {
+            body: {}
+            contains: "# HELP prometheus_build_info A metric with a constant '1' value labeled by version, revision, branch"
+          },
+          {
+            body: {}
+            contains: "# TYPE prometheus_build_info gauge"
+          },
+          {
+            body: {}
+            regexp: "(?m)^prometheus_build_info\\{[^}\\n]*version=\"[0-9]+\\.[0-9]+\\.[0-9]+[^\"]*\"[^}\\n]*\\}\\s+1(?:\\.0+)?\\s*$"
+          },
+          {
+            body: {}
+            regexp: "(?m)^# HELP prometheus_(?:tsdb_|sd_|http_request|engine_queries|remote_storage_)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?m)^prometheus_build_info\\{[^}\\n]*version=\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  {
+    # Prometheus buildinfo REST API (/api/v1/status/buildinfo).
+    # Must always be paired after a Prometheus-specific UI, asset, icon, or health step because
+    # Prometheus-compatible systems (Thanos, VictoriaMetrics, Mimir, Cortex) also serve this schema.
+    name: "prometheus_buildinfo_api"
+    path: "/api/v1/status/buildinfo"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)application/json"
+          },
+          {
+            body: {}
+            contains: "\"status\":\"success\""
+          },
+          {
+            body: {}
+            contains: "\"goVersion\":"
+          },
+          {
+            body: {}
+            regexp: "\"data\"\\s*:\\s*\\{[^}]*\"version\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  {
+    # Legacy Prometheus /version endpoint (Prometheus 1.x and 2.x).
+    # Paired after a Prometheus-specific UI, asset, icon, or health step to extract version.
+    name: "prometheus_version_endpoint"
+    path: "/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"revision\":"
+          },
+          {
+            body: {}
+            contains: "\"goVersion\":"
+          },
+          {
+            body: {}
+            regexp: "^\\s*\\{[^}]*\"version\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            regexp: "(?i)text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  }
+]
+
+workflows: [
+  # 1. Multi-step workflows that both uniquely identify Prometheus and extract its version.
+  { steps: ["prometheus_spa_ui_query", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_spa_ui_graph", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_spa_ui_graph", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_spa_ui_agent", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_spa_ui_new_graph", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_spa_ui_new_graph", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_spa_ui_root", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_spa_ui_root", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_classic_ui_graph", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_classic_ui_graph", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_classic_ui_classic_graph", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_classic_ui_classic_graph", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_classic_ui_root", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_classic_ui_root", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_classic_ui_status"] },
+  { steps: ["prometheus_v3_js_bundle", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_v2_js_bundle", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_v2_js_bundle", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_classic_graph_js", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_classic_graph_js", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_favicon_svg", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_manifest_json", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_manifest_json", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_favicon_ico", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_favicon_ico", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_static_favicon_ico", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_static_favicon_ico", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_healthy_check", "prometheus_buildinfo_api"] },
+  { steps: ["prometheus_healthy_check", "prometheus_version_endpoint"] },
+  { steps: ["prometheus_metrics_endpoint"] },
+
+  # 2. Identification-only fallback workflows (also enable Pass 1 subpath root discovery).
+  { steps: ["prometheus_spa_ui_query", "prometheus_healthy_check"] },
+  { steps: ["prometheus_spa_ui_graph", "prometheus_healthy_check"] },
+  { steps: ["prometheus_spa_ui_agent", "prometheus_healthy_check"] },
+  { steps: ["prometheus_spa_ui_new_graph", "prometheus_healthy_check"] },
+  { steps: ["prometheus_spa_ui_root", "prometheus_healthy_check"] },
+  { steps: ["prometheus_classic_ui_graph", "prometheus_healthy_check"] },
+  { steps: ["prometheus_classic_ui_classic_graph", "prometheus_healthy_check"] },
+  { steps: ["prometheus_classic_ui_root", "prometheus_healthy_check"] },
+  { steps: ["prometheus_v3_js_bundle", "prometheus_healthy_check"] },
+  { steps: ["prometheus_v2_js_bundle", "prometheus_healthy_check"] },
+  { steps: ["prometheus_classic_graph_js", "prometheus_healthy_check"] },
+  { steps: ["prometheus_favicon_svg", "prometheus_healthy_check"] },
+  { steps: ["prometheus_manifest_json", "prometheus_healthy_check"] },
+  { steps: ["prometheus_favicon_ico", "prometheus_healthy_check"] },
+  { steps: ["prometheus_static_favicon_ico", "prometheus_healthy_check"] },
+  { steps: ["prometheus_healthy_check", "prometheus_ready_check"] }
+]

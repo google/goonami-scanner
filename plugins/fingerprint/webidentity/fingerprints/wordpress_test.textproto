@@ -1,0 +1,253 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "wordpress"
+
+tests: [
+  {
+    name: "wordpress_7_unconfigured_setup_config_at_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>WordPress &rsaquo; Setup Configuration File</title><link rel='stylesheet' id='dashicons-css' href='http://target.test:8080/wp-includes/css/dashicons.min.css?ver=7.1.3' media='all' /><link rel='stylesheet' id='buttons-css' href='http://target.test:8080/wp-includes/css/buttons.min.css?ver=7.1.3' media='all' /><link rel='stylesheet' id='install-css' href='http://target.test:8080/wp-admin/css/install.min.css?ver=7.1.3' media='all' /></head><body class=\"wp-core-ui\"><p id=\"logo\"><a href=\"https://wordpress.org/\">WordPress</a></p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.1.3"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_5_8_unconfigured_language_chooser"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>WordPress &rsaquo; Setup Configuration File</title><link rel='stylesheet' id='dashicons-css' href='http://target.test:8080/wp-includes/css/dashicons.min.css?ver=5.8.3' type='text/css' media='all' /><link rel='stylesheet' id='install-css' href='http://target.test:8080/wp-admin/css/install.min.css?ver=5.8.3' type='text/css' media='all' /></head><body class=\"language-chooser wp-core-ui\"><p id=\"logo\">WordPress</p><script type='text/javascript' src='http://target.test:8080/wp-admin/js/language-chooser.min.js?ver=5.8.3' id='language-chooser-js'></script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.8.3"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_6_pending_install_page"
+    mock_responses: [
+      {
+        uri: "/wp-admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>WordPress &rsaquo; Installation</title><link rel='stylesheet' id='dashicons-css' href='/wp-includes/css/dashicons.min.css?ver=6.4.3' media='all' /><link rel='stylesheet' id='install-css' href='/wp-admin/css/install.min.css?ver=6.4.3' media='all' /></head><body class=\"wp-core-ui\"><p id=\"logo\"><a href=\"https://wordpress.org/\">WordPress</a></p><h1>Welcome</h1><p>Welcome to the famous five-minute WordPress installation process!</p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.4.3"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_7_installed_root_and_install_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><meta name=\"generator\" content=\"WordPress 7.1.3\" /><link rel=\"https://api.w.org/\" href=\"http://target.test:8080/index.php?rest_route=/\" /><script src=\"http://target.test:8080/wp-includes/js/wp-emoji-release.min.js?ver=7.1.3\"></script></head><body><h1>Test Site</h1></body></html>"
+      },
+      {
+        uri: "/wp-admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>WordPress &rsaquo; Already Installed</title><link rel='stylesheet' id='dashicons-css' href='http://target.test:8080/wp-includes/css/dashicons.min.css?ver=7.1.3' media='all' /><link rel='stylesheet' id='install-css' href='http://target.test:8080/wp-admin/css/install.min.css?ver=7.1.3' media='all' /></head><body class=\"wp-core-ui\"><p id=\"logo\"><a href=\"https://wordpress.org/\">WordPress</a></p><h1>Already Installed</h1><p>You appear to have already installed WordPress. To reinstall please clear your old database tables first.</p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.1.3"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_subpath_via_login_page"
+    mock_responses: [
+      {
+        uri: "/blog/wp-login.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>Log In &lsaquo; My Blog &#8212; WordPress</title><link rel='stylesheet' id='dashicons-css' href='http://target.test:8080/blog/wp-includes/css/dashicons.min.css?ver=6.6.2' media='all' /><link rel='stylesheet' id='login-css' href='http://target.test:8080/blog/wp-admin/css/login.min.css?ver=6.6.2' media='all' /></head><body class=\"login no-js login-action-login wp-core-ui\"><div id=\"login\"><h1><a href=\"https://wordpress.org/\">Powered by WordPress</a></h1><form name=\"loginform\" id=\"loginform\" action=\"http://target.test:8080/blog/wp-login.php\" method=\"post\"><input type=\"submit\" name=\"wp-submit\" id=\"wp-submit\" value=\"Log In\" /></form></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/blog"
+        expected_versions: ["6.6.2"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_subpath_via_core_js_and_install_page"
+    mock_responses: [
+      {
+        uri: "/cms/wp-includes/js/wp-embed.min.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "/*! This file is auto-generated */\n!function(d,l){\"use strict\";l.wp=l.wp||{},l.wp.receiveEmbedMessage||(l.wp.receiveEmbedMessage=function(e){var t=d.querySelectorAll(\"iframe.wp-embedded-content\");});}(document,window);"
+      },
+      {
+        uri: "/cms/wp-admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>WordPress &rsaquo; Already Installed</title><link rel='stylesheet' id='install-css' href='/cms/wp-admin/css/install.min.css?ver=5.9.10' media='all' /></head><body class=\"wp-core-ui\"><p id=\"logo\"><a href=\"https://wordpress.org/\">WordPress</a></p><p>You appear to have already installed WordPress.</p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cms"
+        expected_versions: ["5.9.10"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_opml_version_fallback"
+    mock_responses: [
+      {
+        uri: "/wp-links-opml.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/xml; charset=UTF-8" }
+        ]
+        body: "<?xml version=\"1.0\"?>\n<opml version=\"1.0\">\n\t<head>\n\t\t<title>Links for Test Site</title>\n\t\t<dateCreated>Tue, 21 Oct 2026 18:30:00 GMT</dateCreated>\n\t\t<!-- generator=\"WordPress/4.9.26\" -->\n\t</head>\n\t<body>\n</body>\n</opml>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.9.26"]
+      }
+    ]
+  },
+  {
+    name: "wordpress_readme_and_setup_config_when_db_down"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 500
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body id=\"error-page\"><div class=\"wp-die-message\"><h1>Error establishing a database connection</h1></div></body></html>"
+      },
+      {
+        uri: "/readme.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width\" /><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>WordPress &#8250; ReadMe</title><link rel=\"stylesheet\" href=\"wp-admin/css/install.css?ver=20100228\" type=\"text/css\" /></head><body><h1 id=\"logo\"><a href=\"https://wordpress.org/\"><img alt=\"WordPress\" src=\"wp-admin/images/wordpress-logo.png\" /></a></h1><p style=\"text-align: center\">Semantic Personal Publishing Platform</p><h2>Famous 5-Minute Install</h2><ol><li>Open <span class=\"file\"><a href=\"wp-admin/install.php\">wp-admin/install.php</a></span> in your browser.</li></ol></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_generic_html_spa_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Welcome to My SPA App</body></html>"
+      },
+      {
+        uri: "/wp-admin/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/wp-login.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/wp-links-opml.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/readme.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Project ReadMe</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_drupal_cms"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Generator\" content=\"Drupal 11 (https://www.drupal.org)\" /></head><body><script src=\"/core/misc/drupal.js?v=11.4.10\"></script></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_page_mentioning_wordpress"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>CMS Comparison</title></head><body><h1>Why we migrated from WordPress 6.6.2 (https://wordpress.org)</h1><p>WordPress is a Semantic Personal Publishing Platform, but this site is static HTML.</p></body></html>"
+      }
+    ]
+  }
+]

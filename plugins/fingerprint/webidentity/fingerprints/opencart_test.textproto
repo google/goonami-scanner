@@ -1,0 +1,418 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "opencart"
+
+tests: [
+  {
+    name: "opencart_2_3_0_2_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>License agreement</title>\n<base href=\"http://target.test:8080/install/\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"view/stylesheet/stylesheet.css\" />\n</head>\n<body><div class=\"container\">\n<header><div id=\"logo\" class=\"pull-right hidden-xs\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\" /></div></header>\n<h3>License agreement<br><small>Please read the OpenCart licence agreement</small></h3>\n<form action=\"http://target.test:8080/install/index.php?route=install/step_1\" method=\"post\" enctype=\"multipart/form-data\"></form>\n<footer><div class=\"container\"><a href=\"http://www.opencart.com\" target=\"_blank\">Project Homepage</a>|<a href=\"http://forum.opencart.com\" target=\"_blank\">Support Forums</a></div></footer>\n</div></body></html>"
+      },
+      {
+        uri: "/install/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>License agreement</title>\n<base href=\"http://target.test:8080/install/\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"view/stylesheet/stylesheet.css\" />\n</head>\n<body><div class=\"container\">\n<header><div id=\"logo\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\" /></div></header>\n<small>Please read the OpenCart licence agreement</small>\n</div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_2_3_0_2_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=83f1c2e7a90b1d2e3f4a5b6c7d; path=/" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>Your Store</title>\n<base href=\"http://target.test:8080/\" />\n<link href=\"catalog/view/theme/default/stylesheet/stylesheet.css\" rel=\"stylesheet\">\n<script src=\"catalog/view/javascript/common.js\" type=\"text/javascript\"></script>\n<link href=\"http://target.test:8080/image/catalog/cart.png\" rel=\"icon\" />\n</head>\n<body class=\"common-home\">\n<ul class=\"list-unstyled\">\n<li><a href=\"http://target.test:8080/index.php?route=account/account\">My Account</a></li>\n</ul>\n<footer><p>Powered By <a href=\"http://www.opencart.com\">OpenCart</a><br /> Your Store &copy; 2026</p></footer>\n<!--\nOpenCart is open source software and you are free to remove the powered by OpenCart if you want, but its generally accepted practise to make a small donation.\nPlease donate via PayPal to donate@opencart.com\n//-->\n</body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>Administration</title>\n<base href=\"http://target.test:8080/admin/\" />\n<link type=\"text/css\" href=\"view/stylesheet/stylesheet.css\" rel=\"stylesheet\" media=\"screen\" />\n<script src=\"view/javascript/common.js\" type=\"text/javascript\"></script>\n</head>\n<body>\n<a href=\"http://target.test:8080/admin/index.php?route=common/dashboard\" class=\"navbar-brand\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\" /></a>\n<form action=\"http://target.test:8080/admin/index.php?route=common/login\" method=\"post\" enctype=\"multipart/form-data\"></form>\n<footer id=\"footer\"><a href=\"http://www.opencart.com\">OpenCart</a> &copy; 2009-2026 All Rights Reserved.</footer>\n</body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_3_0_3_8_pending_install_direct_wizard"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "install/index.php" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/install/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>License agreement</title>\n<base href=\"http://target.test:8080/install/\" />\n<link rel=\"stylesheet\" type=\"text/css\" href=\"view/stylesheet/stylesheet.css\" />\n</head>\n<body>\n<div class=\"container\">\n<header><div id=\"logo\" class=\"pull-right hidden-xs\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\" /></div></header>\n<h3>License agreement<br/><small>Please read the OpenCart licence agreement</small></h3>\n<form action=\"index.php?route=install/step_1\" method=\"post\" enctype=\"multipart/form-data\"></form>\n<footer><div class=\"container\"><a href=\"https://www.opencart.com\" target=\"_blank\">Project Homepage</a>|<a href=\"http://docs.opencart.com/en-gb/introduction/\" target=\"_blank\">Documentation</a></div></footer>\n</div>\n</body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_3_0_3_8_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=f3cc422e9840bb907715374ddc; path=/" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>Your Store</title>\n<base href=\"http://target.test:8080/\" />\n<link href=\"catalog/view/theme/default/stylesheet/stylesheet.css\" rel=\"stylesheet\">\n<link href=\"catalog/view/javascript/jquery/swiper/css/opencart.css\" type=\"text/css\" rel=\"stylesheet\" media=\"screen\" />\n<script src=\"catalog/view/javascript/common.js\" type=\"text/javascript\"></script>\n<link href=\"http://target.test:8080/image/catalog/cart.png\" rel=\"icon\" />\n</head>\n<body class=\"common-home\">\n<li><a href=\"http://target.test:8080/index.php?route=account/login\">Login</a></li>\n<p>Powered By <a href=\"http://www.opencart.com\">OpenCart</a><br /> Your Store &copy; 2026</p>\n</body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=f3cc422e9840bb907715374ddc; path=/" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n<meta charset=\"UTF-8\" />\n<title>Administration</title>\n<base href=\"http://target.test:8080/admin/\" />\n<link type=\"text/css\" href=\"view/stylesheet/stylesheet.css\" rel=\"stylesheet\" media=\"screen\" />\n<script src=\"view/javascript/common.js\" type=\"text/javascript\"></script>\n</head>\n<body>\n<div id=\"header-logo\"><a href=\"http://target.test:8080/admin/index.php?route=common/login\" class=\"navbar-brand\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\" /></a></div>\n<form action=\"http://target.test:8080/admin/index.php?route=common/login\" method=\"post\" enctype=\"multipart/form-data\"></form>\n</body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_4_0_2_3_pending_install"
+    mock_responses: [
+      {
+        uri: "/install/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"UTF-8\"/>\n\t<title>License agreement</title>\n\t<base href=\"http://target.test:8080/install/\"/>\n\t<link href=\"view/stylesheet/stylesheet.css\" type=\"text/css\" rel=\"stylesheet\"/>\n\t<script src=\"view/javascript/common.js\" type=\"text/javascript\"></script>\n</head>\n<body>\n<div id=\"container\">\n\t<header id=\"header\" class=\"navbar navbar-expand navbar-light bg-light\">\n\t\t<div class=\"container\"><a href=\"\" class=\"navbar-brand d-block\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\"/></a></div>\n\t</header>\n\t<div class=\"card-header\"><i class=\"fab fa-opencart\"></i>&nbsp;&nbsp;&nbsp;Please read the OpenCart licence agreement</div>\n</div>\n</body>\n</html>"
+      },
+      {
+        uri: "/extension/opencart/install.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"OpenCart Default Extensions\",\n  \"description\": \"This extension contains all the default extensions for modules, currencies, payment methods, shipping methods, anti-fraud, themes, order totals and reports.\",\n  \"version\": \"1.0\",\n  \"author\": \"OpenCart Ltd\",\n  \"link\": \"https://www.opencart.com\"\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_4_0_2_3_installed_custom_splash_account_login"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Welcome</title></head><body><a href=\"/index.php?route=account/login\">Enter Shop</a></body></html>"
+      },
+      {
+        uri: "/index.php?route=account/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=1d2255fa5b0a8e8474ecbb71b9; path=/" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\"/>\n  <title>Account Login</title>\n  <base href=\"http://target.test:8080/\"/>\n  <link href=\"catalog/view/stylesheet/stylesheet.css\" type=\"text/css\" rel=\"stylesheet\"/>\n  <script src=\"catalog/view/javascript/common.js\" type=\"text/javascript\"></script>\n</head>\n<body>\n  <form id=\"form-login\" action=\"http://target.test:8080/index.php?route=account/login.login&amp;language=en-gb&amp;login_token=1d2255fa5b0a8e8474ecbb71b9\" method=\"post\" data-oc-toggle=\"ajax\">\n    <a href=\"http://target.test:8080/index.php?route=account/forgotten&amp;language=en-gb\">Forgotten Password</a>\n  </form>\n  <p>Powered By <a href=\"https://www.opencart.com\">OpenCart</a><br/> Your Store &copy; 2026</p>\n</body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_4_1_0_4_pending_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"UTF-8\"/>\n\t<title>License agreement</title>\n\t<base href=\"http://target.test:8080/install/\"/>\n\t<link href=\"view/stylesheet/stylesheet.css\" type=\"text/css\" rel=\"stylesheet\"/>\n\t<script src=\"view/javascript/common.js\" type=\"text/javascript\"></script>\n</head>\n<body>\n<div id=\"container\">\n\t<header id=\"header\" class=\"navbar navbar-expand-lg navbar-light bg-light\">\n\t\t<div class=\"container\"><a href=\"\" class=\"navbar-brand\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\"/></a></div>\n\t</header>\n\t<div class=\"card-header\"><i class=\"fab fa-opencart\"></i>&nbsp;&nbsp;&nbsp;Please read the OpenCart licence agreement</div>\n\t<footer class=\"pb-4\"><a href=\"https://www.opencart.com\">OpenCart</a> &copy; 2009-2026 All Rights Reserved.</footer>\n</div>\n</body>\n</html>"
+      },
+      {
+        uri: "/extension/opencart/install.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"OpenCart Default Extensions\",\n  \"description\": \"This extension contains all the default extensions for modules, currencies, payment methods, shipping methods, anti-fraud, themes, order totals and reports.\",\n  \"version\": \"1.0\",\n  \"author\": \"OpenCart Ltd\",\n  \"link\": \"https://www.opencart.com\"\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_4_1_0_4_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=6f4878d71979d3cca34989b345; path=/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\"/>\n  <title>Your Store</title>\n  <base href=\"http://target.test:8080/\"/>\n  <link href=\"catalog/view/stylesheet/stylesheet.css\" type=\"text/css\" rel=\"stylesheet\"/>\n  <script src=\"catalog/view/javascript/common.js\" type=\"text/javascript\"></script>\n  <link rel=\"icon\" href=\"http://target.test:8080/image/catalog/opencart.ico\" type=\"image/png\">\n</head>\n<body>\n  <form id=\"form-currency\" action=\"http://target.test:8080/index.php?route=common/currency.save&amp;language=en-gb\" method=\"post\" data-oc-toggle=\"ajax\"></form>\n  <p>Powered By <a href=\"https://www.opencart.com\">OpenCart</a><br/> Your Store &copy; 2026</p>\n</body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "OCSESSID=6f4878d71979d3cca34989b345; path=/; HttpOnly; SameSite=Strict" }
+        ]
+        body: "<!DOCTYPE html>\n<html dir=\"ltr\" lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\"/>\n  <title>Administration</title>\n  <base href=\"http://target.test:8080/admin/\"/>\n  <link href=\"view/stylesheet/stylesheet.css\" rel=\"stylesheet\" type=\"text/css\"/>\n  <script type=\"text/javascript\" src=\"view/javascript/common.js\"></script>\n  <link rel=\"icon\" href=\"http://target.test:8080/image/catalog/opencart.ico\" type=\"image/png\">\n</head>\n<body>\n  <a href=\"http://target.test:8080/admin/index.php?route=common/login\" class=\"navbar-brand\"><img src=\"view/image/logo.png\" alt=\"OpenCart\" title=\"OpenCart\"/></a>\n  <form id=\"form-login\" action=\"http://target.test:8080/admin/index.php?route=common/login.login&login_token=8fe93404ac4612165a38551ad2c40081\" method=\"post\" data-oc-toggle=\"ajax\"></form>\n  <footer id=\"footer\"><a href=\"https://www.opencart.com\">OpenCart</a> &copy; 2009-2026 All Rights Reserved.</footer>\n</body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_4_1_0_4_admin_renamed_extension_manifest_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Headless Store</title></head><body><div id=\"app\"></div></body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "404 Not Found"
+      },
+      {
+        uri: "/extension/opencart/install.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"OpenCart Default Extensions\",\n  \"description\": \"This extension contains all the default extensions for modules, currencies, payment methods, shipping methods, anti-fraud, themes, order totals and reports.\",\n  \"version\": \"1.0\",\n  \"author\": \"OpenCart Ltd\",\n  \"link\": \"https://www.opencart.com\"\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "opencart_subpath_shop_via_catalog_common_js"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Acme Corp</title></head><body><h1>Welcome to Acme Corp</h1></body></html>"
+      },
+      {
+        uri: "/shop/catalog/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "function getURLVar(key) {\n\tvar value = [];\n\tvar query = String(document.location).split('?');\n\treturn value[key] ? value[key] : '';\n}\n$(document).ready(function() {\n\t$('#form-currency .currency-select').on('click', function(e) {\n\t\te.preventDefault();\n\t\t$('#form-currency input[name=\\'code\\']').val($(this).attr('name'));\n\t\t$('#form-currency').submit();\n\t});\n});\nvar cart = {\n\t'add': function(product_id, quantity) {\n\t\t$.ajax({\n\t\t\turl: 'index.php?route=checkout/cart/add',\n\t\t\ttype: 'post'\n\t\t});\n\t}\n};\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/shop"
+      }
+    ]
+  },
+  {
+    name: "opencart_4_1_subpath_store_via_admin_common_js"
+    mock_responses: [
+      {
+        uri: "/store/admin/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "function getURLVar(key) {\n    var value = [];\n    return value[key] ? value[key] : '';\n}\n$(document).ready(function() {\n    $('#button-menu').on('click', function(e) {\n        $('#column-left').toggleClass('active');\n    });\n    if (!sessionStorage.getItem('menu')) {\n        $('#menu #menu-dashboard').addClass('active');\n    }\n    $.ajax({\n        url: 'index.php?route=common/language.save&user_token=' + getURLVar('user_token'),\n        type: 'post'\n    });\n});\n$(document).on('submit', 'form[data-oc-toggle=\\'ajax\\']', function(e) {});\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/store"
+      }
+    ]
+  },
+  {
+    name: "negative_spa_html_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React SPA</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/install/index.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React SPA</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React SPA</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/extension/opencart/install.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>{\"name\": \"OpenCart Default Extensions\", \"author\": \"OpenCart Ltd\", \"link\": \"https://www.opencart.com\"}</body></html>"
+      },
+      {
+        uri: "/catalog/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>function getURLVar(key) {} #form-currency data-oc-toggle var cart = {}</body></html>"
+      },
+      {
+        uri: "/admin/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>function getURLVar(key) {} sessionStorage.getItem('menu') #column-left data-oc-toggle</body></html>"
+      },
+      {
+        uri: "/image/catalog/opencart.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>404 Not Found</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_ecommerce_and_unrelated_common_js"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Online Shop</title><script src=\"/assets/common.js\"></script></head><body><form action=\"/login\">Login</form></body></html>"
+      },
+      {
+        uri: "/index.php?route=account/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Login</title></head><body><form action=\"/login\" method=\"post\"><input name=\"email\"></form></body></html>"
+      },
+      {
+        uri: "/admin/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Administration</title><base href=\"http://target.test:8080/admin/\" /></head><body><form action=\"/admin/login\" method=\"post\"></form></body></html>"
+      },
+      {
+        uri: "/catalog/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "function getURLVar(key) { return new URLSearchParams(window.location.search).get(key); }\nconsole.log('generic storefront helpers');\n"
+      },
+      {
+        uri: "/admin/view/javascript/common.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "function initSidebar() { document.querySelector('#column-left').classList.toggle('open'); }\n"
+      }
+    ]
+  },
+  {
+    name: "negative_blog_article_mentioning_opencart"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>OpenCart Security Guide</title><link href=\"/static/blog.css\" rel=\"stylesheet\"></head><body><h1>Hardening OpenCart Stores</h1><p>OpenCart loads catalog/view/javascript/common.js and routes requests via index.php?route=common/home with footer Powered By OpenCart (https://www.opencart.com).</p></body></html>"
+      }
+    ]
+  }
+]

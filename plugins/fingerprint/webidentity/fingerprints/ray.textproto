@@ -1,0 +1,339 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Ray"
+  author: "Goonami team"
+  software: "ray"
+  description: "Detects Ray Dashboard web UI and REST APIs and extracts version."
+}
+
+steps: [
+  # Ray Dashboard root HTML page (Ray 1.x and 2.x) referencing the main JS bundle.
+  {
+    name: "ray_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Ray Dashboard</title>"
+          },
+          {
+            body: {}
+            contains: "favicon.ico"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "src=\"\\.?/(static/js/main\\.[a-f0-9]+(?:\\.chunk)?\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Ray Dashboard main JS bundle extracted from the root HTML page.
+  {
+    name: "ray_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Ray Dashboard"
+          },
+          {
+            body: {}
+            contains: "nodes?view=summary"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "docs.ray.io"
+          },
+          {
+            body: {}
+            contains: "ray-dashboard"
+          },
+          {
+            body: {}
+            contains: "api/cluster_status"
+          },
+          {
+            body: {}
+            contains: "api/ray_config"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Ray Dashboard main JS bundle (passive subpath discovery and standalone bundle verification).
+  {
+    name: "ray_js_bundle"
+    path_regexp: "/static/js/main\\.[a-f0-9]+(?:\\.chunk)?\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Ray Dashboard"
+          },
+          {
+            body: {}
+            contains: "nodes?view=summary"
+          },
+          {
+            body: {}
+            contains: "docs.ray.io"
+          },
+          {
+            body: {}
+            contains: "ray-dashboard"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Ray Dashboard REST API version endpoint (/api/version).
+  {
+    name: "ray_version_api"
+    path: "/api/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"ray_version\""
+          },
+          {
+            body: {}
+            contains: "\"ray_commit\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"ray_version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Ray Dashboard REST API cluster status endpoint (/api/cluster_status).
+  {
+    name: "ray_cluster_status_api"
+    path: "/api/cluster_status"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"autoscalingStatus\""
+          },
+          {
+            body: {}
+            contains: "\"clusterStatus\""
+          },
+          {
+            body: {}
+            contains: "\"loadMetricsReport\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Ray Dashboard logical actors API endpoint (/logical/actors).
+  {
+    name: "ray_logical_actors_api"
+    path: "/logical/actors"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"All actors fetched.\""
+          },
+          {
+            body: {}
+            contains: "\"actors\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Ray Dashboard static favicon (identical SHA-256 across Ray 0.8.x, 1.x, and 2.x).
+  {
+    name: "ray_favicon"
+    path_suffix: "/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "ad0c7b8500aca049576db05e5e1874311ce2f7306838404551648e1a1c947651"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Ray Dashboard UI root + main JS bundle + /api/version extraction.
+  {
+    steps: [
+      "ray_ui_root",
+      "ray_ui_bundle",
+      "ray_version_api"
+    ]
+  },
+  # Ray Dashboard passive JS bundle + /api/version extraction (supports subpath deployments).
+  {
+    steps: [
+      "ray_js_bundle",
+      "ray_version_api"
+    ]
+  },
+  # Ray Dashboard static favicon SHA-256 + /api/version extraction.
+  {
+    steps: [
+      "ray_favicon",
+      "ray_version_api"
+    ]
+  },
+  # Ray Dashboard REST API version + cluster status verification (when static UI is not served).
+  {
+    steps: [
+      "ray_version_api",
+      "ray_cluster_status_api"
+    ]
+  },
+  # Ray Dashboard UI root + main JS bundle (when /api/version is restricted).
+  {
+    steps: [
+      "ray_ui_root",
+      "ray_ui_bundle"
+    ]
+  },
+  # Ray Dashboard passive JS bundle standalone identification (subpath discovery and fallback).
+  {
+    steps: ["ray_js_bundle"]
+  },
+  # Ray Dashboard static favicon SHA-256 + /api/cluster_status verification.
+  {
+    steps: [
+      "ray_favicon",
+      "ray_cluster_status_api"
+    ]
+  },
+  # Ray Dashboard static favicon SHA-256 + /logical/actors verification.
+  {
+    steps: [
+      "ray_favicon",
+      "ray_logical_actors_api"
+    ]
+  }
+]

@@ -1,0 +1,349 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Drupal"
+  author: "Goonami team"
+  software: "drupal"
+  description: "Detects Drupal content management system and extracts full version."
+}
+
+steps: [
+  # Core installer check (Drupal 8, 9, 10, 11, 12+ uninstalled and installed)
+  # When uninstalled, shows "Choose language | Drupal" with <span class="site-version">X.Y.Z</span>.
+  # When installed, shows "Drupal already installed | Drupal".
+  # Both render unaggregated /core/misc/drupal.js?v=X.Y.Z because InstallerKernel runs in install maintenance mode.
+  {
+    name: "drupal_core_install"
+    path_suffix: "/core/install.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<meta\\s+name=\"Generator\"\\s+content=\"Drupal\\s+[0-9]+\\s+\\(https?://(?:www\\.)?drupal\\.org\\)\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "/core/misc/drupal.js"
+          },
+          {
+            body: {}
+            contains: "data-drupal-selector=\"drupal-settings-json\""
+          },
+          {
+            body: {}
+            contains: "install-page"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/core/misc/drupal(?:SettingsLoader|\\.init)?\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/misc/(?:form-single-submit|form|states|collapse|textarea|ajax|tabledrag|tableheader|tableselect|vertical-tabs|machine-name|progress|timezone|autocomplete)\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "<span\\s+class=\"site-version\">([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)</span>"
+        }
+      ]
+    }
+  },
+  # Front/root page check (Drupal 7 through 11+)
+  # Uninstalled sites 302-redirect to /core/install.php (or /install.php) which crawler follows and caches under /
+  # Installed sites return 200 with Generator meta tag and Drupal DOM/JS indicators
+  {
+    name: "drupal_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<meta\\s+name=\"Generator\"\\s+content=\"Drupal\\s+[0-9]+\\s+\\(https?://(?:www\\.)?drupal\\.org\\)\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-drupal-selector=\"drupal-settings-json\""
+          },
+          {
+            body: {}
+            contains: "Drupal.settings"
+          },
+          {
+            body: {}
+            contains: "/core/misc/drupal.js"
+          },
+          {
+            body: {}
+            contains: "misc/drupal.js"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/core/misc/drupal(?:SettingsLoader|\\.init)?\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/misc/(?:form-single-submit|form|states|collapse|textarea|ajax|tabledrag|tableheader|tableselect|vertical-tabs|machine-name|progress|timezone|autocomplete)\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "<span\\s+class=\"site-version\">([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)</span>"
+        }
+      ]
+    }
+  },
+  # User login page check (passive crawl / active fallback)
+  {
+    name: "drupal_user_login"
+    path_suffix: "/user/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<meta\\s+name=\"Generator\"\\s+content=\"Drupal\\s+[0-9]+\\s+\\(https?://(?:www\\.)?drupal\\.org\\)\""
+          },
+          {
+            body: {}
+            contains: "name=\"form_id\" value=\"user_login"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-drupal-selector=\"drupal-settings-json\""
+          },
+          {
+            body: {}
+            contains: "Drupal.settings"
+          },
+          {
+            body: {}
+            contains: "/core/misc/drupal.js"
+          },
+          {
+            body: {}
+            contains: "misc/drupal.js"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/core/misc/drupal(?:SettingsLoader|\\.init)?\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "/misc/(?:form-single-submit|form|states|collapse|textarea|ajax|tabledrag|tableheader|tableselect|vertical-tabs|machine-name|progress|timezone|autocomplete)\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Drupal 7 changelog (accessible on Drupal 7 instances, extracts exact version)
+  {
+    name: "drupal_changelog"
+    path_suffix: "/CHANGELOG.txt"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/plain"
+          },
+          {
+            body: {}
+            regexp: "(?m)^Drupal\\s+[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?,\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\\r?$"
+          },
+          {
+            body: {}
+            contains: "Drupal 1.0.0, 2001-01-15"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?m)^Drupal\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?),\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        }
+      ]
+    }
+  },
+  # Drupal 8+ core changelog
+  {
+    name: "drupal_core_changelog"
+    path_suffix: "/core/CHANGELOG.txt"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/plain"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Drupal 8.0.0, 2015-11-19"
+          },
+          {
+            body: {}
+            contains: "https://www.drupal.org/core/release-cycle-overview"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "(?m)^Drupal\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?),\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        }
+      ]
+    }
+  },
+  # Drupal 7 installer check (uninstalled or already installed)
+  {
+    name: "drupal_7_install"
+    path_suffix: "/install.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<meta\\s+name=\"Generator\"\\s+content=\"Drupal\\s+7\\s+\\(https?://(?:www\\.)?drupal\\.org\\)\""
+          },
+          {
+            body: {}
+            contains: "misc/drupal.js"
+          },
+          {
+            body: {}
+            contains: "Drupal.settings"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "/misc/(?:form-single-submit|form|states|collapse|textarea|ajax|tabledrag|tableheader|tableselect|vertical-tabs|machine-name|progress|timezone|autocomplete)\\.js\\?v=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Drupal core JavaScript asset (passive subpath discovery and core JS verification)
+  {
+    name: "drupal_js_asset"
+    path_regexp: "(?:^|/)(?:core/)?misc/drupal\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "Drupal.attachBehaviors"
+          },
+          {
+            body: {}
+            contains: "Drupal.checkPlain"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.Drupal = { behaviors: {}, locale: {} };"
+          },
+          {
+            body: {}
+            contains: "var Drupal = Drupal || { 'settings': {}, 'behaviors': {}, 'locale': {} };"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["drupal_core_install"]
+  },
+  {
+    steps: ["drupal_root_page"]
+  },
+  {
+    steps: ["drupal_user_login"]
+  },
+  {
+    steps: ["drupal_changelog"]
+  },
+  {
+    steps: ["drupal_core_changelog"]
+  },
+  {
+    steps: ["drupal_7_install"]
+  },
+  {
+    steps: ["drupal_js_asset"]
+  }
+]

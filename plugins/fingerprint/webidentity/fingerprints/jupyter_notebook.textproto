@@ -1,0 +1,639 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Jupyter Notebook"
+  author: "Goonami team"
+  software: "jupyter_notebook"
+  description: "Detects Jupyter Notebook web applications across classic Tornado/nbclassic (4.x-6.x) and modern Jupyter Server (7.x+) architectures."
+}
+
+steps: [
+  # Jupyter Notebook 7.x+ HTML page served directly at / (e.g. behind reverse proxy or custom default_url)
+  {
+    name: "notebook7_root_html"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            regexp: "<script[^>]+id=[\"']jupyter-config-data[\"'][^>]*>"
+          },
+          {
+            body: {}
+            regexp: "\"appName\"\\s*:\\s*\"Jupyter Notebook\""
+          },
+          {
+            body: {}
+            regexp: "\"appNamespace\"\\s*:\\s*\"notebook\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "/static/notebook/"
+          },
+          {
+            body: {}
+            contains: "@jupyter-notebook/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"appName\"\\s*:\\s*\"JupyterLab\""
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<script[^>]+id=[\"']jupyter-config-data[\"'][^>]*>[\\s\\S]*?\"appVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Jupyter Notebook 7.x+ open/unauthenticated dashboard HTML at /tree (extracts appVersion, never jupyter_server notebookVersion)
+  {
+    name: "notebook7_tree_html"
+    path_suffix: "/tree"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            regexp: "<script[^>]+id=[\"']jupyter-config-data[\"'][^>]*>"
+          },
+          {
+            body: {}
+            regexp: "\"appName\"\\s*:\\s*\"Jupyter Notebook\""
+          },
+          {
+            body: {}
+            regexp: "\"appNamespace\"\\s*:\\s*\"notebook\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "/static/notebook/"
+          },
+          {
+            body: {}
+            contains: "@jupyter-notebook/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "\"appName\"\\s*:\\s*\"JupyterLab\""
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<script[^>]+id=[\"']jupyter-config-data[\"'][^>]*>[\\s\\S]*?\"appVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Jupyter Notebook 7.x+ frontend entry JS bundle (webpack bundle.js in 7.0-7.3 and rspack main.<hash>.js in 7.4+)
+  {
+    name: "notebook7_js_bundle"
+    path_regexp: "^(?P<root>.*?)/static/notebook/(?:bundle|main\\.[a-zA-Z0-9_-]+)\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "_JUPYTERLAB"
+          },
+          {
+            body: {}
+            contains: "jupyter-config-data"
+          },
+          {
+            body: {}
+            contains: "@jupyter-notebook/application"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"@jupyter-notebook/application\"\\s*,\\s*(?:version\\s*:\\s*)?\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Jupyter Notebook 7.x+ token/password login page (Jupyter Server template with /tree dashboard link, excluding JupyterLab /lab)
+  {
+    name: "notebook7_server_login_html"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Jupyter Server\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "id=\"jupyter_server\""
+          },
+          {
+            body: {}
+            contains: "id=\"jupyter-main-app\""
+          },
+          {
+            body: {}
+            contains: "/static/logo/logo.png"
+          },
+          {
+            body: {}
+            regexp: "<a\\s+href=[\"'][^\"']*/(?:tree|notebooks/[^\"']+)/?[\"']\\s+title=[\"']dashboard[\"']>"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<a\\s+href=[\"'][^\"']*/(?:lab|nbclassic/tree)/?[\"']\\s+title=[\"']dashboard[\"']>"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated Jupyter Notebook 7.x+ lab-extension metadata exposing exact Notebook 7 version
+  {
+    name: "notebook7_labextension_package_json"
+    path_suffix: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"@jupyter-notebook/lab-extension\""
+          },
+          {
+            body: {}
+            contains: "\"Jupyter Notebook - Lab Extension\""
+          },
+          {
+            body: {}
+            contains: "https://github.com/jupyter/notebook"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"name\"\\s*:\\s*\"@jupyter-notebook/lab-extension\"[\\s\\S]{0,200}?\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Unauthenticated Jupyter Notebook 7.x+ static third-party licenses manifest exposing @jupyter-notebook/application version
+  {
+    name: "notebook7_static_licenses_json"
+    path_suffix: "/static/notebook/third-party-licenses.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"packages\""
+          },
+          {
+            body: {}
+            contains: "\"@jupyter-notebook/application\""
+          },
+          {
+            body: {}
+            contains: "\"@jupyter-notebook/tree-extension\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"name\"\\s*:\\s*\"@jupyter-notebook/application\"[\\s\\S]{0,160}?\"versionInfo\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Classic Jupyter Notebook / nbclassic (4.x-6.5.x) dashboard HTML served directly at /
+  {
+    name: "classic_root_html"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            contains: "data-notebook-path="
+          },
+          {
+            body: {}
+            contains: "data-base-url="
+          },
+          {
+            body: {}
+            contains: "/static/base/images/logo.png"
+          },
+          {
+            body: {}
+            contains: "/static/tree/js/main.min.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"ipython_notebook\""
+          },
+          {
+            body: {}
+            contains: "id=\"ipython-main-app\""
+          }
+        ]
+      }
+    }
+  },
+  # Classic Jupyter Notebook / nbclassic (4.x-6.5.x) open/unauthenticated dashboard HTML at /tree
+  {
+    name: "classic_tree_html"
+    path_suffix: "/tree"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            contains: "data-notebook-path="
+          },
+          {
+            body: {}
+            contains: "data-base-url="
+          },
+          {
+            body: {}
+            contains: "/static/base/images/logo.png"
+          },
+          {
+            body: {}
+            contains: "/static/tree/js/main.min.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"ipython_notebook\""
+          },
+          {
+            body: {}
+            contains: "id=\"ipython-main-app\""
+          }
+        ]
+      }
+    }
+  },
+  # Classic Jupyter Notebook / nbclassic (4.x-6.5.x) token/password login HTML at /login
+  {
+    name: "classic_login_html"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            body: {}
+            regexp: "(?i)<title>\\s*Jupyter Notebook\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "id=\"ipython-main-app\""
+          },
+          {
+            body: {}
+            contains: "/static/base/images/logo.png"
+          },
+          {
+            body: {}
+            contains: "/static/auth/css/override.css"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "id=\"ipython_notebook\""
+          },
+          {
+            body: {}
+            contains: "auth/js/main"
+          },
+          {
+            body: {}
+            contains: "id=\"login_submit\""
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated classic Jupyter Notebook static login module (present across 4.x-6.5.x)
+  {
+    name: "classic_loginmain_js"
+    path_suffix: "/static/auth/js/loginmain.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "base/js/namespace"
+          },
+          {
+            body: {}
+            contains: "function login_main()"
+          },
+          {
+            body: {}
+            contains: "IPython.page"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated classic Jupyter Notebook static notebook icon SHA-256 (present across 5.x-6.5.x)
+  {
+    name: "classic_favicon_notebook_ico"
+    path_suffix: "/static/base/images/favicon-notebook.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "e3d7b23e611172246668523675a107764d13fe65d0110de3d399de851515fe1c"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Classic Jupyter Notebook /api JSON version endpoint (restricted to 4.x-6.x so jupyter_server 1.x/2.x is never reported)
+  {
+    name: "classic_api_version"
+    path_suffix: "/api"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "^\\s*\\{\\s*\"version\"\\s*:\\s*\"[456]\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?\"\\s*\\}\\s*$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "^\\s*\\{\\s*\"version\"\\s*:\\s*\"([456]\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\"\\s*\\}\\s*$"
+        }
+      ]
+    }
+  }
+]
+
+workflows: [
+  # Notebook 7.x+ HTML served directly at / (extracts appVersion)
+  {
+    steps: ["notebook7_root_html"]
+  },
+  # Notebook 7.x+ open/unauthenticated /tree HTML (extracts appVersion)
+  {
+    steps: ["notebook7_tree_html"]
+  },
+  # Notebook 7.x+ passive JS bundle + lab-extension package.json version extraction
+  {
+    steps: [
+      "notebook7_js_bundle",
+      "notebook7_labextension_package_json"
+    ]
+  },
+  # Notebook 7.x+ passive JS bundle + static third-party licenses version extraction
+  {
+    steps: [
+      "notebook7_js_bundle",
+      "notebook7_static_licenses_json"
+    ]
+  },
+  # Notebook 7.x+ authenticated /login + lab-extension package.json version extraction
+  {
+    steps: [
+      "notebook7_server_login_html",
+      "notebook7_labextension_package_json"
+    ]
+  },
+  # Notebook 7.x+ authenticated /login + static third-party-licenses.json backup version extraction
+  {
+    steps: [
+      "notebook7_server_login_html",
+      "notebook7_static_licenses_json"
+    ]
+  },
+  # Classic 4.x-6.5.x HTML at / + /api version extraction
+  {
+    steps: [
+      "classic_root_html",
+      "classic_api_version"
+    ]
+  },
+  # Classic 4.x-6.5.x open /tree HTML + /api version extraction
+  {
+    steps: [
+      "classic_tree_html",
+      "classic_api_version"
+    ]
+  },
+  # Classic 4.x-6.5.x authenticated /login HTML + /api version extraction
+  {
+    steps: [
+      "classic_login_html",
+      "classic_api_version"
+    ]
+  },
+  # Classic 4.x-6.5.x static loginmain.js + /api version extraction
+  {
+    steps: [
+      "classic_loginmain_js",
+      "classic_api_version"
+    ]
+  },
+  # Classic 5.x-6.5.x static notebook favicon SHA-256 + loginmain.js + /api version extraction
+  {
+    steps: [
+      "classic_favicon_notebook_ico",
+      "classic_loginmain_js",
+      "classic_api_version"
+    ]
+  },
+  # Versionless fallbacks for Classic 4.x-6.5.x when /api is restricted
+  {
+    steps: [
+      "classic_root_html",
+      "classic_loginmain_js"
+    ]
+  },
+  {
+    steps: [
+      "classic_tree_html",
+      "classic_loginmain_js"
+    ]
+  },
+  {
+    steps: [
+      "classic_login_html",
+      "classic_loginmain_js"
+    ]
+  },
+  {
+    steps: [
+      "classic_favicon_notebook_ico",
+      "classic_loginmain_js"
+    ]
+  }
+]

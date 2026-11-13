@@ -1,0 +1,775 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "GitLab"
+  author: "Goonami team"
+  software: "gitlab"
+  description: "Detects GitLab DevOps platform (Community and Enterprise Editions) across configured, unconfigured, and booting states."
+}
+
+steps: [
+  # GitLab sign-in page (/users/sign_in).
+  # - Configured instances (GitLab 8.x through 19.x+) render the Devise sign-in page (data-page="sessions:new").
+  # - Unconfigured instances in GitLab <= 13.x 302-redirect to /users/password/edit?reset_password_token=...
+  #   (data-page="passwords:edit", name="user[reset_password_token]").
+  # - Unconfigured instances in GitLab 18.x+ 302-redirect to /admin/initial_setup/new
+  #   (data-page="initial_setup:new").
+  {
+    name: "gitlab_sign_in_page"
+    path_suffix: "/users/sign_in"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            regexp: "/assets/(?:webpack/|application-)[a-zA-Z0-9._-]+\\.(?:js|css)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-page=\"sessions:new\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"passwords:edit\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"initial_setup:new\""
+          },
+          {
+            body: {}
+            contains: "id=\"js-sign-in-form\""
+          },
+          {
+            body: {}
+            contains: "id=\"new_user\""
+          },
+          {
+            body: {}
+            contains: "name=\"user[reset_password_token]\""
+          },
+          {
+            body: {}
+            contains: "gl.snowplowStandardContext"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "gon\\.version\\s*=\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "GitLab\\s+(?:Community|Enterprise)\\s+Edition\\s+([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # GitLab root page (/).
+  # Follows 302 redirects to /users/sign_in (configured), /users/password/edit (unconfigured <= 13.x),
+  # /admin/initial_setup/new (unconfigured 18.x+), or renders public /explore/projects.
+  {
+    name: "gitlab_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            regexp: "/assets/(?:webpack/|application-)[a-zA-Z0-9._-]+\\.(?:js|css)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-page=\"sessions:new\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"passwords:edit\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"initial_setup:new\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"explore:"
+          },
+          {
+            body: {}
+            contains: "data-page=\"root:index\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"projects:"
+          },
+          {
+            body: {}
+            contains: "gl.snowplowStandardContext"
+          },
+          {
+            body: {}
+            contains: "gon.gitlab_url"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "gon\\.version\\s*=\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "GitLab\\s+(?:Community|Enterprise)\\s+Edition\\s+([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Public explore page (/explore).
+  # Accessible without authentication on default GitLab installations across 9.x through 19.x+.
+  {
+    name: "gitlab_explore_page"
+    path_suffix: "/explore"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            regexp: "/assets/(?:webpack/|application-)[a-zA-Z0-9._-]+\\.(?:js|css)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-page=\"explore:"
+          },
+          {
+            body: {}
+            contains: "data-page=\"sessions:new\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"passwords:edit\""
+          },
+          {
+            body: {}
+            contains: "href=\"/explore/projects\""
+          },
+          {
+            body: {}
+            contains: "gl.snowplowStandardContext"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "gon\\.version\\s*=\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "GitLab\\s+(?:Community|Enterprise)\\s+Edition\\s+([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Help page (/help).
+  # Exposes exact version when public help is enabled, or redirects to sign-in when restricted.
+  {
+    name: "gitlab_help_page"
+    path_suffix: "/help"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            regexp: "/assets/(?:webpack/|application-)[a-zA-Z0-9._-]+\\.(?:js|css)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "data-page=\"help:index\""
+          },
+          {
+            body: {}
+            contains: "data-page=\"sessions:new\""
+          },
+          {
+            body: {}
+            contains: "GitLab Community Edition"
+          },
+          {
+            body: {}
+            contains: "GitLab Enterprise Edition"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "gon\\.version\\s*=\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "GitLab\\s+(?:Community|Enterprise)\\s+Edition\\s*(?:<[^>]+>\\s*)*v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)"
+        }
+      ]
+    }
+  },
+  # Unconfigured initial root password setup page (/users/password/edit) in GitLab <= 13.x.
+  {
+    name: "gitlab_initial_password_page"
+    path_suffix: "/users/password/edit"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            contains: "data-page=\"passwords:edit\""
+          },
+          {
+            body: {}
+            contains: "name=\"user[reset_password_token]\""
+          }
+        ]
+      }
+    }
+  },
+  # Unconfigured initial admin setup page (/admin/initial_setup/new) in GitLab 18.x+.
+  {
+    name: "gitlab_initial_setup_page"
+    path_suffix: "/admin/initial_setup/new"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "window.gon={}"
+          },
+          {
+            body: {}
+            regexp: "<meta\\s+(?:content=\"GitLab\"\\s+property=\"og:site_name\"|property=\"og:site_name\"\\s+content=\"GitLab\")"
+          },
+          {
+            body: {}
+            contains: "data-page=\"initial_setup:new\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Administrator Account Setup"
+          },
+          {
+            body: {}
+            contains: "/admin/initial_setup"
+          }
+        ]
+      }
+    }
+  },
+  # Omnibus / Workhorse 502 page served while GitLab is booting, starting up, or reconfiguring.
+  # Covers both modern GitLab 17.x-19.x+ ("Waiting for GitLab to boot") and GitLab 8.x-16.x ("GitLab is not responding (502)").
+  {
+    name: "gitlab_booting_502_page"
+    path_suffix: "/users/sign_in"
+    response: {
+      status_codes: [502]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:HTTP 502: Waiting for GitLab to boot|GitLab is taking too much time to respond)"
+          },
+          {
+            body: {}
+            regexp: "(?:/-/error-illustrations/error-502-lg\\.svg|Please contact your GitLab administrator if this problem persists)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Waiting for GitLab to boot</title>"
+          },
+          {
+            body: {}
+            contains: "<title>GitLab is not responding (502)</title>"
+          }
+        ]
+      }
+    }
+  },
+  # Omnibus / Workhorse 502 page at root (/).
+  {
+    name: "gitlab_root_502_page"
+    path: "/"
+    response: {
+      status_codes: [502]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:HTTP 502: Waiting for GitLab to boot|GitLab is taking too much time to respond)"
+          },
+          {
+            body: {}
+            regexp: "(?:/-/error-illustrations/error-502-lg\\.svg|Please contact your GitLab administrator if this problem persists)"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Waiting for GitLab to boot</title>"
+          },
+          {
+            body: {}
+            contains: "<title>GitLab is not responding (502)</title>"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated What's New endpoint (/-/whats_new.js) in GitLab 13.x through 19.x+.
+  # Requires X-Requested-With: XMLHttpRequest to pass Rails cross-origin JS protection.
+  # Returns release highlights JSON containing the minor release version (e.g. "release":"19.5").
+  {
+    name: "gitlab_whats_new_js"
+    path_suffix: "/-/whats_new.js"
+    headers: [
+      {
+        name: "X-Requested-With"
+        value: "XMLHttpRequest"
+      }
+    ]
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"documentation_link\":\"https://docs.gitlab.com/"
+          },
+          {
+            body: {}
+            contains: "\"self-managed\":"
+          },
+          {
+            body: {}
+            contains: "\"gitlab-com\":"
+          },
+          {
+            body: {}
+            contains: "\"release\":"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"release\"\\s*:\\s*\"?([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)\"?"
+        }
+      ]
+    }
+  },
+  # GitLab REST API v4 version endpoint (/api/v4/version).
+  # Paired with a primary GitLab step to extract full version when accessible.
+  {
+    name: "gitlab_api_version"
+    path_suffix: "/api/v4/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"version\""
+          },
+          {
+            body: {}
+            contains: "\"revision\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Unauthenticated PWA Web App Manifest (/-/manifest.json) in GitLab 15.x+.
+  {
+    name: "gitlab_manifest_json"
+    path_suffix: "/-/manifest.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"name\": \"GitLab\""
+          },
+          {
+            body: {}
+            contains: "\"/-/pwa-icons/logo-192.png\""
+          },
+          {
+            body: {}
+            contains: "\"/-/pwa-icons/maskable-logo.png\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Unauthenticated OpenSearch descriptor (/search/opensearch.xml).
+  {
+    name: "gitlab_opensearch_xml"
+    path_suffix: "/search/opensearch.xml"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "xml"
+          },
+          {
+            body: {}
+            contains: "<ShortName>GitLab</ShortName>"
+          },
+          {
+            body: {}
+            contains: "<Description>Search GitLab</Description>"
+          },
+          {
+            body: {}
+            contains: "/search?search={searchTerms}"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  },
+  # Static deploy page (/deploy.html) present in public/ across GitLab 8.x through 19.x+.
+  {
+    name: "gitlab_deploy_page"
+    path_suffix: "/deploy.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>\\s*(?:Deploy in progress|GitLab is currently being deployed)\\s*</title>"
+          },
+          {
+            body: {}
+            contains: "GitLab is currently being deployed"
+          }
+        ]
+      }
+    }
+  },
+  # Static robots.txt (/robots.txt) with GitLab-specific route disallow rules across GitLab 8.x through 19.x+.
+  {
+    name: "gitlab_robots_txt"
+    path_suffix: "/robots.txt"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/plain"
+          },
+          {
+            body: {}
+            contains: "Disallow: /autocomplete/users"
+          },
+          {
+            body: {}
+            contains: "Disallow: /*/*/merge_requests"
+          },
+          {
+            body: {}
+            contains: "Disallow: /*/*/project_members/import"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Compiled GitLab application CSS asset bundle (/assets/application-<hash>.css) for passive subpath discovery.
+  {
+    name: "gitlab_application_css"
+    path_regexp: "^(?P<root>.*?)/assets/application-[a-f0-9]{32,64}\\.css$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: ".tanuki-logo"
+          },
+          {
+            body: {}
+            contains: ".navbar-gitlab"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: ".gl-button"
+          },
+          {
+            body: {}
+            contains: "--gl-theme-accent"
+          },
+          {
+            body: {}
+            contains: ".navless-container"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Sign-in page + What's New release version extraction (GitLab 13.x-19.x+).
+  {
+    steps: [
+      "gitlab_sign_in_page",
+      "gitlab_whats_new_js"
+    ]
+  },
+  # Root page + What's New release version extraction.
+  {
+    steps: [
+      "gitlab_root_page",
+      "gitlab_whats_new_js"
+    ]
+  },
+  # Explore page + What's New release version extraction.
+  {
+    steps: [
+      "gitlab_explore_page",
+      "gitlab_whats_new_js"
+    ]
+  },
+  # Sign-in page + REST API v4 version extraction.
+  {
+    steps: [
+      "gitlab_sign_in_page",
+      "gitlab_api_version"
+    ]
+  },
+  # Root page + REST API v4 version extraction.
+  {
+    steps: [
+      "gitlab_root_page",
+      "gitlab_api_version"
+    ]
+  },
+  # Passive subpath discovery via application CSS bundle corroborated by What's New or sign-in page.
+  {
+    steps: [
+      "gitlab_application_css",
+      "gitlab_whats_new_js"
+    ]
+  },
+  {
+    steps: [
+      "gitlab_application_css",
+      "gitlab_sign_in_page"
+    ]
+  },
+  # Help page (extracts version when public help is accessible).
+  {
+    steps: ["gitlab_help_page"]
+  },
+  # Sign-in page (covers configured and unconfigured redirected states across all versions).
+  {
+    steps: ["gitlab_sign_in_page"]
+  },
+  # Root page (covers configured and unconfigured redirected states across all versions).
+  {
+    steps: ["gitlab_root_page"]
+  },
+  # Public explore page.
+  {
+    steps: ["gitlab_explore_page"]
+  },
+  # Unconfigured initial password reset page (GitLab <= 13.x).
+  {
+    steps: ["gitlab_initial_password_page"]
+  },
+  # Unconfigured initial admin setup page (GitLab 18.x+).
+  {
+    steps: ["gitlab_initial_setup_page"]
+  },
+  # Omnibus / Workhorse 502 booting state on /users/sign_in and /.
+  {
+    steps: ["gitlab_booting_502_page"]
+  },
+  {
+    steps: ["gitlab_root_502_page"]
+  },
+  # Unauthenticated PWA manifest + OpenSearch XML (when HTML routes auto-redirect to external OAuth).
+  {
+    steps: [
+      "gitlab_manifest_json",
+      "gitlab_opensearch_xml"
+    ]
+  },
+  # Static deploy.html + robots.txt fallback.
+  {
+    steps: [
+      "gitlab_deploy_page",
+      "gitlab_robots_txt"
+    ]
+  }
+]

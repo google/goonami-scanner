@@ -1,0 +1,491 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "MantisBT"
+  author: "Goonami team"
+  software: "mantisbt"
+  description: "Detects Mantis Bug Tracker (MantisBT) web application and extracts full version."
+}
+
+steps: [
+  # MantisBT 2.x REST API version header check (PATH_INFO route, works with or without mod_rewrite).
+  # VersionMiddleware wraps AuthMiddleware and ApiEnabledMiddleware in api/rest/index.php,
+  # returning X-Mantis-Version on 200 (anonymous), 401 (token required), 403, and 503 responses.
+  # Note: PHP sets default Content-Type: text/html on empty-body 401 responses, so guard body against HTML tags.
+  {
+    name: "mantisbt_rest_version"
+    path_suffix: "/api/rest/index.php/issues"
+    response: {
+      status_codes: [200, 401, 403, 503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "X-Mantis-Version" }
+            regexp: "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Mantis-Version" }
+          regexp: "^([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # MantisBT 2.x REST API version header check via rewritten URL (fallback when AcceptPathInfo is disabled).
+  {
+    name: "mantisbt_rest_rewrite_version"
+    path_suffix: "/api/rest/issues"
+    response: {
+      status_codes: [200, 401, 403, 503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "X-Mantis-Version" }
+            regexp: "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "X-Mantis-Version" }
+          regexp: "^([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # MantisConnect SOAP API unauthenticated mc_version RPC (works across MantisBT 1.x and 2.x).
+  {
+    name: "mantisbt_soap_mc_version"
+    path_suffix: "/api/soap/mantisconnect.php"
+    method: POST
+    headers: [
+      {
+        name: "Content-Type"
+        value: "text/xml; charset=utf-8"
+      },
+      {
+        name: "SOAPAction"
+        value: "\"http://www.mantisbt.org/bugs/api/soap/mantisconnect.php/mc_version\""
+      }
+    ]
+    data: "<?xml version=\"1.0\" encoding=\"utf-8\"?><soap:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"><soap:Body><mc_version xmlns=\"http://futureware.biz/mantisconnect\" /></soap:Body></soap:Envelope>"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "http://futureware.biz/mantisconnect"
+          },
+          {
+            body: {}
+            regexp: "<(?:[a-zA-Z0-9_-]+:)?mc_versionResponse[\\s>]"
+          },
+          {
+            body: {}
+            regexp: "<return[^>]*>[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?</return>"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<(?:[a-zA-Z0-9_-]+:)?mc_versionResponse[^>]*>\\s*<return[^>]*>([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)</return>"
+        }
+      ]
+    }
+  },
+  # Root page check.
+  # Unconfigured instances 307-redirect to /admin/install.php.
+  # Configured instances 302-redirect to /login_page.php (or /my_view_page.php if anonymous login is enabled).
+  # Also extracts version when $g_show_version = ON in the page footer.
+  {
+    name: "mantisbt_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>(?:[^<]*-\\s*)?MantisBT</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "href=[\"'][^\"']*browser_search_plugin\\.php\\?type=(?:text|id)[\"']"
+          },
+          {
+            body: {}
+            regexp: "src=[\"'][^\"']*javascript_config\\.php(?:\\?[^\"']*)?[\"']"
+          },
+          {
+            body: {}
+            regexp: "src=[\"'][^\"']*/js/install\\.js(?:\\?[^\"']*)?[\"']"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "Powered by\\s+<a\\s+href=[\"']https?://(?:www\\.)?mantisbt\\.org/?[\"'][^>]*>MantisBT\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</a>"
+        }
+      ]
+    }
+  },
+  # Login page check (supports 1.x <title>MantisBT</title> and 2.25+ <title>Login - MantisBT</title>,
+  # as well as unconfigured redirect to /admin/install.php).
+  {
+    name: "mantisbt_login_page"
+    path_suffix: "/login_page.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<title>(?:[^<]*-\\s*)?MantisBT</title>"
+          },
+          {
+            body: {}
+            regexp: "id=[\"']login-form[\"']|src=[\"'][^\"']*/js/install\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            regexp: "href=[\"'][^\"']*browser_search_plugin\\.php\\?type=(?:text|id)[\"']"
+          },
+          {
+            body: {}
+            regexp: "src=[\"'][^\"']*javascript_config\\.php(?:\\?[^\"']*)?[\"']"
+          },
+          {
+            body: {}
+            contains: "Install/Upgrade Database"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "Powered by\\s+<a\\s+href=[\"']https?://(?:www\\.)?mantisbt\\.org/?[\"'][^>]*>MantisBT\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s*</a>"
+        }
+      ]
+    }
+  },
+  # Administration check page (accessible in both unconfigured and configured states when admin/ is present).
+  # Extracts MANTIS_VERSION when PHP or DB lifecycle notices link to mantisbt.org/bugs/bug_report_page.php.
+  {
+    name: "mantisbt_admin_check_page"
+    path_suffix: "/admin/check/index.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>MantisBT Administration - Check Installation - MantisBT</title>"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Checking your MantisBT installation"
+          },
+          {
+            body: {}
+            contains: "MantisBT Admin Guide"
+          },
+          {
+            body: {}
+            contains: "Show passed tests"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "mantisbt\\.org/bugs/bug_report_page\\.php\\?[^\"']*product_version=([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)"
+        },
+        {
+          from_body: {}
+          regexp: "MantisBT\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._-]+)?)\\s+has not been fully tested with PHP"
+        }
+      ]
+    }
+  },
+  # Database installation wizard (accessible in both pending-install and configured states when admin/ exists).
+  {
+    name: "mantisbt_install_page"
+    path_suffix: "/admin/install.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Administration - Installation - MantisBT</title>"
+          },
+          {
+            body: {}
+            regexp: "src=[\"'][^\"']*/js/install\\.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Pre-Installation Check"
+          },
+          {
+            body: {}
+            contains: "Install/Upgrade Database"
+          },
+          {
+            body: {}
+            contains: "Installation Options"
+          }
+        ]
+      }
+    }
+  },
+  # Static REST API Swagger specification (MantisBT 2.3+, works in both unconfigured and configured states).
+  # Note: info.version in swagger.json is the spec version ("1.0.0"), NOT MantisBT software version.
+  {
+    name: "mantisbt_swagger_json"
+    path_suffix: "/api/rest/swagger.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"swagger\":"
+          },
+          {
+            body: {}
+            contains: "\"title\": \"MantisBT REST API\""
+          },
+          {
+            body: {}
+            regexp: "\"basePath\"\\s*:\\s*\"/api/rest\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Static MantisConnect SOAP WSDL descriptor (works in 1.x and 2.x across unconfigured and configured states).
+  {
+    name: "mantisbt_soap_wsdl"
+    path_suffix: "/api/soap/mantisconnect.wsdl"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "targetNamespace=\"http://futureware.biz/mantisconnect\""
+          },
+          {
+            body: {}
+            contains: "<service name=\"MantisConnect\">"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Core JavaScript asset (enables passive subpath discovery in Pass 1 and database-independent detection).
+  {
+    name: "mantisbt_common_js"
+    path_suffix: "/js/common.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "Mantis(?:BT)?\\s*-\\s*a php based bugtracking system"
+          },
+          {
+            body: {}
+            contains: "MantisBT Team"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "ToggleDiv"
+          },
+          {
+            body: {}
+            contains: "setDisplay"
+          },
+          {
+            body: {}
+            contains: "javascript_config.php"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Static MantisBT favicon (identical SHA-256 across 1.1.0 through 2.28.4; passive subpath discovery).
+  {
+    name: "mantisbt_favicon"
+    path_suffix: "/images/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "9a351c5d106e1c48aa380515f5ef99c00fa6052752494095bf05715898965c5e"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: ["mantisbt_rest_version"]
+  },
+  {
+    steps: ["mantisbt_rest_rewrite_version"]
+  },
+  {
+    steps: ["mantisbt_soap_mc_version"]
+  },
+  {
+    steps: ["mantisbt_root_page"]
+  },
+  {
+    steps: ["mantisbt_login_page"]
+  },
+  {
+    steps: ["mantisbt_admin_check_page"]
+  },
+  {
+    steps: ["mantisbt_install_page"]
+  },
+  {
+    steps: ["mantisbt_swagger_json"]
+  },
+  {
+    steps: ["mantisbt_soap_wsdl"]
+  },
+  {
+    steps: ["mantisbt_common_js"]
+  },
+  {
+    steps: [
+      "mantisbt_favicon",
+      "mantisbt_rest_version"
+    ]
+  },
+  {
+    steps: [
+      "mantisbt_favicon",
+      "mantisbt_login_page"
+    ]
+  },
+  {
+    steps: [
+      "mantisbt_favicon",
+      "mantisbt_common_js"
+    ]
+  }
+]

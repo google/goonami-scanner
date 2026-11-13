@@ -1,0 +1,587 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Kubeflow"
+  author: "Goonami team"
+  software: "kubeflow"
+  description: "Detects Kubeflow Central Dashboard UI and API server and extracts version."
+}
+
+steps: [
+  # Kubeflow Central Dashboard SPA HTML shell at root (/), served across v1.x+
+  # in both unconfigured (no-cluster) and configured states.
+  # Supports both v1.6-v1.8 (<script src="app.bundle.js" defer="defer">) and
+  # v1.9-v1.10+ (<script defer="defer" src="app.bundle.js">).
+  # Always corroborated by kubeflow_ui_bundle.
+  {
+    name: "kubeflow_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Kubeflow Central Dashboard</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<main-page></main-page>"
+          },
+          {
+            body: {}
+            contains: "content=\"Kubeflow Central Dashboard\""
+          },
+          {
+            body: {}
+            contains: "assets/favicon"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?((?:app\\.bundle|(?:main|runtime)[.\\-][a-zA-Z0-9._-]+)\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Kubeflow Central Dashboard /index.html shell for passive subpath discovery
+  # (e.g. /kubeflow/index.html). Always corroborated by kubeflow_ui_bundle.
+  {
+    name: "kubeflow_ui_index_html"
+    path_suffix: "/index.html"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Kubeflow Central Dashboard</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<main-page></main-page>"
+          },
+          {
+            body: {}
+            contains: "content=\"Kubeflow Central Dashboard\""
+          },
+          {
+            body: {}
+            contains: "assets/favicon"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?((?:app\\.bundle|(?:main|runtime)[.\\-][a-zA-Z0-9._-]+)\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Kubeflow Central Dashboard main JS bundle extracted from index.html.
+  {
+    name: "kubeflow_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/workgroup/env-info"
+          },
+          {
+            body: {}
+            contains: "api/dashboard-links"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "kubeflowVersion"
+          },
+          {
+            body: {}
+            contains: "CentralDashboardEventHandler"
+          },
+          {
+            body: {}
+            contains: "centraldashboard"
+          },
+          {
+            body: {}
+            contains: "kubeflow.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "buildVersion\\s*:\\s*\\{[^{}]*value\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Passive subpath discovery and standalone matching on crawled /app.bundle.js.
+  {
+    name: "kubeflow_passive_app_bundle"
+    path_suffix: "/app.bundle.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/workgroup/env-info"
+          },
+          {
+            body: {}
+            contains: "api/dashboard-links"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "kubeflowVersion"
+          },
+          {
+            body: {}
+            contains: "CentralDashboardEventHandler"
+          },
+          {
+            body: {}
+            contains: "centraldashboard"
+          },
+          {
+            body: {}
+            contains: "kubeflow.org"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "buildVersion\\s*:\\s*\\{[^{}]*value\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._+-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Kubeflow Central Dashboard iframe client library (/dashboard_lib.bundle.js),
+  # served across v1.6-v1.10+ for Kubeflow child apps (Notebooks, Volumes, Katib, KServe).
+  {
+    name: "kubeflow_dashboard_lib_bundle"
+    path_suffix: "/dashboard_lib.bundle.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "centraldashboard"
+          },
+          {
+            body: {}
+            contains: "CentralDashboardEventHandler"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "exports.centraldashboard"
+          },
+          {
+            body: {}
+            contains: "CentralDashboard"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Kubeflow Central Dashboard workgroup environment info API (/api/workgroup/env-info).
+  # Returns HTTP 200 with platform.kubeflowVersion and namespaces when connected to Kubernetes + KFAM.
+  # When Application CR is absent, kubeflowVersion is "unknown" (step still matches cleanly).
+  {
+    name: "kubeflow_api_env_info"
+    path: "/api/workgroup/env-info"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"platform\""
+          },
+          {
+            body: {}
+            contains: "\"kubeflowVersion\""
+          },
+          {
+            body: {}
+            contains: "\"namespaces\""
+          },
+          {
+            body: {}
+            contains: "\"isClusterAdmin\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"kubeflowVersion\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:-[a-zA-Z0-9._+-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Kubeflow Central Dashboard navigation links API (/api/dashboard-links).
+  {
+    name: "kubeflow_api_dashboard_links"
+    path: "/api/dashboard-links"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"menuLinks\""
+          },
+          {
+            body: {}
+            contains: "\"quickLinks\""
+          },
+          {
+            body: {}
+            contains: "\"documentationItems\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Kubeflow Central Dashboard /debug JSON endpoint, exposed unauthenticated across v1.6-v1.10+
+  # in both unconfigured (no-cluster) and configured states.
+  {
+    name: "kubeflow_debug"
+    path: "/debug"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"profilesServiceUrl\""
+          },
+          {
+            body: {}
+            contains: "/kfam\""
+          },
+          {
+            body: {}
+            contains: "\"registrationFlowAllowed\""
+          },
+          {
+            body: {}
+            contains: "\"headersForIdentity\""
+          },
+          {
+            body: {}
+            contains: "\"USERID_HEADER\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Invariant 1150-byte Kubeflow favicon (/assets/favicon.ico) across v1.6-v1.10+.
+  # Always corroborated by kubeflow_api_env_info or kubeflow_healthz.
+  {
+    name: "kubeflow_favicon"
+    path_suffix: "/assets/favicon.ico"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "5d22dff60a62a78683874a4b89040651169338abd1f745def1745ce20060394b"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Kubeflow Central Dashboard health probe (/healthz); never used standalone.
+  {
+    name: "kubeflow_healthz"
+    path: "/healthz"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"codeEnvironment\""
+          },
+          {
+            body: {}
+            regexp: "\"message\"\\s*:\\s*\"I tick, ther(?:e)?fore I am!\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Root UI + JS bundle + /api/workgroup/env-info version extraction (configured state).
+  {
+    steps: [
+      "kubeflow_ui_root",
+      "kubeflow_ui_bundle",
+      "kubeflow_api_env_info"
+    ]
+  },
+  # Subpath /index.html + JS bundle + /api/workgroup/env-info version extraction.
+  {
+    steps: [
+      "kubeflow_ui_index_html",
+      "kubeflow_ui_bundle",
+      "kubeflow_api_env_info"
+    ]
+  },
+  # Passive /app.bundle.js + /api/workgroup/env-info version extraction.
+  {
+    steps: [
+      "kubeflow_passive_app_bundle",
+      "kubeflow_api_env_info"
+    ]
+  },
+  # Passive /dashboard_lib.bundle.js + /api/workgroup/env-info version extraction.
+  {
+    steps: [
+      "kubeflow_dashboard_lib_bundle",
+      "kubeflow_api_env_info"
+    ]
+  },
+  # API-only configured Central Dashboard (/api/workgroup/env-info + /api/dashboard-links).
+  {
+    steps: [
+      "kubeflow_api_env_info",
+      "kubeflow_api_dashboard_links"
+    ]
+  },
+  # API-only configured Central Dashboard + healthz probe.
+  {
+    steps: [
+      "kubeflow_api_env_info",
+      "kubeflow_healthz"
+    ]
+  },
+  # Invariant Kubeflow /assets/favicon.ico SHA-256 + /api/workgroup/env-info version extraction.
+  {
+    steps: [
+      "kubeflow_favicon",
+      "kubeflow_api_env_info"
+    ]
+  },
+  # Passive /app.bundle.js + /healthz probe (extracts buildVersion if stamped).
+  {
+    steps: [
+      "kubeflow_passive_app_bundle",
+      "kubeflow_healthz"
+    ]
+  },
+  # Passive /app.bundle.js + /debug JSON endpoint (extracts buildVersion if stamped).
+  {
+    steps: [
+      "kubeflow_passive_app_bundle",
+      "kubeflow_debug"
+    ]
+  },
+  # Passive /app.bundle.js + Root UI HTML shell.
+  {
+    steps: [
+      "kubeflow_passive_app_bundle",
+      "kubeflow_ui_root"
+    ]
+  },
+  # Root UI + JS bundle (unconfigured / no-cluster state or when env-info returns 400 / "unknown").
+  {
+    steps: [
+      "kubeflow_ui_root",
+      "kubeflow_ui_bundle"
+    ]
+  },
+  # Subpath /index.html + JS bundle (passive subpath promotion & unconfigured subpath state).
+  {
+    steps: [
+      "kubeflow_ui_index_html",
+      "kubeflow_ui_bundle"
+    ]
+  },
+  # Dashboard lib bundle + Central Dashboard /healthz probe.
+  {
+    steps: [
+      "kubeflow_dashboard_lib_bundle",
+      "kubeflow_healthz"
+    ]
+  },
+  # Unauthenticated /debug JSON endpoint + /healthz probe.
+  {
+    steps: [
+      "kubeflow_debug",
+      "kubeflow_healthz"
+    ]
+  },
+  # Invariant Kubeflow /assets/favicon.ico SHA-256 + Central Dashboard /healthz probe.
+  {
+    steps: [
+      "kubeflow_favicon",
+      "kubeflow_healthz"
+    ]
+  }
+]

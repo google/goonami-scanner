@@ -1,0 +1,913 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Kiali"
+  author: "Goonami team"
+  software: "kiali"
+  description: "Detects Kiali service mesh observability console UI and API server and extracts version."
+}
+
+steps: [
+  # Public Kiali API root endpoint on default web_root (/kiali/api).
+  # Marked Public: true in Kiali's routing table across v1.x and v2.x, returning HTTP 200 JSON
+  # unauthenticated across anonymous, token, openid, header, and openshift auth strategies.
+  {
+    name: "kiali_default_api_root"
+    path: "/kiali/api"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"status\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali state\""
+          },
+          {
+            body: {}
+            contains: "\"externalServices\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Kiali version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali core version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali container version\""
+          },
+          {
+            body: {}
+            contains: "\"istioEnvironment\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"Kiali (?:core |container )?version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Kiali status REST endpoint on default web_root (/kiali/api/status), accessible in anonymous mode.
+  {
+    name: "kiali_default_api_status"
+    path: "/kiali/api/status"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"status\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali state\""
+          },
+          {
+            body: {}
+            contains: "\"externalServices\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Kiali version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali core version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali container version\""
+          },
+          {
+            body: {}
+            contains: "\"istioEnvironment\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"Kiali (?:core |container )?version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Public Kiali API root endpoint (/api) for server.web_root: "/" or custom subpath deployments.
+  {
+    name: "kiali_api_root"
+    path: "/api"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"status\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali state\""
+          },
+          {
+            body: {}
+            contains: "\"externalServices\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Kiali version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali core version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali container version\""
+          },
+          {
+            body: {}
+            contains: "\"istioEnvironment\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"Kiali (?:core |container )?version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Kiali status REST endpoint (/api/status) for server.web_root: "/" or custom subpaths in anonymous mode.
+  {
+    name: "kiali_api_status"
+    path: "/api/status"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"status\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali state\""
+          },
+          {
+            body: {}
+            contains: "\"externalServices\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Kiali version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali core version\""
+          },
+          {
+            body: {}
+            contains: "\"Kiali container version\""
+          },
+          {
+            body: {}
+            contains: "\"istioEnvironment\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"Kiali (?:core |container )?version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Kiali SPA HTML shell on default web_root (/kiali/), served across all auth strategies.
+  {
+    name: "kiali_default_ui"
+    path: "/kiali/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "<title>Kiali(?: Console)?</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          },
+          {
+            body: {}
+            contains: "env.js"
+          },
+          {
+            body: {}
+            contains: "kiali_icon_lightbkg"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"']\\.?/?(?:kiali/)?(static/js/(?:main|index)\\.[a-zA-Z0-9._-]+\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Kiali SPA HTML shell at root (/), covering server.web_root: "/" and redirect-resolved root fetches.
+  {
+    name: "kiali_root_ui"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "<title>Kiali(?: Console)?</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          },
+          {
+            body: {}
+            contains: "env.js"
+          },
+          {
+            body: {}
+            contains: "kiali_icon_lightbkg"
+          },
+          {
+            body: {}
+            contains: "<div id=\"root\"></div>"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=[\"']\\.?/?(?:kiali/)?(static/js/(?:main|index)\\.[a-zA-Z0-9._-]+\\.js)[\"']"
+          }
+        ]
+      }
+    }
+  },
+  # Main/index JS bundle under default /kiali/ subpath (CRA/webpack main.*.js on v1.x-v2.4+ and RSBuild index.*.js on v2.34+).
+  {
+    name: "kiali_default_ui_bundle"
+    path: "/kiali/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/auth/info"
+          },
+          {
+            body: {}
+            contains: "api/status"
+          },
+          {
+            body: {}
+            contains: "WEB_ROOT"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Kiali container version"
+          },
+          {
+            body: {}
+            contains: "Kiali Console"
+          },
+          {
+            body: {}
+            contains: "@kiali/kiali-ui"
+          },
+          {
+            body: {}
+            contains: "kiali-container-version"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Main/index JS bundle relative to root or custom subpath.
+  {
+    name: "kiali_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/auth/info"
+          },
+          {
+            body: {}
+            contains: "api/status"
+          },
+          {
+            body: {}
+            contains: "WEB_ROOT"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Kiali container version"
+          },
+          {
+            body: {}
+            contains: "Kiali Console"
+          },
+          {
+            body: {}
+            contains: "@kiali/kiali-ui"
+          },
+          {
+            body: {}
+            contains: "kiali-container-version"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive discovery on crawled /kiali/static/js/(main|index).<hash>.js bundles
+  # (infers "" on default /kiali deployments and "/<prefix>" on reverse-proxied /<prefix>/kiali deployments).
+  {
+    name: "kiali_default_passive_js_bundle"
+    path_regexp: "/kiali/static/js/(?:main|index)\\.[a-zA-Z0-9._-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/auth/info"
+          },
+          {
+            body: {}
+            contains: "api/status"
+          },
+          {
+            body: {}
+            contains: "WEB_ROOT"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Kiali container version"
+          },
+          {
+            body: {}
+            contains: "Kiali Console"
+          },
+          {
+            body: {}
+            contains: "@kiali/kiali-ui"
+          },
+          {
+            body: {}
+            contains: "kiali-container-version"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Passive discovery on crawled /static/js/(main|index).<hash>.js bundles
+  # (supports server.web_root: "/" and custom subpaths such as server.web_root: "/mesh").
+  {
+    name: "kiali_passive_js_bundle"
+    path_regexp: "/static/js/(?:main|index)\\.[a-zA-Z0-9._-]+\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/auth/info"
+          },
+          {
+            body: {}
+            contains: "api/status"
+          },
+          {
+            body: {}
+            contains: "WEB_ROOT"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "Kiali container version"
+          },
+          {
+            body: {}
+            contains: "Kiali Console"
+          },
+          {
+            body: {}
+            contains: "@kiali/kiali-ui"
+          },
+          {
+            body: {}
+            contains: "kiali-container-version"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Kiali web app manifest on default /kiali/manifest.json (invariant across v1.x and v2.x).
+  {
+    name: "kiali_default_manifest"
+    path: "/kiali/manifest.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"short_name\"\\s*:\\s*\"Kiali-ui\""
+          },
+          {
+            body: {}
+            regexp: "\"name\"\\s*:\\s*\"Kiali UI\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Kiali web app manifest on /manifest.json (for server.web_root: "/" or custom subpaths).
+  {
+    name: "kiali_manifest"
+    path: "/manifest.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"short_name\"\\s*:\\s*\"Kiali-ui\""
+          },
+          {
+            body: {}
+            regexp: "\"name\"\\s*:\\s*\"Kiali UI\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Kiali 16px PNG shortcut icon on default /kiali/kiali_icon_lightbkg_16px.png
+  # (invariant 1150-byte SHA-256 across v0.18 through v2.34+).
+  {
+    name: "kiali_default_icon"
+    path: "/kiali/kiali_icon_lightbkg_16px.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "image/png"
+          },
+          {
+            hash: {
+              body_sha256_hashes: [
+                "38c9500fc4c744a6d5ce38683c9e500858be70570e029ac134f38d07ce285d79"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Kiali 16px PNG shortcut icon on /kiali_icon_lightbkg_16px.png.
+  {
+    name: "kiali_icon"
+    path: "/kiali_icon_lightbkg_16px.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "image/png"
+          },
+          {
+            hash: {
+              body_sha256_hashes: [
+                "38c9500fc4c744a6d5ce38683c9e500858be70570e029ac134f38d07ce285d79"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Public Kiali auth strategy info endpoint (/kiali/api/auth/info); never used standalone.
+  {
+    name: "kiali_default_auth_info"
+    path: "/kiali/api/auth/info"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"sessionInfo\""
+          },
+          {
+            body: {}
+            regexp: "\"strategy\"\\s*:\\s*\"(?:anonymous|token|openid|openshift|header)\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Public Kiali auth strategy info endpoint (/api/auth/info); never used standalone.
+  {
+    name: "kiali_auth_info"
+    path: "/api/auth/info"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"sessionInfo\""
+          },
+          {
+            body: {}
+            regexp: "\"strategy\"\\s*:\\s*\"(?:anonymous|token|openid|openshift|header)\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Public /kiali/api status & version endpoint (unauthenticated across anonymous and token/SSO modes).
+  {
+    steps: ["kiali_default_api_root"]
+  },
+  # /kiali/api/status status & version endpoint (accessible in anonymous mode).
+  {
+    steps: ["kiali_default_api_status"]
+  },
+  # Public /api status & version endpoint (server.web_root: "/" and custom subpaths).
+  {
+    steps: ["kiali_api_root"]
+  },
+  # /api/status status & version endpoint (server.web_root: "/" and custom subpaths in anonymous mode).
+  {
+    steps: ["kiali_api_status"]
+  },
+  # Passive /kiali/static/js/(main|index).*.js bundle + /kiali/api version extraction.
+  {
+    steps: [
+      "kiali_default_passive_js_bundle",
+      "kiali_default_api_root"
+    ]
+  },
+  # Passive /kiali/static/js/(main|index).*.js bundle + /kiali/api/status version extraction.
+  {
+    steps: [
+      "kiali_default_passive_js_bundle",
+      "kiali_default_api_status"
+    ]
+  },
+  # Passive /static/js/(main|index).*.js bundle + /api version extraction (custom subpaths).
+  {
+    steps: [
+      "kiali_passive_js_bundle",
+      "kiali_api_root"
+    ]
+  },
+  # Passive /static/js/(main|index).*.js bundle + /api/status version extraction.
+  {
+    steps: [
+      "kiali_passive_js_bundle",
+      "kiali_api_status"
+    ]
+  },
+  # Default /kiali/ SPA shell + extracted JS bundle (identifies when /kiali/api is blocked by proxy).
+  {
+    steps: [
+      "kiali_default_ui",
+      "kiali_default_ui_bundle"
+    ]
+  },
+  # Root / SPA shell + extracted JS bundle (server.web_root: "/" when /api is blocked by proxy).
+  {
+    steps: [
+      "kiali_root_ui",
+      "kiali_ui_bundle"
+    ]
+  },
+  # Redirect-resolved root / SPA shell (pointing to /kiali/ base href) + /kiali/ JS bundle.
+  {
+    steps: [
+      "kiali_root_ui",
+      "kiali_default_ui_bundle"
+    ]
+  },
+  # Default /kiali/manifest.json + invariant /kiali/kiali_icon_lightbkg_16px.png SHA-256.
+  {
+    steps: [
+      "kiali_default_manifest",
+      "kiali_default_icon"
+    ]
+  },
+  # Root/subpath /manifest.json + invariant /kiali_icon_lightbkg_16px.png SHA-256.
+  {
+    steps: [
+      "kiali_manifest",
+      "kiali_icon"
+    ]
+  },
+  # Default /kiali/manifest.json + /kiali/api/auth/info fallback (if custom icon branding is used).
+  {
+    steps: [
+      "kiali_default_manifest",
+      "kiali_default_auth_info"
+    ]
+  },
+  # Root/subpath /manifest.json + /api/auth/info fallback.
+  {
+    steps: [
+      "kiali_manifest",
+      "kiali_auth_info"
+    ]
+  },
+  # Standalone passive /kiali/static/js/(main|index).*.js match (promotes subpath roots in Pass 1).
+  {
+    steps: ["kiali_default_passive_js_bundle"]
+  },
+  # Standalone passive /static/js/(main|index).*.js match (promotes custom subpath roots in Pass 1).
+  {
+    steps: ["kiali_passive_js_bundle"]
+  }
+]

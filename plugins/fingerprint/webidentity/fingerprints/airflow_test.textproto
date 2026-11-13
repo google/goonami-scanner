@@ -1,0 +1,311 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "airflow"
+
+tests: [
+  {
+    name: "airflow_3_configured_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\" /><link rel=\"icon\" type=\"image/png\" href=\"./static/pin_32.png\" /><title>Airflow</title><script type=\"module\" crossorigin src=\"./static/assets/index-D1f98k0S.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/assets/index-D1f98k0S.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var docsUrl='https://airflow.apache.org/docs/';var pkg='apache-airflow';console.log('Airflow UI ready');"
+      },
+      {
+        uri: "/api/v2/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"3.0.0\",\"git_version\":null}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.0.0"]
+      }
+    ]
+  },
+  {
+    name: "airflow_3_spa_bundle_only"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\" /><link rel=\"icon\" type=\"image/png\" href=\"./static/pin_32.png\" /><title>Airflow</title><script type=\"module\" crossorigin src=\"./static/assets/index-D1f98k0S.js\"></script></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/assets/index-D1f98k0S.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "var docsUrl='https://airflow.apache.org/docs/';var pkg='apache-airflow';console.log('Airflow UI ready');"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "airflow_2_10_login_and_version"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"icon\" type=\"image/png\" href=\"/static/pin_32.png\"><link rel=\"stylesheet\" type=\"text/css\" href=\"/static/appbuilder/css/airflowDefaultTheme.css\"><title>Sign In - Airflow</title></head><body><g class=\"brand-logo-pinwheel\"></g></body></html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"git_version\":null,\"version\":\"2.10.5\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.5"]
+      }
+    ]
+  },
+  {
+    name: "airflow_2_10_uninitialized_db_traceback_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 500
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head></head><body><div class=\"container\"><h1> Ooops! </h1><pre>Something bad has happened.\nPython version: 3.12.9\nAirflow version: 2.10.5\nPlease search Github for issues: https://github.com/apache/airflow/issues\n</pre></div></body></html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"git_version\":null,\"version\":\"2.10.5\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.10.5"]
+      }
+    ]
+  },
+  {
+    name: "airflow_2_2_login_page"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"icon\" type=\"image/png\" href=\"/static/pin_32.png\"><link rel=\"stylesheet\" type=\"text/css\" href=\"/static/appbuilder/css/airflowDefaultTheme.css\"><title>Sign In - Airflow</title></head><body><g class=\"brand-logo-pinwheel\"></g></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "airflow_1_10_15_version_view"
+    mock_responses: [
+      {
+        uri: "/admin/versionview/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"icon\" type=\"image/png\" href=\"/static/pin_32.png\"><h2>Version Info</h2></head><body><a href=\"https://pypi.python.org/pypi/apache-airflow/1.10.15\">v1.10.15</a></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.10.15"]
+      }
+    ]
+  },
+  {
+    name: "airflow_1_10_15_classic_ui"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"icon\" type=\"image/png\" href=\"/static/pin_32.png\"><title>Airflow - DAGs</title></head><body><div class=\"footer\">Version: <a href=\"https://pypi.python.org/pypi/apache-airflow/1.10.15\" target=\"_blank\">v1.10.15</a></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.10.15"]
+      }
+    ]
+  },
+  {
+    name: "airflow_subpath_deployment_via_login"
+    mock_responses: [
+      {
+        uri: "/orchestrator/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><link rel=\"icon\" type=\"image/png\" href=\"/orchestrator/static/pin_32.png\"><link rel=\"stylesheet\" type=\"text/css\" href=\"/orchestrator/static/appbuilder/css/airflowDefaultTheme.css\"><title>Sign In - Airflow</title></head><body><g class=\"brand-logo-pinwheel\"></g></body></html>"
+      },
+      {
+        uri: "/orchestrator/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"git_version\":null,\"version\":\"2.10.5\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/orchestrator"
+        expected_versions: ["2.10.5"]
+      }
+    ]
+  },
+  {
+    name: "negative_health_endpoints_alone_do_not_trigger"
+    mock_responses: [
+      {
+        uri: "/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"metadatabase\":{\"status\":\"healthy\"},\"scheduler\":{\"status\":\"healthy\",\"latest_scheduler_heartbeat\":\"2026-10-21T10:00:00Z\"}}"
+      },
+      {
+        uri: "/api/v1/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"metadatabase\":{\"status\":\"healthy\"},\"scheduler\":{\"status\":\"healthy\",\"latest_scheduler_heartbeat\":\"2026-10-21T10:00:00Z\"}}"
+      },
+      {
+        uri: "/api/v2/monitor/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"metadatabase\":{\"status\":\"healthy\"},\"scheduler\":{\"status\":\"healthy\",\"latest_scheduler_heartbeat\":\"2026-10-21T10:00:00Z\"},\"triggerer\":{\"status\":\"healthy\"},\"dag_processor\":{\"status\":\"healthy\"}}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_api_version_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"1.2.3\",\"git_version\":\"abc123\"}"
+      },
+      {
+        uri: "/api/v2/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"1.2.3\",\"git_version\":\"abc123\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_html_catchall_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      },
+      {
+        uri: "/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      },
+      {
+        uri: "/api/v1/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      },
+      {
+        uri: "/api/v2/monitor/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      },
+      {
+        uri: "/api/v1/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      },
+      {
+        uri: "/api/v2/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Some Random Portal</title></head><body>Welcome to Portal</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

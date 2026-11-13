@@ -1,0 +1,421 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "gradio"
+
+tests: [
+  {
+    name: "gradio_3_open_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\" /><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"version\":\"3.50.2\",\"mode\":\"interface\",\"app_id\":17805251232204490493,\"dev_mode\":false,\"analytics_enabled\":true,\"components\":[{\"id\":1,\"type\":\"textbox\",\"props\":{\"name\":\"textbox\"}}],\"dependencies\":[],\"root\":\"\"};</script><script type=\"module\" crossorigin src=\"./assets/index-a959df42.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["3.50.2"]
+      }
+    ]
+  },
+  {
+    name: "gradio_4_open_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script data-gradio-mode>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"version\":\"4.36.1\",\"mode\":\"interface\",\"app_id\":17923626799954669512,\"dev_mode\":false,\"analytics_enabled\":true,\"components\":[{\"id\":1,\"type\":\"textbox\"}],\"dependencies\":[],\"protocol\":\"sse_v3\",\"root\":\"http://target.test:8080\"};</script><script type=\"module\" crossorigin src=\"./assets/index-DmVQEACr.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.36.1"]
+      }
+    ]
+  },
+  {
+    name: "gradio_5_open_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script data-gradio-mode>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"version\":\"5.20.0\",\"api_prefix\":\"/gradio_api\",\"mode\":\"interface\",\"app_id\":2155468602622790055,\"dev_mode\":false,\"analytics_enabled\":true,\"components\":[],\"dependencies\":[],\"root\":\"http://target.test:8080\"};</script><link rel=\"manifest\" href=\"/manifest.json\" /><script type=\"module\" crossorigin src=\"./assets/index-JknPi_fQ.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.20.0"]
+      }
+    ]
+  },
+  {
+    name: "gradio_6_open_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script>window.gradio_config = {\"version\":\"6.10.0\",\"api_prefix\":\"/gradio_api\",\"mode\":\"interface\",\"app_id\":11276087246845045482,\"dev_mode\":false,\"vibe_mode\":false,\"analytics_enabled\":true,\"components\":[{\"id\":1,\"type\":\"textbox\",\"props\":{\"value\":\"1.0.0\"}}],\"dependencies\":[],\"root\":\"http://target.test:8080\"};</script><script data-gradio-mode>window.__gradio_mode__ = \"app\";</script><script type=\"module\" crossorigin src=\"./assets/index-CDZuCcOm.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.10.0"]
+      }
+    ]
+  },
+  {
+    name: "gradio_logo_and_config_api_identification"
+    mock_responses: [
+      {
+        uri: "/static/img/logo.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "image/svg+xml" }
+        ]
+        body: "<svg width=\"576\" height=\"576\" viewBox=\"0 0 576 576\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M287.5 229L86 344.5L287.5 460L489 344.5L287.5 229Z\" stroke=\"url(#paint0_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"round\"/>\n<path d=\"M287.5 116L86 231.5L287.5 347L489 231.5L287.5 116Z\" stroke=\"url(#paint1_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"round\"/>\n<path d=\"M86 344L288 229\" stroke=\"url(#paint2_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"bevel\"/>\n<defs>\n<linearGradient id=\"paint0_linear_102_7\" x1=\"60\" y1=\"344\" x2=\"429.5\" y2=\"344\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n<linearGradient id=\"paint1_linear_102_7\" x1=\"513.5\" y1=\"231\" x2=\"143.5\" y2=\"231\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n<linearGradient id=\"paint2_linear_102_7\" x1=\"60\" y1=\"344\" x2=\"428.987\" y2=\"341.811\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n</defs>\n</svg>\n"
+      },
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"5.20.0\",\"api_prefix\":\"/gradio_api\",\"mode\":\"blocks\",\"app_id\":2155468602622790055,\"dev_mode\":false,\"analytics_enabled\":true,\"components\":[{\"id\":1,\"type\":\"textbox\"}],\"dependencies\":[],\"root\":\"http://target.test:8080\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.20.0"]
+      }
+    ]
+  },
+  {
+    name: "gradio_3_auth_protected_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"auth_required\":true,\"auth_message\":null,\"space_id\":null,\"root\":\"\"};</script><script type=\"module\" crossorigin src=\"./assets/index-a959df42.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      },
+      {
+        uri: "/config"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":\"Not authenticated\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gradio_6_auth_protected_root_html_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><meta name=\"twitter:creator\" content=\"@teamGradio\" /><script>window.gradio_config = {\"auth_required\":true,\"auth_message\":null,\"space_id\":null,\"root\":\"http://target.test:8080\",\"page\":{\"\":{\"layout\":{}}},\"pages\":[\"\"],\"components\":[],\"dependencies\":[],\"current_page\":\"\"};</script><script>window.gradio_api_info = {\"named_endpoints\":{\"/greet\":{\"parameters\":[{\"parameter_name\":\"version\",\"example_input\":\"1.0.0\"}]}}};</script><script data-gradio-mode>window.__gradio_mode__ = \"app\";</script><script type=\"module\" crossorigin src=\"./assets/index-CDZuCcOm.js\"></script></head><body><gradio-app control_page_title=\"true\" embed=\"false\" eager=\"true\"></gradio-app></body></html>"
+      },
+      {
+        uri: "/config"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":{\"error\":\"Not authenticated\",\"auth_message\":null}}"
+      },
+      {
+        uri: "/openapi.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"FastAPI\",\"version\":\"0.1.0\"},\"paths\":{\"/theme.css\":{},\"/gradio_api/reset\":{}},\"components\":{\"schemas\":{\"ResetBody\":{},\"SimplePredictBody\":{}}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gradio_share_mode_auth_protected_cdn_version_extraction"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><script>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"auth_required\":true,\"auth_message\":null,\"space_id\":null};</script><script type=\"module\" crossorigin src=\"https://gradio.s3-us-west-2.amazonaws.com/4.36.1/gradio.js\"></script></head><body><gradio-app></gradio-app></body></html>"
+      },
+      {
+        uri: "/config"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":\"Not authenticated\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.36.1"]
+      }
+    ]
+  },
+  {
+    name: "subpath_open_bundle_and_config_identification"
+    mock_responses: [
+      {
+        uri: "/gradio/assets/index-DmVQEACr.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const cfg=window.gradio_config;const mode=window.__gradio_mode__;customElements.define(\"gradio-app\",GradioApp);"
+      },
+      {
+        uri: "/gradio/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"4.36.1\",\"mode\":\"interface\",\"app_id\":17923626799954669512,\"dev_mode\":false,\"analytics_enabled\":true,\"components\":[],\"dependencies\":[],\"root\":\"http://target.test:8080/gradio\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/gradio"
+        expected_versions: ["4.36.1"]
+      }
+    ]
+  },
+  {
+    name: "subpath_gradio_6_bundle_and_api_openapi_identification"
+    mock_responses: [
+      {
+        uri: "/ml/gradio/assets/index-CDZuCcOm.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const cfg=window.gradio_config;const mode=window.__gradio_mode__;customElements.define(\"gradio-app\",GradioApp);"
+      },
+      {
+        uri: "/ml/gradio/gradio_api/openapi.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"openapi\":\"3.0.2\",\"info\":{\"title\":null,\"description\":null,\"version\":\"6.10.0\"},\"paths\":{\"/run/greet\":{\"post\":{\"operationId\":\"greet\"}}},\"components\":{\"schemas\":{}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ml/gradio"
+        expected_versions: ["6.10.0"]
+      }
+    ]
+  },
+  {
+    name: "subpath_auth_protected_bundle_identification"
+    mock_responses: [
+      {
+        uri: "/gradio/assets/index-JknPi_fQ.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const cfg=window.gradio_config;const mode=window.__gradio_mode__;customElements.define(\"gradio-app\",GradioApp);"
+      },
+      {
+        uri: "/gradio/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html>\n<html lang=\"en\"><head><meta property=\"og:url\" content=\"https://gradio.app/\" /><script>window.__gradio_mode__ = \"app\";</script><script>window.gradio_config = {\"auth_required\":true,\"auth_message\":null,\"space_id\":null,\"root\":\"http://target.test:8080/gradio\"};</script></head><body><gradio-app></gradio-app></body></html>"
+      },
+      {
+        uri: "/gradio/config"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":\"Not authenticated\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/gradio"
+      }
+    ]
+  },
+  {
+    name: "custom_auth_dependency_favicon_and_openapi_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":\"Unauthorized\"}"
+      },
+      {
+        uri: "/config"
+        status_code: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"detail\":\"Unauthorized\"}"
+      },
+      {
+        uri: "/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "image/svg+xml" }
+        ]
+        body: "<svg width=\"576\" height=\"576\" viewBox=\"0 0 576 576\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M287.5 229L86 344.5L287.5 460L489 344.5L287.5 229Z\" stroke=\"url(#paint0_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"round\"/>\n<path d=\"M287.5 116L86 231.5L287.5 347L489 231.5L287.5 116Z\" stroke=\"url(#paint1_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"round\"/>\n<path d=\"M86 344L288 229\" stroke=\"url(#paint2_linear_102_7)\" stroke-width=\"59\" stroke-linejoin=\"bevel\"/>\n<defs>\n<linearGradient id=\"paint0_linear_102_7\" x1=\"60\" y1=\"344\" x2=\"429.5\" y2=\"344\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n<linearGradient id=\"paint1_linear_102_7\" x1=\"513.5\" y1=\"231\" x2=\"143.5\" y2=\"231\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n<linearGradient id=\"paint2_linear_102_7\" x1=\"60\" y1=\"344\" x2=\"428.987\" y2=\"341.811\" gradientUnits=\"userSpaceOnUse\">\n<stop stop-color=\"#F9D100\"/>\n<stop offset=\"1\" stop-color=\"#F97700\"/>\n</linearGradient>\n</defs>\n</svg>\n"
+      },
+      {
+        uri: "/openapi.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"FastAPI\",\"version\":\"0.1.0\"},\"paths\":{\"/login\":{\"post\":{}},\"/theme.css\":{\"get\":{}},\"/gradio_api/reset\":{\"post\":{}}},\"components\":{\"schemas\":{\"ResetBody\":{\"title\":\"ResetBody\"},\"SimplePredictBody\":{\"title\":\"SimplePredictBody\"}}}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_fastapi_openapi"
+    mock_responses: [
+      {
+        uri: "/openapi.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"FastAPI\",\"version\":\"0.1.0\"},\"paths\":{\"/items\":{\"get\":{}}},\"components\":{\"schemas\":{\"HTTPValidationError\":{}}}}"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_config_json"
+    mock_responses: [
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"2.1.0\",\"env\":\"production\",\"features\":[\"chat\"]}"
+      }
+    ]
+  },
+  {
+    name: "negative_documentation_html_mentioning_gradio"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>Gradio Tutorial</title></head><body><p>Inspect window.gradio_config on https://gradio.app/ to debug your app.</p></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>SPA Fallback mentioning \"version\" \"dev_mode\" \"components\" \"dependencies\" \"api_prefix\"</body></html>"
+      },
+      {
+        uri: "/assets/index-CDZuCcOm.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>SPA Fallback mentioning gradio_config __gradio_mode__ gradio-app</body></html>"
+      },
+      {
+        uri: "/gradio_api/openapi.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>SPA Fallback</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_gradio_like_config_json"
+    mock_responses: [
+      {
+        uri: "/config"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\":\"4.44.0\",\"dev_mode\":false,\"components\":[],\"dependencies\":[],\"api_prefix\":\"\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_gradio_js_bundle"
+    mock_responses: [
+      {
+        uri: "/assets/index-DmVQEACr.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "const cfg=window.gradio_config;const mode=window.__gradio_mode__;customElements.define(\"gradio-app\",GradioApp);"
+      }
+    ]
+  }
+]

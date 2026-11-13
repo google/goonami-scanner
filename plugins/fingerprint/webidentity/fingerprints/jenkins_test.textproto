@@ -1,0 +1,500 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "jenkins"
+
+tests: [
+  {
+    name: "v2_249_3_setup_wizard_root_403_and_login"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.249.3" },
+          { name: "X-Jenkins-Session", value: "29ee89fb" }
+        ]
+        body: "<html><head><meta http-equiv='refresh' content='1;url=/login?from=%2F'/><script>window.location.replace('/login?from=%2F');</script></head><body style='background-color:white; color:white;'>\n\n\nAuthentication required\n<!--\nYou are authenticated as: anonymous\n-->\n</body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.249.3" },
+          { name: "X-Jenkins-Session", value: "29ee89fb" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/29ee89fb\" data-rooturl=\"\" data-resurl=\"/static/29ee89fb\" data-imagesurl=\"/static/29ee89fb/images\"><title>Sign in [Jenkins]</title></head><body data-model-type=\"jenkins.install.SetupWizard\" class=\"install-wizard\" data-version=\"2.249.3\"><form method=\"POST\" action=\"j_acegi_security_check\"><h1>Unlock Jenkins</h1><input id=\"security-token\" class=\"form-control\" type=\"password\" name=\"j_password\"/></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.249.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_580_2_setup_wizard_headers_stripped_login"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<html><head><meta http-equiv='refresh' content='1;url=/login?from=%2F'/><script id='redirect' data-redirect-url='/login?from=%2F' src='/static/9fd20ddc/scripts/redirect.js'></script></head><body style='background-color:white; color:white;'>Authentication required</body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/9fd20ddc\" data-rooturl=\"\" data-resurl=\"/static/9fd20ddc\" data-imagesurl=\"/static/9fd20ddc/images\"><title>Sign in - Jenkins</title><link rel=\"stylesheet\" href=\"/static/9fd20ddc/jsbundles/simple-page.css\" type=\"text/css\"/></head><body data-model-type=\"jenkins.install.SetupWizard\" data-version=\"2.580.2\"><form method=\"POST\" action=\"j_spring_security_check\"><h1>Unlock Jenkins</h1><input id=\"security-token\" type=\"password\" name=\"j_password\"/></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.580.2"]
+      }
+    ]
+  },
+  {
+    name: "v2_346_3_open_dashboard_and_api_json"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.346.3" },
+          { name: "X-Jenkins-Session", value: "42ecbe48" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/42ecbe48\" data-rooturl=\"\" data-resurl=\"/static/42ecbe48\" data-extensions-available=\"true\" data-unit-test=\"false\" data-imagesurl=\"/static/42ecbe48/images\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"b726d8cdd264dde0d3d7ce5d4a070abbd28958e6acd7c6b4cdfb2d1eba18cf86\"><title>Dashboard [Jenkins]</title></head><body data-model-type=\"hudson.model.Hudson\" id=\"jenkins\" data-version=\"2.346.3\"><footer><div class=\"page-footer__links page-footer__links--white jenkins_ver\"><a rel=\"noopener noreferrer\" href=\"https://www.jenkins.io/\" target=\"_blank\">Jenkins 2.346.3</a></div></footer></body></html>"
+      },
+      {
+        uri: "/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" },
+          { name: "X-Jenkins", value: "2.346.3" },
+          { name: "X-Jenkins-Session", value: "42ecbe48" }
+        ]
+        body: "{\"_class\":\"hudson.model.Hudson\",\"assignedLabels\":[{\"name\":\"built-in\"}],\"mode\":\"NORMAL\",\"nodeDescription\":\"the Jenkins controller's built-in node\",\"nodeName\":\"\",\"numExecutors\":2,\"description\":null,\"jobs\":[],\"overallLoad\":{},\"primaryView\":{\"_class\":\"hudson.model.AllView\",\"name\":\"all\",\"url\":\"http://target.test:8080/\"},\"useCrumbs\":true,\"useSecurity\":true,\"views\":[{\"_class\":\"hudson.model.AllView\",\"name\":\"all\",\"url\":\"http://target.test:8080/\"}]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.346.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_440_3_open_dashboard_headers_stripped"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/6712fa9a\" data-rooturl=\"\" data-resurl=\"/static/6712fa9a\" data-extensions-available=\"true\" data-unit-test=\"false\" data-imagesurl=\"/static/6712fa9a/images\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"8fae528241ef031590d4fbc033ba9f33dedccb93fa910b5a55f22bef52e1ec28\"><title>Dashboard [Jenkins]</title></head><body data-model-type=\"hudson.model.Hudson\" id=\"jenkins\" data-version=\"2.440.3\"><footer><a class=\"jenkins-button jenkins-button--tertiary rest-api\" href=\"api/\">REST API</a><button type=\"button\" class=\"jenkins-button jenkins-button--tertiary jenkins_ver\" data-dropdown=\"true\">\n\n    Jenkins 2.440.3\n  </button></footer></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.440.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_346_3_api_json_only"
+    mock_responses: [
+      {
+        uri: "/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" },
+          { name: "X-Jenkins", value: "2.346.3" }
+        ]
+        body: "{\"_class\":\"hudson.model.Hudson\",\"assignedLabels\":[{\"name\":\"built-in\"}],\"mode\":\"NORMAL\",\"nodeDescription\":\"the Jenkins controller's built-in node\",\"nodeName\":\"\",\"numExecutors\":2,\"jobs\":[]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.346.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_249_3_locked_security_realm_login"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.249.3" },
+          { name: "X-Jenkins-Session", value: "f96d92e6" }
+        ]
+        body: "<html><head><meta http-equiv='refresh' content='1;url=/login?from=%2F'/><script>window.location.replace('/login?from=%2F');</script></head><body style='background-color:white; color:white;'>Authentication required</body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.249.3" },
+          { name: "X-Jenkins-Session", value: "f96d92e6" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head resURL=\"/static/f96d92e6\" data-rooturl=\"\" data-resurl=\"/static/f96d92e6\" data-imagesurl=\"/static/f96d92e6/images\"><title>Sign in [Jenkins]</title><link rel=\"stylesheet\" href=\"/static/f96d92e6/css/simple-page.css\" type=\"text/css\"/></head><body><div class=\"simple-page\"><form method=\"post\" name=\"login\" action=\"j_acegi_security_check\"><h1>Welcome to Jenkins!</h1><input name=\"j_username\" id=\"j_username\" type=\"text\"/><input name=\"j_password\" type=\"password\"/></form></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.249.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_580_2_locked_headers_stripped_login_and_whoami"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<html><head><meta http-equiv='refresh' content='1;url=/login?from=%2F'/><script id='redirect' data-redirect-url='/login?from=%2F' src='/static/b7b1265f/scripts/redirect.js'></script></head><body style='background-color:white; color:white;'>Authentication required</body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head resURL=\"/static/b7b1265f\" data-rooturl=\"\" data-resurl=\"/static/b7b1265f\" data-imagesurl=\"/static/b7b1265f/images\"><title>Sign in - Jenkins</title><link rel=\"stylesheet\" href=\"/static/b7b1265f/jsbundles/simple-page.css\" type=\"text/css\"/></head><body><div class=\"app-sign-in-register__content-inner\"><h1>Sign in to Jenkins</h1><form method=\"post\" name=\"login\" action=\"j_spring_security_check\"><input name=\"j_username\" id=\"j_username\" type=\"text\"/><input name=\"j_password\" id=\"j_password\" type=\"password\"/></form></div></body></html>"
+      },
+      {
+        uri: "/whoAmI/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/b7b1265f\" data-rooturl=\"\" data-resurl=\"/static/b7b1265f\" data-extensions-available=\"true\" data-unit-test=\"false\" data-imagesurl=\"/static/b7b1265f/images\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"2276d45d31c0406d454e4f750f58e908331d9e63bba7780a9b5438bb9528d55b\"><title>Who Am I - Jenkins</title></head><body data-model-type=\"hudson.security.WhoAmI\" id=\"jenkins\" data-version=\"2.580.2\"><footer><button type=\"button\" class=\"jenkins-button jenkins-button--tertiary jenkins_ver\" data-testid=\"\" data-dropdown=\"true\">Jenkins 2.580.2</button></footer></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.580.2"]
+      }
+    ]
+  },
+  {
+    name: "v2_440_3_external_sso_redirect_oops_fallback_headers_stripped"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://sso.corp.example/authorize" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "https://sso.corp.example/authorize" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/whoAmI/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "Blocked by edge proxy"
+      },
+      {
+        uri: "/oops/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/static/2208d28b\" data-rooturl=\"\" data-resurl=\"/static/2208d28b\" data-extensions-available=\"true\" data-unit-test=\"false\" data-imagesurl=\"/static/2208d28b/images\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"a1ba3783789a96abfd212d929b32f4ec4d3da153dd4de2ff3f2ff0cd1939004a\"><title>Not Found [Jenkins]</title></head><body data-model-type=\"jenkins.ErrorPage\" id=\"jenkins\" data-version=\"2.440.3\"><footer><button type=\"button\" class=\"jenkins-button jenkins-button--tertiary jenkins_ver\" data-dropdown=\"true\">\n\n    Jenkins 2.440.3\n  </button></footer></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.440.3"]
+      }
+    ]
+  },
+  {
+    name: "v2_580_2_whoami_api_json_only"
+    mock_responses: [
+      {
+        uri: "/whoAmI/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" },
+          { name: "X-Jenkins", value: "2.580.2" },
+          { name: "X-Jenkins-Session", value: "b7b1265f" }
+        ]
+        body: "{\"_class\":\"hudson.security.WhoAmI\",\"anonymous\":true,\"authenticated\":true,\"authorities\":[\"anonymous\"],\"name\":\"anonymous\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.580.2"]
+      }
+    ]
+  },
+  {
+    name: "v2_440_3_tcp_slave_agent_listener_only"
+    mock_responses: [
+      {
+        uri: "/tcpSlaveAgentListener/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain;charset=utf-8" },
+          { name: "X-Hudson-JNLP-Port", value: "50000" },
+          { name: "X-Jenkins-JNLP-Port", value: "50000" },
+          { name: "X-Jenkins-Agent-Protocols", value: "JNLP4-connect, Ping" }
+        ]
+        body: "\n\n  Jenkins\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "subpath_v2_249_3_locked_login"
+    mock_responses: [
+      {
+        uri: "/jenkins/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "X-Hudson", value: "1.395" },
+          { name: "X-Jenkins", value: "2.249.3" },
+          { name: "X-Jenkins-Session", value: "3cb0b62a" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head resURL=\"/jenkins/static/3cb0b62a\" data-rooturl=\"/jenkins\" data-resurl=\"/jenkins/static/3cb0b62a\" data-imagesurl=\"/jenkins/static/3cb0b62a/images\"><title>Sign in [Jenkins]</title></head><body><form method=\"post\" name=\"login\" action=\"j_acegi_security_check\"><h1>Welcome to Jenkins!</h1></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/jenkins"
+        expected_versions: ["2.249.3"]
+      }
+    ]
+  },
+  {
+    name: "subpath_v2_580_2_locked_headers_stripped_login_and_whoami"
+    mock_responses: [
+      {
+        uri: "/jenkins/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head resURL=\"/jenkins/static/2bad2f47\" data-rooturl=\"/jenkins\" data-resurl=\"/jenkins/static/2bad2f47\" data-imagesurl=\"/jenkins/static/2bad2f47/images\"><title>Sign in - Jenkins</title></head><body><h1>Sign in to Jenkins</h1><form method=\"post\" name=\"login\" action=\"j_spring_security_check\"><input name=\"j_username\" type=\"text\"/></form></body></html>"
+      },
+      {
+        uri: "/jenkins/whoAmI/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/jenkins/static/2bad2f47\" data-rooturl=\"/jenkins\" data-resurl=\"/jenkins/static/2bad2f47\" data-extensions-available=\"true\" data-unit-test=\"false\" data-imagesurl=\"/jenkins/static/2bad2f47/images\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"0e321436ac26cbf7638ced16194a244dec99f390d75c003a665ffa81e62effd1\"><title>Who Am I - Jenkins</title></head><body id=\"jenkins\" data-version=\"2.580.2\"><footer><button type=\"button\" class=\"jenkins-button jenkins-button--tertiary jenkins_ver\" data-testid=\"\" data-dropdown=\"true\">Jenkins 2.580.2</button></footer></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/jenkins"
+        expected_versions: ["2.580.2"]
+      }
+    ]
+  },
+  {
+    name: "subpath_v2_440_3_static_bundle_and_whoami"
+    mock_responses: [
+      {
+        uri: "/ci/static/6712fa9a/scripts/hudson-behavior.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "/* Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi */\n// JavaScript for Jenkins\nif (window.isRunAsTest) { window.postMessage = false; }\nfunction registerJenkinsHelpButton() { return 'jenkinsHelpButton'; }\n"
+      },
+      {
+        uri: "/ci/whoAmI/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head resURL=\"/ci/static/6712fa9a\" data-rooturl=\"/ci\" data-resurl=\"/ci/static/6712fa9a\" data-crumb-header=\"Jenkins-Crumb\" data-crumb-value=\"deadbeef\"><title>Who Am I [Jenkins]</title></head><body><footer><div class=\"page-footer__links jenkins_ver\"><a href=\"https://www.jenkins.io/\">Jenkins 2.440.3</a></div></footer></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/ci"
+        expected_versions: ["2.440.3"]
+      }
+    ]
+  },
+  {
+    name: "subpath_static_css_bundle_without_version"
+    mock_responses: [
+      {
+        uri: "/build/static/b7b1265f/jsbundles/simple-page.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css" }
+        ]
+        body: "body{margin:0}.jenkins-spinner{display:inline-flex}.app-jenkins-booting{animation:fade-in-jenkins-booting .4s .2s both}"
+      },
+      {
+        uri: "/build/whoAmI/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/build"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_spring_security_login_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<html><body>Authentication required</body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign in</title><link rel=\"stylesheet\" href=\"/static/css/login.css\"/></head><body><h1>Sign in</h1><form method=\"post\" action=\"j_spring_security_check\"><input name=\"j_username\" type=\"text\"/><input name=\"j_password\" type=\"password\"/></form></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_unrelated_json_apis_and_jetty_404"
+    mock_responses: [
+      {
+        uri: "/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\"status\":\"ok\",\"jobs\":[],\"numExecutors\":4}"
+      },
+      {
+        uri: "/whoAmI/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json;charset=utf-8" }
+        ]
+        body: "{\"authenticated\":true,\"name\":\"anonymous\",\"authorities\":[\"ROLE_ANONYMOUS\"]}"
+      },
+      {
+        uri: "/oops/"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=iso-8859-1" }
+        ]
+        body: "<html><head><title>Error 404 Not Found</title></head><body><h2>HTTP ERROR 404 Not Found</h2><table><tr><th>URI:</th><td>/oops/</td></tr><tr><th>SERVLET:</th><td>Stapler</td></tr></table></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>SPA catch-all mentioning \"_class\":\"hudson.model.Hudson\" and \"numExecutors\":2</body></html>"
+      },
+      {
+        uri: "/whoAmI/api/json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"_class\":\"hudson.security.WhoAmI\",\"authorities\":[\"anonymous\"]}</body></html>"
+      },
+      {
+        uri: "/static/6712fa9a/scripts/hudson-behavior.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>JavaScript for Jenkins hudsonRules jenkinsHelpButton</body></html>"
+      },
+      {
+        uri: "/static/b7b1265f/jsbundles/simple-page.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>.jenkins-spinner .app-jenkins-booting</body></html>"
+      },
+      {
+        uri: "/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not found</body></html>"
+      },
+      {
+        uri: "/tcpSlaveAgentListener/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "X-Jenkins-Agent-Protocols", value: "JNLP4-connect, Ping" }
+        ]
+        body: "<!doctype html><html><body>Jenkins</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

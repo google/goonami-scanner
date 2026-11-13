@@ -1,0 +1,512 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Spark"
+  author: "Goonami team"
+  software: "spark"
+  description: "Detects Apache Spark Master, Worker, History Server, Application Web UI, and Standalone REST Submission Server and extracts version."
+}
+
+steps: [
+  # Apache Spark Web UI root HTML page (Standalone Master UI, Worker UI, History Server UI,
+  # or Application UI when redirects to /jobs/ are followed).
+  {
+    name: "spark_webui_root"
+    path_suffix: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "spark-logo-77x50px-hd.png"
+          },
+          {
+            body: {}
+            contains: "/static/webui.css"
+          },
+          {
+            body: {}
+            contains: "/static/webui.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Spark Master at "
+          },
+          {
+            body: {}
+            contains: "<title>Spark Worker at "
+          },
+          {
+            body: {}
+            contains: "<title>History Server</title>"
+          },
+          {
+            body: {}
+            contains: " - Spark Jobs</title>"
+          },
+          {
+            body: {}
+            contains: "setUIRoot("
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<span class=\"version\"[^>]*>\\s*v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\\s*</span>"
+        },
+        {
+          from_body: {}
+          regexp: "Version\\s*:?\\s*</strong>\\s*v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Apache Spark Application / Driver Web UI (/jobs/) page (default port 4040).
+  {
+    name: "spark_jobs_ui"
+    path_suffix: "/jobs/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "spark-logo-77x50px-hd.png"
+          },
+          {
+            body: {}
+            contains: "/static/webui.css"
+          },
+          {
+            body: {}
+            contains: "/static/webui.js"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: " - Spark Jobs</title>"
+          },
+          {
+            body: {}
+            contains: "setAppBasePath("
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<span class=\"version\"[^>]*>\\s*v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\\s*</span>"
+        },
+        {
+          from_body: {}
+          regexp: "Version\\s*:?\\s*</strong>\\s*v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)"
+        }
+      ]
+    }
+  },
+  # Apache Spark Application Web UI root redirect (/ -> /jobs/), used only as a pre-filter before a Spark-specific step.
+  {
+    name: "spark_root_jobs_redirect"
+    path: "/"
+    response: {
+      status_codes: [301, 302, 303, 307, 308]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Location" }
+            regexp: "(?:^|/)jobs/?$"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Spark Standalone Master and Worker JSON status endpoint (/json/).
+  {
+    name: "spark_master_or_worker_json"
+    path_suffix: "/json/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"spark://"
+          },
+          {
+            body: {}
+            contains: "\"cores\""
+          },
+          {
+            body: {}
+            contains: "\"memory\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"aliveworkers\""
+          },
+          {
+            body: {}
+            contains: "\"activedrivers\""
+          },
+          {
+            body: {}
+            contains: "\"masterwebuiurl\""
+          },
+          {
+            body: {}
+            contains: "\"finishedexecutors\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Spark History Server and Application UI REST Version endpoint (/api/v1/version).
+  # Always paired with a corroborating Spark UI or static asset step to avoid matching generic /api/v1/version endpoints.
+  {
+    name: "spark_api_v1_version"
+    path_suffix: "/api/v1/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "^\\s*\\{\\s*\"spark\"\\s*:\\s*\"v?[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?\"\\s*\\}\\s*$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"spark\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Apache Spark History Server and Application UI REST Applications endpoint (/api/v1/applications) when applications exist.
+  {
+    name: "spark_api_v1_applications"
+    path_suffix: "/api/v1/applications"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"attempts\""
+          },
+          {
+            body: {}
+            contains: "\"appSparkVersion\""
+          },
+          {
+            body: {}
+            contains: "\"sparkUser\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"appSparkVersion\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Apache Spark Standalone REST Submission Server (default port 6066) root error response.
+  {
+    name: "spark_rest_error_root"
+    path: "/"
+    response: {
+      status_codes: [400]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"action\""
+          },
+          {
+            body: {}
+            contains: "\"ErrorResponse\""
+          },
+          {
+            body: {}
+            contains: "\"serverSparkVersion\""
+          },
+          {
+            body: {}
+            contains: "/v1/submissions/"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"serverSparkVersion\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Apache Spark Standalone REST Submission Server (default port 6066) submission status probe.
+  {
+    name: "spark_rest_submission_status"
+    path_suffix: "/v1/submissions/status/driver-0"
+    response: {
+      status_codes: [200, 400, 404]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"action\""
+          },
+          {
+            body: {}
+            contains: "\"SubmissionStatusResponse\""
+          },
+          {
+            body: {}
+            contains: "\"serverSparkVersion\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"serverSparkVersion\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        }
+      ]
+    }
+  },
+  # Apache Spark Web UI core JavaScript bundle (/static/webui.js).
+  {
+    name: "spark_static_webui_js"
+    path_suffix: "/static/webui.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "function setUIRoot("
+          },
+          {
+            body: {}
+            contains: "function setAppBasePath("
+          },
+          {
+            body: {}
+            contains: "collapse-aggregated-sparkProperties"
+          },
+          {
+            body: {}
+            contains: "collapse-aggregated-executors"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Spark Web UI core stylesheet (/static/webui.css).
+  {
+    name: "spark_static_webui_css"
+    path_suffix: "/static/webui.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "span.expand-dag-viz"
+          },
+          {
+            body: {}
+            contains: ".task-deserialization-time-checkbox-div"
+          },
+          {
+            body: {}
+            contains: ".peak-execution-memory-checkbox-div"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  # Apache Spark Web UI logo asset (/static/spark-logo-77x50px-hd.png), invariant across Spark 2.x/3.x/4.x.
+  {
+    name: "spark_logo_png"
+    path_suffix: "/static/spark-logo-77x50px-hd.png"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            hash: {
+              body_sha256_hashes: [
+                "50d1121f8a956ba729d72a0f65317b4c8a3037fbf035ad37b39c5336ace07f5a"
+              ]
+            }
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # 1. Version-extracting multi-step workflows across Master, Worker, History Server, and Application Web UI.
+  { steps: ["spark_webui_root", "spark_master_or_worker_json"] },
+  { steps: ["spark_webui_root", "spark_api_v1_version"] },
+  { steps: ["spark_webui_root", "spark_api_v1_applications"] },
+  { steps: ["spark_webui_root", "spark_static_webui_js"] },
+  { steps: ["spark_webui_root", "spark_static_webui_css"] },
+  { steps: ["spark_webui_root", "spark_logo_png"] },
+  { steps: ["spark_root_jobs_redirect", "spark_jobs_ui"] },
+  { steps: ["spark_root_jobs_redirect", "spark_api_v1_version"] },
+  { steps: ["spark_jobs_ui", "spark_api_v1_version"] },
+  { steps: ["spark_jobs_ui", "spark_api_v1_applications"] },
+  { steps: ["spark_jobs_ui", "spark_static_webui_js"] },
+  { steps: ["spark_jobs_ui", "spark_static_webui_css"] },
+  { steps: ["spark_jobs_ui", "spark_logo_png"] },
+  # 2. Spark Standalone REST Submission Server (port 6066) root 400 error JSON or status probe.
+  { steps: ["spark_rest_error_root"] },
+  { steps: ["spark_rest_submission_status"] },
+  # 3. Subpath-capable static asset and JSON status workflows with version extraction.
+  { steps: ["spark_static_webui_js", "spark_api_v1_version"] },
+  { steps: ["spark_static_webui_js", "spark_api_v1_applications"] },
+  { steps: ["spark_static_webui_js", "spark_webui_root"] },
+  { steps: ["spark_static_webui_js", "spark_jobs_ui"] },
+  { steps: ["spark_static_webui_css", "spark_api_v1_version"] },
+  { steps: ["spark_static_webui_css", "spark_api_v1_applications"] },
+  { steps: ["spark_static_webui_css", "spark_webui_root"] },
+  { steps: ["spark_static_webui_css", "spark_jobs_ui"] },
+  { steps: ["spark_logo_png", "spark_api_v1_version"] },
+  { steps: ["spark_logo_png", "spark_api_v1_applications"] },
+  { steps: ["spark_logo_png", "spark_webui_root"] },
+  { steps: ["spark_logo_png", "spark_jobs_ui"] },
+  { steps: ["spark_master_or_worker_json", "spark_webui_root"] },
+  # 4. Versionless bounded fallbacks when HTML UI or /api/v1/version is blocked.
+  { steps: ["spark_master_or_worker_json", "spark_static_webui_js"] },
+  { steps: ["spark_master_or_worker_json", "spark_static_webui_css"] },
+  { steps: ["spark_static_webui_js", "spark_static_webui_css"] },
+  { steps: ["spark_logo_png", "spark_static_webui_js"] }
+]

@@ -1,0 +1,158 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "grafana"
+
+tests: [
+  {
+    name: "api_health_and_mask_icon_identification"
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"commit\":\"deadbeef\",\"database\":\"ok\",\"version\":\"10.1.2\"}"
+      },
+      {
+        uri: "/public/img/grafana_mask_icon.svg"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "image/svg+xml" }
+        ]
+        body: "<svg xmlns=\"http://www.w3.org/2000/svg\"><title>grafana_mask_icon</title><g id=\"grafana_icon\"></g></svg>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["10.1.2"]
+      }
+    ]
+  },
+  {
+    name: "frontend_settings_identification"
+    mock_responses: [
+      {
+        uri: "/api/frontend/settings"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"apps\":{\"grafana-advisor-app\":{\"version\":\"1.1.0\"}},\"buildInfo\":{\"version\":\"9.5.1\"},\"defaultDatasource\":\"-- Grafana --\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["9.5.1"]
+      }
+    ]
+  },
+  {
+    name: "modern_react_login_page_identification"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        body: "<!doctype html><html><body class=\"theme-dark app-grafana\"><div id=\"reactRoot\"></div><script>window.grafanaBootData = {settings: {\"apps\":{\"grafana-advisor-app\":{\"version\":\"1.1.0\"}},\"buildInfo\":{\"commit\":\"ec172ffe\",\"version\":\"13.2.3\"}}};</script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["13.2.3"]
+      }
+    ]
+  },
+  {
+    name: "hide_version_login_page_identification"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        body: "<!doctype html><html><body class=\"theme-dark app-grafana\"><div id=\"reactRoot\"></div><script>window.grafanaBootData = {settings: {\"buildInfo\":{\"hideVersion\":true,\"version\":\"\"},\"openFeatureContext\":{\"grafana_version\":\"13.2.3\"}}};</script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["13.2.3"]
+      }
+    ]
+  },
+  {
+    name: "subpath_login_page_identification"
+    mock_responses: [
+      {
+        uri: "/grafana/login"
+        status_code: 200
+        body: "<html><script>window.grafanaBootData = {settings: {\"buildInfo\":{\"version\":\"8.3.4\"}}};</script><div class=\"grafana-app\"></div></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/grafana"
+        expected_versions: ["8.3.4"]
+      }
+    ]
+  },
+  {
+    name: "subpath_asset_bundle_identification"
+    mock_responses: [
+      {
+        uri: "/monitoring/public/build/app.a1b2c3d4.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "(self.webpackChunkgrafana=self.webpackChunkgrafana||[]).push([[143],{}]);"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/monitoring"
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_application"
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"UP\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_api_health_without_grafana_markers"
+    mock_responses: [
+      {
+        uri: "/api/health"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"commit\":\"deadbeef\",\"database\":\"ok\",\"version\":\"10.1.2\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_html_on_asset_bundle"
+    mock_responses: [
+      {
+        uri: "/public/build/grafana.dark.a1b2c3d4.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Single Page App Fallback</body></html>"
+      }
+    ]
+  }
+]

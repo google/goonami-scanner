@@ -1,0 +1,690 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "jupyter_notebook"
+
+tests: [
+  {
+    name: "notebook_5_7_16_authenticated_login_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" },
+          { name: "Server" value: "TornadoServer/6.1" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Server" value: "TornadoServer/6.1" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Notebook</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/static/base/images/favicon.ico?v=50afa725\">\n    <link rel=\"stylesheet\" href=\"/static/style/style.min.css?v=e652140d\" type=\"text/css\"/>\n    <link rel=\"stylesheet\" href=\"/static/auth/css/override.css?v=ffd040ea\" type=\"text/css\" />\n</head>\n<body class=\"\" dir=\"ltr\">\n<div id=\"header\">\n  <div id=\"header-container\" class=\"container\">\n    <div id=\"ipython_notebook\" class=\"nav navbar-brand\"><a href=\"/tree\" title='dashboard'>\n      <img src='/static/base/images/logo.png?v=a2a176ee' alt='Jupyter Notebook'/>\n    </a></div>\n  </div>\n</div>\n<div id=\"site\">\n  <div id=\"ipython-main-app\" class=\"container\">\n    <form action=\"/login?next=%2F\" method=\"post\" class=\"navbar-form pull-left\">\n      <label for=\"password_input\"><strong>Password or token:</strong></label>\n      <input type=\"password\" name=\"password\" id=\"password_input\" class=\"form-control\">\n      <button type=\"submit\" class=\"btn btn-default\" id=\"login_submit\">Log in</button>\n    </form>\n  </div>\n</div>\n<script type=\"text/javascript\">\n  require([\"auth/js/main\"], function (auth) { auth.login_main(); });\n</script>\n</body>\n</html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Server" value: "TornadoServer/6.1" }
+        ]
+        body: "{\"version\": \"5.7.16\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.7.16"]
+      }
+    ]
+  },
+  {
+    name: "notebook_6_4_12_open_tree_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/tree"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Server" value: "TornadoServer/6.5.10" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Home Page - Select or create a notebook</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/static/base/images/favicon.ico?v=50afa725\">\n    <link rel=\"stylesheet\" href=\"/static/style/style.min.css?v=b092d0a2\" type=\"text/css\"/>\n</head>\n<body class=\"\" data-base-url=\"/\" data-notebook-path=\"\" data-terminals-available=\"True\" data-server-root=\"/\" dir=\"ltr\">\n<div id=\"header\" role=\"navigation\">\n  <div id=\"header-container\" class=\"container\">\n    <div id=\"ipython_notebook\" class=\"nav navbar-brand\"><a href=\"/tree\" title='dashboard'><img src='/static/base/images/logo.png?v=a2a176ee' alt='Jupyter Notebook'/></a></div>\n    <span id=\"login_widget\"></span>\n  </div>\n</div>\n<div id=\"site\"><div id=\"ipython-main-app\" class=\"container\"></div></div>\n<script src=\"/static/tree/js/main.min.js?v=785bec97\" type=\"text/javascript\" charset=\"utf-8\"></script>\n</body>\n</html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"6.4.12\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.4.12"]
+      }
+    ]
+  },
+  {
+    name: "notebook_6_5_7_nbclassic_authenticated_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Notebook</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/static/base/images/favicon.ico?v=50afa725\">\n    <link rel=\"stylesheet\" href=\"/static/auth/css/override.css?v=7d24c52c\" type=\"text/css\" />\n</head>\n<body class=\"\" dir=\"ltr\">\n<div id=\"header\"><div id=\"ipython_notebook\" class=\"nav navbar-brand\"><a href=\"/tree\" title='dashboard'><img src='/static/base/images/logo.png?v=a2a176ee' alt='Jupyter Notebook'/></a></div></div>\n<div id=\"site\"><div id=\"ipython-main-app\" class=\"container\"><button type=\"submit\" id=\"login_submit\">Log in</button></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/static/base/js/namespace.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var Jupyter = Jupyter || {};\ndefine(function(){ Jupyter.version = \"1.3.3\"; return Jupyter; });\nvar IPython = Jupyter;\n"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"6.5.7\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.5.7"]
+      }
+    ]
+  },
+  {
+    name: "notebook_6_4_12_subpath_authenticated_identification"
+    mock_responses: [
+      {
+        uri: "/jupyter/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Notebook</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/jupyter/static/base/images/favicon.ico?v=50afa725\">\n    <link rel=\"stylesheet\" href=\"/jupyter/static/auth/css/override.css?v=7d24c52c\" type=\"text/css\" />\n</head>\n<body class=\"\" dir=\"ltr\">\n<div id=\"header\"><div id=\"ipython_notebook\" class=\"nav navbar-brand\"><a href=\"/jupyter/tree\" title='dashboard'><img src='/jupyter/static/base/images/logo.png?v=a2a176ee' alt='Jupyter Notebook'/></a></div></div>\n<div id=\"site\"><div id=\"ipython-main-app\" class=\"container\"><button type=\"submit\" id=\"login_submit\">Log in</button></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/jupyter/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"6.4.12\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/jupyter"
+        expected_versions: ["6.4.12"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_0_8_open_tree_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/tree"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Server" value: "TornadoServer/6.6" }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>Home</title>\n  <link rel=\"icon\" type=\"image/x-icon\" href=\"/static/favicons/favicon.ico\" class=\"favicon\">\n</head>\n<body>\n  <script id=\"jupyter-config-data\" type=\"application/json\">\n    {\"allow_hidden_files\": false, \"appName\": \"Jupyter Notebook\", \"appNamespace\": \"notebook\", \"appUrl\": \"/lab\", \"appVersion\": \"7.0.8\", \"baseUrl\": \"/\", \"federated_extensions\": [{\"name\": \"@jupyter-notebook/lab-extension\"}], \"fullStaticUrl\": \"/static/notebook\", \"notebookPage\": \"tree\", \"notebookVersion\": \"[2, 21, 1]\", \"terminalsAvailable\": true}\n  </script>\n  <script src=\"/static/notebook/bundle.js\" main=\"index\"></script>\n</body>\n</html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.0.8"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_0_8_authenticated_login_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Server" value: "TornadoServer/6.6" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Server</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/static/favicon.ico?v=50afa725\">\n</head>\n<body class=\"\" dir=\"ltr\">\n  <div id=\"header\" role=\"navigation\" aria-label=\"Top Menu\">\n    <div id=\"header-container\" class=\"container\">\n      <div id=\"jupyter_server\" class=\"nav navbar-brand\"><a href=\"/tree\" title='dashboard'>\n          <img src='/static/logo/logo.png?v=a2a176ee' alt='Jupyter Server' />\n        </a></div>\n    </div>\n  </div>\n  <div id=\"site\">\n    <div id=\"jupyter-main-app\" class=\"container\">\n      <form action=\"/login?next=%2F\" method=\"post\"><input type=\"password\" name=\"password\" id=\"password_input\"><button type=\"submit\" id=\"login_submit\">Log in</button></form>\n    </div>\n  </div>\n</body>\n</html>"
+      },
+      {
+        uri: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"@jupyter-notebook/lab-extension\",\n  \"version\": \"7.0.8\",\n  \"description\": \"Jupyter Notebook - Lab Extension\",\n  \"homepage\": \"https://github.com/jupyter/notebook\",\n  \"license\": \"BSD-3-Clause\"\n}\n"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.0.8"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_6_4_open_tree_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/tree?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/tree"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html><head><meta charset=\"utf-8\"/><title>Home</title><link rel=\"icon\" type=\"image/x-icon\" href=\"/static/favicons/favicon.ico\" class=\"favicon\"/><script defer=\"defer\" src=\"/static/notebook/main.f6f7b4ecba38592c.js?v=f6f7b4ecba38592c\"></script></head><body class=\"jp-ThemedContainer\"><script id=\"jupyter-config-data\" type=\"application/json\">{\"allow_hidden_files\": false, \"appName\": \"Jupyter Notebook\", \"appNamespace\": \"notebook\", \"appUrl\": \"/lab\", \"appVersion\": \"7.6.4\", \"baseUrl\": \"/\", \"fullStaticUrl\": \"/static/notebook\", \"notebookPage\": \"tree\", \"notebookVersion\": \"[2, 21, 1]\"}</script></body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.6.4"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_6_4_authenticated_subpath_identification"
+    mock_responses: [
+      {
+        uri: "/jupyter/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Server</title>\n</head>\n<body class=\"\" dir=\"ltr\">\n  <div id=\"header\" role=\"navigation\" aria-label=\"Top Menu\">\n    <div id=\"header-container\" class=\"container\">\n      <div id=\"jupyter_server\" class=\"nav navbar-brand\"><a href=\"/jupyter/tree\" title='dashboard'>\n          <img src='/jupyter/static/logo/logo.png?v=a2a176ee' alt='Jupyter Server' />\n        </a></div>\n    </div>\n  </div>\n  <div id=\"site\"><div id=\"jupyter-main-app\" class=\"container\"></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/jupyter/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"name\": \"@jupyter-notebook/lab-extension\",\n  \"version\": \"7.6.4\",\n  \"description\": \"Jupyter Notebook - Lab Extension\",\n  \"homepage\": \"https://github.com/jupyter/notebook\"\n}\n"
+      },
+      {
+        uri: "/jupyter/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/jupyter"
+        expected_versions: ["7.6.4"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_6_4_passive_rspack_bundle_subpath_identification"
+    mock_responses: [
+      {
+        uri: "/jupyter/static/notebook/main.f6f7b4ecba38592c.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "var _JUPYTERLAB;(()=>{let e=document.getElementById(\"jupyter-config-data\");const shared=[{name:\"@jupyter-notebook/application\",version:\"7.6.4\",factory:()=>Promise.all([])}];})();"
+      },
+      {
+        uri: "/jupyter/static/notebook/third-party-licenses.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"packages\": [\n    {\n      \"name\": \"@jupyter-notebook/application\",\n      \"versionInfo\": \"7.6.4\",\n      \"licenseId\": \"BSD-3-Clause\",\n      \"extractedText\": \"\"\n    },\n    {\n      \"name\": \"@jupyter-notebook/tree-extension\",\n      \"versionInfo\": \"7.6.4\",\n      \"licenseId\": \"BSD-3-Clause\",\n      \"extractedText\": \"\"\n    }\n  ]\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/jupyter"
+        expected_versions: ["7.6.4"]
+      }
+    ]
+  },
+  {
+    name: "notebook_7_6_4_authenticated_licenses_backup_identification"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><title>Jupyter Server</title></head><body><div id=\"jupyter_server\"><a href=\"/tree\" title='dashboard'><img src='/static/logo/logo.png' alt='Jupyter Server' /></a></div><div id=\"jupyter-main-app\"></div></body></html>"
+      },
+      {
+        uri: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"message\": \"Forbidden\"}"
+      },
+      {
+        uri: "/static/notebook/third-party-licenses.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\n  \"packages\": [\n    {\n      \"name\": \"@jupyter-notebook/application\",\n      \"versionInfo\": \"7.6.4\",\n      \"licenseId\": \"BSD-3-Clause\",\n      \"extractedText\": \"\"\n    },\n    {\n      \"name\": \"@jupyter-notebook/tree-extension\",\n      \"versionInfo\": \"7.6.4\",\n      \"licenseId\": \"BSD-3-Clause\",\n      \"extractedText\": \"\"\n    }\n  ]\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.6.4"]
+      }
+    ]
+  },
+  {
+    name: "notebook_classic_static_loginmain_fallback_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 403
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body: "Forbidden"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Notebook</title>\n    <link id=\"favicon\" rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/static/base/images/favicon.ico?v=50afa725\">\n    <link rel=\"stylesheet\" href=\"/static/auth/css/override.css?v=7d24c52c\" type=\"text/css\" />\n</head>\n<body class=\"\" dir=\"ltr\">\n<div id=\"header\"><div id=\"ipython_notebook\" class=\"nav navbar-brand\"><a href=\"/tree\" title='dashboard'><img src='/static/base/images/logo.png?v=a2a176ee' alt='Jupyter Notebook'/></a></div></div>\n<div id=\"site\"><div id=\"ipython-main-app\" class=\"container\"><button type=\"submit\" id=\"login_submit\">Log in</button></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/api"
+        status_code: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"message\": \"Forbidden\"}"
+      },
+      {
+        uri: "/static/auth/js/loginmain.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "// Copyright (c) Jupyter Development Team.\ndefine(['jquery', 'base/js/namespace', 'base/js/page'], function($, IPython, page) {\n    function login_main() {\n      var page_instance = new page.Page('div#header', 'div#site');\n      page_instance.show();\n      IPython.page = page_instance;\n    }\n    return login_main;\n});\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_jupyterlab_open"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/lab?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/lab"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><title>JupyterLab</title><script id=\"jupyter-config-data\" type=\"application/json\">{\"appName\": \"JupyterLab\", \"appNamespace\": \"lab\", \"appUrl\": \"/lab\", \"appVersion\": \"4.6.5\", \"baseUrl\": \"/\", \"fullStaticUrl\": \"/static/lab\", \"terminalsAvailable\": true}</script><script defer=\"defer\" src=\"/static/lab/main.580360276a959490.js?v=580360276a959490\"></script></head><body class=\"jp-ThemedContainer\"></body></html>"
+      },
+      {
+        uri: "/tree"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/html" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><title>Jupyter Server</title></head><body><div id=\"jupyter_server\"><a href=\"/lab\" title='dashboard'><img src='/static/logo/logo.png' alt='Jupyter Server' /></a></div><h1>404 : Not Found</h1></body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_standalone_jupyterlab_authenticated_even_with_notebook_installed"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Location" value: "/lab?" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML>\n<html>\n<head>\n    <meta charset=\"utf-8\">\n    <title>Jupyter Server</title>\n</head>\n<body class=\"\" dir=\"ltr\">\n  <div id=\"header\">\n    <div id=\"header-container\" class=\"container\">\n      <div id=\"jupyter_server\" class=\"nav navbar-brand\"><a href=\"/lab\" title='dashboard'>\n          <img src='/static/logo/logo.png?v=a2a176ee' alt='Jupyter Server' />\n        </a></div>\n    </div>\n  </div>\n  <div id=\"site\"><div id=\"jupyter-main-app\" class=\"container\"></div></div>\n</body>\n</html>"
+      },
+      {
+        uri: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"name\": \"@jupyter-notebook/lab-extension\", \"version\": \"7.6.4\", \"description\": \"Jupyter Notebook - Lab Extension\", \"homepage\": \"https://github.com/jupyter/notebook\"}"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_bare_jupyter_server_authenticated"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><title>Jupyter Server</title></head><body><div id=\"jupyter_server\" class=\"nav navbar-brand\"><a href=\"/\" title='dashboard'><img src='/static/logo/logo.png' alt='Jupyter Server' /></a></div><div id=\"jupyter-main-app\" class=\"container\"></div></body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"2.21.1\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_jupyterhub_login"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><meta charset=\"utf-8\"><title>JupyterHub</title></head><body><div id=\"login-main\" class=\"container\"><form action=\"/hub/login?next=\" method=\"post\"><h1>Sign in</h1></form></div></body></html>"
+      },
+      {
+        uri: "/hub/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><meta charset=\"utf-8\"><title>JupyterHub</title></head><body><div id=\"login-main\" class=\"container\"><form action=\"/hub/login?next=\" method=\"post\"><h1>Sign in</h1></form></div></body></html>"
+      },
+      {
+        uri: "/hub/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body: "{\"version\": \"4.1.5\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_tornado_json_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" },
+          { name: "Server" value: "TornadoServer/6.4" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Internal Dashboard</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" },
+          { name: "Server" value: "TornadoServer/6.4" }
+        ]
+        body: "{\"version\": \"5.7.16\"}"
+      }
+    ]
+  },
+  {
+    name: "negative_soft_200_spa_html_catchall_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>React App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/tree"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>React App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><title>React App</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"version\": \"6.4.12\"}</body></html>"
+      },
+      {
+        uri: "/static/notebook/bundle.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>_JUPYTERLAB jupyter-config-data @jupyter-notebook/application</body></html>"
+      },
+      {
+        uri: "/static/notebook/third-party-licenses.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>\"packages\" \"@jupyter-notebook/application\" \"@jupyter-notebook/tree-extension\"</body></html>"
+      },
+      {
+        uri: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>\"@jupyter-notebook/lab-extension\" \"Jupyter Notebook - Lab Extension\" https://github.com/jupyter/notebook</body></html>"
+      },
+      {
+        uri: "/static/auth/js/loginmain.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>base/js/namespace function login_main() IPython.page</body></html>"
+      },
+      {
+        uri: "/static/base/images/favicon-notebook.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not found</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_jupyter_server_tree_login_without_notebook7_assets"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE HTML><html><head><title>Jupyter Server</title></head><body><div id=\"jupyter_server\"><a href=\"/tree\" title='dashboard'><img src='/static/logo/logo.png' alt='Jupyter Server' /></a></div><div id=\"jupyter-main-app\"><form action=\"/login\" method=\"post\"><button type=\"submit\">Log in</button></form></div></body></html>"
+      },
+      {
+        uri: "/lab/extensions/@jupyter-notebook/lab-extension/package.json"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body: "404 Not Found"
+      },
+      {
+        uri: "/static/notebook/third-party-licenses.json"
+        status_code: 404
+        headers: [
+          { name: "Content-Type" value: "text/plain" }
+        ]
+        body: "404 Not Found"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_classic_loginmain_js"
+    mock_responses: [
+      {
+        uri: "/static/auth/js/loginmain.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type" value: "application/javascript" }
+        ]
+        body: "// Copyright (c) Jupyter Development Team.\ndefine(['jquery', 'base/js/namespace', 'base/js/page'], function($, IPython, page) {\n    function login_main() {\n      var page_instance = new page.Page('div#header', 'div#site');\n      page_instance.show();\n      IPython.page = page_instance;\n    }\n    return login_main;\n});\n"
+      }
+    ]
+    expected_matches: []
+  }
+]

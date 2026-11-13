@@ -1,0 +1,318 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "craftcms"
+
+tests: [
+  {
+    name: "craftcms_3_9_15_installed_admin_login_and_cp_js"
+    mock_responses: [
+      {
+        uri: "/admin/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" },
+          { name: "Set-Cookie", value: "CRAFT_CSRF_TOKEN=7e5b6833bedf70ecb6da1074f31f05d7; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en-US\"><head><title>Sign In - Craft Test</title><script>window.Craft = {\"actionTrigger\":\"actions\",\"actionUrl\":\"http:\\/\\/target.test:8080\\/index.php?p=admin\\/actions\\/\",\"baseApiUrl\":\"https:\\/\\/api.craftcms.com\\/v1\\/\",\"cpTrigger\":\"admin\",\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\",\"csrfTokenValue\":\"testtoken\"};</script></head><body class=\"login ltr\"><script src=\"http://target.test:8080/cpresources/86a45b20/garnish.js?v=1698700000\"></script><script src=\"http://target.test:8080/cpresources/7f21c3a1/cp.js?v=1698700000\"></script><script src=\"http://target.test:8080/cpresources/9b41e012/login.js?v=1698700000\"></script><script>new Craft.LoginForm();</script></body></html>"
+      },
+      {
+        uri: "/cpresources/7f21c3a1/cp.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "/*! For license information please see cp.js.LICENSE.txt */\n(function(){var __webpack_modules__={463:function(){Craft.Accordion=Garnish.Base.extend({$trigger:null});Craft.Uploader=Garnish.Base.extend({});}};})();"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_4_8_4_pending_install_offline_root_and_installer"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" },
+          { name: "Set-Cookie", value: "CRAFT_CSRF_TOKEN=c0e3d70b8816c916bc323d7231c7b254; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>Service Unavailable - Craft</title><script>window.Craft = {\"actionTrigger\":\"actions\",\"baseApiUrl\":\"https:\\/\\/api.craftcms.com\\/v1\\/\",\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\",\"csrfTokenValue\":\"tok\"};</script></head><body class=\"message\"><script src=\"http://target.test:8080/cpresources/b9f58f06/garnish.js?v=1793717308\"></script><script src=\"http://target.test:8080/cpresources/db9f16e5/cp.js?v=1793717308\"></script></body></html>"
+      },
+      {
+        uri: "/admin/install"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>Install Craft CMS - Craft</title><script>window.Craft = {\"actionTrigger\":\"actions\",\"baseApiUrl\":\"https:\\/\\/api.craftcms.com\\/v1\\/\",\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\"};</script></head><body><button id=\"beginbtn\" class=\"btn submit\">Begin</button><script src=\"http://target.test:8080/cpresources/db9f16e5/cp.js?v=1793717308\"></script><script src=\"http://target.test:8080/cpresources/d6e34d33/install.js?v=1793717309\"></script><script>Craft.installer = new Craft.Installer();</script></body></html>"
+      },
+      {
+        uri: "/cpresources/db9f16e5/cp.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "/*! For license information please see cp.js.LICENSE.txt */\n(function(){Craft.Accordion=Garnish.Base.extend({$trigger:null});Craft.ElementIndex=Garnish.Base.extend({});})();"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_4_18_9_installed_welcome_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><meta charset=\"utf-8\"><title>Welcome to Craft CMS</title><link rel=\"stylesheet\" href=\"/cpresources/94f8951d/css/welcome.css\"></head><body><div class=\"container\"><h1>Welcome</h1><p>Thanks for installing Craft CMS!</p><p><a href=\"/admin\">Go to your Control Panel</a> or read the <a href=\"https://craftcms.com/docs/4.x/\">official documentation</a>.</p></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_5_11_5_installed_admin_login_short_cpresources_hash"
+    mock_responses: [
+      {
+        uri: "/admin/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "Set-Cookie", value: "CraftSessionId=cd7291d3dc9da710113a134d3a9c957f; path=/; HttpOnly" },
+          { name: "X-Powered-By", value: "Craft CMS" }
+        ]
+        body: "<!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\" lang=\"en-US\"><head><title>Sign In - Craft Test</title><script>window.Craft = {\"Solo\":0,\"Team\":1,\"Pro\":2,\"Enterprise\":3,\"actionTrigger\":\"actions\",\"baseApiUrl\":\"https:\\/\\/api.craftcms.com\\/v1\\/\",\"cpTrigger\":\"admin\",\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\",\"csrfTokenValue\":\"yEDMoLlm6QJsAjWt5DOfTjL2S8KSNoYjL3fKX4S3tq8=\"};</script></head><body class=\"login ltr\"><a id=\"poweredby\" href=\"http://craftcms.com/\" title=\"Powered by Craft CMS\" aria-label=\"Craft CMS\"></a><script src=\"https://cdn.example.test/cpresources/6710247b/garnish.js?v=1793717846\"></script><script src=\"https://cdn.example.test/cpresources/57abd98/cp.js?v=1793717846\"></script><script>(() => { const loginForm = new Craft.LoginForm($('.login-container')); })();</script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_5_11_5_custom_frontend_and_custom_cp_trigger_via_session_info"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Acme Marketing Site</title></head><body><h1>Welcome to Acme</h1></body></html>"
+      },
+      {
+        uri: "/actions/users/session-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=UTF-8" },
+          { name: "Set-Cookie", value: "CRAFT_CSRF_TOKEN=9a5f65864fefcbe406351df6f15ae804; path=/; HttpOnly" }
+        ]
+        body: "{\"isGuest\":true,\"timeout\":0,\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\",\"csrfTokenValue\":\"ls11aqLwHG_eP3Qlkf6pyb72y-h3d_NAi3q5gsCNkVFkYoWcLHxmfvm-HFqTqCxbp14MdPu7nqXPnYSKODCcA_os6t3t2vcdIT295GMXNx8=\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_non_rewrite_pending_install_admin_session_info"
+    mock_responses: [
+      {
+        uri: "/index.php?p=admin/login"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "404 Not Found"
+      },
+      {
+        uri: "/index.php?p=admin/install"
+        status_code: 404
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "404 Not Found"
+      },
+      {
+        uri: "/index.php?p=actions/users/session-info"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=UTF-8" }
+        ]
+        body: "{\"name\":\"Service Unavailable\",\"message\":\"\",\"code\":0,\"status\":503}"
+      },
+      {
+        uri: "/index.php?p=admin/actions/users/session-info"
+        status_code: 503
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" }
+        ]
+        body: "{\"name\":\"Service Unavailable\",\"message\":\"Craft isn’t installed yet.\",\"code\":0,\"status\":503}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "craftcms_subpath_deployment_via_admin_login"
+    mock_responses: [
+      {
+        uri: "/cms/admin/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "X-Powered-By", value: "Craft CMS" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en-US\"><head><title>Sign In - Craft</title><script>window.Craft = {\"actionTrigger\":\"actions\",\"baseApiUrl\":\"https:\\/\\/api.craftcms.com\\/v1\\/\",\"cpTrigger\":\"admin\",\"csrfTokenName\":\"CRAFT_CSRF_TOKEN\"};</script></head><body><script src=\"/cms/cpresources/b9f58f06/garnish.js?v=1793717308\"></script><script src=\"/cms/cpresources/db9f16e5/cp.js?v=1793717308\"></script><script>new Craft.LoginForm();</script></body></html>"
+      },
+      {
+        uri: "/cms/cpresources/db9f16e5/cp.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "/*! For license information please see cp.js.LICENSE.txt */\nCraft.Accordion=Garnish.Base.extend({});Craft.LoginForm=Garnish.Base.extend({});"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cms"
+      }
+    ]
+  },
+  {
+    name: "craftcms_subpath_deployment_via_cpresources_js"
+    mock_responses: [
+      {
+        uri: "/portal/cpresources/6710247b/garnish.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript; charset=utf-8" }
+        ]
+        body: "/*! For license information please see garnish.js.LICENSE.txt */\nwindow.Garnish={};Garnish.$win=$(window);Garnish.Base=Base;Garnish.Modal=Garnish.Base.extend({});"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/portal"
+      }
+    ]
+  },
+  {
+    name: "negative_generic_yii2_app_and_session_endpoint"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" },
+          { name: "Set-Cookie", value: "_csrf=8f31c9a0; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>My Yii Application</title></head><body><h1>Congratulations!</h1><p>You have successfully created your Yii-powered application.</p></body></html>"
+      },
+      {
+        uri: "/actions/users/session-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=UTF-8" },
+          { name: "Set-Cookie", value: "_csrf=8f31c9a0; path=/; HttpOnly" }
+        ]
+        body: "{\"isGuest\":true,\"timeout\":0,\"csrfTokenName\":\"_csrf\",\"csrfTokenValue\":\"8f31c9a0\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spa_soft_200_html_fallback"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React Portal</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/admin/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React Portal</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/admin/install"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React Portal</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/actions/users/session-info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>React Portal</title></head><body><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/cpresources/db9f16e5/cp.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Garnish.Base Craft.Accordion Page Not Found</body></html>"
+      },
+      {
+        uri: "/cpresources/db9f16e5/images/icons/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_blog_post_mentioning_craftcms"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Why We Migrated to Craft CMS 5</title></head><body><h1>Craft CMS Architecture</h1><p>Read the <a href=\"https://craftcms.com/docs/5.x/\">Craft CMS docs</a> to learn how /cpresources/57abd98/cp.js and CRAFT_CSRF_TOKEN work.</p></body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

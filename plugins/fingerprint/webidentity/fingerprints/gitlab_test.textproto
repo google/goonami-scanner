@@ -1,0 +1,397 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "gitlab"
+
+tests: [
+  {
+    name: "gitlab_19_5_configured_sign_in_and_whats_new"
+    mock_responses: [
+      {
+        uri: "/users/sign_in"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"html-devise-layout gl-system\" lang=\"en\"><head prefix=\"og: http://ogp.me/ns#\"><title>Sign in · GitLab</title><script>window.gon={};gon.features={\"twoStepSignIn\":false};</script><link rel=\"stylesheet\" href=\"/assets/application-79f356d98146549c21e5657de00ff91a957f995329d1725db0bb2a7251d2b59a.css\" /><script src=\"/assets/webpack/runtime.ea79027a.bundle.js\" defer=\"defer\"></script><meta content=\"GitLab\" property=\"og:site_name\"></head><body class=\"login-page\" data-page=\"sessions:new\"><div id=\"js-sign-in-form\"><form action=\"/users/sign_in\" method=\"post\"></form></div></body></html>"
+      },
+      {
+        uri: "/-/whats_new.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "[{\"name\":\"/goal command in GitLab Duo CLI is generally available\",\"stage\":\"ai_clients\",\"self-managed\":true,\"gitlab-com\":true,\"available_in\":[\"Premium\",\"Ultimate\"],\"documentation_link\":\"https://docs.gitlab.com/user/gitlab_duo_cli/use/#slash-commands\",\"published_at\":\"2026-10-15\",\"release\":\"19.5\"}]"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["19.5"]
+      }
+    ]
+  },
+  {
+    name: "gitlab_15_11_configured_root_and_api_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"devise-layout-html\"><head prefix=\"og: http://ogp.me/ns#\"><title>Sign in · GitLab</title><link rel=\"stylesheet\" media=\"print\" href=\"/assets/application-ba1723ee38768ca6dcce3e345b1f4cef7372520f2adbb0b5be32a0e6a2b6d5df.css\" /><meta content=\"GitLab\" property=\"og:site_name\"><script>window.gon={};gon.api_version=\"v4\";</script><script src=\"/assets/webpack/runtime.c18dc792.bundle.js\" defer=\"defer\"></script></head><body class=\"ui-indigo login-page application navless\" data-page=\"sessions:new\"><form id=\"new_user\" action=\"/users/sign_in\" method=\"post\"></form></body></html>"
+      },
+      {
+        uri: "/api/v4/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"15.11.13\",\"revision\":\"b5ef2d7c172\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["15.11.13"]
+      }
+    ]
+  },
+  {
+    name: "gitlab_11_9_unconfigured_initial_password_setup_at_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"devise-layout-html\"><head prefix=\"og: http://ogp.me/ns#\"><meta content=\"GitLab\" property=\"og:site_name\"><title>GitLab</title><link rel=\"stylesheet\" media=\"all\" href=\"/assets/application-3cbf1ae156fa85f16d4ca01321e0965db8cfb9239404aaf52c3cebfc5b4493fb.css\" /><script>window.gon={};gon.api_version=\"v4\";gon.gitlab_url=\"http://localhost:18080\";</script><script src=\"/assets/webpack/runtime.70ab43a8.bundle.js\" defer=\"defer\"></script></head><body class=\"ui-indigo login-page application navless qa-login-page\" data-page=\"passwords:edit\"><h1>GitLab Community Edition</h1><form class=\"gl-show-field-errors\" id=\"new_user\" action=\"/users/password\" method=\"post\"><input type=\"hidden\" value=\"e1QmyBAxjz_zJ_siNxrd\" name=\"user[reset_password_token]\" id=\"user_reset_password_token\" /></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_11_9_unconfigured_initial_password_page_direct"
+    mock_responses: [
+      {
+        uri: "/users/password/edit"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"devise-layout-html\"><head prefix=\"og: http://ogp.me/ns#\"><meta content=\"GitLab\" property=\"og:site_name\"><title>GitLab</title><link rel=\"stylesheet\" media=\"all\" href=\"/assets/application-3cbf1ae156fa85f16d4ca01321e0965db8cfb9239404aaf52c3cebfc5b4493fb.css\" /><script>window.gon={};gon.api_version=\"v4\";</script></head><body data-page=\"passwords:edit\"><form id=\"new_user\" action=\"/users/password\" method=\"post\"><input type=\"hidden\" value=\"token123\" name=\"user[reset_password_token]\" /></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_19_unconfigured_initial_admin_setup"
+    mock_responses: [
+      {
+        uri: "/admin/initial_setup/new"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"html-devise-layout gl-system\" lang=\"en\"><head prefix=\"og: http://ogp.me/ns#\"><title>Instance Configuration · GitLab</title><script>window.gon={};</script><link rel=\"stylesheet\" href=\"/assets/application-79f356d98146549c21e5657de00ff91a957f995329d1725db0bb2a7251d2b59a.css\" /><meta content=\"GitLab\" property=\"og:site_name\"></head><body data-page=\"initial_setup:new\"><h2>Administrator Account Setup</h2><form action=\"/admin/initial_setup\" method=\"post\"><input type=\"email\" name=\"user[email]\" /><input type=\"password\" name=\"user[password]\" /></form></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_19_booting_502_waiting_to_boot"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 502
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Waiting for GitLab to boot</title></head><body><div class=\"error-container\"><img src=\"/-/error-illustrations/error-502-lg.svg\" alt=\"502 error\" /><h1>HTTP 502: Waiting for GitLab to boot</h1><p>GitLab is starting up. This page will automatically refresh once GitLab is ready.</p></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_11_booting_502_not_responding"
+    mock_responses: [
+      {
+        uri: "/users/sign_in"
+        status_code: 502
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>GitLab is not responding (502)</title></head><body><img alt=\"GitLab Logo\" /><h1>502</h1><div class=\"container\"><h3>Whoops, GitLab is taking too much time to respond.</h3><p>Try refreshing the page, or going back and attempting the action again.</p><p>Please contact your GitLab administrator if this problem persists.</p></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_subpath_via_application_css_and_whats_new"
+    mock_responses: [
+      {
+        uri: "/gitlab/assets/application-79f356d98146549c21e5657de00ff91a957f995329d1725db0bb2a7251d2b59a.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css; charset=utf-8" }
+        ]
+        body: "body.ui-indigo .navbar-gitlab{background-color:#292961}.navbar-empty .tanuki-logo{max-height:100%}.gl-button{display:inline-flex}"
+      },
+      {
+        uri: "/gitlab/users/sign_in"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"html-devise-layout gl-system\" lang=\"en\"><head><script>window.gon={};</script><link rel=\"stylesheet\" href=\"/gitlab/assets/application-79f356d98146549c21e5657de00ff91a957f995329d1725db0bb2a7251d2b59a.css\" /><meta content=\"GitLab\" property=\"og:site_name\"></head><body data-page=\"sessions:new\"><div id=\"js-sign-in-form\"></div></body></html>"
+      },
+      {
+        uri: "/gitlab/-/whats_new.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "[{\"name\":\"Feature\",\"self-managed\":true,\"gitlab-com\":true,\"available_in\":[\"Free\"],\"documentation_link\":\"https://docs.gitlab.com/ee/user/\",\"release\":\"19.5\"}]"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/gitlab"
+        expected_versions: ["19.5"]
+      }
+    ]
+  },
+  {
+    name: "gitlab_public_help_page_version"
+    mock_responses: [
+      {
+        uri: "/help"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta content=\"GitLab\" property=\"og:site_name\"><link rel=\"stylesheet\" href=\"/assets/application-3cbf1ae156fa85f16d4ca01321e0965db8cfb9239404aaf52c3cebfc5b4493fb.css\" /><script>window.gon={};gon.version=\"11.9.12\";</script></head><body data-page=\"help:index\"><h1>GitLab Community Edition <span>11.9.12</span></h1></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["11.9.12"]
+      }
+    ]
+  },
+  {
+    name: "gitlab_manifest_and_opensearch_when_oauth_redirect"
+    mock_responses: [
+      {
+        uri: "/-/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json; charset=utf-8" }
+        ]
+        body: "{\"name\": \"GitLab\", \"short_name\": \"GitLab\", \"icons\": [{\"src\": \"/-/pwa-icons/logo-192.png\"}, {\"src\": \"/-/pwa-icons/maskable-logo.png\"}]}"
+      },
+      {
+        uri: "/search/opensearch.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/xml; charset=utf-8" }
+        ]
+        body: "<OpenSearchDescription xmlns=\"http://a9.com/-/spec/opensearch/1.1/\"><ShortName>GitLab</ShortName><Description>Search GitLab</Description><Url type=\"text/html\" method=\"get\" template=\"http://target.test:8080/search?search={searchTerms}\"/></OpenSearchDescription>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "gitlab_static_deploy_and_robots_fallback"
+    mock_responses: [
+      {
+        uri: "/deploy.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Deploy in progress</title></head><body><h2>Deploy in progress</h2><p>GitLab is currently being deployed. Try refreshing the page in a minute.</p></body></html>"
+      },
+      {
+        uri: "/robots.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "User-Agent: *\nDisallow: /autocomplete/users\nDisallow: /search\nDisallow: /*/*/merge_requests/new\nDisallow: /*/*/project_members/import\nAllow: /users/sign_in\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_generic_html_spa_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/users/sign_in"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/-/whats_new.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/api/v4/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/-/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/search/opensearch.xml"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      },
+      {
+        uri: "/robots.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Portal</title></head><body><div id=\"app\">Welcome</div></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_rails_devise_login"
+    mock_responses: [
+      {
+        uri: "/users/sign_in"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign in</title><link rel=\"stylesheet\" href=\"/assets/application-abcdef123456.css\" /><script>window.gon={};</script></head><body data-page=\"sessions:new\"><form id=\"new_user\" action=\"/users/sign_in\" method=\"post\"><input type=\"email\" name=\"user[email]\" /></form></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_api_v4_version_alone"
+    mock_responses: [
+      {
+        uri: "/api/v4/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"version\":\"1.2.3\",\"revision\":\"abc1234\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_generic_502_bad_gateway"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 502
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
+      },
+      {
+        uri: "/users/sign_in"
+        status_code: 502
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_application_css_alone_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/assets/application-79f356d98146549c21e5657de00ff91a957f995329d1725db0bb2a7251d2b59a.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css; charset=utf-8" }
+        ]
+        body: "body.ui-indigo .navbar-gitlab{background-color:#292961}.navbar-empty .tanuki-logo{max-height:100%}.gl-button{display:inline-flex}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_page_mentioning_gitlab"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>DevOps Blog</title></head><body><h1>Migrating to GitLab Community Edition 19.5.1</h1><p>GitLab is an open source software to collaborate on code.</p></body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

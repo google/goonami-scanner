@@ -1,0 +1,224 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "drupal"
+
+tests: [
+  {
+    name: "drupal_11_uninstalled_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"install-page\"><head><meta name=\"Generator\" content=\"Drupal 11 (https://www.drupal.org)\" /><title>Choose language | Drupal</title><script src=\"/core/misc/drupal.js?v=11.4.10\"></script></head><body><span class=\"site-version\">11.4.10</span><div data-drupal-selector=\"drupal-settings-json\"></div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["11.4.10"]
+      }
+    ]
+  },
+  {
+    name: "drupal_11_installed_root_and_core_install"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Generator\" content=\"Drupal 11 (https://www.drupal.org)\" /><title>Welcome! | Drupal</title><script src=\"/sites/default/files/js/js_aggregated.js\"></script></head><body><div data-drupal-selector=\"drupal-settings-json\"></div></body></html>"
+      },
+      {
+        uri: "/core/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"install-page\"><head><meta name=\"Generator\" content=\"Drupal 11 (https://www.drupal.org)\" /><title>Drupal already installed | Drupal</title><script src=\"/core/misc/drupal.js?v=11.4.10\"></script></head><body><p>To start over, you must empty your existing database.</p></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["11.4.10"]
+      }
+    ]
+  },
+  {
+    name: "drupal_10_subpath_via_js_and_core_install"
+    mock_responses: [
+      {
+        uri: "/cms/core/misc/drupal.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "/**\n * @file\n * Custom Drupal JavaScript routines.\n */\nwindow.Drupal = { behaviors: {}, locale: {} };\nDrupal.attachBehaviors = function () {};\nDrupal.checkPlain = function (str) { return str; };\n"
+      },
+      {
+        uri: "/cms/core/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html class=\"install-page\"><head><meta name=\"Generator\" content=\"Drupal 10 (https://www.drupal.org)\" /><title>Drupal already installed | Drupal</title><script src=\"/cms/core/misc/drupal.js?v=10.3.6\"></script></head><body></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/cms"
+        expected_versions: ["10.3.6"]
+      }
+    ]
+  },
+  {
+    name: "drupal_8_core_changelog"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Generator\" content=\"Drupal 8 (https://www.drupal.org)\" /></head><body><script>Drupal.settings = {};</script></body></html>"
+      },
+      {
+        uri: "/core/CHANGELOG.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" }
+        ]
+        body: "Drupal 8.9.20, 2020-11-18\n-------------------------\n- Fix security issues.\n\nDrupal 8.0.0, 2015-11-19\n-------------------------\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["8.9.20"]
+      }
+    ]
+  },
+  {
+    name: "drupal_7_installed_and_changelog"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Generator\" content=\"Drupal 7 (http://drupal.org)\" /><script src=\"/misc/drupal.js\"></script></head><body><script>jQuery.extend(Drupal.settings, {});</script></body></html>"
+      },
+      {
+        uri: "/CHANGELOG.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Drupal 7.101, 2024-06-05\n------------------------\n- Maintenance release.\n- Modules can declare RDF namespaces which are serialized in the <html> tag.\n\nDrupal 1.0.0, 2001-01-15\n------------------------\n- Initial release.\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.101"]
+      }
+    ]
+  },
+  {
+    name: "drupal_7_uninstalled_installer"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\"><head><meta name=\"Generator\" content=\"Drupal 7 (http://drupal.org)\" /><title>Select an installation profile | Drupal</title><script type=\"text/javascript\" src=\"/misc/drupal.js?0\"></script><script type=\"text/javascript\" src=\"/misc/form-single-submit.js?v=7.103\"></script></head><body><script>jQuery.extend(Drupal.settings, {});</script></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.103"]
+      }
+    ]
+  },
+  {
+    name: "negative_generic_html_spa_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Welcome to My SPA App</body></html>"
+      },
+      {
+        uri: "/core/install.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/CHANGELOG.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      },
+      {
+        uri: "/core/CHANGELOG.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body>Page Not Found</body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_wordpress_cms"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Generator\" content=\"WordPress 6.6.2\" /></head><body><h1>My WordPress Site</h1></body></html>"
+      },
+      {
+        uri: "/CHANGELOG.txt"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=UTF-8" }
+        ]
+        body: "Release Notes:\n- Bug fixes and enhancements\n"
+      }
+    ]
+  },
+  {
+    name: "negative_page_mentioning_drupal"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Tech Blog</title></head><body><h1>Why we migrated to Drupal 11 (https://www.drupal.org)</h1><p>Drupal is a great CMS, but this server runs custom Go code.</p></body></html>"
+      }
+    ]
+  }
+]

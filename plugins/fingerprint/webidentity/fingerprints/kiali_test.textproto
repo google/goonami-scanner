@@ -1,0 +1,499 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "kiali"
+
+tests: [
+  {
+    name: "kiali_v1_26_1_default_anonymous_ui_and_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "/kiali/" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "DENY" }
+        ]
+        body: "<a href=\"/kiali/\">Found</a>.\n\n"
+      },
+      {
+        uri: "/kiali/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "DENY" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><base href=\"/kiali/\"/><script type=\"text/javascript\" src=\"./env.js\"></script><link rel=\"manifest\" href=\"./manifest.json\"/><link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\"/><title>Kiali Console</title><link href=\"./static/css/2.c5fb6c5c.chunk.css\" rel=\"stylesheet\"><link href=\"./static/css/main.699b0e41.chunk.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div><script src=\"./static/js/2.db2b171b.chunk.js\"></script><script src=\"./static/js/main.45aa7d55.chunk.js\"></script></body></html>"
+      },
+      {
+        uri: "/kiali/static/js/main.45aa7d55.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "(this[\"webpackJsonp@kiali/kiali-ui\"]=this[\"webpackJsonp@kiali/kiali-ui\"]||[]).push([[0],{root:window.WEB_ROOT,urls:{authInfo:\"api/auth/info\",status:\"api/status\"},keys:{containerVersion:\"Kiali container version\"},ns:\"istio-system\"}]);"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "DENY" }
+        ]
+        body: "{\"status\":{\"Kiali console version\":\"1.26.0\",\"Kiali container version\":\"v1.26.1\",\"Kiali core commit hash\":\"0cf243d730d45cd16e254e2c8d4d2a0ac0cf5222\",\"Kiali core version\":\"v1.26.1\",\"Kiali state\":\"running\"},\"externalServices\":[{\"name\":\"Kubernetes\",\"version\":\"v1.28.0\"},{\"name\":\"Prometheus\",\"version\":\"2.48.0\"}],\"warningMessages\":[],\"istioEnvironment\":{\"isMaistra\":false}}"
+      },
+      {
+        uri: "/kiali/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"Kiali console version\":\"1.26.0\",\"Kiali container version\":\"v1.26.1\",\"Kiali core commit hash\":\"0cf243d730d45cd16e254e2c8d4d2a0ac0cf5222\",\"Kiali core version\":\"v1.26.1\",\"Kiali state\":\"running\"},\"externalServices\":[{\"name\":\"Kubernetes\",\"version\":\"v1.28.0\"}],\"warningMessages\":[],\"istioEnvironment\":{\"isMaistra\":false}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.26.1"]
+      }
+    ]
+  },
+  {
+    name: "kiali_v1_74_0_default_token_auth_mode"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "/kiali/" }
+        ]
+        body: "<a href=\"/kiali/\">Found</a>.\n\n"
+      },
+      {
+        uri: "/kiali/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "X-Frame-Options", value: "DENY" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><base href=\"/kiali/\"/><script type=\"text/javascript\" src=\"./env.js\"></script><link rel=\"manifest\" href=\"./manifest.json\"/><link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\"/><title>Kiali</title><script defer=\"defer\" src=\"./static/js/main.a210fb23.js\"></script><link href=\"./static/css/main.70f3b8f3.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"Kiali commit hash\":\"c17d0550cfb033900c392ff5813368c1185954f1\",\"Kiali container version\":\"v1.74.0\",\"Kiali state\":\"running\",\"Kiali version\":\"v1.74.0\",\"Mesh name\":\"Istio\",\"Mesh version\":\"1.20.0\"},\"externalServices\":[{\"name\":\"Istio\",\"version\":\"1.20.0\"},{\"name\":\"Kubernetes\",\"version\":\"v1.28.0\"}],\"warningMessages\":[],\"istioEnvironment\":{\"istioAPIEnabled\":false}}"
+      },
+      {
+        uri: "/kiali/api/status"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Unauthorized\n"
+      },
+      {
+        uri: "/kiali/api/auth/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"sessionInfo\":{},\"strategy\":\"token\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["1.74.0"]
+      }
+    ]
+  },
+  {
+    name: "kiali_v2_4_0_root_web_root_token_auth_mode"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "DENY" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,shrink-to-fit=no\"/><meta name=\"theme-color\" content=\"#000000\"/><base href=\"/\"/><script type=\"text/javascript\" src=\"./env.js\"></script><link rel=\"manifest\" href=\"./manifest.json\"/><link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\"/><title>Kiali</title><script defer=\"defer\" src=\"./static/js/main.7fb1b5b4.js\"></script><link href=\"./static/css/main.4126b144.css\" rel=\"stylesheet\"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id=\"root\"></div></body></html>"
+      },
+      {
+        uri: "/static/js/main.7fb1b5b4.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunk_kiali_kiali_ui=self.webpackChunk_kiali_kiali_ui||[]).push([[179],{root:window.WEB_ROOT,auth:\"api/auth/info\",status:\"api/status\",ver:\"Kiali container version\"}]);"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"status\": {\n    \"Disabled features\": \"\",\n    \"Kiali commit hash\": \"598196cea32f2716846cb1396846cb139647f40f1ffcac\",\n    \"Kiali container version\": \"v2.4.0\",\n    \"Kiali state\": \"running\",\n    \"Kiali version\": \"v2.4.0\"\n  },\n  \"externalServices\": [\n    {\n      \"name\": \"Kubernetes-Kubernetes\",\n      \"version\": \"v1.28.0\"\n    }\n  ],\n  \"warningMessages\": [],\n  \"istioEnvironment\": {\n    \"istioAPIEnabled\": false\n  }\n}"
+      },
+      {
+        uri: "/api/status"
+        status_code: 401
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Unauthorized\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.4.0"]
+      }
+    ]
+  },
+  {
+    name: "kiali_v2_34_1_default_anonymous_rsbuild_ui_and_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "/kiali/" }
+        ]
+        body: "<a href=\"/kiali/\">Found</a>.\n\n"
+      },
+      {
+        uri: "/kiali/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "X-Content-Type-Options", value: "nosniff" },
+          { name: "X-Frame-Options", value: "DENY" },
+          { name: "X-Xss-Protection", value: "1; mode=block" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\" />\n    <meta name=\"theme-color\" content=\"#000000\" />\n    <base href=\"/kiali/\" />\n    <script type=\"text/javascript\" src=\"./env.js\"></script>\n    <link rel=\"manifest\" href=\"./manifest.json\" />\n    <link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\" />\n    <title>Kiali</title>\n    <link rel=\"preload font\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\" href=\"./pf-v6-pficon.woff2\" />\n  <script defer src=\"./static/js/lib-react.0e6c5c125b.js\"></script><script defer src=\"./static/js/lib-router.39f26873e3.js\"></script><script defer src=\"./static/js/c.588e3ba5c8.js\"></script><script defer src=\"./static/js/index.6cfea3089a.js\"></script><link href=\"./static/css/c.2649c25c01.css\" rel=\"stylesheet\"><link href=\"./static/css/index.99246d2384.css\" rel=\"stylesheet\"></head>\n  <body class=\"pf-m-redhat-font\">\n    <noscript> You need to enable JavaScript to run this app. </noscript>\n    <div id=\"root\"></div>\n  </body>\n</html>"
+      },
+      {
+        uri: "/kiali/static/js/index.6cfea3089a.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "(self.webpackChunkkiali_ui=self.webpackChunkkiali_ui||[]).push([[826],{webRoot:window.WEB_ROOT,authInfo:\"api/auth/info\",status:\"api/status\",containerVer:\"Kiali container version\",id:\"kiali-container-version\"}]);"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"status\": {\n    \"Disabled features\": \"\",\n    \"Kiali commit hash\": \"404bb6f9b477c65a8815c7e09c188e55d3a18885\",\n    \"Kiali container version\": \"v2.34.1\",\n    \"Kiali state\": \"running\",\n    \"Kiali version\": \"v2.34.1\"\n  },\n  \"externalServices\": [\n    {\n      \"name\": \"Kubernetes-Kubernetes\",\n      \"version\": \"v1.28.0\",\n      \"tempoConfig\": {}\n    },\n    {\n      \"name\": \"Prometheus\",\n      \"version\": \"2.48.0\",\n      \"tempoConfig\": {}\n    }\n  ],\n  \"warningMessages\": [],\n  \"istioEnvironment\": {\n    \"istioAPIEnabled\": false\n  }\n}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["2.34.1"]
+      }
+    ]
+  },
+  {
+    name: "kiali_v2_34_1_default_ui_and_bundle_when_api_blocked"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 302
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Location", value: "/kiali/" }
+        ]
+        body: "<a href=\"/kiali/\">Found</a>.\n\n"
+      },
+      {
+        uri: "/kiali/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <base href=\"/kiali/\" />\n    <script type=\"text/javascript\" src=\"./env.js\"></script>\n    <link rel=\"manifest\" href=\"./manifest.json\" />\n    <link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\" />\n    <title>Kiali</title>\n    <script defer src=\"./static/js/index.6cfea3089a.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>"
+      },
+      {
+        uri: "/kiali/static/js/index.6cfea3089a.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "const urls={authInfo:\"api/auth/info\",status:\"api/status\",root:window.WEB_ROOT,label:\"Kiali container version\"};"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Forbidden"
+      },
+      {
+        uri: "/kiali/api/status"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kiali_v2_34_1_redirect_resolved_root_ui_when_api_blocked"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <base href=\"/kiali/\" />\n    <script type=\"text/javascript\" src=\"./env.js\"></script>\n    <link rel=\"manifest\" href=\"./manifest.json\" />\n    <link rel=\"shortcut icon\" href=\"./kiali_icon_lightbkg_16px.png\" />\n    <title>Kiali</title>\n    <script defer src=\"./static/js/index.6cfea3089a.js\"></script>\n  </head>\n  <body><div id=\"root\"></div></body>\n</html>"
+      },
+      {
+        uri: "/kiali/static/js/index.6cfea3089a.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "const urls={authInfo:\"api/auth/info\",status:\"api/status\",root:window.WEB_ROOT,label:\"Kiali container version\"};"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kiali_v1_74_0_manifest_and_auth_info_fallback"
+    mock_responses: [
+      {
+        uri: "/kiali/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\n  \"short_name\": \"Kiali-ui\",\n  \"name\": \"Kiali UI\",\n  \"icons\": [\n    {\n      \"src\": \"favicon.ico\",\n      \"sizes\": \"64x64 32x32 24x24 16x16\",\n      \"type\": \"image/x-icon\"\n    }\n  ],\n  \"start_url\": \"./index.html\",\n  \"display\": \"standalone\",\n  \"theme_color\": \"#000000\",\n  \"background_color\": \"#ffffff\"\n}\n"
+      },
+      {
+        uri: "/kiali/api/auth/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"authorizationEndpoint\":\"https://dex.example.com/auth\",\"sessionInfo\":{},\"strategy\":\"openid\"}"
+      },
+      {
+        uri: "/kiali/api"
+        status_code: 403
+        headers: [
+          { name: "Content-Type", value: "text/plain; charset=utf-8" }
+        ]
+        body: "Forbidden"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "kiali_custom_subpath_mesh_passive_js_and_api"
+    mock_responses: [
+      {
+        uri: "/mesh/static/js/index.6cfea3089a.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "const kiali={auth:\"api/auth/info\",status:\"api/status\",webRoot:window.WEB_ROOT,title:\"Kiali container version\"};"
+      },
+      {
+        uri: "/mesh/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"Kiali commit hash\":\"404bb6f9b477c65a8815c7e09c188e55d3a18885\",\"Kiali container version\":\"v2.34.1\",\"Kiali state\":\"running\",\"Kiali version\":\"v2.34.1\"},\"externalServices\":[{\"name\":\"Prometheus\",\"version\":\"2.48.0\"}],\"warningMessages\":[],\"istioEnvironment\":{\"istioAPIEnabled\":false}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/mesh"
+        expected_versions: ["2.34.1"]
+      }
+    ]
+  },
+  {
+    name: "kiali_reverse_proxy_subpath_istio_kiali_passive_js_and_api"
+    mock_responses: [
+      {
+        uri: "/istio/kiali/static/js/main.45aa7d55.chunk.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "(this[\"webpackJsonp@kiali/kiali-ui\"]=this[\"webpackJsonp@kiali/kiali-ui\"]||[]).push([[0],{root:window.WEB_ROOT,auth:\"api/auth/info\",status:\"api/status\",key:\"Kiali container version\"}]);"
+      },
+      {
+        uri: "/istio/kiali/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"Kiali console version\":\"1.26.0\",\"Kiali container version\":\"v1.26.1\",\"Kiali core version\":\"v1.26.1\",\"Kiali state\":\"running\"},\"externalServices\":[],\"warningMessages\":[],\"istioEnvironment\":{\"isMaistra\":false}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/istio"
+        expected_versions: ["1.26.1"]
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_service_status_and_auth_info"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><head><base href=\"/\"/><script src=\"./env.js\"></script><title>Mesh Portal</title></head><body><div id=\"root\"></div><script src=\"./static/js/main.deadbeef.js\"></script></body></html>"
+      },
+      {
+        uri: "/static/js/main.deadbeef.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "const app={root:window.WEB_ROOT,auth:\"api/auth/info\",status:\"api/status\",product:\"Generic Mesh Portal\"};"
+      },
+      {
+        uri: "/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"short_name\":\"React App\",\"name\":\"Create React App Sample\",\"start_url\":\".\"}"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":{\"state\":\"running\",\"version\":\"2.4.0\"},\"externalServices\":[]}"
+      },
+      {
+        uri: "/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"ok\",\"version\":\"2.4.0\"}"
+      },
+      {
+        uri: "/api/auth/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"sessionInfo\":{},\"strategy\":\"token\"}"
+      },
+      {
+        uri: "/kiali/api/auth/info"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"sessionInfo\":{},\"strategy\":\"anonymous\"}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_fallback"
+    mock_responses: [
+      {
+        uri: "/kiali/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"status\":{\"Kiali state\":\"running\",\"Kiali version\":\"v2.34.1\",\"Kiali container version\":\"v2.34.1\"},\"externalServices\":[],\"istioEnvironment\":{}}</body></html>"
+      },
+      {
+        uri: "/kiali/api/status"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"status\":{\"Kiali state\":\"running\",\"Kiali version\":\"v2.34.1\"},\"externalServices\":[]}</body></html>"
+      },
+      {
+        uri: "/api"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"status\":{\"Kiali state\":\"running\",\"Kiali version\":\"v2.34.1\"},\"externalServices\":[]}</body></html>"
+      },
+      {
+        uri: "/kiali/manifest.json"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>{\"short_name\":\"Kiali-ui\",\"name\":\"Kiali UI\"}</body></html>"
+      },
+      {
+        uri: "/kiali/kiali_icon_lightbkg_16px.png"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>Not found</body></html>"
+      },
+      {
+        uri: "/kiali/static/js/index.6cfea3089a.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!doctype html><html><body>api/auth/info api/status WEB_ROOT Kiali container version</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

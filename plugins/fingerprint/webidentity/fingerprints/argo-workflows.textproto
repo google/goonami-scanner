@@ -1,0 +1,504 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Argo Workflows"
+  author: "Goonami team"
+  software: "argo_workflows"
+  description: "Detects Argo Workflows container-native workflow engine UI and API server and extracts version."
+}
+
+steps: [
+  # Argo Workflows SPA root HTML shell (served across client, server, and sso auth modes).
+  # Never used standalone because other argoproj UIs (e.g. older Argo CD) share <title>Argo</title>;
+  # always corroborated by argo_ui_bundle.
+  {
+    name: "argo_ui_root"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Argo</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          },
+          {
+            body: {}
+            contains: "assets/favicon/favicon-"
+          },
+          {
+            body: {}
+            contains: "<div id=\"app\"></div>"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?((?:assets/)?(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Argo Workflows SPA /login route (supports passive subpath discovery, e.g. /argo/login).
+  # Always corroborated by argo_ui_bundle.
+  {
+    name: "argo_ui_login"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<title>Argo</title>"
+          },
+          {
+            body: {}
+            contains: "<base href=\""
+          },
+          {
+            body: {}
+            contains: "assets/favicon/favicon-"
+          },
+          {
+            body: {}
+            contains: "<div id=\"app\"></div>"
+          }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "bundle_path"
+            from_body: {}
+            regexp: "<script[^>]+src=\"\\.?/?((?:assets/)?(?:main|index)[.\\-][a-zA-Z0-9._-]+\\.js)\""
+          }
+        ]
+      }
+    }
+  },
+  # Argo Workflows JS bundle extracted from index.html (v2.x, v3.x, v4.x+).
+  {
+    name: "argo_ui_bundle"
+    path: "/{{ bundle_path }}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/v1/workflow-templates"
+          },
+          {
+            body: {}
+            contains: "api/v1/cron-workflows"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "workflows.argoproj.io/"
+          },
+          {
+            body: {}
+            contains: "api/v1/archived-workflows"
+          },
+          {
+            body: {}
+            contains: "webpackChunkargo_workflows_ui"
+          },
+          {
+            body: {}
+            contains: "ClusterWorkflowTemplate"
+          },
+          {
+            body: {}
+            contains: "argo-workflows.readthedocs.io"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery on crawled main.<hash>.js asset URLs.
+  {
+    name: "argo_passive_js_bundle"
+    path_regexp: "/main\\.[a-f0-9]{16,64}\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "api/v1/workflow-templates"
+          },
+          {
+            body: {}
+            contains: "api/v1/cron-workflows"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "workflows.argoproj.io/"
+          },
+          {
+            body: {}
+            contains: "api/v1/archived-workflows"
+          },
+          {
+            body: {}
+            contains: "webpackChunkargo_workflows_ui"
+          },
+          {
+            body: {}
+            contains: "ClusterWorkflowTemplate"
+          },
+          {
+            body: {}
+            contains: "argo-workflows.readthedocs.io"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  },
+  # Embedded static OpenAPI 2.0 specification (served unauthenticated across client, server, and sso modes).
+  # Also extracts version on v2.x and stamped builds even when /api/v1/version requires authentication.
+  {
+    name: "argo_openapi_spec"
+    path_suffix: "/assets/openapi-spec/swagger.json"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"/api/v1/archived-workflows\""
+          },
+          {
+            body: {}
+            contains: "\"ArchivedWorkflowService\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"Argo Workflows API\""
+          },
+          {
+            body: {}
+            contains: "\"Argo Server API\""
+          },
+          {
+            body: {}
+            contains: "argo-workflows.readthedocs.io"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"info\"\\s*:\\s*\\{[^{}]*\"version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        }
+      ]
+    }
+  },
+  # Argo Workflows server info endpoint (/api/v1/info), accessible in server/hybrid auth mode.
+  {
+    name: "argo_api_info"
+    path: "/api/v1/info"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            header: { name: "Grpc-Metadata-Argo-Version" }
+            regexp: "^v?[0-9]+\\.[0-9]+"
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            body: {}
+            contains: "\"managedNamespace\""
+          },
+          {
+            body: {}
+            contains: "\"modals\""
+          },
+          {
+            body: {}
+            contains: "\"navColor\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_header: { name: "Grpc-Metadata-Argo-Version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)$"
+        }
+      ]
+    }
+  },
+  # Argo Workflows version REST API (/api/v1/version), accessible in server/hybrid auth mode.
+  # Always paired with an Argo-Workflows-specific UI, OpenAPI, or /api/v1/info step.
+  {
+    name: "argo_api_version"
+    path: "/api/v1/version"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"version\""
+          },
+          {
+            body: {}
+            contains: "\"buildDate\""
+          },
+          {
+            body: {}
+            contains: "\"gitCommit\""
+          },
+          {
+            body: {}
+            contains: "\"goVersion\""
+          },
+          {
+            body: {}
+            contains: "\"platform\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\"v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)\""
+        },
+        {
+          from_header: { name: "Grpc-Metadata-Argo-Version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[a-zA-Z0-9._+-]*)?)$"
+        }
+      ]
+    }
+  },
+  # API-only client-auth error signature on Argo Workflows v3.5+/v4.x+ citing official docs.
+  {
+    name: "argo_api_unauthorized"
+    path_suffix: "/api/v1/version"
+    response: {
+      status_codes: [401]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"code\":16"
+          },
+          {
+            body: {}
+            contains: "argo-workflows.readthedocs.io"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)^\\s*(?:<!doctype\\s+html|<html[\\s>])"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Root UI + JS bundle + REST API version extraction (--auth-mode=server).
+  {
+    steps: [
+      "argo_ui_root",
+      "argo_ui_bundle",
+      "argo_api_version"
+    ]
+  },
+  # Login/subpath UI + JS bundle + REST API version extraction.
+  {
+    steps: [
+      "argo_ui_login",
+      "argo_ui_bundle",
+      "argo_api_version"
+    ]
+  },
+  # Root UI + JS bundle + static OpenAPI spec.
+  {
+    steps: [
+      "argo_ui_root",
+      "argo_ui_bundle",
+      "argo_openapi_spec"
+    ]
+  },
+  # Login/subpath UI + JS bundle + static OpenAPI spec.
+  {
+    steps: [
+      "argo_ui_login",
+      "argo_ui_bundle",
+      "argo_openapi_spec"
+    ]
+  },
+  # Passive JS bundle + REST API version extraction.
+  {
+    steps: [
+      "argo_passive_js_bundle",
+      "argo_api_version"
+    ]
+  },
+  # Passive JS bundle + static OpenAPI spec version extraction.
+  {
+    steps: [
+      "argo_passive_js_bundle",
+      "argo_openapi_spec"
+    ]
+  },
+  # Static OpenAPI spec + REST API version extraction.
+  {
+    steps: [
+      "argo_openapi_spec",
+      "argo_api_version"
+    ]
+  },
+  # API-only server-auth deployment (/api/v1/info + /api/v1/version).
+  {
+    steps: [
+      "argo_api_info",
+      "argo_api_version"
+    ]
+  },
+  # Root UI + JS bundle (--auth-mode=client and --auth-mode=sso when /api/v1/version returns 401).
+  {
+    steps: [
+      "argo_ui_root",
+      "argo_ui_bundle"
+    ]
+  },
+  # Login/subpath UI + JS bundle (passive subpath discovery and client/sso auth identification).
+  {
+    steps: [
+      "argo_ui_login",
+      "argo_ui_bundle"
+    ]
+  },
+  # Passive JS bundle + Root UI verification.
+  {
+    steps: [
+      "argo_passive_js_bundle",
+      "argo_ui_root"
+    ]
+  },
+  # Passive JS bundle + Login UI verification.
+  {
+    steps: [
+      "argo_passive_js_bundle",
+      "argo_ui_login"
+    ]
+  },
+  # API-only client-auth deployment returning Argo Workflows 401 gRPC-Gateway error.
+  {
+    steps: ["argo_api_unauthorized"]
+  }
+]

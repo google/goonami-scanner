@@ -1,0 +1,332 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Zabbix"
+  author: "Goonami team"
+  software: "zabbix"
+  description: "Detects Zabbix monitoring web frontend across configured, unconfigured setup wizard, and database-error states, and extracts its version."
+}
+
+steps: [
+  {
+    name: "zabbix_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<meta name=\"Author\" content=\"Zabbix SIA\""
+          },
+          {
+            body: {}
+            regexp: "(?s)(?:(?:assets/)?styles/(?:blue|dark|hc-light|hc-dark)-theme\\.css|jsLoader\\.php\\?ver=|<div class=\"zabbix-logo\"|js/browsers\\.js)"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "jsLoader\\.php\\?(?:[^\"']*&)??ver=([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)"
+        },
+        {
+          from_body: {}
+          regexp: ">Zabbix ([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)\\.\\s*(?:&copy;|©)"
+        }
+      ]
+    }
+  },
+  {
+    name: "zabbix_login_page"
+    path_suffix: "/index.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<meta name=\"Author\" content=\"Zabbix SIA\""
+          },
+          {
+            body: {}
+            regexp: "(?s)(?:(?:assets/)?styles/(?:blue|dark|hc-light|hc-dark)-theme\\.css|jsLoader\\.php\\?ver=|<div class=\"zabbix-logo\"|js/browsers\\.js)"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "jsLoader\\.php\\?(?:[^\"']*&)??ver=([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)"
+        },
+        {
+          from_body: {}
+          regexp: ">Zabbix ([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)\\.\\s*(?:&copy;|©)"
+        }
+      ]
+    }
+  },
+  {
+    name: "zabbix_setup_page"
+    path_suffix: "/setup.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "<meta name=\"Author\" content=\"Zabbix SIA\""
+          },
+          {
+            body: {}
+            regexp: "(?s)(?:jsLoader\\.php\\?ver=[^\"']*setup\\.js|<div class=\"setup-title\">|index\\.php\\?request=setup\\.php|(?:assets/)?styles/(?:blue|dark|hc-light|hc-dark)-theme\\.css)"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "jsLoader\\.php\\?(?:[^\"']*&)??ver=([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)"
+        },
+        {
+          from_body: {}
+          regexp: ">Zabbix ([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)\\.\\s*(?:&copy;|©)"
+        }
+      ]
+    }
+  },
+  {
+    name: "zabbix_api_version"
+    path: "/api_jsonrpc.php"
+    method: POST
+    headers: [
+      {
+        name: "Content-Type"
+        value: "application/json-rpc"
+      }
+    ]
+    data: "{\"jsonrpc\":\"2.0\",\"method\":\"apiinfo.version\",\"params\":[],\"id\":1}"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: {
+              name: "Content-Type"
+            }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            regexp: "\"jsonrpc\"\\s*:\\s*\"2\\.0\""
+          },
+          {
+            body: {}
+            regexp: "\"result\"\\s*:\\s*\"[0-9]+\\.[0-9]+\\.[0-9]+"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: {
+              name: "Content-Type"
+            }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"result\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9._-]*)\""
+        }
+      ]
+    }
+  },
+  {
+    name: "zabbix_js_loader"
+    path_suffix: "/jsLoader.php"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "ZBX_NOREFERER"
+          },
+          {
+            body: {}
+            regexp: "(?:S_MAX_COOKIE_SIZE_REACHED|ZBX_STYLE_BTN_DEBUG)"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: {
+              name: "Content-Type"
+            }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    name: "zabbix_js_browsers"
+    path_suffix: "/js/browsers.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "browserwarning_ignore"
+          },
+          {
+            body: {}
+            contains: "browserwarning.php"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: {
+              name: "Content-Type"
+            }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  },
+  {
+    name: "zabbix_theme_css"
+    path_suffix: "/assets/styles/blue-theme.css"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "(?:\\.sidebar\\s+\\.server-name|\\.btn-back-map-container)"
+          },
+          {
+            body: {}
+            contains: ".menu-popup-item"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: {
+              name: "Content-Type"
+            }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  {
+    steps: [
+      "zabbix_root_page",
+      "zabbix_api_version"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_login_page",
+      "zabbix_api_version"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_root_page",
+      "zabbix_js_loader"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_login_page",
+      "zabbix_js_loader"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_root_page",
+      "zabbix_js_browsers"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_login_page",
+      "zabbix_js_browsers"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_setup_page",
+      "zabbix_js_loader"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_setup_page",
+      "zabbix_js_browsers"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_setup_page",
+      "zabbix_theme_css"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_theme_css",
+      "zabbix_setup_page"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_js_browsers",
+      "zabbix_api_version"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_js_loader",
+      "zabbix_api_version"
+    ]
+  },
+  {
+    steps: [
+      "zabbix_theme_css",
+      "zabbix_api_version"
+    ]
+  }
+]

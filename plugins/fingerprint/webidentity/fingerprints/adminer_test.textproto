@@ -1,0 +1,264 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "adminer"
+
+tests: [
+  {
+    name: "adminer_4_6_3_default_root"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=edd1e55fe355f172be7620ebed6626bd; path=/; HttpOnly" },
+          { name: "Set-Cookie", value: "adminer_key=883c4fe7ba4d5b8f5c096201f7c8b63e; path=/; HttpOnly; SameSite=lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\">\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"?file=default.css&amp;version=4.6.3\">\n<script src='?file=functions.js&amp;version=4.6.3' nonce=\"MzE3MTExNWEzNmVmNGZiZTc5Y2ZhNWViNDljYmY4NzQ=\"></script>\n<link rel=\"shortcut icon\" type=\"image/x-icon\" href=\"?file=favicon.ico&amp;version=4.6.3\">\n<body class=\"ltr nojs\">\n<script nonce=\"MzE3MTExNWEzNmVmNGZiZTc5Y2ZhNWViNDljYmY4NzQ=\">\nmixin(document.body, {onkeydown: bodyKeydown, onclick: bodyClick, onload: partial(verifyVersion, '4.6.3', '?', '313001:260641')});\n</script>\n<div id=\"help\" class=\"jush-sql jsonly hidden\"></div>\n<div id=\"content\">\n<h2>Login</h2>\n<form action='' method='post'>\n<table cellspacing='0'>\n<tr><th>System<td><select name='auth[driver]'><option value=\"server\" selected>MySQL<option value=\"sqlite\">SQLite 3</select>\n<tr><th>Server<td><input name=\"auth[server]\" value=\"db\" title=\"hostname[:port]\" placeholder=\"localhost\">\n<tr><th>Username<td><input name=\"auth[username]\" id=\"username\" value=\"\">\n<tr><th>Password<td><input type=\"password\" name=\"auth[password]\">\n</table>\n</form>\n</div>\n<div id=\"menu\">\n<h1>\n<a href='https://www.adminer.org/' target=\"_blank\" rel=\"noreferrer noopener\" id='h1'>Adminer</a> <span class=\"version\">4.6.3</span>\n</h1>\n</div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.6.3"]
+      }
+    ]
+  },
+  {
+    name: "adminer_4_8_1_single_file_adminer_php"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/adminer.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=tqrpqejufuqj2eh1qiu4rbeg18; path=/adminer.php; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\">\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"adminer.php?file=default.css&amp;version=4.8.1\">\n<script src='adminer.php?file=functions.js&amp;version=4.8.1' nonce=\"YWIyZTkyMTkxMjA2MzA3Nzg0Y2E0YWE0MGM3OThkYWI=\"></script>\n<body class=\"ltr nojs\">\n<script nonce=\"YWIyZTkyMTkxMjA2MzA3Nzg0Y2E0YWE0MGM3OThkYWI=\">\nmixin(document.body, {onkeydown: bodyKeydown, onclick: bodyClick, onload: partial(verifyVersion, '4.8.1', 'adminer.php?', '982949:616675')});\n</script>\n<div id=\"help\" class=\"jush-sql jsonly hidden\"></div>\n<div id=\"content\"><form action='' method='post'><select name='auth[driver]'><option value=\"server\" selected>MySQL</select></form></div>\n<div id=\"menu\"><h1><a href='https://www.adminer.org/' target=\"_blank\" rel=\"noreferrer noopener\" id='h1'>Adminer</a> <span class=\"version\">4.8.1</span></h1></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.8.1"]
+      }
+    ]
+  },
+  {
+    name: "adminer_4_8_1_authenticated_sqlite_session"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\">\n<title>Database: /tmp/test.sqlite - Adminer</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"?file=default.css&amp;version=4.8.1\">\n<script src='?file=functions.js&amp;version=4.8.1' nonce=\"YjM0NTA0YmFjZDg5YzRhMWY1ZmEwOTZmOTIzNWU0YzI=\"></script>\n<body class=\"ltr nojs\">\n<script nonce=\"YjM0NTA0YmFjZDg5YzRhMWY1ZmEwOTZmOTIzNWU0YzI=\">\nmixin(document.body, {onkeydown: bodyKeydown, onclick: bodyClick, onload: partial(verifyVersion, '4.8.1', '?sqlite=&username=&db=%2Ftmp%2Ftest.sqlite&', '544377:871285')});\n</script>\n<div id=\"help\" class=\"jush-sqlite jsonly hidden\"></div>\n<div id=\"content\"><p id=\"breadcrumb\"><a href=\"?sqlite=\">SQLite 3</a> &raquo; Database: /tmp/test.sqlite<h2>Database: /tmp/test.sqlite</h2></div>\n<div id=\"menu\"><h1><a href='https://www.adminer.org/' target=\"_blank\" rel=\"noreferrer noopener\" id='h1'>Adminer</a> <span class=\"version\">4.8.1</span></h1></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["4.8.1"]
+      }
+    ]
+  },
+  {
+    name: "adminer_5_4_2_configured_theme_and_plugins"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=a7fb315deab3068db18bbf830a1a4b68; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" href=\"?file=default.css&amp;version=5.4.2\">\n<link rel='stylesheet' media='(prefers-color-scheme: dark)' href='?file=dark.css&amp;version=5.4.2'>\n<script src='?file=functions.js&amp;version=5.4.2' nonce=\"MjA0YWYzNDhhMTAwMmZkNjgxNTBlMGQzMjI4ZWE1MzQ=\"></script>\n<link rel='stylesheet' href='adminer-dark.css'>\n<body class='ltr nojs adminer'>\n<script nonce=\"MjA0YWYzNDhhMTAwMmZkNjgxNTBlMGQzMjI4ZWE1MzQ=\">mixin(document.body, {onkeydown: bodyKeydown, onclick: bodyClick, onload: partial(verifyVersion, '5.4.2')});</script>\n<div id='help' class='jush-sql jsonly hidden'></div>\n<div id='content'><h2>Login</h2><form action='' method='post'><table class='layout'><tr><th>System<td><select name='auth[driver]'><option value=\"server\" selected>MySQL / MariaDB</select><tr><th>Server<td><input name=\"auth[server]\" value=\"db.internal\" title=\"hostname[:port] or :socket\"></table></form></div>\n<div id='foot' class='foot'><div id='menu'><h1><a href='https://www.adminer.org/' target=\"_blank\" rel=\"noreferrer noopener\" id='h1'><img src='?file=logo.png&amp;version=5.4.2' width='24' height='24' alt='' id='logo'>Adminer</a> <span class='version'>5.4.2 <a href='https://www.adminer.org/#download' target=\"_blank\" rel=\"noreferrer noopener\" id='version'></a></span></h1></div></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.4.2"]
+      }
+    ]
+  },
+  {
+    name: "adminer_6_2_0_default_with_build_metadata"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=73a21aac11b35ace6715cb93d54e702e; path=/; HttpOnly; SameSite=lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang='en' dir='ltr' class='ltr nojs'>\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" href=\"?file=default.css&amp;version=6.2.0+584b178\">\n<link rel='stylesheet' media='(prefers-color-scheme: dark)' href='?file=dark.css&amp;version=6.2.0+584b178'>\n<script src='?file=functions.js&amp;version=6.2.0+584b178' nonce=\"NTE0MDVjMmEzNmVkNWQ5YTBkZDQ2MWQwMGM3ZDEzMjQ=\"></script>\n<link rel='apple-touch-icon' href='?file=logo.svg&amp;version=6.2.0+584b178'>\n<link rel='manifest' href='?manifest=' crossorigin='use-credentials'>\n<body class=' adminer'>\n<script nonce=\"NTE0MDVjMmEzNmVkNWQ5YTBkZDQ2MWQwMGM3ZDEzMjQ=\">onload = partial(verifyVersion, '6.2.0');</script>\n<div id='help' class='jush-sql jsonly hidden'></div>\n<div id='content'><h2>Login</h2><form action='' method='post'><table class='layout'><tr><th>System<td><select name='auth[driver]' data-onchange='loginDriver()'><option value=\"server\" selected>MySQL / MariaDB</select></table></form></div>\n<div id='foot' class='foot'><div id='menu'><h1><a href='https://www.adminer.org/' target=\"_blank\" rel=\"noreferrer noopener\" id='h1'><img src='?file=logo.svg&amp;version=6.2.0+584b178' width='24' height='24' alt='' id='logo'>Adminer</a> <span class='version'>6.2.0 <a href='https://www.adminer.org/#download' target=\"_blank\" rel=\"noreferrer noopener\" id='version'></a></span></h1></div></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.2.0"]
+      }
+    ]
+  },
+  {
+    name: "adminer_6_2_0_manifest_json_fallback"
+    mock_responses: [
+      {
+        uri: "/?manifest="
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/manifest+json; charset=utf-8" }
+        ]
+        body: "{\"name\":\"Adminer - target.test:8080\",\"short_name\":\"Adminer\",\"description\":\"Database management in a single PHP file\",\"start_url\":\".\",\"scope\":\".\",\"display\":\"minimal-ui\",\"icons\":[{\"src\":\"?file=logo.svg&version=6.2.0+584b178\",\"sizes\":\"any\",\"type\":\"image/svg+xml\"}]}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.2.0"]
+      }
+    ]
+  },
+  {
+    name: "adminer_functions_js_fallback"
+    mock_responses: [
+      {
+        uri: "/?file=functions.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript; charset=utf-8" }
+        ]
+        body: "'use strict';function qs(selector,context=document){return context.querySelector(selector);}function alterClass(el,className,enable){if(el){el.classList.toggle(className,!!enable);}}function verifyVersion(current){cookie('adminer_version=0',1);ajax('https://www.adminer.org/version/?current='+current,request=>{});}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "adminer_subpath_via_custom_css_and_php_page"
+    mock_responses: [
+      {
+        uri: "/db/adminer.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css; charset=UTF-8" }
+        ]
+        body: "/* Theme \"Nette\" for Adminer, (c) David Grudl */\n#menu { position: absolute; }\n#tables li { list-style: none; }\n#breadcrumb { white-space: nowrap; }\n#logins a { background: #fff; }\n"
+      },
+      {
+        uri: "/db/adminer.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=9554bd8e1c7b8d3af58191b064ceaf6f; path=/db/adminer.php; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\" dir=\"ltr\">\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" href=\"adminer.php?file=default.css&amp;version=5.4.2\">\n<script src='adminer.php?file=functions.js&amp;version=5.4.2'></script>\n<body class='ltr nojs adminer'>\n<script>mixin(document.body, {onload: partial(verifyVersion, '5.4.2')});</script>\n<div id='help' class='jush-sql jsonly hidden'></div>\n<div id='content'><form action='' method='post'><select name='auth[driver]'><option value=\"server\" selected>MySQL / MariaDB</select></form></div>\n<div id='menu'><h1><a href='https://www.adminer.org/' id='h1'>Adminer</a> <span class='version'>5.4.2</span></h1></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/db"
+        expected_versions: ["5.4.2"]
+      }
+    ]
+  },
+  {
+    name: "adminer_subpath_via_bundled_design_css_and_root"
+    mock_responses: [
+      {
+        uri: "/tools/adminer/designs/dracula/adminer-dark.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/css; charset=UTF-8" }
+        ]
+        body: "/* Dracula theme for Adminer */\n.jush { color: #f8f8f2; }\n#tables a { color: #8be9fd; }\n#dbs { overflow: hidden; }\n"
+      },
+      {
+        uri: "/tools/adminer/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "adminer_sid=da2180f1f4b6b4a69aa8db3b26138b37; path=/tools/adminer/; HttpOnly; SameSite=lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang='en' dir='ltr' class='ltr nojs'>\n<title>Login - Adminer</title>\n<link rel=\"stylesheet\" href=\"?file=default.css&amp;version=6.2.0+584b178\">\n<script src='?file=functions.js&amp;version=6.2.0+584b178'></script>\n<body class=' adminer'>\n<script>onload = partial(verifyVersion, '6.2.0');</script>\n<div id='help' class='jush-sql jsonly hidden'></div>\n<div id='menu'><h1><a href='https://www.adminer.org/' id='h1'><img src='?file=logo.svg&amp;version=6.2.0+584b178' id='logo'>Adminer</a> <span class='version'>6.2.0 <a></a></span></h1></div>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/tools/adminer"
+        expected_versions: ["6.2.0"]
+      }
+    ]
+  },
+  {
+    name: "negative_generic_html_spa_catchall"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><div id=\"app\">Single Page Application</div></body></html>"
+      },
+      {
+        uri: "/adminer.php"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><div id=\"app\">Single Page Application</div></body></html>"
+      },
+      {
+        uri: "/adminer.css"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=UTF-8" }
+        ]
+        body: "<!DOCTYPE html><html><body><div id=\"app\">Single Page Application</div></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_phpmyadmin_login_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "phpMyAdmin=abc123def456; path=/; HttpOnly" }
+        ]
+        body: "<!doctype html><html lang=\"en\"><head><title>phpMyAdmin</title><link rel=\"stylesheet\" type=\"text/css\" href=\"themes/pmahomme/css/theme.css?v=5.2.1\"></head><body><form method=\"post\" action=\"index.php\" name=\"login_form\"><input type=\"text\" name=\"pma_username\"><input type=\"password\" name=\"pma_password\"></form></body></html>"
+      }
+    ]
+  },
+  {
+    name: "negative_blog_post_mentioning_adminer"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>How to secure Adminer 6.2.0</title></head><body><h1>Hardening Adminer (https://www.adminer.org/)</h1><p>Adminer loads assets like <code>?file=default.css&amp;version=6.2.0</code> and <code>?file=functions.js&amp;version=6.2.0</code> from a single PHP file.</p></body></html>"
+      }
+    ]
+  }
+]

@@ -1,0 +1,434 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "zabbix"
+
+tests: [
+  {
+    name: "zabbix_5_0_47_configured_login_and_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          },
+          {
+            name: "Set-Cookie"
+            value: "zbx_session=eyJzZXNzaW9uaWQiOiI2M2Y1In0%3D; HttpOnly"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Zabbix</title>\n\t\t<link rel=\"icon\" href=\"favicon.ico\">\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1759148625\" />\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><main><div class=\"server-name\">ZabbixDocker</div><div class=\"signin-container\"><div class=\"signin-logo\"><div class=\"zabbix-logo\"></div></div><form method=\"post\" action=\"index.php\" accept-charset=\"utf-8\" aria-label=\"Sign in\"><ul><li><label for=\"name\">Username</label><input type=\"text\" id=\"name\" name=\"name\" value=\"\" maxlength=\"255\" autofocus=\"autofocus\"></li><li><button type=\"submit\" id=\"enter\" name=\"enter\" value=\"Sign in\">Sign in</button></li></ul></form></div><div class=\"signin-links\"><a target=\"_blank\" rel=\"noopener noreferrer\" class=\"grey link-alt\" href=\"https://www.zabbix.com/documentation/5.0/\">Help</a>&nbsp;&bull;&nbsp;<a target=\"_blank\" rel=\"noopener noreferrer\" class=\"grey link-alt\" href=\"https://www.zabbix.com/support\">Support</a></div></main><footer role=\"contentinfo\">&copy; 2001&ndash;2025, <a class=\"grey link-alt\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"5.0.47\",\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0.47"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_6_0_49_configured_login_and_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Zabbix</title>\n\t\t<link rel=\"icon\" href=\"favicon.ico\">\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1775647992\" />\n<script>\n\tconst PHP_ZBX_FULL_DATE_TIME = \"Y-m-d H:i:s\";\n</script>\n<script src=\"js/browsers.js?1775647992\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><main><div class=\"signin-container\"><div class=\"signin-logo\"><div class=\"zabbix-logo\"></div></div></div><div class=\"signin-links\"><a target=\"_blank\" rel=\"noopener noreferrer\" class=\"grey link-alt\" href=\"https://www.zabbix.com/documentation/6.0/\">Help</a></div></main><footer role=\"contentinfo\">&copy; 2001&ndash;2026, <a class=\"grey link-alt\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"6.0.49\",\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.0.49"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_6_4_21_configured_index_and_api"
+    mock_responses: [
+      {
+        uri: "/index.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Zabbix</title>\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1732097178\" />\n<script src=\"js/browsers.js?1732097178\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><main><div class=\"signin-container\"><div class=\"signin-logo\"><div class=\"zabbix-logo\"></div></div></div><div class=\"signin-links\"><a target=\"_blank\" rel=\"noopener noreferrer\" class=\"grey link-alt\" href=\"https://www.zabbix.com/documentation/6.4/\">Help</a></div></main></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"6.4.21\",\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["6.4.21"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_7_0_32_configured_login_and_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Zabbix</title>\n\t\t<link rel=\"icon\" href=\"favicon.ico\">\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1775567461\" />\n<script src=\"js/browsers.js?1775567461\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><main><div class=\"signin-container\"><div class=\"signin-logo\"><div class=\"zabbix-logo\"></div></div></div><div class=\"signin-links\"><a target=\"_blank\" rel=\"noopener noreferrer\" class=\"grey link-alt\" href=\"https://www.zabbix.com/documentation/7.0/en/manual\">Help</a></div></main><footer role=\"contentinfo\">&copy; 2001&ndash;2026, <a class=\"grey link-alt\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"7.0.32\",\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.0.32"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_5_0_47_unconfigured_setup_wizard"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Installation</title>\n\t\t<link rel=\"icon\" href=\"favicon.ico\">\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1759148625\" />\n<script src=\"js/browsers.js?1759148625\"></script>\n<script src=\"jsLoader.php?ver=5.0.47&amp;lang=en_gb\"></script>\n<script src=\"jsLoader.php?ver=5.0.47&amp;lang=en_gb&amp;files%5B0%5D=setup.js\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><form method=\"post\" action=\"setup.php\"><div class=\"setup-container\"><div class=\"setup-left\"><div class=\"setup-logo\"><div class=\"zabbix-logo\"></div></div><ul><li class=\"setup-left-current\">1. Welcome</li><li>2. Check of pre-requisites</li></ul></div><div class=\"setup-right\"><div class=\"setup-right-body\"><div class=\"setup-title\"><span>Welcome to</span>Zabbix 5.0</div></div></div></div></form><footer role=\"contentinfo\">Zabbix 5.0.47. &copy; 2001&ndash;2025, <a class=\"grey link-alt\" target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/jsLoader.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/javascript; charset=UTF-8"
+          }
+        ]
+        body: "ZBX_NOREFERER = 1;\nvar locale = locale || {};\nlocale['S_MAX_COOKIE_SIZE_REACHED'] = 'We are sorry, the maximum possible number of elements to remember has been reached.';\nvar ZBX_STYLE_BTN_DEBUG = 'btn-debug';\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["5.0.47"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_7_0_32_unconfigured_setup_endpoint"
+    mock_responses: [
+      {
+        uri: "/setup.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Installation</title>\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1775567461\" />\n<script src=\"js/browsers.js?1775567461\"></script>\n<script src=\"jsLoader.php?ver=7.0.32&amp;lang=en_US\"></script>\n<script src=\"jsLoader.php?ver=7.0.32&amp;lang=en_US&amp;files%5B0%5D=setup.js\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><div class=\"setup-container\"><div class=\"setup-title\"><span>Welcome to</span>Zabbix 7.0</div></div><footer role=\"contentinfo\">Zabbix 7.0.32. &copy; 2001&ndash;2026, <a class=\"grey link-alt\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/jsLoader.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/javascript; charset=UTF-8"
+          }
+        ]
+        body: "ZBX_NOREFERER = 1;\nvar locale = locale || {};\nlocale['S_MAX_COOKIE_SIZE_REACHED'] = 'We are sorry, the maximum possible number of elements to remember has been reached.';\nvar ZBX_STYLE_BTN_DEBUG = 'btn-debug';\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["7.0.32"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_database_error_page_no_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html>\n<html>\n\t<head>\n\t\t<meta http-equiv=\"X-UA-Compatible\" content=\"IE=Edge\"/>\n\t\t<meta charset=\"utf-8\" />\n\t\t<meta name=\"Author\" content=\"Zabbix SIA\" />\n\t\t<title>Warning [refreshed every 30 sec.]</title>\n\t\t<link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css?1775647992\" />\n<script src=\"js/browsers.js?1775647992\"></script>\n\t</head>\n\t<body lang=\"en\">\n\t\t<div class=\"wrapper\"><main><output class=\"msg-global msg-bad\" role=\"contentinfo\" aria-label=\"Error message\"><span>Database error</span><div class=\"msg-details\"><ul class=\"msg-details-border\"><li>Connection refused</li></ul></div></output></main><footer role=\"contentinfo\">&copy; 2001&ndash;2026, <a class=\"grey link-alt\" href=\"https://www.zabbix.com/\">Zabbix SIA</a></footer></div>\n\t</body>\n</html>"
+      },
+      {
+        uri: "/js/browsers.js"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/javascript"
+          }
+        ]
+        body: "/*\n** Zabbix\n** Copyright (C) 2001-2023 Zabbix SIA\n**/\nvar agt = navigator.userAgent.toLowerCase();\nvar warning = (document.cookie.indexOf('browserwarning_ignore') < 0);\nif (warning) {\n\twindow.location.replace('browserwarning.php');\n}\n"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32603,\"message\":\"Internal error.\",\"data\":\"Connection refused\"},\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "zabbix_subpath_via_js_browsers_and_api"
+    mock_responses: [
+      {
+        uri: "/zabbix/js/browsers.js"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/javascript"
+          }
+        ]
+        body: "/*\n** Zabbix\n** Copyright (C) 2001-2023 Zabbix SIA\n**/\nvar agt = navigator.userAgent.toLowerCase();\nvar warning = (document.cookie.indexOf('browserwarning_ignore') < 0);\nif (warning) {\n\twindow.location.replace('browserwarning.php');\n}\n"
+      },
+      {
+        uri: "/zabbix/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"6.0.49\",\"id\":1}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/zabbix"
+        expected_versions: ["6.0.49"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_subpath_via_theme_css_and_setup"
+    mock_responses: [
+      {
+        uri: "/monitoring/assets/styles/blue-theme.css"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/css"
+          }
+        ]
+        body: "html, body { margin: 0; }\n.sidebar .server-name { color: #768d99; }\n.menu-popup-item { display: block; }\n"
+      },
+      {
+        uri: "/monitoring/setup.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Author\" content=\"Zabbix SIA\" /><link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css\" /><script src=\"jsLoader.php?ver=6.4.21&amp;lang=en_US&amp;files%5B0%5D=setup.js\"></script></head><body><div class=\"setup-title\"><span>Welcome to</span>Zabbix 6.4</div></body></html>"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/monitoring"
+        expected_versions: ["6.4.21"]
+      }
+    ]
+  },
+  {
+    name: "zabbix_login_page_and_js_loader"
+    mock_responses: [
+      {
+        uri: "/index.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><head><meta name=\"Author\" content=\"Zabbix SIA\" /><link rel=\"stylesheet\" type=\"text/css\" href=\"assets/styles/blue-theme.css\" /><script src=\"js/browsers.js\"></script></head><body><div class=\"zabbix-logo\"></div></body></html>"
+      },
+      {
+        uri: "/jsLoader.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/javascript; charset=UTF-8"
+          }
+        ]
+        body: "ZBX_NOREFERER = 1;\nvar locale = locale || {};\nlocale['S_MAX_COOKIE_SIZE_REACHED'] = 'We are sorry, the maximum possible number of elements to remember has been reached.';\nvar ZBX_STYLE_BTN_DEBUG = 'btn-debug';\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "unrelated_service_not_zabbix"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign in</title></head><body><form action=\"index.php\"><input name=\"name\"></form></body></html>"
+      },
+      {
+        uri: "/api_jsonrpc.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body: "{\"jsonrpc\":\"2.0\",\"result\":\"1.0.0\",\"id\":1}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "spa_catchall_html_on_assets_rejected"
+    mock_responses: [
+      {
+        uri: "/jsLoader.php"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><body>ZBX_NOREFERER S_MAX_COOKIE_SIZE_REACHED ZBX_STYLE_BTN_DEBUG</body></html>"
+      },
+      {
+        uri: "/js/browsers.js"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><body>browserwarning_ignore browserwarning.php</body></html>"
+      },
+      {
+        uri: "/assets/styles/blue-theme.css"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/html; charset=UTF-8"
+          }
+        ]
+        body: "<!DOCTYPE html><html><body>.sidebar .server-name .menu-popup-item</body></html>"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_standalone_zabbix_static_assets"
+    mock_responses: [
+      {
+        uri: "/assets/styles/blue-theme.css"
+        status_code: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "text/css"
+          }
+        ]
+        body: "html, body { margin: 0; }\n.sidebar .server-name { color: #768d99; }\n.menu-popup-item { display: block; }\n"
+      }
+    ]
+    expected_matches: []
+  }
+]

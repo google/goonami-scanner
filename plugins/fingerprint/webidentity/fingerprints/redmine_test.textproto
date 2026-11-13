@@ -1,0 +1,248 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "redmine"
+
+tests: [
+  {
+    name: "redmine_3_4_13_unconfigured_welcome_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=bDNQdW93dExX; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"/>\n<title>Redmine</title>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no\">\n<meta name=\"description\" content=\"Redmine\" />\n<meta name=\"keywords\" content=\"issue,bug,tracker\" />\n<meta name=\"csrf-param\" content=\"authenticity_token\" />\n<meta name=\"csrf-token\" content=\"token123\" />\n<link rel='shortcut icon' href='/favicon.ico?1576842318' />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/jquery/jquery-ui-1.11.0.css?1576842318\" />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/application.css?1576842318\" />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/responsive.css?1576842318\" />\n<script src=\"/javascripts/jquery-1.11.1-ui-1.11.0-ujs-3.1.4.js?1576842318\"></script>\n<script src=\"/javascripts/application.js?1576842318\"></script>\n<script src=\"/javascripts/responsive.js?1576842318\"></script>\n<script>\n//<![CDATA[\n$(window).load(function(){ warnLeavingUnsaved('The current page contains unsaved text that will be lost if you leave this page.'); });\n//]]>\n</script>\n</head>\n<body class=\"controller-welcome action-index\">\n<div id=\"wrapper\">\n<div id=\"top-menu\"><div id=\"account\"><ul><li><a class=\"login\" href=\"/login\">Sign in</a></li><li><a class=\"register\" href=\"/account/register\">Register</a></li></ul></div></div>\n<div id=\"footer\"><div class=\"bgl\"><div class=\"bgr\">Powered by <a href=\"https://www.redmine.org/\">Redmine</a> &copy; 2006-2019 Jean-Philippe Lang</div></div></div>\n</div>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/javascripts/application.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "/* Redmine - project management software\n   Copyright (C) 2006-2019  Jean-Philippe Lang */\n\nfunction checkAll(id, checked) {\n  $('#'+id).find('input[type=checkbox]:enabled').prop('checked', checked);\n}\nfunction toggleCheckboxesBySelector(selector) {}\nfunction warnLeavingUnsaved(message) {}\nfunction setupAjaxIndicator() {}\nfunction keepAnchorOnSignIn(form){\n  var hash = decodeURIComponent(self.document.location.hash);\n  if (hash) {\n    form.action = form.action + hash;\n  }\n  return true;\n}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "redmine_4_2_10_configured_login_required"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=cGRqdXNjMUhEMXI4; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"/>\n<title>Redmine</title>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"description\" content=\"Redmine\" />\n<meta name=\"keywords\" content=\"issue,bug,tracker\" />\n<link rel='shortcut icon' href='/favicon.ico?1678052116' />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/application.css?1678052116\" />\n<script src=\"/javascripts/application.js?1678052116\"></script>\n</head>\n<body class=\"controller-account action-login avatars-off\">\n<div id=\"login-form\">\n  <form action=\"/login\" accept-charset=\"UTF-8\" method=\"post\">\n    <input type=\"submit\" name=\"login\" value=\"Login\" tabindex=\"5\" id=\"login-submit\" />\n  </form>\n</div>\n<div id=\"footer\">\n  Powered by <a href=\"https://www.redmine.org/\">Redmine</a> &copy; 2006-2023 Jean-Philippe Lang\n</div>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=cGRqdXNjMUhEMXI4; path=/; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"/>\n<title>Redmine</title>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"description\" content=\"Redmine\" />\n<meta name=\"keywords\" content=\"issue,bug,tracker\" />\n<link rel='shortcut icon' href='/favicon.ico?1678052116' />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/application.css?1678052116\" />\n<script src=\"/javascripts/application.js?1678052116\"></script>\n</head>\n<body class=\"controller-account action-login avatars-off\">\n<div id=\"login-form\">\n  <form action=\"/login\" accept-charset=\"UTF-8\" method=\"post\">\n    <input type=\"submit\" name=\"login\" value=\"Login\" tabindex=\"5\" id=\"login-submit\" />\n  </form>\n</div>\n<div id=\"footer\">\n  Powered by <a href=\"https://www.redmine.org/\">Redmine</a> &copy; 2006-2023 Jean-Philippe Lang\n</div>\n</body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "redmine_5_1_12_login_and_static_help_wiki_syntax"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=eyJfcmFpbHMi; path=/; HttpOnly; SameSite=Lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<title>Redmine</title>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"description\" content=\"Redmine\" />\n<meta name=\"keywords\" content=\"issue,bug,tracker\" />\n<link rel='shortcut icon' href='/favicon.ico?1772652194' />\n<link rel=\"stylesheet\" media=\"all\" href=\"/stylesheets/application.css?1772652194\" />\n<script src=\"/javascripts/application.js?1772652194\"></script>\n</head>\n<body class=\"controller-account action-login avatars-off\">\n<div id=\"login-form\">\n  <form action=\"/login\" accept-charset=\"UTF-8\" method=\"post\" onsubmit=\"return keepAnchorOnSignIn(this);\">\n    <label for=\"username\">Login</label>\n    <input type=\"text\" name=\"username\" id=\"username\" tabindex=\"1\" />\n    <label for=\"password\">Password<a class=\"lost_password\" href=\"/account/lost_password\">Lost password</a></label>\n    <input type=\"password\" name=\"password\" id=\"password\" tabindex=\"2\" />\n    <input type=\"submit\" name=\"login\" value=\"Login\" tabindex=\"5\" id=\"login-submit\" />\n  </form>\n</div>\n<div id=\"footer\">\n  Powered by <a target=\"_blank\" rel=\"noopener\" href=\"https://www.redmine.org/\">Redmine</a> &copy; 2006-2026 Jean-Philippe Lang\n</div>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/help/en/wiki_syntax_markdown.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n<html xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n<title>Wiki formatting</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"../wiki_syntax.css\" />\n</head>\n<body>\n<h1>Wiki Syntax Quick Reference (Markdown)</h1>\n<table style=\"width:100%\">\n<tr><th colspan=\"3\">Font Styles <span class=\"more_info\">(<a href=\"wiki_syntax_detailed_markdown.html#5\" target=\"_blank\">more</a>)</span></th></tr>\n<tr><th><img src=\"../../images/jstoolbar/bt_link.png\" style=\"border: 1px solid #bbb;\" alt=\"Link\" /></th><td>[Redmine](http://www.redmine.org)</td><td><a href=\"http://www.redmine.org\">Redmine</a></td></tr>\n<tr><th colspan=\"3\">Redmine links <span class=\"more_info\">(<a href=\"wiki_syntax_detailed_markdown.html#3\" target=\"_blank\">more</a>)</span></th></tr>\n</table>\n</body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "redmine_6_0_12_propshaft_assets_and_login"
+    mock_responses: [
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=aW1nZ0F5UmdN; path=/; httponly; samesite=lax" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<title>Redmine</title>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<meta name=\"description\" content=\"Redmine\" />\n<meta name=\"keywords\" content=\"issue,bug,tracker\" />\n<link rel=\"shortcut icon\" type=\"image/x-icon\" href=\"/assets/favicon-0e291875.ico\" />\n<link rel=\"stylesheet\" href=\"/assets/application-045e2042.css\" media=\"all\" />\n<script src=\"/assets/application-14833e45.js\"></script>\n<script>\n//<![CDATA[\n$(window).on('load', function(){ warnLeavingUnsaved('The current page contains unsaved text that will be lost if you leave this page.'); });\n//]]>\n</script>\n</head>\n<body class=\"controller-account action-login avatars-off\" data-text-formatting=\"common_mark\">\n<div id=\"login-form\">\n  <form action=\"/login\" accept-charset=\"UTF-8\" name=\"form-6517ab82\" method=\"post\" onsubmit=\"return keepAnchorOnSignIn(this);\">\n    <input type=\"submit\" name=\"login\" value=\"Login\" tabindex=\"5\" id=\"login-submit\" />\n  </form>\n</div>\n<div id=\"footer\">\n  Powered by <a target=\"_blank\" rel=\"noopener\" href=\"https://www.redmine.org/\">Redmine</a> &copy; 2006-2026 Jean-Philippe Lang\n</div>\n</body>\n</html>\n"
+      },
+      {
+        uri: "/assets/application-14833e45.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "/**\n * Redmine - project management software\n * Copyright (C) 2006-  Jean-Philippe Lang\n * This code is released under the GNU General Public License.\n */\n\nfunction sanitizeHTML(string) {\n  var temp = document.createElement('span');\n  temp.textContent = string;\n  return temp.innerHTML;\n}\nfunction toggleCheckboxesBySelector(selector) {}\nfunction warnLeavingUnsaved(message) {}\nfunction setupAjaxIndicator() {}\nfunction keepAnchorOnSignIn(form) { return true; }\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "redmine_subpath_via_application_js_and_footer_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body><h1>Welcome</h1></body></html>"
+      },
+      {
+        uri: "/redmine/javascripts/application.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "/* Redmine - project management software\n   Copyright (C) 2006-2019  Jean-Philippe Lang */\nfunction warnLeavingUnsaved(message) {}\nfunction keepAnchorOnSignIn(form) { return true; }\n"
+      },
+      {
+        uri: "/redmine/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" },
+          { name: "Set-Cookie", value: "_redmine_session=abc123; path=/redmine; HttpOnly" }
+        ]
+        body: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta name=\"description\" content=\"Redmine\" />\n<script src=\"/redmine/javascripts/application.js\"></script>\n</head>\n<body class=\"controller-account action-login\">\n<div id=\"login-form\"><form action=\"/redmine/login\" method=\"post\"></form></div>\n<div id=\"footer\">Powered by <a href=\"https://www.redmine.org/\">Redmine</a> 4.2.10 &copy; 2006-2023 Jean-Philippe Lang</div>\n</body>\n</html>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/redmine"
+        expected_versions: ["4.2.10"]
+      }
+    ]
+  },
+  {
+    name: "redmine_6_0_subpath_via_propshaft_js"
+    mock_responses: [
+      {
+        uri: "/pm/assets/application-14833e45.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "/**\n * Redmine - project management software\n * Copyright (C) 2006-  Jean-Philippe Lang\n * This code is released under the GNU General Public License.\n */\nfunction warnLeavingUnsaved(message) {}\nfunction setupAjaxIndicator() {}\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/pm"
+      }
+    ]
+  },
+  {
+    name: "redmine_atom_feed_identification"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Custom Landing</title></head><body></body></html>"
+      },
+      {
+        uri: "/projects.atom"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/atom+xml; charset=utf-8" }
+        ]
+        body: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n  <title>Redmine: Latest projects</title>\n  <link rel=\"self\" href=\"http://target.test:3000/projects.atom\"/>\n  <link rel=\"alternate\" href=\"http://target.test:3000/projects\"/>\n  <id>http://target.test:3000/</id>\n  <icon>http://target.test:3000/assets/favicon-0e291875.ico</icon>\n  <updated>2026-11-05T08:11:02Z</updated>\n  <author>\n    <name>Redmine</name>\n  </author>\n  <generator uri=\"https://www.redmine.org/\">\nRedmine  </generator>\n</feed>\n"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "negative_unrelated_rails_login_page"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Acme Tracker</title><script src=\"/javascripts/application.js\"></script></head><body><div id=\"login-form\"><form action=\"/login\" method=\"post\"></form></div></body></html>"
+      },
+      {
+        uri: "/login"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Sign In - Acme Tracker</title></head><body><div id=\"login-form\"><form action=\"/login\" method=\"post\"></form></div></body></html>"
+      },
+      {
+        uri: "/javascripts/application.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "// Acme Tracker application bundle\nconsole.log('Acme initialized');\n"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_spa_html_catchall_on_js_and_atom"
+    mock_responses: [
+      {
+        uri: "/javascripts/application.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Redmine - project management software by Jean-Philippe Lang</title></head><body>warnLeavingUnsaved <generator uri=\"https://www.redmine.org/\">Redmine</generator> http://www.w3.org/2005/Atom</body></html>"
+      },
+      {
+        uri: "/projects.atom"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>SPA Catchall</title></head><body>http://www.w3.org/2005/Atom <generator uri=\"https://www.redmine.org/\">Redmine</generator></body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]

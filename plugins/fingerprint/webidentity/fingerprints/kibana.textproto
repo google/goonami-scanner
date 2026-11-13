@@ -1,0 +1,623 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Kibana"
+  author: "Goonami team"
+  software: "kibana"
+  description: "Detects Elastic Kibana analytics and visualization platform across configured, interactive setup, and preboot states and extracts version."
+}
+
+steps: [
+  # Kibana HTML login page (v6.x through v9.x+, plus v8.x/v9.x interactive setup wizard).
+  # Supports passive subpath discovery (e.g. /kibana/login) and extracts exact Kibana version.
+  {
+    name: "kibana_login_page"
+    path_suffix: "/login"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<kbn-injected-metadata[^>]+data=|\"kbnVersion\"\\s*:\\s*\"[0-9]+\\."
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "<kbn-csp"
+          },
+          {
+            body: {}
+            contains: "kbn_loading_message"
+          },
+          {
+            body: {}
+            contains: "kibanaWelcome"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "<osd-injected-metadata"
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<kbn-injected-metadata[^>]+data=['\"]\\{[^<>]*?(?:&quot;|\\\\?\")version(?:&quot;|\\\\?\")\\s*:\\s*(?:&quot;|\\\\?\")([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)(?:&quot;|\\\\?\")"
+        },
+        {
+          from_body: {}
+          regexp: "\"kbnVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_header: { name: "kbn-version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Kibana root HTML bootstrap page (served directly with 200 OK during v8.x/v9.x interactive
+  # enrollment setup wizard, v8.x preboot, or when redirect following lands on HTML).
+  {
+    name: "kibana_root_page"
+    path: "/"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<kbn-injected-metadata[^>]+data=|\"kbnVersion\"\\s*:\\s*\"[0-9]+\\."
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "<kbn-csp"
+          },
+          {
+            body: {}
+            contains: "kbn_loading_message"
+          },
+          {
+            body: {}
+            contains: "kibanaWelcome"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "<osd-injected-metadata"
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<kbn-injected-metadata[^>]+data=['\"]\\{[^<>]*?(?:&quot;|\\\\?\")version(?:&quot;|\\\\?\")\\s*:\\s*(?:&quot;|\\\\?\")([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)(?:&quot;|\\\\?\")"
+        },
+        {
+          from_body: {}
+          regexp: "\"kbnVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_header: { name: "kbn-version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Full Kibana /api/status JSON endpoint (unauthenticated by default in v5.x-v7.x, when security
+  # is disabled in v8.x-v9.x+, or when status.allowAnonymous is enabled).
+  {
+    name: "kibana_api_status"
+    path_suffix: "/api/status"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            body: {}
+            contains: "\"version\""
+          },
+          {
+            body: {}
+            contains: "\"build_hash\""
+          },
+          {
+            body: {}
+            contains: "\"status\""
+          },
+          {
+            body: {}
+            contains: "\"overall\""
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            header: { name: "kbn-version" }
+          },
+          {
+            header: { name: "elastic-api-version" }
+          },
+          {
+            body: {}
+            contains: "\"core:elasticsearch@"
+          },
+          {
+            body: {}
+            contains: "\"savedObjects\""
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "\"core:opensearch@"
+          },
+          {
+            body: {}
+            contains: "\"opensearchDashboards\""
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "\"version\"\\s*:\\s*\\{[^{}]*?\"number\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_body: {}
+          regexp: "\"uuid\"\\s*:\\s*\"[^\"]+\"\\s*,\\s*\"version\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_header: { name: "kbn-version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Kibana /app/home HTML bootstrap page (served directly with 200 OK when security is disabled or
+  # anonymous access is enabled and / redirects without client redirect following).
+  {
+    name: "kibana_app_home_page"
+    path_suffix: "/app/home"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<kbn-injected-metadata[^>]+data=|\"kbnVersion\"\\s*:\\s*\"[0-9]+\\."
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "<kbn-csp"
+          },
+          {
+            body: {}
+            contains: "kbn_loading_message"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "<osd-injected-metadata"
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<kbn-injected-metadata[^>]+data=['\"]\\{[^<>]*?(?:&quot;|\\\\?\")version(?:&quot;|\\\\?\")\\s*:\\s*(?:&quot;|\\\\?\")([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)(?:&quot;|\\\\?\")"
+        },
+        {
+          from_body: {}
+          regexp: "\"kbnVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_header: { name: "kbn-version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Kibana /app/kibana HTML bootstrap page (legacy v5.x-v7.x and v8.x+ no-security UI entry point).
+  {
+    name: "kibana_app_kibana_page"
+    path_suffix: "/app/kibana"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            regexp: "<kbn-injected-metadata[^>]+data=|\"kbnVersion\"\\s*:\\s*\"[0-9]+\\."
+          }
+        ]
+      }
+      expect_any: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "<kbn-csp"
+          },
+          {
+            body: {}
+            contains: "kbn_loading_message"
+          },
+          {
+            body: {}
+            contains: "kibanaWelcome"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "<osd-injected-metadata"
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+      version_extractors: [
+        {
+          from_body: {}
+          regexp: "<kbn-injected-metadata[^>]+data=['\"]\\{[^<>]*?(?:&quot;|\\\\?\")version(?:&quot;|\\\\?\")\\s*:\\s*(?:&quot;|\\\\?\")([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)(?:&quot;|\\\\?\")"
+        },
+        {
+          from_body: {}
+          regexp: "\"kbnVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)\""
+        },
+        {
+          from_header: { name: "kbn-version" }
+          regexp: "^v?([0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-zA-Z0-9._-]+)?)$"
+        }
+      ]
+    }
+  },
+  # Unauthenticated Kibana anonymous bundle loader (served across v7.x-v9.x+ security-enabled,
+  # SSO/OIDC-redirected, interactive setup, and subpath deployments).
+  {
+    name: "kibana_bootstrap_anonymous_js"
+    path_suffix: "/bootstrap-anonymous.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "function kbnBundlesLoader()"
+          },
+          {
+            body: {}
+            contains: "__kbnBundles__"
+          },
+          {
+            body: {}
+            contains: "window.__kbnPublicPath__"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+    }
+  },
+  # Kibana main bundle loader (served unauthenticated in no-security mode, v8.x/v9.x interactive
+  # setup wizard, and v7.x unreachable-ES preboot).
+  {
+    name: "kibana_bootstrap_js"
+    path_suffix: "/bootstrap.js"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "function kbnBundlesLoader()"
+          },
+          {
+            body: {}
+            contains: "__kbnBundles__"
+          },
+          {
+            body: {}
+            contains: "window.__kbnPublicPath__"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "osdBundlesLoader"
+          }
+        ]
+      }
+    }
+  },
+  # Passive subpath discovery on crawled Kibana core entry JS bundle (numeric buildNumber in
+  # v7.x-v8.12 or hex assetsHrefBase in v8.13-v9.x+).
+  {
+    name: "kibana_passive_core_bundle"
+    path_regexp: "/(?:[0-9]{4,10}|[a-f0-9]{8,20})/bundles/core/core\\.entry\\.js$"
+    response: {
+      status_codes: [200]
+      expect_all: {
+        conditions: [
+          {
+            body: {}
+            contains: "__kbnBundles__.define("
+          },
+          {
+            body: {}
+            contains: "__kbnSharedDeps__"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "__osdBundles__"
+          }
+        ]
+      }
+    }
+  },
+  # Redacted Kibana /api/status JSON (v8.10+ and v9.x+ unauthenticated status when security is
+  # enabled, or 503 JSON during v8.15+/v9.x+ unreachable-ES preboot).
+  {
+    name: "kibana_api_status_redacted"
+    path_suffix: "/api/status"
+    response: {
+      status_codes: [200, 503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "application/json"
+          },
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            regexp: "^\\{\"status\":\\{\"overall\":\\{\"level\":\"(?:available|degraded|critical|unavailable)\"\\}\\}\\}$"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "Content-Type" }
+            contains: "text/html"
+          },
+          {
+            body: {}
+            regexp: "(?i)<!doctype\\s+html|<html[\\s>]"
+          },
+          {
+            header: { name: "osd-name" }
+          }
+        ]
+      }
+    }
+  },
+  # Kibana preboot 503 response on /api/status when Elasticsearch is not yet reachable (v7.x-v8.x).
+  {
+    name: "kibana_preboot_status"
+    path_suffix: "/api/status"
+    response: {
+      status_codes: [503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "Kibana server is not ready yet"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "OpenSearch Dashboards"
+          }
+        ]
+      }
+    }
+  },
+  # Kibana preboot 503 response on / when Elasticsearch is not yet reachable (v7.x).
+  {
+    name: "kibana_preboot_root"
+    path: "/"
+    response: {
+      status_codes: [503]
+      expect_all: {
+        conditions: [
+          {
+            header: { name: "kbn-name" }
+          },
+          {
+            body: {}
+            contains: "Kibana server is not ready yet"
+          }
+        ]
+      }
+      expect_none: {
+        conditions: [
+          {
+            header: { name: "osd-name" }
+          },
+          {
+            body: {}
+            contains: "OpenSearch Dashboards"
+          }
+        ]
+      }
+    }
+  }
+]
+
+workflows: [
+  # Version-extracting workflows first so Pass 2 prioritizes version discovery.
+  {
+    steps: ["kibana_login_page"]
+  },
+  {
+    steps: ["kibana_root_page"]
+  },
+  {
+    steps: ["kibana_api_status"]
+  },
+  {
+    steps: ["kibana_app_home_page"]
+  },
+  {
+    steps: ["kibana_app_kibana_page"]
+  },
+  # Versionless identification fallbacks (SSO-redirected HTML, passive JS bundles, preboot/redacted status).
+  {
+    steps: ["kibana_bootstrap_anonymous_js"]
+  },
+  {
+    steps: ["kibana_bootstrap_js"]
+  },
+  {
+    steps: ["kibana_passive_core_bundle"]
+  },
+  {
+    steps: ["kibana_api_status_redacted"]
+  },
+  {
+    steps: ["kibana_preboot_status"]
+  },
+  {
+    steps: ["kibana_preboot_root"]
+  }
+]

@@ -1,0 +1,350 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint_test.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprintTests
+
+tested_fingerprint: "apache_zeppelin"
+
+tests: [
+  {
+    name: "zeppelin_0_12_1_anonymous_angular_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "Server", value: "Jetty(11.0.24)" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\" class=\"light\"><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"./assets/images/zeppelin.png\" type=\"image/x-icon\"><title>Zeppelin</title><script>(function(){const savedTheme = localStorage.getItem('zeppelin-theme');})();</script></head><body><zeppelin-root><section class=\"spin\"><div><div class=\"logo\"></div><div class=\"spin-text\"><h1 class=\"brand-title\" style=\"display: none\">Zeppelin</h1><span class=\"status\" style=\"display: none\">Booting ...</span></div></div></section></zeppelin-root><script src=\"runtime.7ffe26d4336ab203.js\" type=\"module\"></script><script src=\"main.fe4a8dd370396752.js\" type=\"module\"></script></body></html>"
+      },
+      {
+        uri: "/main.fe4a8dd370396752.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" },
+          { name: "Server", value: "Jetty(11.0.24)" }
+        ]
+        body: "(self.webpackChunkzeppelin=self.webpackChunkzeppelin||[]).push([[179],{98809:function(){this.__zeppelinMessageListeners$__=null;var docs='https://zeppelin.apache.org/'}}]);"
+      },
+      {
+        uri: "/api/security/ticket"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"\",\"body\":{\"principal\":\"anonymous\",\"ticket\":\"anonymous\",\"roles\":\"[]\"}}"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" },
+          { name: "Server", value: "Jetty(11.0.24)" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"\",\"git-timestamp\":\"\",\"version\":\"0.12.1\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.12.1"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_0_12_1_shiro_auth_with_restricted_version_api"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" },
+          { name: "Server", value: "Jetty(11.0.24)" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\" class=\"light\"><head><meta charset=\"utf-8\"><link rel=\"icon\" href=\"./assets/images/zeppelin.png\" type=\"image/x-icon\"><title>Zeppelin</title><script>(function(){const savedTheme = localStorage.getItem('zeppelin-theme');})();</script></head><body><zeppelin-root><section class=\"spin\"><div><div class=\"logo\"></div><div class=\"spin-text\"><h1 class=\"brand-title\" style=\"display: none\">Zeppelin</h1><span class=\"status\" style=\"display: none\">Booting ...</span></div></div></section></zeppelin-root><script src=\"main.fe4a8dd370396752.js\" type=\"module\"></script></body></html>"
+      },
+      {
+        uri: "/main.fe4a8dd370396752.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "(self.webpackChunkzeppelin=self.webpackChunkzeppelin||[]).push([[179],{98809:function(){this.__zeppelinMessageListeners$__=null;var docs='https://zeppelin.apache.org/'}}]);"
+      },
+      {
+        uri: "/api/security/ticket"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "http://target.test:8080/api/login" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/api/version"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "http://target.test:8080/api/login" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+      }
+    ]
+  },
+  {
+    name: "zeppelin_0_11_2_shiro_auth_classic_root_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html;charset=utf-8" }
+        ]
+        body: "<!doctype html><html ng-controller=\"MainCtrl\" class=\"no-js\"><head><meta charset=\"utf-8\"><title ng-bind=\"$root.pageTitle\">Zeppelin</title><link rel=\"stylesheet\" ng-href=\"assets/styles/looknfeel/{{looknfeel}}.css\"></head><body ng-class=\"{'bodyAsIframe': asIframe}\"><div ng-include src=\"'components/navbar/navbar.html?v=1668466242670'\"></div><div ng-controller=\"NoteCreateCtrl as noteCreateCtrl\"><div id=\"note-modal-container\" ng-include src=\"'components/note-create/note-create.html?v=1668466242670'\"></div></div><script src=\"app.ca50d1deab6c33974f94.js\"></script></body></html>"
+      },
+      {
+        uri: "/api/security/ticket"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "http://target.test:8080/api/login" }
+        ]
+        body: ""
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"\",\"git-timestamp\":\"\",\"version\":\"0.11.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.11.2"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_0_10_1_anonymous_next_angular_bundle_and_version"
+    mock_responses: [
+      {
+        uri: "/next/main.c125292aa013a9c0ad97.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "(window.webpackJsonp=window.webpackJsonp||[]).push([[0],[function(e,t){this.__zeppelinMessageListeners__=[];var u='https://zeppelin.apache.org/docs/'}]]);"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"\",\"git-timestamp\":\"\",\"version\":\"0.10.1\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.10.1"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_0_8_2_classic_ui_and_version"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" },
+          { name: "Server", value: "Jetty(9.4.14.v20181114)" }
+        ]
+        body: "<!doctype html> <html ng-controller=\"MainCtrl\" class=\"no-js\"> <head> <meta charset=\"utf-8\"> <title ng-bind=\"$root.pageTitle\">Zeppelin</title> <link rel=\"stylesheet\" ng-href=\"assets/styles/looknfeel/{{looknfeel}}.css\"> <link href=\"app.223f1250e5a93cdb5cdb.css\" rel=\"stylesheet\"> </head> <body ng-class=\"{'bodyAsIframe': asIframe}\"> <div ng-include src=\"'components/navbar/navbar.html?v=1569469429446'\"></div> <div ng-controller=\"NoteCreateCtrl as noteCreateCtrl\"> <div id=\"note-modal-container\" ng-include src=\"'components/note-create/note-create.html?v=1569469429446'\"></div> </div> <script type=\"text/javascript\" src=\"app.223f1250e5a93cdb5cdb.js\"></script></body> </html>"
+      },
+      {
+        uri: "/app.223f1250e5a93cdb5cdb.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){angular.module(\"zeppelinWebApp\").controller(\"NotebookCtrl\",function(){var u=\"https://zeppelin.apache.org/docs/\"+i.zeppelinVersion})}();"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" },
+          { name: "Server", value: "Jetty(9.4.14.v20181114)" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"b520400\",\"git-timestamp\":\"2019-09-26 11:25:13\",\"version\":\"0.8.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.8.2"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_subpath_deployment_via_classic_bundle"
+    mock_responses: [
+      {
+        uri: "/zeppelin/app.ca50d1deab6c33974f94.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/javascript" }
+        ]
+        body: "!function(e){angular.module(\"zeppelinWebApp\").controller(\"NotebookCtrl\",function(){var svc=\"baseUrlSrv\";var u=\"https://zeppelin.apache.org/docs/\"})}();"
+      },
+      {
+        uri: "/zeppelin/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"\",\"git-timestamp\":\"\",\"version\":\"0.11.2\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/zeppelin"
+        expected_versions: ["0.11.2"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_subpath_deployment_via_next_angular_index"
+    mock_responses: [
+      {
+        uri: "/notebook/next/index.html"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\" class=\"light\"><head><link rel=\"icon\" href=\"./assets/images/zeppelin.png\" type=\"image/x-icon\"><title>Zeppelin</title><base href=\"/notebook/next/\"></head><body><zeppelin-root><section class=\"spin\"><div><div class=\"spin-text\"><h1 class=\"brand-title\" style=\"display: none\">Zeppelin</h1></div></div></section></zeppelin-root><script src=\"main.c125292aa013a9c0ad97.js\" defer></script></body></html>"
+      },
+      {
+        uri: "/notebook/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/plain" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"git-commit-id\":\"\",\"git-timestamp\":\"\",\"version\":\"0.10.1\"}}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: "/notebook"
+        expected_versions: ["0.10.1"]
+      }
+    ]
+  },
+  {
+    name: "zeppelin_legacy_0_6_string_body_version_api"
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":\"0.6.2\"}"
+      }
+    ]
+    expected_matches: [
+      {
+        application_root_path: ""
+        expected_versions: ["0.6.2"]
+      }
+    ]
+  },
+  {
+    name: "negative_generic_api_version_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "application/json" }
+        ]
+        body: "{\"status\":\"OK\",\"message\":\"Service version\",\"body\":{\"version\":\"1.2.3\"}}"
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_unrelated_angular_app_with_shiro_redirect_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html lang=\"en\"><head><title>Analytics Notebook</title></head><body><app-root></app-root><script src=\"main.fe4a8dd370396752.js\" type=\"module\"></script></body></html>"
+      },
+      {
+        uri: "/main.fe4a8dd370396752.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/javascript" }
+        ]
+        body: "(self.webpackChunkanalytics=self.webpackChunkanalytics||[]).push([[179],{}]);"
+      },
+      {
+        uri: "/api/login"
+        status_code: 302
+        headers: [
+          { name: "Location", value: "/login" }
+        ]
+        body: ""
+      }
+    ]
+    expected_matches: []
+  },
+  {
+    name: "negative_soft_200_spa_html_catchall_does_not_trigger"
+    mock_responses: [
+      {
+        uri: "/"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body><div id=\"app\">Zeppelin version status OK body zeppelinWebApp zeppelin.apache.org</div></body></html>"
+      },
+      {
+        uri: "/api/version"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body>{\"status\":\"OK\",\"message\":\"Zeppelin version\",\"body\":{\"version\":\"0.12.1\"}}</body></html>"
+      },
+      {
+        uri: "/main.fe4a8dd370396752.js"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body>webpackChunkzeppelin zeppelin.apache.org</body></html>"
+      },
+      {
+        uri: "/favicon.ico"
+        status_code: 200
+        headers: [
+          { name: "Content-Type", value: "text/html; charset=utf-8" }
+        ]
+        body: "<!DOCTYPE html><html><head><title>Corporate Portal</title></head><body>Not Found</body></html>"
+      }
+    ]
+    expected_matches: []
+  }
+]
