@@ -71,7 +71,6 @@ type Module struct {
 	*module.BaseModule
 	config     *wfpb.WebIdentityFpConfig
 	coreConfig *config.Config
-	crawler    *httpcrawler.SimpleCrawler
 	storage    *storage.Storage
 	registry   *hash.Registry
 }
@@ -106,7 +105,6 @@ func newWithRegistry(ctx context.Context, modConfig *wfpb.WebIdentityFpConfig, c
 		BaseModule: module.NewBaseModule(moduleName),
 		coreConfig: config,
 		config:     modConfig,
-		crawler:    httpcrawler.NewSimpleCrawler(ctx, config),
 		storage:    storage.New(modConfig.GetWriteHtmlToFile(), modConfig.GetMaximumStorageSpaceBytes()),
 		registry:   registry,
 	}, nil
@@ -119,9 +117,10 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 		return []*nspb.NetworkService{service}, nil
 	}
 
+	crawler := httpcrawler.NewSimpleCrawler(ctx, m.coreConfig)
 	var allServices []*nspb.NetworkService
 	for _, epService := range splitServiceByEndpoint(service) {
-		services, err := m.fingerprintEndpoint(ctx, epService)
+		services, err := m.fingerprintEndpoint(ctx, crawler, epService)
 		if err != nil {
 			return nil, err
 		}
@@ -131,20 +130,20 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 	return reconcileServices(service, allServices), nil
 }
 
-func (m *Module) fingerprintEndpoint(ctx context.Context, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
+func (m *Module) fingerprintEndpoint(ctx context.Context, crawler *httpcrawler.SimpleCrawler, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
 	run := &runInfo{
 		matches:      make(map[string][]*hash.Identity),
 		crawlResults: make(map[string]*wcpb.CrawlResult),
 	}
 
-	if err := m.crawl(ctx, run, service); err != nil {
+	if err := m.crawl(ctx, crawler, run, service); err != nil {
 		return nil, err
 	}
 
 	return m.matching(ctx, run, service)
 }
 
-func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkService) error {
+func (m *Module) crawl(ctx context.Context, crawler *httpcrawler.SimpleCrawler, run *runInfo, service *nspb.NetworkService) error {
 	webroot, err := netservice.BuildWebRoot(service)
 	if err != nil {
 		return err
@@ -163,7 +162,7 @@ func (m *Module) crawl(ctx context.Context, run *runInfo, service *nspb.NetworkS
 	}
 
 	log.DebugContextf(ctx, log.DebugLevelService, "starting crawling")
-	stats, err := m.crawler.Crawl(ctx, callback, seeds)
+	stats, err := crawler.Crawl(ctx, callback, seeds)
 	if err != nil {
 		return err
 	}

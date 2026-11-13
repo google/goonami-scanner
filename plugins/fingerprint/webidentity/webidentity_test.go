@@ -36,6 +36,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
+	hcpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	wfpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
@@ -889,6 +890,73 @@ func TestSplitServiceByEndpoint(t *testing.T) {
 				t.Errorf("splitServiceByEndpoint() returned unexpected diff (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestFingerprint_PerServiceRequestBudget(t *testing.T) {
+	const versionPage = "nginx version page"
+	versionHash := pageHash(t, versionPage)
+
+	pages := map[string]string{
+		"/":        `<a href="/version">version</a>`,
+		"/version": versionPage,
+	}
+
+	srv1 := newTestServer(pages)
+	defer srv1.Close()
+	srv2 := newTestServer(pages)
+	defer srv2.Close()
+
+	_, _, svc1 := serverInfo(t, srv1)
+	_, _, svc2 := serverInfo(t, srv2)
+
+	registry := hash.NewRegistry()
+	if err := registry.Load(fpb.Fingerprints_builder{
+		SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
+		ContentHashes: []*fpb.ContentHash{
+			fpb.ContentHash_builder{
+				ContentPath: "/version",
+				Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: versionHash}.Build()},
+			}.Build(),
+		},
+	}.Build()); err != nil {
+		t.Fatalf("Failed to load known hashes: %v", err)
+	}
+
+	modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
+	cfg := config.FromProto(cpb.Config_builder{
+		Clients: cpb.ClientsConfig_builder{
+			HttpCrawler: hcpb.HttpCrawlerClientConfig_builder{
+				MaxConcurrency: proto.Int32(1),
+				MaxDepth:       proto.Int32(1),
+				MaxRequests:    proto.Int32(2),
+			}.Build(),
+		}.Build(),
+		Plugins: cpb.PluginsConfig_builder{
+			Webidentity: modConfig,
+		}.Build(),
+	}.Build())
+
+	mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
+	if err != nil {
+		t.Fatalf("Failed to create module: %v", err)
+	}
+
+	for idx, svc := range []*nspb.NetworkService{svc1, svc2} {
+		got, err := mod.Fingerprint(t.Context(), svc)
+		if err != nil {
+			t.Fatalf("Fingerprint(service %d) returned unexpected error: %v", idx, err)
+		}
+
+		var identified []string
+		for _, s := range got {
+			if sw := s.GetServiceContext().GetWebServiceContext().GetSoftware().GetName(); sw != "" {
+				identified = append(identified, sw)
+			}
+		}
+		if diff := cmp.Diff([]string{"nginx"}, identified); diff != "" {
+			t.Errorf("Fingerprint(service %d) identified software diff (-want +got):\n%s", idx, diff)
+		}
 	}
 }
 
