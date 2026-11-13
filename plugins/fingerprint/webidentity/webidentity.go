@@ -21,28 +21,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
+	goohttp "github.com/google/goonami-scanner/core/net/http"
 	"github.com/google/goonami-scanner/core/net/netservice"
+	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/cache"
+	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/engine"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
 	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/storage"
-	"google.golang.org/protobuf/proto"
 
-	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
 	wfpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
-	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
-	spb "github.com/google/tsunami-security-scanner/proto/go/software_go_proto"
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 )
 
@@ -51,18 +47,8 @@ const (
 )
 
 var (
-	// ErrNoFingerprintsDirectory indicates that the configuration does not specify the path to the
-	// directory containing the signatures.
-	ErrNoFingerprintsDirectory = errors.New("invalid configuration: the webidentity plugin REQUIRES the path to the directory containing the signatures, none found")
-
-	// ErrSignaturesRead is returned when there is an error while reading a signature file.
-	ErrSignaturesRead = errors.New("error while reading signature file")
-
-	// ErrSignaturesUnmarshal is returned when there is an error while unmarshaling a signature.
-	ErrSignaturesUnmarshal = errors.New("error while unmarshaling signature")
-
-	// ErrArtifactsWrite is returned when there is an error while writing an artifact file.
-	ErrArtifactsWrite = errors.New("error while writing artifact file")
+	// ErrArtifactsWrite is returned when writing an artifact file fails.
+	ErrArtifactsWrite = errors.New("writing artifact file")
 )
 
 // Module is the fingerprinter to detect what product is running on a web server. It is the module
@@ -72,7 +58,7 @@ type Module struct {
 	config     *wfpb.WebIdentityFpConfig
 	coreConfig *config.Config
 	storage    *storage.Storage
-	registry   *hash.Registry
+	engine     *engine.Engine
 }
 
 func init() {
@@ -82,31 +68,26 @@ func init() {
 // New returns a new instance of the module.
 func New(ctx context.Context, config *config.Config) (module.Fingerprinter, error) {
 	modConfig := config.PluginsConfig().GetWebidentity()
-
-	if modConfig.GetSignaturesDirectory() == "" {
-		return nil, ErrNoFingerprintsDirectory
-	}
-
 	ctx = log.ContextForModule(ctx, moduleName)
 
-	registry := hash.NewRegistry()
-	if err := loadAllFingerprints(ctx, modConfig, registry); err != nil {
+	compiledFps, err := loadAllFingerprints(ctx, modConfig)
+	if err != nil {
 		return nil, err
 	}
-	log.DebugContextf(ctx, log.DebugLevelSession, "Loaded %d signatures", registry.Count())
+	log.DebugContextf(ctx, log.DebugLevelSession, "Loaded %d signatures", len(compiledFps))
 
-	return newWithRegistry(ctx, modConfig, config, registry)
+	return newWithEngine(ctx, modConfig, config, engine.New(compiledFps))
 }
 
-// newWithRegistry performs the initialization of the module once the checks have been performed
-// and the registry loaded. This function is used in tests to load custom registries.
-func newWithRegistry(ctx context.Context, modConfig *wfpb.WebIdentityFpConfig, config *config.Config, registry *hash.Registry) (module.Fingerprinter, error) {
+// newWithEngine performs the initialization of the module once the checks have been performed
+// and the engine loaded. This function is used in tests to load custom engines or fingerprints.
+func newWithEngine(ctx context.Context, modConfig *wfpb.WebIdentityFpConfig, config *config.Config, eng *engine.Engine) (module.Fingerprinter, error) {
 	return &Module{
 		BaseModule: module.NewBaseModule(moduleName),
 		coreConfig: config,
 		config:     modConfig,
 		storage:    storage.New(modConfig.GetWriteHtmlToFile(), modConfig.GetMaximumStorageSpaceBytes()),
-		registry:   registry,
+		engine:     eng,
 	}, nil
 }
 
@@ -117,6 +98,7 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 		return []*nspb.NetworkService{service}, nil
 	}
 
+	ctx = log.ContextForModuleAndService(ctx, moduleName, service)
 	crawler := httpcrawler.NewSimpleCrawler(ctx, m.coreConfig)
 	var allServices []*nspb.NetworkService
 	for _, epService := range splitServiceByEndpoint(service) {
@@ -131,28 +113,31 @@ func (m *Module) Fingerprint(ctx context.Context, service *nspb.NetworkService) 
 }
 
 func (m *Module) fingerprintEndpoint(ctx context.Context, crawler *httpcrawler.SimpleCrawler, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
-	run := &runInfo{
-		matches:      make(map[string][]*hash.Identity),
-		crawlResults: make(map[string]*wcpb.CrawlResult),
-	}
-
-	if err := m.crawl(ctx, crawler, run, service); err != nil {
+	webroot, err := netservice.BuildWebRoot(service)
+	if err != nil {
 		return nil, err
 	}
 
-	return m.matching(ctx, run, service)
-}
+	run := &runInfo{
+		crawlResults: make(map[string]*wcpb.CrawlResult),
+	}
+	httpCache := cache.New(goohttp.SharedClient(m.coreConfig))
 
-func (m *Module) crawl(ctx context.Context, crawler *httpcrawler.SimpleCrawler, run *runInfo, service *nspb.NetworkService) error {
-	webroot, err := netservice.BuildWebRoot(service)
-	if err != nil {
-		return err
+	if err := m.crawl(ctx, crawler, run, webroot, httpCache); err != nil {
+		return nil, err
 	}
 
+	return m.matching(ctx, run, service, httpCache, webroot)
+}
+
+func (m *Module) crawl(ctx context.Context, crawler *httpcrawler.SimpleCrawler, run *runInfo, webroot string, httpCache *cache.Cache) error {
 	seeds := []string{webroot + "/"}
 
 	var bytesWritten int64
 	callback := func(ctx context.Context, info *httpcrawler.PageInfo, resp *http.Response, content []byte) error {
+		if httpCache != nil {
+			httpCache.Put(http.MethodGet, info.URL, resp, content)
+		}
 		bytes, err := m.processPage(ctx, run, info, resp, content)
 		if err == nil { // success
 			bytesWritten += bytes
@@ -173,16 +158,13 @@ func (m *Module) crawl(ctx context.Context, crawler *httpcrawler.SimpleCrawler, 
 
 // processPage processes a single page. This function is called on every page during the crawl.
 func (m *Module) processPage(ctx context.Context, run *runInfo, info *httpcrawler.PageInfo, resp *http.Response, content []byte) (int64, error) {
-	hash, err := hash.FromResponse(resp, content)
+	h, err := hash.FromResponse(resp, content)
 	if err != nil {
 		return 0, err
 	}
-	hexHash := hash.Hex()
+	hexHash := h.Hex()
 
 	run.AddVisited(info, resp, []byte(hexHash))
-	if identity := m.registry.Find(hexHash, info.URL); identity != nil {
-		run.AddMatch(ctx, identity)
-	}
 
 	if !m.config.GetWriteHtmlToFile() {
 		return 0, nil
@@ -224,244 +206,52 @@ func (m *Module) writeToArtifacts(ctx context.Context, info *httpcrawler.PageInf
 	return contentSize, nil
 }
 
-func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.NetworkService) ([]*nspb.NetworkService, error) {
-	crawlResults := run.CrawlResults()
-	matches := run.Matches()
-	if len(matches) == 0 {
-		log.DebugContextf(ctx, log.DebugLevelService, "no matches found for service")
-		netservice.AddCrawlResults(service, crawlResults)
-		return []*nspb.NetworkService{service}, nil
-	}
-
-	var networkServices []*nspb.NetworkService
-	for _, identities := range matches {
-		for _, identity := range identities {
-			log.DebugContextf(ctx, log.DebugLevelService, "potential identity found for service: %v", identity)
-			networkServices = append(networkServices, identityToNewService(ctx, service, crawlResults, identity))
-		}
-	}
-
-	var knownRoots []string
-	for _, identities := range matches {
-		for _, identity := range identities {
-			knownRoots = append(knownRoots, identity.PotentialRoots...)
-		}
-	}
-
-	svc := serviceFromUnidentifiedCrawls(service, knownRoots, crawlResults)
-	if svc != nil {
-		networkServices = append(networkServices, svc)
-	}
-
-	return networkServices, nil
-}
-
-func serviceFromUnidentifiedCrawls(service *nspb.NetworkService, knownRoots []string, crawls []*wcpb.CrawlResult) *nspb.NetworkService {
-	var unidentifiedCrawls []*wcpb.CrawlResult
-	newService := proto.Clone(service).(*nspb.NetworkService)
-
-	for _, result := range crawls {
-		foundRoot := false
-
-		for _, root := range knownRoots {
-			if strings.HasPrefix(result.GetCrawlTarget().GetUrl(), root) {
-				foundRoot = true
-				break
-			}
-		}
-
-		if foundRoot {
-			continue
-		}
-
-		unidentifiedCrawls = append(unidentifiedCrawls, result)
-	}
-
-	if len(unidentifiedCrawls) == 0 {
-		return nil
-	}
-
-	netservice.AddCrawlResults(newService, unidentifiedCrawls)
-	return newService
-}
-
-// Make a copy of the provided service with information obtained from the identity. It also adds the
-// relevant crawl results to the service.
-func identityToNewService(ctx context.Context, service *nspb.NetworkService, crawls []*wcpb.CrawlResult, identity *hash.Identity) *nspb.NetworkService {
-	newService := proto.Clone(service).(*nspb.NetworkService)
-	software := identity.Software
-
-	// first, we add the relevant crawl results to the service.
-	var results []*wcpb.CrawlResult
-	for _, root := range identity.PotentialRoots {
-		for _, r := range crawls {
-			url := r.GetCrawlTarget().GetUrl()
-			if strings.HasPrefix(url, root) {
-				results = append(results, r)
-			}
-		}
-	}
-
-	netservice.AddCrawlResults(newService, results)
-
-	// then all the identification information
-	var versions []*spb.Version
-	for _, v := range identity.Versions {
-		versions = append(versions, spb.Version_builder{
-			Type:              spb.Version_NORMAL,
-			FullVersionString: v,
-		}.Build())
-	}
-
-	wsc := newService.GetServiceContext().GetWebServiceContext()
-	wsc.SetSoftware(spb.Software_builder{Name: software}.Build())
-	wsc.SetVersionSet(spb.VersionSet_builder{Versions: versions}.Build())
-
-	if len(identity.PotentialRoots) != 1 {
-		log.WarnContextf(ctx, "software:%q has %d roots. This is likely an issue. Please report to Goonami developpers.", software, len(identity.PotentialRoots))
-	} else {
-		wsc.SetApplicationRoot(applicationRootPath(identity.PotentialRoots[0]))
-	}
-
-	return newService
-}
-
-// If a network service is identified by both a hostname and an IP address, we split it into two
-// services, one for each endpoint. We will perform fingerprinting on each and reconcile the
-// results afterwards.
-func splitServiceByEndpoint(service *nspb.NetworkService) []*nspb.NetworkService {
-	endpoint := service.GetNetworkEndpoint()
-	if !endpoint.HasHostname() || !endpoint.HasIpAddress() {
-		return []*nspb.NetworkService{service}
-	}
-
-	hostEpType := npb.NetworkEndpoint_HOSTNAME
-	ipEpType := npb.NetworkEndpoint_IP
-	if endpoint.HasPort() {
-		hostEpType = npb.NetworkEndpoint_HOSTNAME_PORT
-		ipEpType = npb.NetworkEndpoint_IP_PORT
-	}
-
-	hostService := proto.Clone(service).(*nspb.NetworkService)
-	hostService.SetNetworkEndpoint(npb.NetworkEndpoint_builder{
-		Type:     hostEpType,
-		Hostname: endpoint.GetHostname(),
-		Port:     endpoint.GetPort(),
-	}.Build())
-
-	ipService := proto.Clone(service).(*nspb.NetworkService)
-	ipService.SetNetworkEndpoint(npb.NetworkEndpoint_builder{
-		Type:      ipEpType,
-		IpAddress: endpoint.GetIpAddress(),
-		Port:      endpoint.GetPort(),
-	}.Build())
-
-	return []*nspb.NetworkService{hostService, ipService}
-}
-
-func reconcileServices(baseService *nspb.NetworkService, services []*nspb.NetworkService) []*nspb.NetworkService {
-	var reconciled []*nspb.NetworkService
-	for _, s := range services {
-		i := slices.IndexFunc(reconciled, func(r *nspb.NetworkService) bool {
-			return areServicesIdentical(r, s)
-		})
-		if i == -1 {
-			reconciled = append(reconciled, s)
-			continue
-		}
-		reconciled[i].SetNetworkEndpoint(baseService.GetNetworkEndpoint())
-		netservice.AddCrawlResults(reconciled[i], s.GetServiceContext().GetWebServiceContext().GetCrawlResults())
-	}
-	return reconciled
-}
-
-func areServicesIdentical(s1, s2 *nspb.NetworkService) bool {
-	wsc1 := s1.GetServiceContext().GetWebServiceContext()
-	wsc2 := s2.GetServiceContext().GetWebServiceContext()
-
-	if wsc1.HasSoftware() && wsc2.HasSoftware() {
-		return wsc1.GetSoftware().GetName() == wsc2.GetSoftware().GetName() &&
-			extractPath(wsc1.GetApplicationRoot()) == extractPath(wsc2.GetApplicationRoot())
-	}
-
-	if wsc1.HasSoftware() != wsc2.HasSoftware() {
-		return false
-	}
-
-	return maps.Equal(crawlHashes(wsc1), crawlHashes(wsc2))
-}
-
-func crawlHashes(wsc *nspb.WebServiceContext) map[string]string {
-	hashes := make(map[string]string, len(wsc.GetCrawlResults()))
-	for _, r := range wsc.GetCrawlResults() {
-		hashes[extractPath(r.GetCrawlTarget().GetUrl())] = string(r.GetContent())
-	}
-	return hashes
-}
-
-func extractPath(rawURL string) string {
-	u, err := url.Parse(rawURL)
+func (m *Module) matching(ctx context.Context, run *runInfo, service *nspb.NetworkService, httpCache *cache.Cache, webroot string) ([]*nspb.NetworkService, error) {
+	identifications, err := m.runEngineOnWebRoots(ctx, httpCache, []string{webroot})
 	if err != nil {
-		return rawURL
+		return nil, err
 	}
-	return u.Path
+
+	m.recordActiveCachePages(ctx, run, httpCache)
+	return buildIdentifiedServices(ctx, service, identifications, run.CrawlResults()), nil
 }
 
-func applicationRootPath(rawURL string) string {
-	path := strings.TrimRight(extractPath(rawURL), "/")
-	if path == "" {
-		return "/"
-	}
-	if !strings.HasPrefix(path, "/") {
-		return "/" + path
-	}
-	return path
-}
-
-// Retrieves the directory containing the signatures.
-func getSignaturesDirectory(config *wfpb.WebIdentityFpConfig) (string, error) {
-	root := ""
-	return filepath.Join(root, config.GetSignaturesDirectory()), nil
-}
-
-// Load all signatures from the directory defined in the configuration.
-func loadAllFingerprints(ctx context.Context, config *wfpb.WebIdentityFpConfig, registry *hash.Registry) error {
-	sigDirectory, err := getSignaturesDirectory(config)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
-	}
-
-	log.DebugContextf(ctx, log.DebugLevelRequest, "signatures directory is: %q", sigDirectory)
-	dirs, err := os.ReadDir(sigDirectory)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrSignaturesRead, err)
-	}
-
-	for _, dir := range dirs {
-		if dir.IsDir() {
-			continue
-		}
-
-		if !strings.HasSuffix(dir.Name(), ".binproto") {
-			continue
-		}
-
-		filePath := filepath.Join(sigDirectory, dir.Name())
-		fingerprints, err := os.ReadFile(filePath)
+func (m *Module) runEngineOnWebRoots(ctx context.Context, httpCache *cache.Cache, webroots []string) ([]*rootResult, error) {
+	var allIdentifications []*rootResult
+	for _, root := range webroots {
+		results, err := m.engine.Run(ctx, httpCache, root)
 		if err != nil {
-			return fmt.Errorf("%w %q: %v", ErrSignaturesRead, filePath, err)
+			return nil, err
 		}
-
-		log.DebugContextf(ctx, log.DebugLevelRequest, "loading signatures: %q", dir.Name())
-		fingerprintsProto := &fpb.Fingerprints{}
-		if err := proto.Unmarshal(fingerprints, fingerprintsProto); err != nil {
-			return fmt.Errorf("%w %q: %v", ErrSignaturesUnmarshal, filePath, err)
-		}
-
-		if err := registry.Load(fingerprintsProto); err != nil {
-			return err
+		for _, r := range results {
+			fullRoot := root + r.ApplicationRoot
+			idx := slices.IndexFunc(allIdentifications, func(existing *rootResult) bool {
+				return sameIdentification(existing.result, r)
+			})
+			if idx >= 0 {
+				allIdentifications[idx].fullRoots = append(allIdentifications[idx].fullRoots, fullRoot)
+				continue
+			}
+			allIdentifications = append(allIdentifications, &rootResult{
+				fullRoots: []string{fullRoot},
+				result:    r,
+			})
 		}
 	}
+	return allIdentifications, nil
+}
 
-	return nil
+func (m *Module) recordActiveCachePages(ctx context.Context, run *runInfo, httpCache *cache.Cache) {
+	if httpCache == nil {
+		return
+	}
+	for _, entry := range httpCache.All() {
+		if entry.URL == nil || entry.StatusCode != http.StatusOK {
+			continue
+		}
+		rawURL := entry.URL.String()
+		if !run.HasCrawlResult(rawURL) {
+			_, _ = m.processPage(ctx, run, &httpcrawler.PageInfo{URL: rawURL}, entry.Response(), entry.Body)
+		}
+	}
 }

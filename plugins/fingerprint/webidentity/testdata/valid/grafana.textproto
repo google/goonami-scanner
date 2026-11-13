@@ -1,0 +1,23 @@
+# proto-file: goonami/plugins/fingerprint/webidentity/fingerprint.proto
+# proto-message: goonami.proto.plugins.webidentity.WebFingerprint
+
+info: {
+  name: "Grafana"
+  author: "Goonami team"
+  software: "grafana"
+  description: "Detects Grafana"
+}
+steps: [
+  {
+    name: "api_health"
+    path: "/api/health"
+    response: {
+      status_codes: [200]
+    }
+  }
+]
+workflows: [
+  {
+    steps: ["api_health"]
+  }
+]

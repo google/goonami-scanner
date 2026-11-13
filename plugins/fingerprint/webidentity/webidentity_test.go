@@ -20,11 +20,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -32,13 +29,13 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/goonami-scanner/core/config"
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
-	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
+	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/engine"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	hcpb "github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
-	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_proto"
+	fpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprint_go_proto"
 	wfpb "github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
 	nspb "github.com/google/tsunami-security-scanner/proto/go/network_service_go_proto"
@@ -48,12 +45,21 @@ import (
 
 func TestNew(t *testing.T) {
 	tests := []struct {
-		name       string
-		configFunc func() *config.Config
-		wantErr    error
+		name              string
+		configFunc        func() *config.Config
+		wantErr           error
+		wantMinSignatures int
 	}{
 		{
-			name: "when_config_has_webidentity_returns_no_error",
+			name: "when_config_has_no_signatures_directory_loads_embedded_signatures",
+			configFunc: func() *config.Config {
+				return config.FromProto(&cpb.Config{})
+			},
+			wantErr:           nil,
+			wantMinSignatures: 30,
+		},
+		{
+			name: "when_config_has_valid_signatures_directory_loads_signatures",
 			configFunc: func() *config.Config {
 				return config.FromProto(cpb.Config_builder{
 					Plugins: cpb.PluginsConfig_builder{
@@ -66,30 +72,8 @@ func TestNew(t *testing.T) {
 					}.Build(),
 				}.Build())
 			},
-			wantErr: nil,
-		},
-		{
-			name: "when_config_does_not_have_webidentity_returns_error",
-			configFunc: func() *config.Config {
-				return config.FromProto(&cpb.Config{})
-			},
-			wantErr: ErrNoFingerprintsDirectory,
-		},
-		{
-			name: "when_config_is_missing_signatures_directory_returns_error",
-			configFunc: func() *config.Config {
-				return config.FromProto(cpb.Config_builder{
-					Plugins: cpb.PluginsConfig_builder{
-						Webidentity: wfpb.WebIdentityFpConfig_builder{
-							SignaturesDirectory:      proto.String(""),
-							WriteHtmlToFile:          proto.Bool(true),
-							MaximumFileSizeBytes:     proto.Int64(100),
-							MaximumStorageSpaceBytes: proto.Int64(100),
-						}.Build(),
-					}.Build(),
-				}.Build())
-			},
-			wantErr: ErrNoFingerprintsDirectory,
+			wantErr:           nil,
+			wantMinSignatures: 1,
 		},
 		{
 			name: "when_signatures_directory_does_not_exist_returns_error",
@@ -145,8 +129,8 @@ func TestNew(t *testing.T) {
 			}
 
 			m := mod.(*Module)
-			if m.registry.Count() == 0 {
-				t.Errorf("New() did not load any signatures")
+			if len(m.engine.Fingerprints()) < tc.wantMinSignatures {
+				t.Errorf("len(engine.Fingerprints()) = %d, want at least %d", len(m.engine.Fingerprints()), tc.wantMinSignatures)
 			}
 		})
 	}
@@ -154,25 +138,36 @@ func TestNew(t *testing.T) {
 
 func TestFingerprint(t *testing.T) {
 	tests := []struct {
-		name        string
-		pages       map[string]string
-		knownHashes *fpb.Fingerprints
-		want        []*nspb.ServiceContext
-		wantErr     error
+		name         string
+		pages        map[string]string
+		fingerprints []*fpb.WebFingerprint
+		want         []*nspb.ServiceContext
+		wantErr      error
 	}{
 		{
-			name: "when_no_known_hash_matches_returns_no_identification",
-			knownHashes: fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "irrelevant"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "/",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "unknown"}.Build(),
-						},
+			name: "when_no_fingerprint_matches_returns_no_identification",
+			fingerprints: []*fpb.WebFingerprint{
+				fpb.WebFingerprint_builder{
+					Info: fpb.FingerprintInfo_builder{
+						Name:     "irrelevant",
+						Software: "irrelevant",
 					}.Build(),
-				},
-			}.Build(),
+					Steps: []*fpb.Step{
+						fpb.Step_builder{
+							Name: "step1",
+							Path: proto.String("/unknown"),
+							Response: fpb.HttpResponse_builder{
+								StatusCodes: []int32{200},
+							}.Build(),
+						}.Build(),
+					},
+					Workflows: []*fpb.Workflow{
+						fpb.Workflow_builder{
+							Steps: []string{"step1"},
+						}.Build(),
+					},
+				}.Build(),
+			},
 			pages: map[string]string{
 				"/": "<html><body>Hello</body></html>",
 			},
@@ -192,18 +187,37 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "when_known_hash_has_no_version_it_is_identified_without_version",
-			knownHashes: fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "/",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "cd30f2d1a6ba78af7430b2105716051b"}.Build(),
-						},
+			name: "when_known_fingerprint_has_no_version_it_is_identified_without_version",
+			fingerprints: []*fpb.WebFingerprint{
+				fpb.WebFingerprint_builder{
+					Info: fpb.FingerprintInfo_builder{
+						Name:     "nginx",
+						Software: "nginx",
 					}.Build(),
-				},
-			}.Build(),
+					Steps: []*fpb.Step{
+						fpb.Step_builder{
+							Name: "nginx_step",
+							Path: proto.String("/"),
+							Response: fpb.HttpResponse_builder{
+								StatusCodes: []int32{200},
+								ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+									Conditions: []*fpb.HttpResponse_Expectation{
+										fpb.HttpResponse_Expectation_builder{
+											Body:     &fpb.HttpResponse_Body{},
+											Contains: "I am supposed to be an NGINX",
+										}.Build(),
+									},
+								}.Build(),
+							}.Build(),
+						}.Build(),
+					},
+					Workflows: []*fpb.Workflow{
+						fpb.Workflow_builder{
+							Steps: []string{"nginx_step"},
+						}.Build(),
+					},
+				}.Build(),
+			},
 			pages: map[string]string{
 				"/": "I am supposed to be an NGINX",
 			},
@@ -226,93 +240,45 @@ func TestFingerprint(t *testing.T) {
 			},
 		},
 		{
-			name: "when_known_hash_has_version_range_it_is_identified_with_versions",
-			knownHashes: fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "/",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "3786b9d769425320f43d7c7d8b559d63"}.Build(),
-						},
+			name: "when_known_fingerprint_extracts_version_it_is_identified_with_versions",
+			fingerprints: []*fpb.WebFingerprint{
+				fpb.WebFingerprint_builder{
+					Info: fpb.FingerprintInfo_builder{
+						Name:     "nginx",
+						Software: "nginx",
 					}.Build(),
-				},
-				HashVersions: []*fpb.HashVersion{
-					fpb.HashVersion_builder{
-						Hash: fpb.Hash_builder{HexString: "3786b9d769425320f43d7c7d8b559d63"}.Build(),
-						Versions: []*fpb.Version{
-							fpb.Version_builder{FullName: "v1.0"}.Build(),
-							fpb.Version_builder{FullName: "v2.0"}.Build(),
-							fpb.Version_builder{FullName: "v3.0"}.Build(),
-						},
-					}.Build(),
-				},
-			}.Build(),
-			pages: map[string]string{
-				"/": "I am supposed to be an NGINX v1.0 or v2.0 or v3.0",
-			},
-			want: []*nspb.ServiceContext{
-				nspb.ServiceContext_builder{
-					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "/",
-						Software:        spb.Software_builder{Name: "nginx"}.Build(),
-						VersionSet: spb.VersionSet_builder{
-							Versions: []*spb.Version{
-								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v1.0"}.Build(),
-								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v2.0"}.Build(),
-								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v3.0"}.Build(),
-							},
-						}.Build(),
-						CrawlResults: []*wcpb.CrawlResult{
-							wcpb.CrawlResult_builder{
-								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
-								ResponseCode:     200,
-								Content:          []byte("3786b9d769425320f43d7c7d8b559d63"),
-								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
+					Steps: []*fpb.Step{
+						fpb.Step_builder{
+							Name: "nginx_step",
+							Path: proto.String("/"),
+							Response: fpb.HttpResponse_builder{
+								StatusCodes: []int32{200},
+								ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+									Conditions: []*fpb.HttpResponse_Expectation{
+										fpb.HttpResponse_Expectation_builder{
+											Body:     &fpb.HttpResponse_Body{},
+											Contains: "I am supposed to be an NGINX",
+										}.Build(),
+									},
+								}.Build(),
+								VersionExtractors: []*fpb.VersionExtractor{
+									fpb.VersionExtractor_builder{
+										FromBody: &fpb.HttpResponse_Body{},
+										Regexp:   "NGINX\\s+(v[0-9.]+)",
+									}.Build(),
+								},
 							}.Build(),
-						},
-					}.Build(),
+						}.Build(),
+					},
+					Workflows: []*fpb.Workflow{
+						fpb.Workflow_builder{
+							Steps: []string{"nginx_step"},
+						}.Build(),
+					},
 				}.Build(),
 			},
-		},
-		{
-			name: "when_multiple_known_hashes_match_returns_the_most_specific_versions",
-			knownHashes: fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "/",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "6acc630ba438d3c47709f3e4a03d0433"}.Build(),
-						},
-					}.Build(),
-					fpb.ContentHash_builder{
-						ContentPath: "/version",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "5eadef45e713f861e6d6b32b998dde07"}.Build(),
-						},
-					}.Build(),
-				},
-				HashVersions: []*fpb.HashVersion{
-					fpb.HashVersion_builder{
-						Hash: fpb.Hash_builder{HexString: "6acc630ba438d3c47709f3e4a03d0433"}.Build(),
-						Versions: []*fpb.Version{
-							fpb.Version_builder{FullName: "v1.0"}.Build(),
-							fpb.Version_builder{FullName: "v2.0"}.Build(),
-							fpb.Version_builder{FullName: "v3.0"}.Build(),
-						},
-					}.Build(),
-					fpb.HashVersion_builder{
-						Hash: fpb.Hash_builder{HexString: "5eadef45e713f861e6d6b32b998dde07"}.Build(),
-						Versions: []*fpb.Version{
-							fpb.Version_builder{FullName: "v2.0"}.Build(),
-						},
-					}.Build(),
-				},
-			}.Build(),
 			pages: map[string]string{
-				"/":        "I can be many versions but... <a href=\"/version\">/version</a>",
-				"/version": "I am actually version 2.0",
+				"/": "I am supposed to be an NGINX v2.0",
 			},
 			want: []*nspb.ServiceContext{
 				nspb.ServiceContext_builder{
@@ -328,14 +294,7 @@ func TestFingerprint(t *testing.T) {
 							wcpb.CrawlResult_builder{
 								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/"}.Build(),
 								ResponseCode:     200,
-								Content:          []byte("6acc630ba438d3c47709f3e4a03d0433"),
-								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
-							}.Build(),
-							wcpb.CrawlResult_builder{
-								CrawlTarget:      wcpb.CrawlTarget_builder{Url: "{uri}/version"}.Build(),
-								ResponseCode:     200,
-								CrawlDepth:       1,
-								Content:          []byte("5eadef45e713f861e6d6b32b998dde07"),
+								Content:          []byte("88fab31f9e3a692ada238dc5c404cbf5"),
 								CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
 							}.Build(),
 						},
@@ -345,32 +304,42 @@ func TestFingerprint(t *testing.T) {
 		},
 		{
 			name: "when_multiple_roots_match_returns_all_identified_roots",
-			knownHashes: fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "/version",
-						Hashes: []*fpb.Hash{
-							fpb.Hash_builder{HexString: "2d12331d1c80f5bfa00f6712ea547aca"}.Build(),
-							fpb.Hash_builder{HexString: "5eadef45e713f861e6d6b32b998dde07"}.Build(),
-						},
+			fingerprints: []*fpb.WebFingerprint{
+				fpb.WebFingerprint_builder{
+					Info: fpb.FingerprintInfo_builder{
+						Name:     "nginx",
+						Software: "nginx",
 					}.Build(),
-				},
-				HashVersions: []*fpb.HashVersion{
-					fpb.HashVersion_builder{
-						Hash: fpb.Hash_builder{HexString: "2d12331d1c80f5bfa00f6712ea547aca"}.Build(),
-						Versions: []*fpb.Version{
-							fpb.Version_builder{FullName: "v1.0"}.Build(),
-						},
-					}.Build(),
-					fpb.HashVersion_builder{
-						Hash: fpb.Hash_builder{HexString: "5eadef45e713f861e6d6b32b998dde07"}.Build(),
-						Versions: []*fpb.Version{
-							fpb.Version_builder{FullName: "v2.0"}.Build(),
-						},
-					}.Build(),
-				},
-			}.Build(),
+					Steps: []*fpb.Step{
+						fpb.Step_builder{
+							Name:       "nginx_version_step",
+							PathSuffix: proto.String("/version"),
+							Response: fpb.HttpResponse_builder{
+								StatusCodes: []int32{200},
+								ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+									Conditions: []*fpb.HttpResponse_Expectation{
+										fpb.HttpResponse_Expectation_builder{
+											Body:     &fpb.HttpResponse_Body{},
+											Contains: "I am actually version",
+										}.Build(),
+									},
+								}.Build(),
+								VersionExtractors: []*fpb.VersionExtractor{
+									fpb.VersionExtractor_builder{
+										FromBody: &fpb.HttpResponse_Body{},
+										Regexp:   "version\\s+([0-9.]+)",
+									}.Build(),
+								},
+							}.Build(),
+						}.Build(),
+					},
+					Workflows: []*fpb.Workflow{
+						fpb.Workflow_builder{
+							Steps: []string{"nginx_version_step"},
+						}.Build(),
+					},
+				}.Build(),
+			},
 			pages: map[string]string{
 				"/":           "<a href=\"/v1/version\">v1</a><a href=\"/v2/version\">v2</a>",
 				"/v1/version": "I am actually version 1.0",
@@ -395,7 +364,7 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v1.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "1.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
@@ -415,7 +384,7 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v2.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "2.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
@@ -439,23 +408,11 @@ func TestFingerprint(t *testing.T) {
 			defer server.Close()
 
 			hostname, port, service := serverInfo(t, server)
-			registry := hash.NewRegistry()
-			if err := registry.Load(tc.knownHashes); err != nil {
-				t.Fatalf("Failed to load known hashes: %v", err)
-			}
+			mod := newTestModuleWithFingerprints(t, tc.fingerprints, nil, "")
 
-			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
-			cfg := buildConfig(t, modConfig, "")
-
-			mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
+			gotServices, err := mod.Fingerprint(t.Context(), service)
 			if err != nil {
-				t.Fatalf("Failed to create module: %v", err)
-			}
-
-			ctx := t.Context()
-			gotServices, err := mod.Fingerprint(ctx, service)
-			if err != nil {
-				if tc.wantErr == nil || err != tc.wantErr {
+				if tc.wantErr == nil || !errors.Is(err, tc.wantErr) {
 					t.Fatalf("Fingerprint() returned unexpected error: got: %v, want: %v", err, tc.wantErr)
 				}
 
@@ -469,21 +426,7 @@ func TestFingerprint(t *testing.T) {
 				gotContexts = append(gotContexts, s.GetServiceContext())
 			}
 
-			var wantContexts []*nspb.ServiceContext
-			for _, sc := range tc.want {
-				wsc := sc.GetWebServiceContext()
-
-				if wsc.GetApplicationRoot() != "" {
-					wsc.SetApplicationRoot(strings.ReplaceAll(wsc.GetApplicationRoot(), "{uri}", uri))
-				}
-
-				for _, crawlResult := range wsc.GetCrawlResults() {
-					newurl := strings.ReplaceAll(crawlResult.GetCrawlTarget().GetUrl(), "{uri}", uri)
-					crawlResult.GetCrawlTarget().SetUrl(newurl)
-				}
-
-				wantContexts = append(wantContexts, sc)
-			}
+			wantContexts := replaceURIPlaceholders(tc.want, uri)
 
 			sortPerRoot := cmpopts.SortSlices(func(a, b *nspb.ServiceContext) bool {
 				return a.GetWebServiceContext().GetApplicationRoot() < b.GetWebServiceContext().GetApplicationRoot()
@@ -508,7 +451,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 	tests := []struct {
 		name                 string
 		config               *wfpb.WebIdentityFpConfig
-		hashes               *fpb.Fingerprints
 		wantFileWritten      bool
 		wantFileContentBytes []byte
 	}{
@@ -519,7 +461,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 				MaximumFileSizeBytes:     proto.Int64(1000),
 				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
-			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
 		},
 		{
@@ -529,7 +470,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 				MaximumFileSizeBytes:     proto.Int64(1000),
 				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
-			hashes:               &fpb.Fingerprints{},
 			wantFileWritten:      true,
 			wantFileContentBytes: []byte(pageContent + "\n"),
 		},
@@ -540,7 +480,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 				MaximumFileSizeBytes:     proto.Int64(10),
 				MaximumStorageSpaceBytes: proto.Int64(1000),
 			}.Build(),
-			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
 		},
 		{
@@ -550,7 +489,6 @@ func TestFingerprintWithWrites(t *testing.T) {
 				MaximumFileSizeBytes:     proto.Int64(1000),
 				MaximumStorageSpaceBytes: proto.Int64(10),
 			}.Build(),
-			hashes:          &fpb.Fingerprints{},
 			wantFileWritten: false,
 		},
 	}
@@ -558,44 +496,33 @@ func TestFingerprintWithWrites(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			workdir := t.TempDir()
-			defer os.RemoveAll(workdir)
 
 			server := newTestServer(pages)
 			defer server.Close()
 
 			_, _, service := serverInfo(t, server)
-			registry := hash.NewRegistry()
-			cfg := buildConfig(t, tc.config, workdir)
 			artifactsDir := filepath.Join(workdir, "artifacts", moduleName)
 
-			mod, err := newWithRegistry(t.Context(), tc.config, cfg, registry)
-			if err != nil {
-				t.Fatalf("Failed to create module: %v", err)
-			}
-
-			ctx := t.Context()
-			_, err = mod.Fingerprint(ctx, service)
-			if err != nil {
-				t.Fatalf("Fingerprint() returned unexpected error: got: %v", err)
+			mod := newTestModuleWithFingerprints(t, nil, tc.config, workdir)
+			if _, err := mod.Fingerprint(t.Context(), service); err != nil {
+				t.Fatalf("Fingerprint() returned unexpected error: %v", err)
 			}
 
 			artifactPath := filepath.Join(artifactsDir, pageHash)
 			gotFile, err := os.ReadFile(artifactPath)
 			if err != nil {
 				if tc.wantFileWritten {
-					t.Fatalf("Expected artifact file %q to be written, but it was not found.", artifactPath)
+					t.Fatalf("os.ReadFile(%q) returned error %v, want artifact file written", artifactPath, err)
 				}
-
-				// File not found, and we don't expect it to be written.
 				return
 			}
 
 			if !tc.wantFileWritten {
-				t.Fatalf("Expected artifact file %q not to be written, but it was found.", artifactPath)
+				t.Fatalf("os.ReadFile(%q) succeeded, want artifact file not written", artifactPath)
 			}
 
 			if !bytes.Equal(gotFile, tc.wantFileContentBytes) {
-				t.Errorf("Artifact file %q content mismatch: got %q, want %q", artifactPath, string(gotFile), string(tc.wantFileContentBytes))
+				t.Errorf("os.ReadFile(%q) = %q, want %q", artifactPath, string(gotFile), string(tc.wantFileContentBytes))
 			}
 		})
 	}
@@ -618,27 +545,73 @@ func TestFingerprintReconciliation(t *testing.T) {
 	linkToV1Hash := pageHash(t, linkToV1Page)
 	linkToV2Hash := pageHash(t, linkToV2Page)
 
-	knownHashes := []*fpb.Fingerprints{
-		fpb.Fingerprints_builder{
-			SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "grafana"}.Build(),
-			ContentHashes: []*fpb.ContentHash{
-				fpb.ContentHash_builder{
-					ContentPath: "/",
-					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: grafanaHash}.Build()},
+	fingerprints := []*fpb.WebFingerprint{
+		fpb.WebFingerprint_builder{
+			Info: fpb.FingerprintInfo_builder{
+				Name:     "grafana",
+				Software: "grafana",
+			}.Build(),
+			Steps: []*fpb.Step{
+				fpb.Step_builder{
+					Name: "grafana_root",
+					Path: proto.String("/"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: grafanaPage,
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
 				}.Build(),
-				fpb.ContentHash_builder{
-					ContentPath: "/app",
-					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: grafanaHash}.Build()},
+				fpb.Step_builder{
+					Name:       "grafana_subpath",
+					PathSuffix: proto.String("/app"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: grafanaPage,
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
 				}.Build(),
 			},
+			Workflows: []*fpb.Workflow{
+				fpb.Workflow_builder{Steps: []string{"grafana_root"}}.Build(),
+				fpb.Workflow_builder{Steps: []string{"grafana_subpath"}}.Build(),
+			},
 		}.Build(),
-		fpb.Fingerprints_builder{
-			SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-			ContentHashes: []*fpb.ContentHash{
-				fpb.ContentHash_builder{
-					ContentPath: "/",
-					Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: nginxHash}.Build()},
+		fpb.WebFingerprint_builder{
+			Info: fpb.FingerprintInfo_builder{
+				Name:     "nginx",
+				Software: "nginx",
+			}.Build(),
+			Steps: []*fpb.Step{
+				fpb.Step_builder{
+					Name: "nginx_root",
+					Path: proto.String("/"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: nginxPage,
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
 				}.Build(),
+			},
+			Workflows: []*fpb.Workflow{
+				fpb.Workflow_builder{Steps: []string{"nginx_root"}}.Build(),
 			},
 		}.Build(),
 	}
@@ -783,20 +756,7 @@ func TestFingerprintReconciliation(t *testing.T) {
 				SupportedHttpMethods: []string{"GET"},
 			}.Build()
 
-			registry := hash.NewRegistry()
-			for _, fp := range knownHashes {
-				if err := registry.Load(fp); err != nil {
-					t.Fatalf("Failed to load known hashes: %v", err)
-				}
-			}
-
-			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
-			cfg := buildConfig(t, modConfig, "")
-
-			mod, err := newWithRegistry(ctx, modConfig, cfg, registry)
-			if err != nil {
-				t.Fatalf("Failed to create module: %v", err)
-			}
+			mod := newTestModuleWithFingerprints(t, fingerprints, nil, "")
 
 			gotServices, err := mod.Fingerprint(ctx, service)
 			if err != nil {
@@ -893,76 +853,132 @@ func TestSplitServiceByEndpoint(t *testing.T) {
 	}
 }
 
-func TestFingerprint_PerServiceRequestBudget(t *testing.T) {
+func TestFingerprintPerServiceRequestBudget(t *testing.T) {
 	const versionPage = "nginx version page"
-	versionHash := pageHash(t, versionPage)
-
 	pages := map[string]string{
 		"/":        `<a href="/version">version</a>`,
 		"/version": versionPage,
 	}
 
-	srv1 := newTestServer(pages)
-	defer srv1.Close()
-	srv2 := newTestServer(pages)
-	defer srv2.Close()
-
-	_, _, svc1 := serverInfo(t, srv1)
-	_, _, svc2 := serverInfo(t, srv2)
-
-	registry := hash.NewRegistry()
-	if err := registry.Load(fpb.Fingerprints_builder{
-		SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "nginx"}.Build(),
-		ContentHashes: []*fpb.ContentHash{
-			fpb.ContentHash_builder{
-				ContentPath: "/version",
-				Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: versionHash}.Build()},
+	fp, err := engine.CompileFingerprint(fpb.WebFingerprint_builder{
+		Info: fpb.FingerprintInfo_builder{
+			Name:     "nginx",
+			Software: "nginx",
+		}.Build(),
+		Steps: []*fpb.Step{
+			fpb.Step_builder{
+				Name:       "nginx_version_step",
+				PathSuffix: proto.String("/version"),
+				Response: fpb.HttpResponse_builder{
+					StatusCodes: []int32{200},
+					ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+						Conditions: []*fpb.HttpResponse_Expectation{
+							fpb.HttpResponse_Expectation_builder{
+								Body:     &fpb.HttpResponse_Body{},
+								Contains: versionPage,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
 			}.Build(),
 		},
-	}.Build()); err != nil {
-		t.Fatalf("Failed to load known hashes: %v", err)
-	}
-
-	modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
-	cfg := config.FromProto(cpb.Config_builder{
-		Clients: cpb.ClientsConfig_builder{
-			HttpCrawler: hcpb.HttpCrawlerClientConfig_builder{
-				MaxConcurrency: proto.Int32(1),
-				MaxDepth:       proto.Int32(1),
-				MaxRequests:    proto.Int32(2),
-			}.Build(),
-		}.Build(),
-		Plugins: cpb.PluginsConfig_builder{
-			Webidentity: modConfig,
-		}.Build(),
+		Workflows: []*fpb.Workflow{
+			fpb.Workflow_builder{Steps: []string{"nginx_version_step"}}.Build(),
+		},
 	}.Build())
-
-	mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
 	if err != nil {
-		t.Fatalf("Failed to create module: %v", err)
+		t.Fatalf("engine.CompileFingerprint() failed: %v", err)
 	}
 
-	for idx, svc := range []*nspb.NetworkService{svc1, svc2} {
-		got, err := mod.Fingerprint(t.Context(), svc)
-		if err != nil {
-			t.Fatalf("Fingerprint(service %d) returned unexpected error: %v", idx, err)
-		}
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "when_multiple_services_fingerprinted_each_gets_full_request_budget",
+		},
+	}
 
-		var identified []string
-		for _, s := range got {
-			if sw := s.GetServiceContext().GetWebServiceContext().GetSoftware().GetName(); sw != "" {
-				identified = append(identified, sw)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv1 := newTestServer(pages)
+			defer srv1.Close()
+			srv2 := newTestServer(pages)
+			defer srv2.Close()
+
+			_, _, svc1 := serverInfo(t, srv1)
+			_, _, svc2 := serverInfo(t, srv2)
+
+			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
+			cfg := config.FromProto(cpb.Config_builder{
+				Clients: cpb.ClientsConfig_builder{
+					HttpCrawler: hcpb.HttpCrawlerClientConfig_builder{
+						MaxConcurrency: proto.Int32(1),
+						MaxDepth:       proto.Int32(1),
+						MaxRequests:    proto.Int32(2),
+					}.Build(),
+				}.Build(),
+				Plugins: cpb.PluginsConfig_builder{
+					Webidentity: modConfig,
+				}.Build(),
+			}.Build())
+
+			mod, err := newWithEngine(t.Context(), modConfig, cfg, engine.New([]*engine.CompiledFingerprint{fp}))
+			if err != nil {
+				t.Fatalf("newWithEngine() failed: %v", err)
 			}
-		}
-		if diff := cmp.Diff([]string{"nginx"}, identified); diff != "" {
-			t.Errorf("Fingerprint(service %d) identified software diff (-want +got):\n%s", idx, diff)
-		}
+
+			for idx, svc := range []*nspb.NetworkService{svc1, svc2} {
+				got, err := mod.Fingerprint(t.Context(), svc)
+				if err != nil {
+					t.Fatalf("Fingerprint(service %d) returned unexpected error: %v", idx, err)
+				}
+
+				var identified []string
+				for _, s := range got {
+					if sw := s.GetServiceContext().GetWebServiceContext().GetSoftware().GetName(); sw != "" {
+						identified = append(identified, sw)
+					}
+				}
+				if diff := cmp.Diff([]string{"nginx"}, identified); diff != "" {
+					t.Errorf("Fingerprint(service %d) identified software diff (-want +got):\n%s", idx, diff)
+				}
+			}
+		})
 	}
 }
 
-func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
+func TestFingerprintRelativeApplicationRoot(t *testing.T) {
 	const assetContent = "console.log('grafana')"
-	assetHash := pageHash(t, assetContent)
+
+	fp, err := engine.CompileFingerprint(fpb.WebFingerprint_builder{
+		Info: fpb.FingerprintInfo_builder{
+			Name:     "grafana",
+			Software: "grafana",
+		}.Build(),
+		Steps: []*fpb.Step{
+			fpb.Step_builder{
+				Name:       "grafana_asset",
+				PathSuffix: proto.String("public/app.js"),
+				Response: fpb.HttpResponse_builder{
+					StatusCodes: []int32{200},
+					ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+						Conditions: []*fpb.HttpResponse_Expectation{
+							fpb.HttpResponse_Expectation_builder{
+								Body:     &fpb.HttpResponse_Body{},
+								Contains: assetContent,
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+		},
+		Workflows: []*fpb.Workflow{
+			fpb.Workflow_builder{Steps: []string{"grafana_asset"}}.Build(),
+		},
+	}.Build())
+	if err != nil {
+		t.Fatalf("engine.CompileFingerprint() failed: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -970,7 +986,7 @@ func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
 		wantRoot string
 	}{
 		{
-			name: "when_content_path_without_leading_slash_matches_at_root",
+			name: "when_path_suffix_without_leading_slash_matches_at_root_returns_slash",
 			pages: map[string]string{
 				"/":              `<a href="/public/app.js">app</a>`,
 				"/public/app.js": assetContent,
@@ -978,7 +994,7 @@ func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
 			wantRoot: "/",
 		},
 		{
-			name: "when_content_path_without_leading_slash_matches_at_subpath",
+			name: "when_path_suffix_without_leading_slash_matches_at_subpath_returns_subpath",
 			pages: map[string]string{
 				"/":                      `<a href="/grafana/public/app.js">app</a>`,
 				"/grafana/public/app.js": assetContent,
@@ -993,24 +1009,11 @@ func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
 			defer server.Close()
 
 			_, _, service := serverInfo(t, server)
-			registry := hash.NewRegistry()
-			if err := registry.Load(fpb.Fingerprints_builder{
-				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "grafana"}.Build(),
-				ContentHashes: []*fpb.ContentHash{
-					fpb.ContentHash_builder{
-						ContentPath: "public/app.js",
-						Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: assetHash}.Build()},
-					}.Build(),
-				},
-			}.Build()); err != nil {
-				t.Fatalf("Failed to load known hashes: %v", err)
-			}
-
 			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
 			cfg := buildConfig(t, modConfig, "")
-			mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
+			mod, err := newWithEngine(t.Context(), modConfig, cfg, engine.New([]*engine.CompiledFingerprint{fp}))
 			if err != nil {
-				t.Fatalf("Failed to create module: %v", err)
+				t.Fatalf("newWithEngine() failed: %v", err)
 			}
 
 			gotServices, err := mod.Fingerprint(t.Context(), service)
@@ -1031,121 +1034,4 @@ func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
 			}
 		})
 	}
-}
-func pageHash(t *testing.T, page string) string {
-	t.Helper()
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"text/html"}},
-	}
-	h, err := hash.FromResponse(resp, []byte(page+"\n"))
-	if err != nil {
-		t.Fatalf("hash.FromResponse(%q) failed: %v", page, err)
-	}
-	return h.Hex()
-}
-
-func buildTestEndpoint(epType npb.NetworkEndpoint_Type, ip string, port uint32) *npb.NetworkEndpoint {
-	b := npb.NetworkEndpoint_builder{
-		Type: epType,
-		Port: npb.Port_builder{PortNumber: port}.Build(),
-	}
-	if epType == npb.NetworkEndpoint_HOSTNAME_PORT || epType == npb.NetworkEndpoint_IP_HOSTNAME_PORT {
-		b.Hostname = npb.Hostname_builder{Name: "localhost"}.Build()
-	}
-	if epType == npb.NetworkEndpoint_IP_PORT || epType == npb.NetworkEndpoint_IP_HOSTNAME_PORT {
-		b.IpAddress = npb.IpAddress_builder{AddressFamily: npb.AddressFamily_IPV4, Address: ip}.Build()
-	}
-	return b.Build()
-}
-
-func buildTestService(epType npb.NetworkEndpoint_Type, appRoot, software string, crawls ...*wcpb.CrawlResult) *nspb.NetworkService {
-	wsc := nspb.WebServiceContext_builder{
-		ApplicationRoot: appRoot,
-		CrawlResults:    crawls,
-	}
-	if software != "" {
-		wsc.Software = spb.Software_builder{Name: software}.Build()
-		wsc.VersionSet = &spb.VersionSet{}
-	}
-	return nspb.NetworkService_builder{
-		NetworkEndpoint:      npb.NetworkEndpoint_builder{Type: epType}.Build(),
-		SupportedHttpMethods: []string{"GET"},
-		ServiceContext: nspb.ServiceContext_builder{
-			WebServiceContext: wsc.Build(),
-		}.Build(),
-	}.Build()
-}
-
-func buildTestCrawl(url string, depth int32, hexHash string) *wcpb.CrawlResult {
-	return wcpb.CrawlResult_builder{
-		CrawlTarget:      wcpb.CrawlTarget_builder{Url: url}.Build(),
-		CrawlDepth:       depth,
-		ResponseCode:     http.StatusOK,
-		Content:          []byte(hexHash),
-		CrawlContentType: wcpb.CrawlContentType_CONTENT_TYPE_HASH,
-	}.Build()
-}
-
-func newHostAwareTestServer(hostPages, ipPages map[string]string) *httptest.Server {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		pages := ipPages
-		if strings.HasPrefix(r.Host, "localhost") {
-			pages = hostPages
-		}
-
-		p, ok := pages[r.URL.Path]
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintln(w, p)
-	}
-
-	return httptest.NewServer(http.HandlerFunc(handler))
-}
-
-func newTestServer(pages map[string]string) *httptest.Server {
-	return newHostAwareTestServer(pages, pages)
-}
-
-func serverInfo(t *testing.T, server *httptest.Server) (string, uint32, *nspb.NetworkService) {
-	t.Helper()
-
-	addr := strings.Split(server.Listener.Addr().String(), ":")
-	if len(addr) != 2 {
-		t.Fatalf("Failed to parse ip/port from test server: %s", addr)
-	}
-
-	p, err := strconv.Atoi(addr[1])
-	if err != nil {
-		t.Fatalf("Failed to parse port: %v", err)
-	}
-
-	hostname := addr[0]
-	port := uint32(p)
-	service := nspb.NetworkService_builder{
-		NetworkEndpoint:      buildTestEndpoint(npb.NetworkEndpoint_IP_PORT, hostname, port),
-		SupportedHttpMethods: []string{"GET"},
-	}.Build()
-
-	return hostname, port, service
-}
-
-func buildConfig(t *testing.T, modConfig *wfpb.WebIdentityFpConfig, workdir string) *config.Config {
-	t.Helper()
-
-	cfg := config.FromProto(cpb.Config_builder{
-		Plugins: cpb.PluginsConfig_builder{
-			Webidentity: modConfig,
-		}.Build(),
-	}.Build())
-
-	if workdir != "" {
-		cfg.CreateDirectories(workdir)
-	}
-
-	return cfg
 }

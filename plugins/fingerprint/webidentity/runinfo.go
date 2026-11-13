@@ -17,14 +17,10 @@
 package webidentity
 
 import (
-	"context"
 	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/google/goonami-scanner/common/clients/httpcrawler"
-	"github.com/google/goonami-scanner/core/log"
-	"github.com/google/goonami-scanner/plugins/fingerprint/webidentity/hash"
 
 	wcpb "github.com/google/tsunami-security-scanner/proto/go/web_crawl_go_proto"
 )
@@ -32,42 +28,15 @@ import (
 // runInfo contains internal state for a single run of the fingerprinting module.
 type runInfo struct {
 	mut          sync.Mutex
-	matches      map[string][]*hash.Identity
 	crawlResults map[string]*wcpb.CrawlResult
 }
 
-func (m *runInfo) AddMatch(ctx context.Context, identity *hash.Identity) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
+// AddVisited records a visited page and its content hash in the crawl results.
+func (r *runInfo) AddVisited(info *httpcrawler.PageInfo, resp *http.Response, content []byte) {
+	r.mut.Lock()
+	defer r.mut.Unlock()
 
-	software := identity.Software
-	if _, ok := m.matches[software]; !ok {
-		log.DebugContextf(ctx, log.DebugLevelService, "found a known web application: %q", software)
-		m.matches[software] = []*hash.Identity{identity}
-		return
-	}
-
-	for _, knownID := range m.matches[software] {
-		for _, newPath := range identity.PotentialRoots {
-			for _, knownPath := range knownID.PotentialRoots {
-				if strings.HasPrefix(newPath, knownPath) {
-					knownID.IntersectVersions(identity)
-					return
-				}
-			}
-		}
-	}
-
-	// We did not find a match, so we add a new identity.
-	m.matches[software] = append(m.matches[software], identity)
-	return
-}
-
-func (m *runInfo) AddVisited(info *httpcrawler.PageInfo, resp *http.Response, content []byte) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	m.crawlResults[info.URL] = wcpb.CrawlResult_builder{
+	r.crawlResults[info.URL] = wcpb.CrawlResult_builder{
 		CrawlTarget: wcpb.CrawlTarget_builder{
 			Url: info.URL,
 		}.Build(),
@@ -78,21 +47,24 @@ func (m *runInfo) AddVisited(info *httpcrawler.PageInfo, resp *http.Response, co
 	}.Build()
 }
 
-func (m *runInfo) CrawlResults() []*wcpb.CrawlResult {
-	m.mut.Lock()
-	defer m.mut.Unlock()
+// HasCrawlResult reports whether a crawl result exists for the given URL.
+func (r *runInfo) HasCrawlResult(url string) bool {
+	r.mut.Lock()
+	defer r.mut.Unlock()
+
+	_, ok := r.crawlResults[url]
+	return ok
+}
+
+// CrawlResults returns all recorded crawl results.
+func (r *runInfo) CrawlResults() []*wcpb.CrawlResult {
+	r.mut.Lock()
+	defer r.mut.Unlock()
 
 	var crawlResults []*wcpb.CrawlResult
-	for _, result := range m.crawlResults {
+	for _, result := range r.crawlResults {
 		crawlResults = append(crawlResults, result)
 	}
 
 	return crawlResults
-}
-
-func (m *runInfo) Matches() map[string][]*hash.Identity {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	return m.matches
 }
