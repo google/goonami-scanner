@@ -119,7 +119,7 @@ plugins: {
 
   bruteforce: {
     max_attempts_per_service: 2000
-    max_concurrency: 1
+    max_concurrency: 5
     max_requests_per_second: 10
     stop_at_first_valid_credentials: true
   }
