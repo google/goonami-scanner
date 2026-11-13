@@ -210,7 +210,7 @@ func TestFingerprint(t *testing.T) {
 			want: []*nspb.ServiceContext{
 				nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "{uri}",
+						ApplicationRoot: "/",
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet:      &spb.VersionSet{},
 						CrawlResults: []*wcpb.CrawlResult{
@@ -254,7 +254,7 @@ func TestFingerprint(t *testing.T) {
 			want: []*nspb.ServiceContext{
 				nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "{uri}",
+						ApplicationRoot: "/",
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
@@ -317,7 +317,7 @@ func TestFingerprint(t *testing.T) {
 			want: []*nspb.ServiceContext{
 				nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "{uri}",
+						ApplicationRoot: "/",
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
@@ -391,7 +391,7 @@ func TestFingerprint(t *testing.T) {
 				}.Build(),
 				nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "{uri}/v1",
+						ApplicationRoot: "/v1",
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
@@ -411,7 +411,7 @@ func TestFingerprint(t *testing.T) {
 				}.Build(),
 				nspb.ServiceContext_builder{
 					WebServiceContext: nspb.WebServiceContext_builder{
-						ApplicationRoot: "{uri}/v2",
+						ApplicationRoot: "/v2",
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
@@ -654,7 +654,7 @@ func TestFingerprintReconciliation(t *testing.T) {
 			hostPages: map[string]string{"/": grafanaPage},
 			ipPages:   map[string]string{"/": grafanaPage},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "{host_uri}", "grafana",
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "/", "grafana",
 					buildTestCrawl("{host_uri}/", 0, grafanaHash),
 					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
 				),
@@ -665,7 +665,7 @@ func TestFingerprintReconciliation(t *testing.T) {
 			hostPages: map[string]string{"/": unidentifiedPage1},
 			ipPages:   map[string]string{"/": grafanaPage},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}", "grafana",
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "/", "grafana",
 					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
 				),
 				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "", "",
@@ -678,7 +678,7 @@ func TestFingerprintReconciliation(t *testing.T) {
 			hostPages: map[string]string{"/": grafanaPage},
 			ipPages:   map[string]string{"/": unidentifiedPage1},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}", "grafana",
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "/", "grafana",
 					buildTestCrawl("{host_uri}/", 0, grafanaHash),
 				),
 				buildTestService(npb.NetworkEndpoint_IP_PORT, "", "",
@@ -691,10 +691,10 @@ func TestFingerprintReconciliation(t *testing.T) {
 			hostPages: map[string]string{"/": nginxPage},
 			ipPages:   map[string]string{"/": grafanaPage},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}", "nginx",
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "/", "nginx",
 					buildTestCrawl("{host_uri}/", 0, nginxHash),
 				),
-				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}", "grafana",
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "/", "grafana",
 					buildTestCrawl("{ip_uri}/", 0, grafanaHash),
 				),
 			},
@@ -734,10 +734,10 @@ func TestFingerprintReconciliation(t *testing.T) {
 				"/v2/app": grafanaPage,
 			},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "{host_uri}/v1", "grafana",
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "/v1", "grafana",
 					buildTestCrawl("{host_uri}/v1/app", 1, grafanaHash),
 				),
-				buildTestService(npb.NetworkEndpoint_IP_PORT, "{ip_uri}/v2", "grafana",
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "/v2", "grafana",
 					buildTestCrawl("{ip_uri}/v2/app", 1, grafanaHash),
 				),
 				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "", "",
@@ -759,7 +759,7 @@ func TestFingerprintReconciliation(t *testing.T) {
 				"/v1/app": grafanaPage,
 			},
 			want: []*nspb.NetworkService{
-				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "{host_uri}/v1", "grafana",
+				buildTestService(npb.NetworkEndpoint_IP_HOSTNAME_PORT, "/v1", "grafana",
 					buildTestCrawl("{host_uri}/v1/app", 1, grafanaHash),
 					buildTestCrawl("{ip_uri}/v1/app", 1, grafanaHash),
 				),
@@ -960,6 +960,78 @@ func TestFingerprint_PerServiceRequestBudget(t *testing.T) {
 	}
 }
 
+func TestFingerprint_RelativeApplicationRoot(t *testing.T) {
+	const assetContent = "console.log('grafana')"
+	assetHash := pageHash(t, assetContent)
+
+	tests := []struct {
+		name     string
+		pages    map[string]string
+		wantRoot string
+	}{
+		{
+			name: "when_content_path_without_leading_slash_matches_at_root",
+			pages: map[string]string{
+				"/":              `<a href="/public/app.js">app</a>`,
+				"/public/app.js": assetContent,
+			},
+			wantRoot: "/",
+		},
+		{
+			name: "when_content_path_without_leading_slash_matches_at_subpath",
+			pages: map[string]string{
+				"/":                      `<a href="/grafana/public/app.js">app</a>`,
+				"/grafana/public/app.js": assetContent,
+			},
+			wantRoot: "/grafana",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := newTestServer(tc.pages)
+			defer server.Close()
+
+			_, _, service := serverInfo(t, server)
+			registry := hash.NewRegistry()
+			if err := registry.Load(fpb.Fingerprints_builder{
+				SoftwareIdentity: fpb.SoftwareIdentity_builder{Software: "grafana"}.Build(),
+				ContentHashes: []*fpb.ContentHash{
+					fpb.ContentHash_builder{
+						ContentPath: "public/app.js",
+						Hashes:      []*fpb.Hash{fpb.Hash_builder{HexString: assetHash}.Build()},
+					}.Build(),
+				},
+			}.Build()); err != nil {
+				t.Fatalf("Failed to load known hashes: %v", err)
+			}
+
+			modConfig := wfpb.WebIdentityFpConfig_builder{WriteHtmlToFile: proto.Bool(false)}.Build()
+			cfg := buildConfig(t, modConfig, "")
+			mod, err := newWithRegistry(t.Context(), modConfig, cfg, registry)
+			if err != nil {
+				t.Fatalf("Failed to create module: %v", err)
+			}
+
+			gotServices, err := mod.Fingerprint(t.Context(), service)
+			if err != nil {
+				t.Fatalf("Fingerprint() returned unexpected error: %v", err)
+			}
+
+			var identifiedRoots []string
+			for _, svc := range gotServices {
+				wsc := svc.GetServiceContext().GetWebServiceContext()
+				if wsc.GetSoftware().GetName() == "grafana" {
+					identifiedRoots = append(identifiedRoots, wsc.GetApplicationRoot())
+				}
+			}
+
+			if diff := cmp.Diff([]string{tc.wantRoot}, identifiedRoots); diff != "" {
+				t.Errorf("Fingerprint() returned unexpected application_root diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
 func pageHash(t *testing.T, page string) string {
 	t.Helper()
 	resp := &http.Response{

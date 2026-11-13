@@ -320,7 +320,7 @@ func identityToNewService(ctx context.Context, service *nspb.NetworkService, cra
 	if len(identity.PotentialRoots) != 1 {
 		log.WarnContextf(ctx, "software:%q has %d roots. This is likely an issue. Please report to Goonami developpers.", software, len(identity.PotentialRoots))
 	} else {
-		wsc.SetApplicationRoot(identity.PotentialRoots[0])
+		wsc.SetApplicationRoot(applicationRootPath(identity.PotentialRoots[0]))
 	}
 
 	return newService
@@ -405,6 +405,17 @@ func extractPath(rawURL string) string {
 		return rawURL
 	}
 	return u.Path
+}
+
+func applicationRootPath(rawURL string) string {
+	path := strings.TrimRight(extractPath(rawURL), "/")
+	if path == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		return "/" + path
+	}
+	return path
 }
 
 // Retrieves the directory containing the signatures.
