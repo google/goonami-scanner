@@ -332,8 +332,9 @@ func TestEnginePass2ActiveQueries(t *testing.T) {
 
 			want := []*IdentificationResult{
 				{
-					Software: "grafana",
-					Versions: []string{tc.wantVersion},
+					Software:     "grafana",
+					Versions:     []string{tc.wantVersion},
+					MatchedSteps: []string{"grafana_health", "grafana_icon"},
 				},
 			}
 			if diff := cmp.Diff(want, results); diff != "" {
@@ -645,6 +646,7 @@ func TestEngineRunSubpathAndBaseURLDeduplication(t *testing.T) {
 					Software:        "grafana",
 					ApplicationRoot: "",
 					Versions:        []string{"13.2.4"},
+					MatchedSteps:    []string{"grafana_login"},
 				},
 			},
 		},
@@ -664,6 +666,7 @@ func TestEngineRunSubpathAndBaseURLDeduplication(t *testing.T) {
 					Software:        "grafana",
 					ApplicationRoot: "",
 					Versions:        []string{"13.2.4"},
+					MatchedSteps:    []string{"grafana_login"},
 				},
 			},
 		},
@@ -678,11 +681,13 @@ func TestEngineRunSubpathAndBaseURLDeduplication(t *testing.T) {
 					Software:        "grafana",
 					ApplicationRoot: "/app",
 					Versions:        []string{"13.2.4"},
+					MatchedSteps:    []string{"grafana_login"},
 				},
 				{
 					Software:        "grafana",
 					ApplicationRoot: "/app2",
 					Versions:        []string{"13.2.4"},
+					MatchedSteps:    []string{"grafana_login"},
 				},
 			},
 		},
@@ -785,6 +790,7 @@ func TestEngineSubpathCandidateRootPromotion(t *testing.T) {
 					Software:        "grafana",
 					ApplicationRoot: "/sub",
 					Versions:        []string{"9.2.1"},
+					MatchedSteps:    []string{"grafana_health", "grafana_icon"},
 				},
 			},
 		},
@@ -821,6 +827,156 @@ func TestEngineSubpathCandidateRootPromotion(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.want, got, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("eng.Run() diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestEngineMatchedSteps(t *testing.T) {
+	fpProto := fpb.WebFingerprint_builder{
+		Info: fpb.FingerprintInfo_builder{Name: "Grafana", Software: "grafana"}.Build(),
+		Steps: []*fpb.Step{
+			fpb.Step_builder{
+				Name:       "grafana_login",
+				PathSuffix: proto.String("/login"),
+				Response: fpb.HttpResponse_builder{
+					StatusCodes: []int32{200},
+					ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+						Conditions: []*fpb.HttpResponse_Expectation{
+							fpb.HttpResponse_Expectation_builder{
+								Body:     &fpb.HttpResponse_Body{},
+								Contains: "grafana-app",
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			fpb.Step_builder{
+				Name:       "grafana_icon",
+				PathSuffix: proto.String("/public/img/icon.svg"),
+				Response: fpb.HttpResponse_builder{
+					StatusCodes: []int32{200},
+					ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+						Conditions: []*fpb.HttpResponse_Expectation{
+							fpb.HttpResponse_Expectation_builder{
+								Body:     &fpb.HttpResponse_Body{},
+								Contains: "<svg",
+							}.Build(),
+						},
+					}.Build(),
+				}.Build(),
+			}.Build(),
+			fpb.Step_builder{
+				Name: "grafana_health",
+				Path: proto.String("/api/health"),
+				Response: fpb.HttpResponse_builder{
+					StatusCodes: []int32{200},
+					ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+						Conditions: []*fpb.HttpResponse_Expectation{
+							fpb.HttpResponse_Expectation_builder{
+								Body:     &fpb.HttpResponse_Body{},
+								Contains: "ok",
+							}.Build(),
+						},
+					}.Build(),
+					VersionExtractors: []*fpb.VersionExtractor{
+						fpb.VersionExtractor_builder{
+							FromBody: &fpb.HttpResponse_Body{},
+							Regexp:   `"version":"([0-9.]+)"`,
+						}.Build(),
+					},
+				}.Build(),
+			}.Build(),
+		},
+		Workflows: []*fpb.Workflow{
+			fpb.Workflow_builder{Steps: []string{"grafana_login"}}.Build(),
+			fpb.Workflow_builder{Steps: []string{"grafana_icon", "grafana_health"}}.Build(),
+		},
+	}.Build()
+
+	cf, err := CompileFingerprint(fpProto)
+	if err != nil {
+		t.Fatalf("CompileFingerprint() unexpected error: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		populate  func(c *cache.Cache)
+		responses map[string]*http.Response
+		bodies    map[string][]byte
+		wantSteps []string
+	}{
+		{
+			name: "when_single_step_workflow_matches_returns_step_name",
+			populate: func(c *cache.Cache) {
+				c.Put("GET", "http://host:8080/login", &http.Response{StatusCode: 200}, []byte("grafana-app"))
+			},
+			wantSteps: []string{"grafana_login"},
+		},
+		{
+			name: "when_multi_step_workflow_matches_returns_sorted_steps",
+			responses: map[string]*http.Response{
+				"GET http://host:8080/public/img/icon.svg": {StatusCode: 200},
+				"GET http://host:8080/api/health":          {StatusCode: 200},
+			},
+			bodies: map[string][]byte{
+				"GET http://host:8080/public/img/icon.svg": []byte("<svg></svg>"),
+				"GET http://host:8080/api/health":          []byte(`{"status":"ok","version":"10.0.0"}`),
+			},
+			wantSteps: []string{"grafana_health", "grafana_icon"},
+		},
+		{
+			name: "when_pass1_and_pass2_workflows_match_accumulates_deduplicated_steps",
+			populate: func(c *cache.Cache) {
+				c.Put("GET", "http://host:8080/login", &http.Response{StatusCode: 200}, []byte("grafana-app"))
+			},
+			responses: map[string]*http.Response{
+				"GET http://host:8080/public/img/icon.svg": {StatusCode: 200},
+				"GET http://host:8080/api/health":          {StatusCode: 200},
+			},
+			bodies: map[string][]byte{
+				"GET http://host:8080/public/img/icon.svg": []byte("<svg></svg>"),
+				"GET http://host:8080/api/health":          []byte(`{"status":"ok","version":"10.0.0"}`),
+			},
+			wantSteps: []string{"grafana_health", "grafana_icon", "grafana_login"},
+		},
+		{
+			name: "when_subpath_merges_into_parent_merges_matched_steps",
+			populate: func(c *cache.Cache) {
+				c.Put("GET", "http://host:8080/login", &http.Response{StatusCode: 200}, []byte("grafana-app"))
+				c.Put("GET", "http://host:8080/sub/public/img/icon.svg", &http.Response{StatusCode: 200}, []byte("<svg></svg>"))
+			},
+			responses: map[string]*http.Response{
+				"GET http://host:8080/sub/api/health": {StatusCode: 200},
+			},
+			bodies: map[string][]byte{
+				"GET http://host:8080/sub/api/health": []byte(`{"status":"ok","version":"10.0.0"}`),
+			},
+			wantSteps: []string{"grafana_health", "grafana_icon", "grafana_login"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &mockClient{
+				responses: tc.responses,
+				bodies:    tc.bodies,
+			}
+			c := cache.New(client)
+			if tc.populate != nil {
+				tc.populate(c)
+			}
+
+			eng := New([]*CompiledFingerprint{cf})
+			got, err := eng.Run(t.Context(), c, "http://host:8080")
+			if err != nil {
+				t.Fatalf("eng.Run() unexpected error: %v", err)
+			}
+			if len(got) != 1 {
+				t.Fatalf("len(eng.Run()) = %d, want 1", len(got))
+			}
+			if diff := cmp.Diff(tc.wantSteps, got[0].MatchedSteps); diff != "" {
+				t.Errorf("MatchedSteps diff (-want +got):\n%s", diff)
 			}
 		})
 	}
