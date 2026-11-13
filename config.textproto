@@ -107,6 +107,10 @@ clients: {
   ssh: {
     timeout_seconds: 5
   }
+
+  mysql: {
+    timeout_seconds: 5
+  }
 }
 
 plugins: {
