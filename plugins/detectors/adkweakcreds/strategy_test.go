@@ -428,6 +428,7 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 		case "/login_cookie_redirect":
 			user := r.FormValue("user")
 			pass := r.FormValue("pass")
+			http.SetCookie(w, &http.Cookie{Name: "anon_sid", Value: "anon", Path: "/"})
 			if user == "admin" && pass == "password" {
 				http.SetCookie(w, &http.Cookie{Name: "auth_token", Value: "valid_session", Path: "/"})
 				http.Redirect(w, r, "/dashboard_cookie_protected", http.StatusFound)
@@ -639,9 +640,9 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 				`Login request: POST /login_present`,
 				`Candidate credential: username="admin", password="password"`,
 				`Negative baseline credential (known-invalid): username="admin", password="cnffjbeq"`,
-				`--- Negative Baseline Response (HTTP 200, final_uri="/login_present") ---`,
+				`--- Negative Baseline Response (HTTP 200, final_uri="/login_present", set_cookies=[]) ---`,
 				"<baseline_response_body>\nerror: invalid credentials\n</baseline_response_body>",
-				`--- Candidate Response (HTTP 500, final_uri="/login_present") ---`,
+				`--- Candidate Response (HTTP 500, final_uri="/login_present", set_cookies=[]) ---`,
 				"<candidate_response_body>\nsuccess_but_500\n</candidate_response_body>",
 			},
 			wantValid: true,
@@ -743,8 +744,8 @@ func TestAuthStrategy_ValidateCredential(t *testing.T) {
 			},
 			cred: &credential{Username: "admin", Password: "password"},
 			wantJudgePromptSubs: []string{
-				`--- Negative Baseline Response (HTTP 200, final_uri="/login_cookie_redirect") ---`,
-				`--- Candidate Response (HTTP 200, final_uri="/dashboard_cookie_protected") ---`,
+				`--- Negative Baseline Response (HTTP 200, final_uri="/login_cookie_redirect", set_cookies=["anon_sid=anon; Path=/"]) ---`,
+				`--- Candidate Response (HTTP 200, final_uri="/dashboard_cookie_protected", set_cookies=["anon_sid=anon; Path=/" "auth_token=valid_session; Path=/"]) ---`,
 			},
 			wantValid: true,
 		},
