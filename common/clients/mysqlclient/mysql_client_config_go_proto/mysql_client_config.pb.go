@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: mysql_client_config.proto
+// source: common/clients/mysqlclient/mysql_client_config.proto
 
 package mysql_client_config_go_proto
 
@@ -52,7 +52,7 @@ const (
 
 func (x *MySQLClientConfig) Reset() {
 	*x = MySQLClientConfig{}
-	mi := &file_mysql_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_mysqlclient_mysql_client_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -64,7 +64,7 @@ func (x *MySQLClientConfig) String() string {
 func (*MySQLClientConfig) ProtoMessage() {}
 
 func (x *MySQLClientConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_mysql_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_mysqlclient_mysql_client_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -119,20 +119,20 @@ func (b0 MySQLClientConfig_builder) Build() *MySQLClientConfig {
 	return m0
 }
 
-var File_mysql_client_config_proto protoreflect.FileDescriptor
+var File_common_clients_mysqlclient_mysql_client_config_proto protoreflect.FileDescriptor
 
-const file_mysql_client_config_proto_rawDesc = "" +
+const file_common_clients_mysqlclient_mysql_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x19mysql_client_config.proto\x12\x1dgoonami.proto.configs.clients\"?\n" +
+	"4common/clients/mysqlclient/mysql_client_config.proto\x12\x1dgoonami.proto.configs.clients\"?\n" +
 	"\x11MySQLClientConfig\x12*\n" +
 	"\x0ftimeout_seconds\x18\x01 \x01(\x05:\x015R\x0etimeoutSecondsB\xa2\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB\x1bMySQLClientConfigOuterClassZYgithub.com/google/goonami-scanner/common/clients/mysqlclient/mysql_client_config_go_protob\beditionsp\xe9\a"
 
-var file_mysql_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_mysql_client_config_proto_goTypes = []any{
+var file_common_clients_mysqlclient_mysql_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_common_clients_mysqlclient_mysql_client_config_proto_goTypes = []any{
 	(*MySQLClientConfig)(nil), // 0: goonami.proto.configs.clients.MySQLClientConfig
 }
-var file_mysql_client_config_proto_depIdxs = []int32{
+var file_common_clients_mysqlclient_mysql_client_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -140,26 +140,26 @@ var file_mysql_client_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_mysql_client_config_proto_init() }
-func file_mysql_client_config_proto_init() {
-	if File_mysql_client_config_proto != nil {
+func init() { file_common_clients_mysqlclient_mysql_client_config_proto_init() }
+func file_common_clients_mysqlclient_mysql_client_config_proto_init() {
+	if File_common_clients_mysqlclient_mysql_client_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_mysql_client_config_proto_rawDesc), len(file_mysql_client_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_clients_mysqlclient_mysql_client_config_proto_rawDesc), len(file_common_clients_mysqlclient_mysql_client_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_mysql_client_config_proto_goTypes,
-		DependencyIndexes: file_mysql_client_config_proto_depIdxs,
-		MessageInfos:      file_mysql_client_config_proto_msgTypes,
+		GoTypes:           file_common_clients_mysqlclient_mysql_client_config_proto_goTypes,
+		DependencyIndexes: file_common_clients_mysqlclient_mysql_client_config_proto_depIdxs,
+		MessageInfos:      file_common_clients_mysqlclient_mysql_client_config_proto_msgTypes,
 	}.Build()
-	File_mysql_client_config_proto = out.File
-	file_mysql_client_config_proto_goTypes = nil
-	file_mysql_client_config_proto_depIdxs = nil
+	File_common_clients_mysqlclient_mysql_client_config_proto = out.File
+	file_common_clients_mysqlclient_mysql_client_config_proto_goTypes = nil
+	file_common_clients_mysqlclient_mysql_client_config_proto_depIdxs = nil
 }

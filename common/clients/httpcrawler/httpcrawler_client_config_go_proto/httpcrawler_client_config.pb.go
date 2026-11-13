@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: httpcrawler_client_config.proto
+// source: common/clients/httpcrawler/httpcrawler_client_config.proto
 
 package httpcrawler_client_config_go_proto
 
@@ -71,11 +71,11 @@ func (x HttpCrawlerClientConfig_ScopePolicy) String() string {
 }
 
 func (HttpCrawlerClientConfig_ScopePolicy) Descriptor() protoreflect.EnumDescriptor {
-	return file_httpcrawler_client_config_proto_enumTypes[0].Descriptor()
+	return file_common_clients_httpcrawler_httpcrawler_client_config_proto_enumTypes[0].Descriptor()
 }
 
 func (HttpCrawlerClientConfig_ScopePolicy) Type() protoreflect.EnumType {
-	return &file_httpcrawler_client_config_proto_enumTypes[0]
+	return &file_common_clients_httpcrawler_httpcrawler_client_config_proto_enumTypes[0]
 }
 
 func (x HttpCrawlerClientConfig_ScopePolicy) Number() protoreflect.EnumNumber {
@@ -108,7 +108,7 @@ const (
 
 func (x *HttpCrawlerClientConfig) Reset() {
 	*x = HttpCrawlerClientConfig{}
-	mi := &file_httpcrawler_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -120,7 +120,7 @@ func (x *HttpCrawlerClientConfig) String() string {
 func (*HttpCrawlerClientConfig) ProtoMessage() {}
 
 func (x *HttpCrawlerClientConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_httpcrawler_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +360,7 @@ type HttpCrawlerClientConfig_Scope struct {
 
 func (x *HttpCrawlerClientConfig_Scope) Reset() {
 	*x = HttpCrawlerClientConfig_Scope{}
-	mi := &file_httpcrawler_client_config_proto_msgTypes[1]
+	mi := &file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +372,7 @@ func (x *HttpCrawlerClientConfig_Scope) String() string {
 func (*HttpCrawlerClientConfig_Scope) ProtoMessage() {}
 
 func (x *HttpCrawlerClientConfig_Scope) ProtoReflect() protoreflect.Message {
-	mi := &file_httpcrawler_client_config_proto_msgTypes[1]
+	mi := &file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -461,11 +461,11 @@ func (b0 HttpCrawlerClientConfig_Scope_builder) Build() *HttpCrawlerClientConfig
 	return m0
 }
 
-var File_httpcrawler_client_config_proto protoreflect.FileDescriptor
+var File_common_clients_httpcrawler_httpcrawler_client_config_proto protoreflect.FileDescriptor
 
-const file_httpcrawler_client_config_proto_rawDesc = "" +
+const file_common_clients_httpcrawler_httpcrawler_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1fhttpcrawler_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xd0\x04\n" +
+	":common/clients/httpcrawler/httpcrawler_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xd0\x04\n" +
 	"\x17HttpCrawlerClientConfig\x12*\n" +
 	"\x0fmax_concurrency\x18\x01 \x01(\x05:\x011R\x0emaxConcurrency\x126\n" +
 	"\x13max_page_size_bytes\x18\x02 \x01(\x05:\a1048576R\x10maxPageSizeBytes\x12\x1e\n" +
@@ -485,14 +485,14 @@ const file_httpcrawler_client_config_proto_rawDesc = "" +
 	"\x13SCOPE_POLICY_EXPAND\x10\x02B\xae\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB!HttpCrawlerClientConfigOuterClassZ_github.com/google/goonami-scanner/common/clients/httpcrawler/httpcrawler_client_config_go_protob\beditionsp\xe9\a"
 
-var file_httpcrawler_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_httpcrawler_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_httpcrawler_client_config_proto_goTypes = []any{
+var file_common_clients_httpcrawler_httpcrawler_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_common_clients_httpcrawler_httpcrawler_client_config_proto_goTypes = []any{
 	(HttpCrawlerClientConfig_ScopePolicy)(0), // 0: goonami.proto.configs.clients.HttpCrawlerClientConfig.ScopePolicy
 	(*HttpCrawlerClientConfig)(nil),          // 1: goonami.proto.configs.clients.HttpCrawlerClientConfig
 	(*HttpCrawlerClientConfig_Scope)(nil),    // 2: goonami.proto.configs.clients.HttpCrawlerClientConfig.Scope
 }
-var file_httpcrawler_client_config_proto_depIdxs = []int32{
+var file_common_clients_httpcrawler_httpcrawler_client_config_proto_depIdxs = []int32{
 	0, // 0: goonami.proto.configs.clients.HttpCrawlerClientConfig.scope_policy:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig.ScopePolicy
 	2, // 1: goonami.proto.configs.clients.HttpCrawlerClientConfig.scopes:type_name -> goonami.proto.configs.clients.HttpCrawlerClientConfig.Scope
 	2, // [2:2] is the sub-list for method output_type
@@ -502,27 +502,27 @@ var file_httpcrawler_client_config_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_httpcrawler_client_config_proto_init() }
-func file_httpcrawler_client_config_proto_init() {
-	if File_httpcrawler_client_config_proto != nil {
+func init() { file_common_clients_httpcrawler_httpcrawler_client_config_proto_init() }
+func file_common_clients_httpcrawler_httpcrawler_client_config_proto_init() {
+	if File_common_clients_httpcrawler_httpcrawler_client_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_httpcrawler_client_config_proto_rawDesc), len(file_httpcrawler_client_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_clients_httpcrawler_httpcrawler_client_config_proto_rawDesc), len(file_common_clients_httpcrawler_httpcrawler_client_config_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_httpcrawler_client_config_proto_goTypes,
-		DependencyIndexes: file_httpcrawler_client_config_proto_depIdxs,
-		EnumInfos:         file_httpcrawler_client_config_proto_enumTypes,
-		MessageInfos:      file_httpcrawler_client_config_proto_msgTypes,
+		GoTypes:           file_common_clients_httpcrawler_httpcrawler_client_config_proto_goTypes,
+		DependencyIndexes: file_common_clients_httpcrawler_httpcrawler_client_config_proto_depIdxs,
+		EnumInfos:         file_common_clients_httpcrawler_httpcrawler_client_config_proto_enumTypes,
+		MessageInfos:      file_common_clients_httpcrawler_httpcrawler_client_config_proto_msgTypes,
 	}.Build()
-	File_httpcrawler_client_config_proto = out.File
-	file_httpcrawler_client_config_proto_goTypes = nil
-	file_httpcrawler_client_config_proto_depIdxs = nil
+	File_common_clients_httpcrawler_httpcrawler_client_config_proto = out.File
+	file_common_clients_httpcrawler_httpcrawler_client_config_proto_goTypes = nil
+	file_common_clients_httpcrawler_httpcrawler_client_config_proto_depIdxs = nil
 }

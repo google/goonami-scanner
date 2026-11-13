@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: scan_metrics.proto
+// source: core/metrics/scan_metrics.proto
 
 package scan_metrics_go_proto
 
@@ -47,7 +47,7 @@ type ScanMetrics struct {
 
 func (x *ScanMetrics) Reset() {
 	*x = ScanMetrics{}
-	mi := &file_scan_metrics_proto_msgTypes[0]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -59,7 +59,7 @@ func (x *ScanMetrics) String() string {
 func (*ScanMetrics) ProtoMessage() {}
 
 func (x *ScanMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_scan_metrics_proto_msgTypes[0]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -126,7 +126,7 @@ type Label struct {
 
 func (x *Label) Reset() {
 	*x = Label{}
-	mi := &file_scan_metrics_proto_msgTypes[1]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -138,7 +138,7 @@ func (x *Label) String() string {
 func (*Label) ProtoMessage() {}
 
 func (x *Label) ProtoReflect() protoreflect.Message {
-	mi := &file_scan_metrics_proto_msgTypes[1]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -200,7 +200,7 @@ type Distribution struct {
 
 func (x *Distribution) Reset() {
 	*x = Distribution{}
-	mi := &file_scan_metrics_proto_msgTypes[2]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -212,7 +212,7 @@ func (x *Distribution) String() string {
 func (*Distribution) ProtoMessage() {}
 
 func (x *Distribution) ProtoReflect() protoreflect.Message {
-	mi := &file_scan_metrics_proto_msgTypes[2]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +303,7 @@ type Series struct {
 
 func (x *Series) Reset() {
 	*x = Series{}
-	mi := &file_scan_metrics_proto_msgTypes[3]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +315,7 @@ func (x *Series) String() string {
 func (*Series) ProtoMessage() {}
 
 func (x *Series) ProtoReflect() protoreflect.Message {
-	mi := &file_scan_metrics_proto_msgTypes[3]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -470,7 +470,7 @@ func (b0 Series_builder) Build() *Series {
 type case_Series_Value protoreflect.FieldNumber
 
 func (x case_Series_Value) String() string {
-	md := file_scan_metrics_proto_msgTypes[3].Descriptor()
+	md := file_core_metrics_scan_metrics_proto_msgTypes[3].Descriptor()
 	if x == 0 {
 		return "not set"
 	}
@@ -506,7 +506,7 @@ type DroppedSeries struct {
 
 func (x *DroppedSeries) Reset() {
 	*x = DroppedSeries{}
-	mi := &file_scan_metrics_proto_msgTypes[4]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -518,7 +518,7 @@ func (x *DroppedSeries) String() string {
 func (*DroppedSeries) ProtoMessage() {}
 
 func (x *DroppedSeries) ProtoReflect() protoreflect.Message {
-	mi := &file_scan_metrics_proto_msgTypes[4]
+	mi := &file_core_metrics_scan_metrics_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -569,11 +569,11 @@ func (b0 DroppedSeries_builder) Build() *DroppedSeries {
 	return m0
 }
 
-var File_scan_metrics_proto protoreflect.FileDescriptor
+var File_core_metrics_scan_metrics_proto protoreflect.FileDescriptor
 
-const file_scan_metrics_proto_rawDesc = "" +
+const file_core_metrics_scan_metrics_proto_rawDesc = "" +
 	"\n" +
-	"\x12scan_metrics.proto\x12\x15goonami.proto.metrics\"\x84\x01\n" +
+	"\x1fcore/metrics/scan_metrics.proto\x12\x15goonami.proto.metrics\"\x84\x01\n" +
 	"\vScanMetrics\x125\n" +
 	"\x06series\x18\x01 \x03(\v2\x1d.goonami.proto.metrics.SeriesR\x06series\x12>\n" +
 	"\adropped\x18\x02 \x03(\v2$.goonami.proto.metrics.DroppedSeriesR\adropped\"/\n" +
@@ -596,15 +596,15 @@ const file_scan_metrics_proto_rawDesc = "" +
 	"\fobservations\x18\x02 \x01(\x03R\fobservationsB\x81\x01\n" +
 	" com.google.goonami.proto.metricsB\x15ScanMetricsOuterClassP\x01ZDgithub.com/google/goonami-scanner/core/metrics/scan_metrics_go_protob\x06proto3"
 
-var file_scan_metrics_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
-var file_scan_metrics_proto_goTypes = []any{
+var file_core_metrics_scan_metrics_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_core_metrics_scan_metrics_proto_goTypes = []any{
 	(*ScanMetrics)(nil),   // 0: goonami.proto.metrics.ScanMetrics
 	(*Label)(nil),         // 1: goonami.proto.metrics.Label
 	(*Distribution)(nil),  // 2: goonami.proto.metrics.Distribution
 	(*Series)(nil),        // 3: goonami.proto.metrics.Series
 	(*DroppedSeries)(nil), // 4: goonami.proto.metrics.DroppedSeries
 }
-var file_scan_metrics_proto_depIdxs = []int32{
+var file_core_metrics_scan_metrics_proto_depIdxs = []int32{
 	3, // 0: goonami.proto.metrics.ScanMetrics.series:type_name -> goonami.proto.metrics.Series
 	4, // 1: goonami.proto.metrics.ScanMetrics.dropped:type_name -> goonami.proto.metrics.DroppedSeries
 	1, // 2: goonami.proto.metrics.Series.labels:type_name -> goonami.proto.metrics.Label
@@ -616,12 +616,12 @@ var file_scan_metrics_proto_depIdxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_scan_metrics_proto_init() }
-func file_scan_metrics_proto_init() {
-	if File_scan_metrics_proto != nil {
+func init() { file_core_metrics_scan_metrics_proto_init() }
+func file_core_metrics_scan_metrics_proto_init() {
+	if File_core_metrics_scan_metrics_proto != nil {
 		return
 	}
-	file_scan_metrics_proto_msgTypes[3].OneofWrappers = []any{
+	file_core_metrics_scan_metrics_proto_msgTypes[3].OneofWrappers = []any{
 		(*series_Counter)(nil),
 		(*series_Distribution)(nil),
 	}
@@ -629,17 +629,17 @@ func file_scan_metrics_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_scan_metrics_proto_rawDesc), len(file_scan_metrics_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_metrics_scan_metrics_proto_rawDesc), len(file_core_metrics_scan_metrics_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_scan_metrics_proto_goTypes,
-		DependencyIndexes: file_scan_metrics_proto_depIdxs,
-		MessageInfos:      file_scan_metrics_proto_msgTypes,
+		GoTypes:           file_core_metrics_scan_metrics_proto_goTypes,
+		DependencyIndexes: file_core_metrics_scan_metrics_proto_depIdxs,
+		MessageInfos:      file_core_metrics_scan_metrics_proto_msgTypes,
 	}.Build()
-	File_scan_metrics_proto = out.File
-	file_scan_metrics_proto_goTypes = nil
-	file_scan_metrics_proto_depIdxs = nil
+	File_core_metrics_scan_metrics_proto = out.File
+	file_core_metrics_scan_metrics_proto_goTypes = nil
+	file_core_metrics_scan_metrics_proto_depIdxs = nil
 }

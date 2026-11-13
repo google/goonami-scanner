@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: callbackserver_config.proto
+// source: tools/callbackserver/callbackserver_config.proto
 
 package callbackserver_config_go_proto
 
@@ -70,11 +70,11 @@ func (x CallbackEndpointMode) String() string {
 }
 
 func (CallbackEndpointMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_callbackserver_config_proto_enumTypes[0].Descriptor()
+	return file_tools_callbackserver_callbackserver_config_proto_enumTypes[0].Descriptor()
 }
 
 func (CallbackEndpointMode) Type() protoreflect.EnumType {
-	return &file_callbackserver_config_proto_enumTypes[0]
+	return &file_tools_callbackserver_callbackserver_config_proto_enumTypes[0]
 }
 
 func (x CallbackEndpointMode) Number() protoreflect.EnumNumber {
@@ -95,7 +95,7 @@ type EndpointConfig struct {
 
 func (x *EndpointConfig) Reset() {
 	*x = EndpointConfig{}
-	mi := &file_callbackserver_config_proto_msgTypes[0]
+	mi := &file_tools_callbackserver_callbackserver_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -107,7 +107,7 @@ func (x *EndpointConfig) String() string {
 func (*EndpointConfig) ProtoMessage() {}
 
 func (x *EndpointConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_callbackserver_config_proto_msgTypes[0]
+	mi := &file_tools_callbackserver_callbackserver_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -285,7 +285,7 @@ const (
 
 func (x *CallbackserverConfig) Reset() {
 	*x = CallbackserverConfig{}
-	mi := &file_callbackserver_config_proto_msgTypes[1]
+	mi := &file_tools_callbackserver_callbackserver_config_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -297,7 +297,7 @@ func (x *CallbackserverConfig) String() string {
 func (*CallbackserverConfig) ProtoMessage() {}
 
 func (x *CallbackserverConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_callbackserver_config_proto_msgTypes[1]
+	mi := &file_tools_callbackserver_callbackserver_config_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -457,11 +457,11 @@ func (b0 CallbackserverConfig_builder) Build() *CallbackserverConfig {
 	return m0
 }
 
-var File_callbackserver_config_proto protoreflect.FileDescriptor
+var File_tools_callbackserver_callbackserver_config_proto protoreflect.FileDescriptor
 
-const file_callbackserver_config_proto_rawDesc = "" +
+const file_tools_callbackserver_callbackserver_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1bcallbackserver_config.proto\x12\x16goonami.callbackserver\"\xb1\x01\n" +
+	"0tools/callbackserver/callbackserver_config.proto\x12\x16goonami.callbackserver\"\xb1\x01\n" +
 	"\x0eEndpointConfig\x12@\n" +
 	"\x04mode\x18\x01 \x01(\x0e2,.goonami.callbackserver.CallbackEndpointModeR\x04mode\x12\x1d\n" +
 	"\n" +
@@ -480,14 +480,14 @@ const file_callbackserver_config_proto_rawDesc = "" +
 	"\x16MODE_USE_REMOTE_SERVER\x10\x02B\xa0\x01\n" +
 	"'com.google.goonami.callbackserver.protoB\x1eCallbackserverConfigOuterClassZUgithub.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_protob\beditionsp\xe9\a"
 
-var file_callbackserver_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_callbackserver_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_callbackserver_config_proto_goTypes = []any{
+var file_tools_callbackserver_callbackserver_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_tools_callbackserver_callbackserver_config_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_tools_callbackserver_callbackserver_config_proto_goTypes = []any{
 	(CallbackEndpointMode)(0),    // 0: goonami.callbackserver.CallbackEndpointMode
 	(*EndpointConfig)(nil),       // 1: goonami.callbackserver.EndpointConfig
 	(*CallbackserverConfig)(nil), // 2: goonami.callbackserver.CallbackserverConfig
 }
-var file_callbackserver_config_proto_depIdxs = []int32{
+var file_tools_callbackserver_callbackserver_config_proto_depIdxs = []int32{
 	0, // 0: goonami.callbackserver.EndpointConfig.mode:type_name -> goonami.callbackserver.CallbackEndpointMode
 	1, // 1: goonami.callbackserver.CallbackserverConfig.http_poll_config:type_name -> goonami.callbackserver.EndpointConfig
 	1, // 2: goonami.callbackserver.CallbackserverConfig.http_record_config:type_name -> goonami.callbackserver.EndpointConfig
@@ -499,27 +499,27 @@ var file_callbackserver_config_proto_depIdxs = []int32{
 	0, // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_callbackserver_config_proto_init() }
-func file_callbackserver_config_proto_init() {
-	if File_callbackserver_config_proto != nil {
+func init() { file_tools_callbackserver_callbackserver_config_proto_init() }
+func file_tools_callbackserver_callbackserver_config_proto_init() {
+	if File_tools_callbackserver_callbackserver_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_callbackserver_config_proto_rawDesc), len(file_callbackserver_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tools_callbackserver_callbackserver_config_proto_rawDesc), len(file_tools_callbackserver_callbackserver_config_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_callbackserver_config_proto_goTypes,
-		DependencyIndexes: file_callbackserver_config_proto_depIdxs,
-		EnumInfos:         file_callbackserver_config_proto_enumTypes,
-		MessageInfos:      file_callbackserver_config_proto_msgTypes,
+		GoTypes:           file_tools_callbackserver_callbackserver_config_proto_goTypes,
+		DependencyIndexes: file_tools_callbackserver_callbackserver_config_proto_depIdxs,
+		EnumInfos:         file_tools_callbackserver_callbackserver_config_proto_enumTypes,
+		MessageInfos:      file_tools_callbackserver_callbackserver_config_proto_msgTypes,
 	}.Build()
-	File_callbackserver_config_proto = out.File
-	file_callbackserver_config_proto_goTypes = nil
-	file_callbackserver_config_proto_depIdxs = nil
+	File_tools_callbackserver_callbackserver_config_proto = out.File
+	file_tools_callbackserver_callbackserver_config_proto_goTypes = nil
+	file_tools_callbackserver_callbackserver_config_proto_depIdxs = nil
 }

@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: config.proto
+// source: core/config/config.proto
 
 package config_go_proto
 
@@ -57,7 +57,7 @@ type Config struct {
 
 func (x *Config) Reset() {
 	*x = Config{}
-	mi := &file_config_proto_msgTypes[0]
+	mi := &file_core_config_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -69,7 +69,7 @@ func (x *Config) String() string {
 func (*Config) ProtoMessage() {}
 
 func (x *Config) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[0]
+	mi := &file_core_config_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -203,7 +203,7 @@ type WorkflowConfiguration struct {
 
 func (x *WorkflowConfiguration) Reset() {
 	*x = WorkflowConfiguration{}
-	mi := &file_config_proto_msgTypes[1]
+	mi := &file_core_config_config_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -215,7 +215,7 @@ func (x *WorkflowConfiguration) String() string {
 func (*WorkflowConfiguration) ProtoMessage() {}
 
 func (x *WorkflowConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[1]
+	mi := &file_core_config_config_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -342,7 +342,7 @@ const (
 
 func (x *GlobalConfig) Reset() {
 	*x = GlobalConfig{}
-	mi := &file_config_proto_msgTypes[2]
+	mi := &file_core_config_config_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,7 +354,7 @@ func (x *GlobalConfig) String() string {
 func (*GlobalConfig) ProtoMessage() {}
 
 func (x *GlobalConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[2]
+	mi := &file_core_config_config_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +501,7 @@ type ClientsConfig struct {
 
 func (x *ClientsConfig) Reset() {
 	*x = ClientsConfig{}
-	mi := &file_config_proto_msgTypes[3]
+	mi := &file_core_config_config_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +513,7 @@ func (x *ClientsConfig) String() string {
 func (*ClientsConfig) ProtoMessage() {}
 
 func (x *ClientsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[3]
+	mi := &file_core_config_config_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -716,7 +716,7 @@ type PluginsConfig struct {
 
 func (x *PluginsConfig) Reset() {
 	*x = PluginsConfig{}
-	mi := &file_config_proto_msgTypes[4]
+	mi := &file_core_config_config_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +728,7 @@ func (x *PluginsConfig) String() string {
 func (*PluginsConfig) ProtoMessage() {}
 
 func (x *PluginsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[4]
+	mi := &file_core_config_config_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -833,7 +833,7 @@ type WorkflowConfiguration_ModuleFilter struct {
 
 func (x *WorkflowConfiguration_ModuleFilter) Reset() {
 	*x = WorkflowConfiguration_ModuleFilter{}
-	mi := &file_config_proto_msgTypes[5]
+	mi := &file_core_config_config_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +845,7 @@ func (x *WorkflowConfiguration_ModuleFilter) String() string {
 func (*WorkflowConfiguration_ModuleFilter) ProtoMessage() {}
 
 func (x *WorkflowConfiguration_ModuleFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[5]
+	mi := &file_core_config_config_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -929,7 +929,7 @@ const (
 
 func (x *GlobalConfig_Performance) Reset() {
 	*x = GlobalConfig_Performance{}
-	mi := &file_config_proto_msgTypes[6]
+	mi := &file_core_config_config_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -941,7 +941,7 @@ func (x *GlobalConfig_Performance) String() string {
 func (*GlobalConfig_Performance) ProtoMessage() {}
 
 func (x *GlobalConfig_Performance) ProtoReflect() protoreflect.Message {
-	mi := &file_config_proto_msgTypes[6]
+	mi := &file_core_config_config_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1220,11 +1220,11 @@ func (b0 GlobalConfig_Performance_builder) Build() *GlobalConfig_Performance {
 	return m0
 }
 
-var File_config_proto protoreflect.FileDescriptor
+var File_core_config_config_proto protoreflect.FileDescriptor
 
-const file_config_proto_rawDesc = "" +
+const file_core_config_config_proto_rawDesc = "" +
 	"\n" +
-	"\fconfig.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a4common/clients/mysqlclient/mysql_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a:common/clients/postgresclient/postgres_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1a)common/bruteforce/bruteforce_config.proto\"\xfb\x01\n" +
+	"\x18core/config/config.proto\x12\rgoonami.proto\x1a:common/clients/httpcrawler/httpcrawler_client_config.proto\x1a*common/clients/llm/llm_client_config.proto\x1a4common/clients/mysqlclient/mysql_client_config.proto\x1a,common/clients/nmap/nmap_client_config.proto\x1a:common/clients/postgresclient/postgres_client_config.proto\x1a0common/clients/sshclient/ssh_client_config.proto\x1a0tools/callbackserver/callbackserver_config.proto\x1a8plugins/portscan/httpscan/httpscan_portscan_config.proto\x1a;plugins/fingerprint/webidentity/webidentity_fp_config.proto\x1a)common/bruteforce/bruteforce_config.proto\"\xfb\x01\n" +
 	"\x06Config\x129\n" +
 	"\tglobalcfg\x18\x01 \x01(\v2\x1b.goonami.proto.GlobalConfigR\tglobalcfg\x126\n" +
 	"\aclients\x18\x02 \x01(\v2\x1c.goonami.proto.ClientsConfigR\aclients\x126\n" +
@@ -1269,8 +1269,8 @@ const file_config_proto_rawDesc = "" +
 	"bruteforceJ\x04\b\x03\x10\x04Bk\n" +
 	"\x18com.google.goonami.protoB\x10ConfigOuterClassZ=github.com/google/goonami-scanner/core/config/config_go_protob\beditionsp\xe9\a"
 
-var file_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_config_proto_goTypes = []any{
+var file_core_config_config_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_core_config_config_proto_goTypes = []any{
 	(*Config)(nil),                                                     // 0: goonami.proto.Config
 	(*WorkflowConfiguration)(nil),                                      // 1: goonami.proto.WorkflowConfiguration
 	(*GlobalConfig)(nil),                                               // 2: goonami.proto.GlobalConfig
@@ -1289,7 +1289,7 @@ var file_config_proto_goTypes = []any{
 	(*httpscan_portscan_config_go_proto.HttpScanPluginConfig)(nil),     // 15: goonami.proto.configs.portscan.HttpScanPluginConfig
 	(*bruteforce_config_go_proto.BruteForceConfig)(nil),                // 16: goonami.proto.configs.bruteforce.BruteForceConfig
 }
-var file_config_proto_depIdxs = []int32{
+var file_core_config_config_proto_depIdxs = []int32{
 	2,  // 0: goonami.proto.Config.globalcfg:type_name -> goonami.proto.GlobalConfig
 	3,  // 1: goonami.proto.Config.clients:type_name -> goonami.proto.ClientsConfig
 	4,  // 2: goonami.proto.Config.plugins:type_name -> goonami.proto.PluginsConfig
@@ -1314,26 +1314,26 @@ var file_config_proto_depIdxs = []int32{
 	0,  // [0:17] is the sub-list for field type_name
 }
 
-func init() { file_config_proto_init() }
-func file_config_proto_init() {
-	if File_config_proto != nil {
+func init() { file_core_config_config_proto_init() }
+func file_core_config_config_proto_init() {
+	if File_core_config_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_config_proto_rawDesc), len(file_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_core_config_config_proto_rawDesc), len(file_core_config_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_config_proto_goTypes,
-		DependencyIndexes: file_config_proto_depIdxs,
-		MessageInfos:      file_config_proto_msgTypes,
+		GoTypes:           file_core_config_config_proto_goTypes,
+		DependencyIndexes: file_core_config_config_proto_depIdxs,
+		MessageInfos:      file_core_config_config_proto_msgTypes,
 	}.Build()
-	File_config_proto = out.File
-	file_config_proto_goTypes = nil
-	file_config_proto_depIdxs = nil
+	File_core_config_config_proto = out.File
+	file_core_config_config_proto_goTypes = nil
+	file_core_config_config_proto_depIdxs = nil
 }

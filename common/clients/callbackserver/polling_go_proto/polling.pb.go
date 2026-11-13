@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: polling.proto
+// source: common/clients/callbackserver/polling.proto
 
 package polling_go_proto
 
@@ -46,7 +46,7 @@ type PollingResult struct {
 
 func (x *PollingResult) Reset() {
 	*x = PollingResult{}
-	mi := &file_polling_proto_msgTypes[0]
+	mi := &file_common_clients_callbackserver_polling_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -58,7 +58,7 @@ func (x *PollingResult) String() string {
 func (*PollingResult) ProtoMessage() {}
 
 func (x *PollingResult) ProtoReflect() protoreflect.Message {
-	mi := &file_polling_proto_msgTypes[0]
+	mi := &file_common_clients_callbackserver_polling_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -109,21 +109,21 @@ func (b0 PollingResult_builder) Build() *PollingResult {
 	return m0
 }
 
-var File_polling_proto protoreflect.FileDescriptor
+var File_common_clients_callbackserver_polling_proto protoreflect.FileDescriptor
 
-const file_polling_proto_rawDesc = "" +
+const file_common_clients_callbackserver_polling_proto_rawDesc = "" +
 	"\n" +
-	"\rpolling.proto\x12$goonami.proto.clients.callbackserver\"q\n" +
+	"+common/clients/callbackserver/polling.proto\x12$goonami.proto.clients.callbackserver\"q\n" +
 	"\rPollingResult\x12.\n" +
 	"\x13has_dns_interaction\x18\x01 \x01(\bR\x11hasDnsInteraction\x120\n" +
 	"\x14has_http_interaction\x18\x02 \x01(\bR\x12hasHttpInteractionB\x94\x01\n" +
 	"/com.google.goonami.proto.clients.callbackserverB\rPollingProtosP\x01ZPgithub.com/google/goonami-scanner/common/clients/callbackserver/polling_go_protob\x06proto3"
 
-var file_polling_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_polling_proto_goTypes = []any{
+var file_common_clients_callbackserver_polling_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_common_clients_callbackserver_polling_proto_goTypes = []any{
 	(*PollingResult)(nil), // 0: goonami.proto.clients.callbackserver.PollingResult
 }
-var file_polling_proto_depIdxs = []int32{
+var file_common_clients_callbackserver_polling_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -131,26 +131,26 @@ var file_polling_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_polling_proto_init() }
-func file_polling_proto_init() {
-	if File_polling_proto != nil {
+func init() { file_common_clients_callbackserver_polling_proto_init() }
+func file_common_clients_callbackserver_polling_proto_init() {
+	if File_common_clients_callbackserver_polling_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_polling_proto_rawDesc), len(file_polling_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_clients_callbackserver_polling_proto_rawDesc), len(file_common_clients_callbackserver_polling_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_polling_proto_goTypes,
-		DependencyIndexes: file_polling_proto_depIdxs,
-		MessageInfos:      file_polling_proto_msgTypes,
+		GoTypes:           file_common_clients_callbackserver_polling_proto_goTypes,
+		DependencyIndexes: file_common_clients_callbackserver_polling_proto_depIdxs,
+		MessageInfos:      file_common_clients_callbackserver_polling_proto_msgTypes,
 	}.Build()
-	File_polling_proto = out.File
-	file_polling_proto_goTypes = nil
-	file_polling_proto_depIdxs = nil
+	File_common_clients_callbackserver_polling_proto = out.File
+	file_common_clients_callbackserver_polling_proto_goTypes = nil
+	file_common_clients_callbackserver_polling_proto_depIdxs = nil
 }

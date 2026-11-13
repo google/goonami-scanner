@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: bruteforce_config.proto
+// source: common/bruteforce/bruteforce_config.proto
 
 package bruteforce_config_go_proto
 
@@ -59,7 +59,7 @@ const (
 
 func (x *BruteForceConfig) Reset() {
 	*x = BruteForceConfig{}
-	mi := &file_bruteforce_config_proto_msgTypes[0]
+	mi := &file_common_bruteforce_bruteforce_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -71,7 +71,7 @@ func (x *BruteForceConfig) String() string {
 func (*BruteForceConfig) ProtoMessage() {}
 
 func (x *BruteForceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_bruteforce_config_proto_msgTypes[0]
+	mi := &file_common_bruteforce_bruteforce_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,11 +219,11 @@ func (b0 BruteForceConfig_builder) Build() *BruteForceConfig {
 	return m0
 }
 
-var File_bruteforce_config_proto protoreflect.FileDescriptor
+var File_common_bruteforce_bruteforce_config_proto protoreflect.FileDescriptor
 
-const file_bruteforce_config_proto_rawDesc = "" +
+const file_common_bruteforce_bruteforce_config_proto_rawDesc = "" +
 	"\n" +
-	"\x17bruteforce_config.proto\x12 goonami.proto.configs.bruteforce\"\x84\x02\n" +
+	")common/bruteforce/bruteforce_config.proto\x12 goonami.proto.configs.bruteforce\"\x84\x02\n" +
 	"\x10BruteForceConfig\x12=\n" +
 	"\x18max_attempts_per_service\x18\x01 \x01(\x05:\x042000R\x15maxAttemptsPerService\x12*\n" +
 	"\x0fmax_concurrency\x18\x02 \x01(\x05:\x011R\x0emaxConcurrency\x129\n" +
@@ -231,11 +231,11 @@ const file_bruteforce_config_proto_rawDesc = "" +
 	"\x1fstop_at_first_valid_credentials\x18\x04 \x01(\b:\x04trueR\x1bstopAtFirstValidCredentialsB\x99\x01\n" +
 	"+com.google.goonami.proto.configs.bruteforceB\x1aBruteForceConfigOuterClassZNgithub.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_protob\beditionsp\xe9\a"
 
-var file_bruteforce_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_bruteforce_config_proto_goTypes = []any{
+var file_common_bruteforce_bruteforce_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_common_bruteforce_bruteforce_config_proto_goTypes = []any{
 	(*BruteForceConfig)(nil), // 0: goonami.proto.configs.bruteforce.BruteForceConfig
 }
-var file_bruteforce_config_proto_depIdxs = []int32{
+var file_common_bruteforce_bruteforce_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -243,26 +243,26 @@ var file_bruteforce_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_bruteforce_config_proto_init() }
-func file_bruteforce_config_proto_init() {
-	if File_bruteforce_config_proto != nil {
+func init() { file_common_bruteforce_bruteforce_config_proto_init() }
+func file_common_bruteforce_bruteforce_config_proto_init() {
+	if File_common_bruteforce_bruteforce_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bruteforce_config_proto_rawDesc), len(file_bruteforce_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_bruteforce_bruteforce_config_proto_rawDesc), len(file_common_bruteforce_bruteforce_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_bruteforce_config_proto_goTypes,
-		DependencyIndexes: file_bruteforce_config_proto_depIdxs,
-		MessageInfos:      file_bruteforce_config_proto_msgTypes,
+		GoTypes:           file_common_bruteforce_bruteforce_config_proto_goTypes,
+		DependencyIndexes: file_common_bruteforce_bruteforce_config_proto_depIdxs,
+		MessageInfos:      file_common_bruteforce_bruteforce_config_proto_msgTypes,
 	}.Build()
-	File_bruteforce_config_proto = out.File
-	file_bruteforce_config_proto_goTypes = nil
-	file_bruteforce_config_proto_depIdxs = nil
+	File_common_bruteforce_bruteforce_config_proto = out.File
+	file_common_bruteforce_bruteforce_config_proto_goTypes = nil
+	file_common_bruteforce_bruteforce_config_proto_depIdxs = nil
 }

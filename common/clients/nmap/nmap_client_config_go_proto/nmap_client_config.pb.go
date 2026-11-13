@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: nmap_client_config.proto
+// source: common/clients/nmap/nmap_client_config.proto
 
 package nmap_client_config_go_proto
 
@@ -70,11 +70,11 @@ func (x NmapClientConfig_Technique) String() string {
 }
 
 func (NmapClientConfig_Technique) Descriptor() protoreflect.EnumDescriptor {
-	return file_nmap_client_config_proto_enumTypes[0].Descriptor()
+	return file_common_clients_nmap_nmap_client_config_proto_enumTypes[0].Descriptor()
 }
 
 func (NmapClientConfig_Technique) Type() protoreflect.EnumType {
-	return &file_nmap_client_config_proto_enumTypes[0]
+	return &file_common_clients_nmap_nmap_client_config_proto_enumTypes[0]
 }
 
 func (x NmapClientConfig_Technique) Number() protoreflect.EnumNumber {
@@ -115,7 +115,7 @@ const (
 
 func (x *NmapClientConfig) Reset() {
 	*x = NmapClientConfig{}
-	mi := &file_nmap_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_nmap_nmap_client_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -127,7 +127,7 @@ func (x *NmapClientConfig) String() string {
 func (*NmapClientConfig) ProtoMessage() {}
 
 func (x *NmapClientConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_nmap_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_nmap_nmap_client_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -465,11 +465,11 @@ func (b0 NmapClientConfig_builder) Build() *NmapClientConfig {
 	return m0
 }
 
-var File_nmap_client_config_proto protoreflect.FileDescriptor
+var File_common_clients_nmap_nmap_client_config_proto protoreflect.FileDescriptor
 
-const file_nmap_client_config_proto_rawDesc = "" +
+const file_common_clients_nmap_nmap_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x18nmap_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xf3\x04\n" +
+	",common/clients/nmap/nmap_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xf3\x04\n" +
 	"\x10NmapClientConfig\x12\x1f\n" +
 	"\vbinary_path\x18\x01 \x01(\tR\n" +
 	"binaryPath\x12,\n" +
@@ -489,13 +489,13 @@ const file_nmap_client_config_proto_rawDesc = "" +
 	"\x03UDP\x10\x02B\x99\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB\x1aNmapClientConfigOuterClassZQgithub.com/google/goonami-scanner/common/clients/nmap/nmap_client_config_go_protob\beditionsp\xe9\a"
 
-var file_nmap_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_nmap_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_nmap_client_config_proto_goTypes = []any{
+var file_common_clients_nmap_nmap_client_config_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_common_clients_nmap_nmap_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_common_clients_nmap_nmap_client_config_proto_goTypes = []any{
 	(NmapClientConfig_Technique)(0), // 0: goonami.proto.configs.clients.NmapClientConfig.Technique
 	(*NmapClientConfig)(nil),        // 1: goonami.proto.configs.clients.NmapClientConfig
 }
-var file_nmap_client_config_proto_depIdxs = []int32{
+var file_common_clients_nmap_nmap_client_config_proto_depIdxs = []int32{
 	0, // 0: goonami.proto.configs.clients.NmapClientConfig.scan_technique:type_name -> goonami.proto.configs.clients.NmapClientConfig.Technique
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
@@ -504,27 +504,27 @@ var file_nmap_client_config_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_nmap_client_config_proto_init() }
-func file_nmap_client_config_proto_init() {
-	if File_nmap_client_config_proto != nil {
+func init() { file_common_clients_nmap_nmap_client_config_proto_init() }
+func file_common_clients_nmap_nmap_client_config_proto_init() {
+	if File_common_clients_nmap_nmap_client_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_nmap_client_config_proto_rawDesc), len(file_nmap_client_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_clients_nmap_nmap_client_config_proto_rawDesc), len(file_common_clients_nmap_nmap_client_config_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_nmap_client_config_proto_goTypes,
-		DependencyIndexes: file_nmap_client_config_proto_depIdxs,
-		EnumInfos:         file_nmap_client_config_proto_enumTypes,
-		MessageInfos:      file_nmap_client_config_proto_msgTypes,
+		GoTypes:           file_common_clients_nmap_nmap_client_config_proto_goTypes,
+		DependencyIndexes: file_common_clients_nmap_nmap_client_config_proto_depIdxs,
+		EnumInfos:         file_common_clients_nmap_nmap_client_config_proto_enumTypes,
+		MessageInfos:      file_common_clients_nmap_nmap_client_config_proto_msgTypes,
 	}.Build()
-	File_nmap_client_config_proto = out.File
-	file_nmap_client_config_proto_goTypes = nil
-	file_nmap_client_config_proto_depIdxs = nil
+	File_common_clients_nmap_nmap_client_config_proto = out.File
+	file_common_clients_nmap_nmap_client_config_proto_goTypes = nil
+	file_common_clients_nmap_nmap_client_config_proto_depIdxs = nil
 }

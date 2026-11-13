@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: httpscan_portscan_config.proto
+// source: plugins/portscan/httpscan/httpscan_portscan_config.proto
 
 package httpscan_portscan_config_go_proto
 
@@ -44,7 +44,7 @@ type HttpScanPluginConfig struct {
 
 func (x *HttpScanPluginConfig) Reset() {
 	*x = HttpScanPluginConfig{}
-	mi := &file_httpscan_portscan_config_proto_msgTypes[0]
+	mi := &file_plugins_portscan_httpscan_httpscan_portscan_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -56,7 +56,7 @@ func (x *HttpScanPluginConfig) String() string {
 func (*HttpScanPluginConfig) ProtoMessage() {}
 
 func (x *HttpScanPluginConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_httpscan_portscan_config_proto_msgTypes[0]
+	mi := &file_plugins_portscan_httpscan_httpscan_portscan_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -93,20 +93,20 @@ func (b0 HttpScanPluginConfig_builder) Build() *HttpScanPluginConfig {
 	return m0
 }
 
-var File_httpscan_portscan_config_proto protoreflect.FileDescriptor
+var File_plugins_portscan_httpscan_httpscan_portscan_config_proto protoreflect.FileDescriptor
 
-const file_httpscan_portscan_config_proto_rawDesc = "" +
+const file_plugins_portscan_httpscan_httpscan_portscan_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1ehttpscan_portscan_config.proto\x12\x1egoonami.proto.configs.portscan\"D\n" +
+	"8plugins/portscan/httpscan/httpscan_portscan_config.proto\x12\x1egoonami.proto.configs.portscan\"D\n" +
 	"\x14HttpScanPluginConfig\x12,\n" +
 	"\x12invalid_exit_codes\x18\x01 \x03(\x05R\x10invalidExitCodesB\xaa\x01\n" +
 	")com.google.goonami.proto.configs.portscanB\x1eHttpScanPluginConfigOuterClassZ]github.com/google/goonami-scanner/plugins/portscan/httpscan/httpscan_portscan_config_go_protob\beditionsp\xe9\a"
 
-var file_httpscan_portscan_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_httpscan_portscan_config_proto_goTypes = []any{
+var file_plugins_portscan_httpscan_httpscan_portscan_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_plugins_portscan_httpscan_httpscan_portscan_config_proto_goTypes = []any{
 	(*HttpScanPluginConfig)(nil), // 0: goonami.proto.configs.portscan.HttpScanPluginConfig
 }
-var file_httpscan_portscan_config_proto_depIdxs = []int32{
+var file_plugins_portscan_httpscan_httpscan_portscan_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -114,26 +114,26 @@ var file_httpscan_portscan_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_httpscan_portscan_config_proto_init() }
-func file_httpscan_portscan_config_proto_init() {
-	if File_httpscan_portscan_config_proto != nil {
+func init() { file_plugins_portscan_httpscan_httpscan_portscan_config_proto_init() }
+func file_plugins_portscan_httpscan_httpscan_portscan_config_proto_init() {
+	if File_plugins_portscan_httpscan_httpscan_portscan_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_httpscan_portscan_config_proto_rawDesc), len(file_httpscan_portscan_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugins_portscan_httpscan_httpscan_portscan_config_proto_rawDesc), len(file_plugins_portscan_httpscan_httpscan_portscan_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_httpscan_portscan_config_proto_goTypes,
-		DependencyIndexes: file_httpscan_portscan_config_proto_depIdxs,
-		MessageInfos:      file_httpscan_portscan_config_proto_msgTypes,
+		GoTypes:           file_plugins_portscan_httpscan_httpscan_portscan_config_proto_goTypes,
+		DependencyIndexes: file_plugins_portscan_httpscan_httpscan_portscan_config_proto_depIdxs,
+		MessageInfos:      file_plugins_portscan_httpscan_httpscan_portscan_config_proto_msgTypes,
 	}.Build()
-	File_httpscan_portscan_config_proto = out.File
-	file_httpscan_portscan_config_proto_goTypes = nil
-	file_httpscan_portscan_config_proto_depIdxs = nil
+	File_plugins_portscan_httpscan_httpscan_portscan_config_proto = out.File
+	file_plugins_portscan_httpscan_httpscan_portscan_config_proto_goTypes = nil
+	file_plugins_portscan_httpscan_httpscan_portscan_config_proto_depIdxs = nil
 }

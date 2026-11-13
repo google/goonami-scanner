@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: llm_client_config.proto
+// source: common/clients/llm/llm_client_config.proto
 
 package llm_client_config_go_proto
 
@@ -64,7 +64,7 @@ const (
 
 func (x *LlmClientConfig) Reset() {
 	*x = LlmClientConfig{}
-	mi := &file_llm_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -76,7 +76,7 @@ func (x *LlmClientConfig) String() string {
 func (*LlmClientConfig) ProtoMessage() {}
 
 func (x *LlmClientConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_client_config_proto_msgTypes[0]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -359,7 +359,7 @@ type ToolConfig struct {
 
 func (x *ToolConfig) Reset() {
 	*x = ToolConfig{}
-	mi := &file_llm_client_config_proto_msgTypes[1]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -371,7 +371,7 @@ func (x *ToolConfig) String() string {
 func (*ToolConfig) ProtoMessage() {}
 
 func (x *ToolConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_client_config_proto_msgTypes[1]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +440,7 @@ const (
 
 func (x *HttpClientConfig) Reset() {
 	*x = HttpClientConfig{}
-	mi := &file_llm_client_config_proto_msgTypes[2]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -452,7 +452,7 @@ func (x *HttpClientConfig) String() string {
 func (*HttpClientConfig) ProtoMessage() {}
 
 func (x *HttpClientConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_llm_client_config_proto_msgTypes[2]
+	mi := &file_common_clients_llm_llm_client_config_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -573,11 +573,11 @@ func (b0 HttpClientConfig_builder) Build() *HttpClientConfig {
 	return m0
 }
 
-var File_llm_client_config_proto protoreflect.FileDescriptor
+var File_common_clients_llm_llm_client_config_proto protoreflect.FileDescriptor
 
-const file_llm_client_config_proto_rawDesc = "" +
+const file_common_clients_llm_llm_client_config_proto_rawDesc = "" +
 	"\n" +
-	"\x17llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xc0\x03\n" +
+	"*common/clients/llm/llm_client_config.proto\x12\x1dgoonami.proto.configs.clients\"\xc0\x03\n" +
 	"\x0fLlmClientConfig\x12B\n" +
 	"\x1btimeout_per_request_seconds\x18\x01 \x01(\x05:\x03240R\x18timeoutPerRequestSeconds\x12$\n" +
 	"\fmax_attempts\x18\x02 \x01(\x05:\x013R\vmaxAttempts\x122\n" +
@@ -599,13 +599,13 @@ const file_llm_client_config_proto_rawDesc = "" +
 	"\x0fforbidden_paths\x18\x04 \x03(\tR\x0eforbiddenPathsB\x96\x01\n" +
 	"(com.google.goonami.proto.configs.clientsB\x19LlmClientConfigOuterClassZOgithub.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_protob\beditionsp\xe9\a"
 
-var file_llm_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_llm_client_config_proto_goTypes = []any{
+var file_common_clients_llm_llm_client_config_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_common_clients_llm_llm_client_config_proto_goTypes = []any{
 	(*LlmClientConfig)(nil),  // 0: goonami.proto.configs.clients.LlmClientConfig
 	(*ToolConfig)(nil),       // 1: goonami.proto.configs.clients.ToolConfig
 	(*HttpClientConfig)(nil), // 2: goonami.proto.configs.clients.HttpClientConfig
 }
-var file_llm_client_config_proto_depIdxs = []int32{
+var file_common_clients_llm_llm_client_config_proto_depIdxs = []int32{
 	1, // 0: goonami.proto.configs.clients.LlmClientConfig.tools:type_name -> goonami.proto.configs.clients.ToolConfig
 	2, // 1: goonami.proto.configs.clients.ToolConfig.http_client_config:type_name -> goonami.proto.configs.clients.HttpClientConfig
 	2, // [2:2] is the sub-list for method output_type
@@ -615,26 +615,26 @@ var file_llm_client_config_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
-func init() { file_llm_client_config_proto_init() }
-func file_llm_client_config_proto_init() {
-	if File_llm_client_config_proto != nil {
+func init() { file_common_clients_llm_llm_client_config_proto_init() }
+func file_common_clients_llm_llm_client_config_proto_init() {
+	if File_common_clients_llm_llm_client_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_llm_client_config_proto_rawDesc), len(file_llm_client_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_common_clients_llm_llm_client_config_proto_rawDesc), len(file_common_clients_llm_llm_client_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_llm_client_config_proto_goTypes,
-		DependencyIndexes: file_llm_client_config_proto_depIdxs,
-		MessageInfos:      file_llm_client_config_proto_msgTypes,
+		GoTypes:           file_common_clients_llm_llm_client_config_proto_goTypes,
+		DependencyIndexes: file_common_clients_llm_llm_client_config_proto_depIdxs,
+		MessageInfos:      file_common_clients_llm_llm_client_config_proto_msgTypes,
 	}.Build()
-	File_llm_client_config_proto = out.File
-	file_llm_client_config_proto_goTypes = nil
-	file_llm_client_config_proto_depIdxs = nil
+	File_common_clients_llm_llm_client_config_proto = out.File
+	file_common_clients_llm_llm_client_config_proto_goTypes = nil
+	file_common_clients_llm_llm_client_config_proto_depIdxs = nil
 }

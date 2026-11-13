@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: webidentity_fp_config.proto
+// source: plugins/fingerprint/webidentity/webidentity_fp_config.proto
 
 package webidentity_fp_config_go_proto
 
@@ -56,7 +56,7 @@ const (
 
 func (x *WebIdentityFpConfig) Reset() {
 	*x = WebIdentityFpConfig{}
-	mi := &file_webidentity_fp_config_proto_msgTypes[0]
+	mi := &file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -68,7 +68,7 @@ func (x *WebIdentityFpConfig) String() string {
 func (*WebIdentityFpConfig) ProtoMessage() {}
 
 func (x *WebIdentityFpConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_webidentity_fp_config_proto_msgTypes[0]
+	mi := &file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -218,11 +218,11 @@ func (b0 WebIdentityFpConfig_builder) Build() *WebIdentityFpConfig {
 	return m0
 }
 
-var File_webidentity_fp_config_proto protoreflect.FileDescriptor
+var File_plugins_fingerprint_webidentity_webidentity_fp_config_proto protoreflect.FileDescriptor
 
-const file_webidentity_fp_config_proto_rawDesc = "" +
+const file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_rawDesc = "" +
 	"\n" +
-	"\x1bwebidentity_fp_config.proto\x12$goonami.proto.configs.fingerprinters\"\x86\x02\n" +
+	";plugins/fingerprint/webidentity/webidentity_fp_config.proto\x12$goonami.proto.configs.fingerprinters\"\x86\x02\n" +
 	"\x13WebIdentityFpConfig\x121\n" +
 	"\x14signatures_directory\x18\x01 \x01(\tR\x13signaturesDirectory\x122\n" +
 	"\x12write_html_to_file\x18\x02 \x01(\b:\x05falseR\x0fwriteHtmlToFile\x12>\n" +
@@ -230,11 +230,11 @@ const file_webidentity_fp_config_proto_rawDesc = "" +
 	"\x1bmaximum_storage_space_bytes\x18\x04 \x01(\x03:\t104857600R\x18maximumStorageSpaceBytesB\xb2\x01\n" +
 	"/com.google.goonami.proto.configs.fingerprintersB\x1dWebIdentityFpConfigOuterClassZ`github.com/google/goonami-scanner/plugins/fingerprint/webidentity/webidentity_fp_config_go_protob\beditionsp\xe9\a"
 
-var file_webidentity_fp_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_webidentity_fp_config_proto_goTypes = []any{
+var file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_goTypes = []any{
 	(*WebIdentityFpConfig)(nil), // 0: goonami.proto.configs.fingerprinters.WebIdentityFpConfig
 }
-var file_webidentity_fp_config_proto_depIdxs = []int32{
+var file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -242,26 +242,26 @@ var file_webidentity_fp_config_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_webidentity_fp_config_proto_init() }
-func file_webidentity_fp_config_proto_init() {
-	if File_webidentity_fp_config_proto != nil {
+func init() { file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_init() }
+func file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_init() {
+	if File_plugins_fingerprint_webidentity_webidentity_fp_config_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_webidentity_fp_config_proto_rawDesc), len(file_webidentity_fp_config_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_rawDesc), len(file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_webidentity_fp_config_proto_goTypes,
-		DependencyIndexes: file_webidentity_fp_config_proto_depIdxs,
-		MessageInfos:      file_webidentity_fp_config_proto_msgTypes,
+		GoTypes:           file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_goTypes,
+		DependencyIndexes: file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_depIdxs,
+		MessageInfos:      file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_msgTypes,
 	}.Build()
-	File_webidentity_fp_config_proto = out.File
-	file_webidentity_fp_config_proto_goTypes = nil
-	file_webidentity_fp_config_proto_depIdxs = nil
+	File_plugins_fingerprint_webidentity_webidentity_fp_config_proto = out.File
+	file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_goTypes = nil
+	file_plugins_fingerprint_webidentity_webidentity_fp_config_proto_depIdxs = nil
 }

@@ -17,7 +17,7 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v7.36.2
-// source: fingerprints.proto
+// source: plugins/fingerprint/webidentity/fingerprints.proto
 
 package fingerprints_go_proto
 
@@ -48,7 +48,7 @@ type Fingerprints struct {
 
 func (x *Fingerprints) Reset() {
 	*x = Fingerprints{}
-	mi := &file_fingerprints_proto_msgTypes[0]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -60,7 +60,7 @@ func (x *Fingerprints) String() string {
 func (*Fingerprints) ProtoMessage() {}
 
 func (x *Fingerprints) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[0]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -167,7 +167,7 @@ type SoftwareIdentity struct {
 
 func (x *SoftwareIdentity) Reset() {
 	*x = SoftwareIdentity{}
-	mi := &file_fingerprints_proto_msgTypes[1]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -179,7 +179,7 @@ func (x *SoftwareIdentity) String() string {
 func (*SoftwareIdentity) ProtoMessage() {}
 
 func (x *SoftwareIdentity) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[1]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -241,7 +241,7 @@ type ContentHash struct {
 
 func (x *ContentHash) Reset() {
 	*x = ContentHash{}
-	mi := &file_fingerprints_proto_msgTypes[2]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +253,7 @@ func (x *ContentHash) String() string {
 func (*ContentHash) ProtoMessage() {}
 
 func (x *ContentHash) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[2]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -317,7 +317,7 @@ type HashVersion struct {
 
 func (x *HashVersion) Reset() {
 	*x = HashVersion{}
-	mi := &file_fingerprints_proto_msgTypes[3]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -329,7 +329,7 @@ func (x *HashVersion) String() string {
 func (*HashVersion) ProtoMessage() {}
 
 func (x *HashVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[3]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -404,7 +404,7 @@ type PathVersion struct {
 
 func (x *PathVersion) Reset() {
 	*x = PathVersion{}
-	mi := &file_fingerprints_proto_msgTypes[4]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -416,7 +416,7 @@ func (x *PathVersion) String() string {
 func (*PathVersion) ProtoMessage() {}
 
 func (x *PathVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[4]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +478,7 @@ type Hash struct {
 
 func (x *Hash) Reset() {
 	*x = Hash{}
-	mi := &file_fingerprints_proto_msgTypes[5]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -490,7 +490,7 @@ func (x *Hash) String() string {
 func (*Hash) ProtoMessage() {}
 
 func (x *Hash) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[5]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -536,7 +536,7 @@ type Version struct {
 
 func (x *Version) Reset() {
 	*x = Version{}
-	mi := &file_fingerprints_proto_msgTypes[6]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -548,7 +548,7 @@ func (x *Version) String() string {
 func (*Version) ProtoMessage() {}
 
 func (x *Version) ProtoReflect() protoreflect.Message {
-	mi := &file_fingerprints_proto_msgTypes[6]
+	mi := &file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -585,11 +585,11 @@ func (b0 Version_builder) Build() *Version {
 	return m0
 }
 
-var File_fingerprints_proto protoreflect.FileDescriptor
+var File_plugins_fingerprint_webidentity_fingerprints_proto protoreflect.FileDescriptor
 
-const file_fingerprints_proto_rawDesc = "" +
+const file_plugins_fingerprint_webidentity_fingerprints_proto_rawDesc = "" +
 	"\n" +
-	"\x12fingerprints.proto\x12!goonami.proto.plugins.webidentity\"\xf1\x02\n" +
+	"2plugins/fingerprint/webidentity/fingerprints.proto\x12!goonami.proto.plugins.webidentity\"\xf1\x02\n" +
 	"\fFingerprints\x12`\n" +
 	"\x11software_identity\x18\x01 \x01(\v23.goonami.proto.plugins.webidentity.SoftwareIdentityR\x10softwareIdentity\x12U\n" +
 	"\x0econtent_hashes\x18\x02 \x03(\v2..goonami.proto.plugins.webidentity.ContentHashR\rcontentHashes\x12S\n" +
@@ -614,8 +614,8 @@ const file_fingerprints_proto_rawDesc = "" +
 	"\tfull_name\x18\x01 \x01(\tR\bfullNameB\xa7\x01\n" +
 	"2com.google.goonami.plugins.fingerprint.webidentityB\x16FingerprintsOuterClassP\x01ZWgithub.com/google/goonami-scanner/plugins/fingerprint/webidentity/fingerprints_go_protob\x06proto3"
 
-var file_fingerprints_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
-var file_fingerprints_proto_goTypes = []any{
+var file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_plugins_fingerprint_webidentity_fingerprints_proto_goTypes = []any{
 	(*Fingerprints)(nil),     // 0: goonami.proto.plugins.webidentity.Fingerprints
 	(*SoftwareIdentity)(nil), // 1: goonami.proto.plugins.webidentity.SoftwareIdentity
 	(*ContentHash)(nil),      // 2: goonami.proto.plugins.webidentity.ContentHash
@@ -624,7 +624,7 @@ var file_fingerprints_proto_goTypes = []any{
 	(*Hash)(nil),             // 5: goonami.proto.plugins.webidentity.Hash
 	(*Version)(nil),          // 6: goonami.proto.plugins.webidentity.Version
 }
-var file_fingerprints_proto_depIdxs = []int32{
+var file_plugins_fingerprint_webidentity_fingerprints_proto_depIdxs = []int32{
 	1, // 0: goonami.proto.plugins.webidentity.Fingerprints.software_identity:type_name -> goonami.proto.plugins.webidentity.SoftwareIdentity
 	2, // 1: goonami.proto.plugins.webidentity.Fingerprints.content_hashes:type_name -> goonami.proto.plugins.webidentity.ContentHash
 	3, // 2: goonami.proto.plugins.webidentity.Fingerprints.hash_versions:type_name -> goonami.proto.plugins.webidentity.HashVersion
@@ -640,26 +640,26 @@ var file_fingerprints_proto_depIdxs = []int32{
 	0, // [0:8] is the sub-list for field type_name
 }
 
-func init() { file_fingerprints_proto_init() }
-func file_fingerprints_proto_init() {
-	if File_fingerprints_proto != nil {
+func init() { file_plugins_fingerprint_webidentity_fingerprints_proto_init() }
+func file_plugins_fingerprint_webidentity_fingerprints_proto_init() {
+	if File_plugins_fingerprint_webidentity_fingerprints_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_fingerprints_proto_rawDesc), len(file_fingerprints_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugins_fingerprint_webidentity_fingerprints_proto_rawDesc), len(file_plugins_fingerprint_webidentity_fingerprints_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_fingerprints_proto_goTypes,
-		DependencyIndexes: file_fingerprints_proto_depIdxs,
-		MessageInfos:      file_fingerprints_proto_msgTypes,
+		GoTypes:           file_plugins_fingerprint_webidentity_fingerprints_proto_goTypes,
+		DependencyIndexes: file_plugins_fingerprint_webidentity_fingerprints_proto_depIdxs,
+		MessageInfos:      file_plugins_fingerprint_webidentity_fingerprints_proto_msgTypes,
 	}.Build()
-	File_fingerprints_proto = out.File
-	file_fingerprints_proto_goTypes = nil
-	file_fingerprints_proto_depIdxs = nil
+	File_plugins_fingerprint_webidentity_fingerprints_proto = out.File
+	file_plugins_fingerprint_webidentity_fingerprints_proto_goTypes = nil
+	file_plugins_fingerprint_webidentity_fingerprints_proto_depIdxs = nil
 }
