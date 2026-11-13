@@ -18,6 +18,7 @@ package bruteforce
 
 import (
 	"context"
+	"errors"
 	"io"
 	"slices"
 	"sync"
@@ -43,7 +44,9 @@ type Worker interface {
 	// provided credential.
 	// Returning (true, nil) indicates the credential is valid.
 	// Returning (false, nil) indicates the credential is invalid (normal authentication failure).
-	// Returning (false, err) indicates an unexpected error that should abort brute-forcing.
+	// Returning an error wrapping ErrStopBruteForce stops remaining credential attempts
+	// cleanly without failing the detector module.
+	// Returning any other (false, err) indicates an unexpected error that aborts brute-forcing.
 	TestCredential(ctx context.Context, service *nspb.NetworkService, cred Credential) (bool, error)
 }
 
@@ -63,6 +66,7 @@ type workerPool struct {
 	mu              sync.Mutex
 	attempts        int32
 	budgetExhausted bool
+	stopped         bool
 	matched         []int
 }
 
@@ -138,6 +142,11 @@ func (p *workerPool) runWorker(ctx context.Context, worker Worker) error {
 		log.DebugContextf(ctx, log.DebugLevelRequest, "attempting detection with credentials %s", cred)
 		valid, err := worker.TestCredential(ctx, p.service, cred)
 		if err != nil {
+			if errors.Is(err, ErrStopBruteForce) && ctx.Err() == nil {
+				log.DebugContextf(ctx, log.DebugLevelService, "stopping brute force for service: %v", err)
+				p.stop()
+				return nil
+			}
 			return err
 		}
 
@@ -178,13 +187,19 @@ func (p *workerPool) recordMatch(idx int) {
 	p.matched = append(p.matched, idx)
 }
 
+func (p *workerPool) stop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.stopped = true
+}
+
 // Done reports whether the pool should stop testing credentials, either because
-// a valid credential was found with stop-at-first enabled or because the
-// attempt budget was exhausted.
+// a valid credential was found with stop-at-first enabled, the attempt budget
+// was exhausted, or a worker requested stopping cleanly.
 func (p *workerPool) Done() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.budgetExhausted {
+	if p.stopped || p.budgetExhausted {
 		return true
 	}
 	return p.cfg.GetStopAtFirstValidCredentials() && len(p.matched) > 0
@@ -219,7 +234,7 @@ func (p *workerPool) result() poolResult {
 	return poolResult{
 		validCreds:      creds,
 		attempts:        p.attempts,
-		budgetExhausted: p.budgetExhausted && !stoppedAtFirst,
+		budgetExhausted: p.budgetExhausted && !stoppedAtFirst && !p.stopped,
 	}
 }
 

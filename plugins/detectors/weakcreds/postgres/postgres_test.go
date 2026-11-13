@@ -485,9 +485,12 @@ func TestDetector_Detect(t *testing.T) {
 		}
 
 		svc := makePostgresService(t, addr, npb.TransportProtocol_TCP)
-		_, err = det.Detect(ctx, svc)
-		if !errors.Is(err, postgresclient.ErrNotPostgresService) {
-			t.Fatalf("Detect() error = %v, want %v", err, postgresclient.ErrNotPostgresService)
+		reports, err := det.Detect(ctx, svc)
+		if err != nil {
+			t.Fatalf("Detect() unexpected error: %v", err)
+		}
+		if len(reports.GetDetectionReports()) != 0 {
+			t.Errorf("Detect() findings = %d, want 0", len(reports.GetDetectionReports()))
 		}
 		if got := nonSSLConns.Load(); got != 2 {
 			t.Errorf("non-SSL connections = %d, want 2 (1 fingerprint + 1 aborted credential attempt)", got)

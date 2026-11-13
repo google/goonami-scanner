@@ -21,6 +21,7 @@ package mysql
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/clients/mysqlclient"
@@ -163,6 +164,9 @@ func (h *Handler) TestCredential(ctx context.Context, service *networkservicepb.
 			return false, nil
 		}
 		log.DebugContextf(ctx, log.DebugLevelRequest, "MySQL authentication attempt for %q failed: %v", cred.Username, err)
+		if errors.Is(err, mysqlclient.ErrPasswordAuthUnsupported) || errors.Is(err, mysqlclient.ErrNotMySQLService) {
+			return false, fmt.Errorf("%w: %w", bruteforce.ErrStopBruteForce, err)
+		}
 		return false, err
 	}
 	_ = db.Close()

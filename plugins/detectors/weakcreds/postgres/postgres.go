@@ -20,6 +20,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/clients/postgresclient"
@@ -169,6 +170,9 @@ func (h *Handler) TestCredential(ctx context.Context, service *nspb.NetworkServi
 	}
 	if errors.Is(err, postgresclient.ErrAuthFailed) {
 		return false, nil
+	}
+	if errors.Is(err, postgresclient.ErrPasswordAuthUnsupported) || errors.Is(err, postgresclient.ErrNotPostgresService) {
+		return false, fmt.Errorf("%w: %w", bruteforce.ErrStopBruteForce, err)
 	}
 	return false, err
 }

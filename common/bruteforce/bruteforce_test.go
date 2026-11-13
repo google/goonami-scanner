@@ -19,6 +19,7 @@ package bruteforce
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -498,6 +499,28 @@ func TestDetector_Detect(t *testing.T) {
 				},
 			},
 			wantErr: errUnexpected,
+		},
+		{
+			name: "when_test_credential_returns_err_stop_brute_force_stops_cleanly_without_budget_exhausted",
+			bfCfg: bfpb.BruteForceConfig_builder{
+				MaxAttemptsPerService:       proto.Int32(2),
+				StopAtFirstValidCredentials: proto.Bool(false),
+			}.Build(),
+			store: smallStore([]string{"admin", "root"}, []string{"123", "password"}),
+			handler: &fakeHandler{
+				vuln: baseVuln,
+				testCredFn: func(ctx context.Context, service *nspb.NetworkService, cred Credential) (bool, error) {
+					if cred.Username == "root" && cred.Password == "123" {
+						return false, fmt.Errorf("%w: banner rejected", ErrStopBruteForce)
+					}
+					if cred.Username == "root" && cred.Password == "password" {
+						t.Errorf("TestCredential() called for %s after ErrStopBruteForce", cred)
+					}
+					return cred.Username == "admin" && cred.Password == "123", nil
+				},
+			},
+			wantDetails:         []string{"admin:123"},
+			wantBudgetExhausted: 0,
 		},
 		{
 			name: "when_max_attempts_reached_records_budget_exhausted_and_stops",

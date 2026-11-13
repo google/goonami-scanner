@@ -21,6 +21,7 @@ package ssh
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/goonami-scanner/common/bruteforce"
 	"github.com/google/goonami-scanner/common/clients/sshclient"
@@ -37,6 +38,8 @@ import (
 
 const (
 	moduleName = "dt/wk/ssh"
+
+	maxConsecutiveTransportErrors = 3
 
 	probeUser     = "goonami-ssh-probe"
 	probePassword = "goonami-ssh-invalid-probe-password"
@@ -72,10 +75,36 @@ func (h *Handler) Name() string {
 	return moduleName
 }
 
-// NewWorker returns a Worker for testing credentials. Because Handler is
-// stateless across attempts, it returns itself.
+type sshWorker struct {
+	handler           *Handler
+	consecutiveErrors int
+}
+
+// NewWorker returns a Worker for testing SSH credentials sequentially.
 func (h *Handler) NewWorker() bruteforce.Worker {
-	return h
+	return &sshWorker{handler: h}
+}
+
+func (w *sshWorker) Close() error {
+	return w.handler.Close()
+}
+
+func (w *sshWorker) TestCredential(ctx context.Context, service *networkservicepb.NetworkService, cred bruteforce.Credential) (bool, error) {
+	ok, err := w.handler.TestCredential(ctx, service, cred)
+	if err == nil {
+		w.consecutiveErrors = 0
+		return ok, nil
+	}
+	if errors.Is(err, bruteforce.ErrStopBruteForce) || ctx.Err() != nil {
+		return false, err
+	}
+	w.consecutiveErrors++
+	if w.consecutiveErrors >= maxConsecutiveTransportErrors {
+		log.DebugContextf(ctx, log.DebugLevelService, "stopping SSH brute force after %d consecutive transport errors: %v", w.consecutiveErrors, err)
+		return false, fmt.Errorf("%w: %w", bruteforce.ErrStopBruteForce, err)
+	}
+	log.DebugContextf(ctx, log.DebugLevelRequest, "SSH authentication attempt for %q failed: %v", cred.Username, err)
+	return false, nil
 }
 
 // Close releases resources held by the worker.
@@ -149,8 +178,13 @@ func (h *Handler) TestCredential(ctx context.Context, service *networkservicepb.
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return false, ctxErr
 		}
-		log.DebugContextf(ctx, log.DebugLevelRequest, "SSH authentication attempt for %q failed: %v", cred.Username, err)
-		return false, nil
+		if errors.Is(err, sshclient.ErrAuthFailed) {
+			return false, nil
+		}
+		if errors.Is(err, sshclient.ErrPasswordAuthUnsupported) {
+			return false, fmt.Errorf("%w: %w", bruteforce.ErrStopBruteForce, err)
+		}
+		return false, err
 	}
 	_ = conn.Close()
 	return true, nil

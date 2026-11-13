@@ -20,7 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -491,5 +493,86 @@ func TestHandler_TestCredentialErrors(t *testing.T) {
 				t.Errorf("TestCredential(%v, %v) error = %v, want %v", svc, cred, err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestDetect_StopsCleanlyOnMidRunTransportFailure(t *testing.T) {
+	targetSvc := startFakePasswordSSHServer(t, nil, false)
+
+	// Proxy TCP connections: forward the first connection (fingerprint probe), then
+	// close subsequent connections immediately to simulate a target dropping SSH traffic.
+	targetAddr, err := netendpoint.ToURIAuthority(targetSvc.GetNetworkEndpoint())
+	if err != nil {
+		t.Fatalf("ToURIAuthority() failed: %v", err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() failed: %v", err)
+	}
+	t.Cleanup(func() { _ = ln.Close() })
+
+	var connCount atomic.Int32
+	go func() {
+		for {
+			clientConn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			n := connCount.Add(1)
+			if n > 1 {
+				_ = clientConn.Close()
+				continue
+			}
+			go func(c net.Conn) {
+				defer c.Close()
+				upstream, err := net.Dial("tcp", targetAddr)
+				if err != nil {
+					return
+				}
+				defer upstream.Close()
+				done := make(chan struct{})
+				go func() {
+					_, _ = io.Copy(upstream, c)
+					close(done)
+				}()
+				_, _ = io.Copy(c, upstream)
+				<-done
+			}(clientConn)
+		}
+	}()
+
+	proxyAddr := ln.Addr().(*net.TCPAddr)
+	svc := networkservicepb.NetworkService_builder{
+		ServiceName:       "ssh",
+		TransportProtocol: networkpb.TransportProtocol_TCP,
+		NetworkEndpoint: networkpb.NetworkEndpoint_builder{
+			Type: networkpb.NetworkEndpoint_IP_PORT,
+			IpAddress: networkpb.IpAddress_builder{
+				Address:       proxyAddr.IP.String(),
+				AddressFamily: networkpb.AddressFamily_IPV4,
+			}.Build(),
+			Port: networkpb.Port_builder{
+				PortNumber: uint32(proxyAddr.Port),
+			}.Build(),
+		}.Build(),
+	}.Build()
+
+	detector, err := NewWithOptions(t.Context(), fastBruteForceConfig(true), &bruteforce.Options{
+		CredentialStore: smallStore([]string{"root", "admin", "user"}, []string{"p1", "p2", "p3"}),
+	})
+	if err != nil {
+		t.Fatalf("NewWithOptions() unexpected error: %v", err)
+	}
+
+	reports, err := detector.Detect(t.Context(), svc)
+	if err != nil {
+		t.Fatalf("Detect() unexpected error: %v", err)
+	}
+	if len(reports.GetDetectionReports()) != 0 {
+		t.Errorf("len(Detect().GetDetectionReports()) = %d, want 0", len(reports.GetDetectionReports()))
+	}
+	// 1 fingerprint probe + maxConsecutiveTransportErrors (3) failed attempts = 4 connections, not 1+9=10.
+	if got, want := connCount.Load(), int32(1+maxConsecutiveTransportErrors); got != want {
+		t.Errorf("connection count = %d, want %d", got, want)
 	}
 }

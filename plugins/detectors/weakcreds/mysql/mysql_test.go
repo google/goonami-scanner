@@ -550,8 +550,8 @@ func TestDetect_NonAuthErrorStopsBruteForcingEarly(t *testing.T) {
 	}
 
 	reports, err := detector.Detect(ctx, stopsEarlySvc)
-	if !errors.Is(err, mysqlclient.ErrPasswordAuthUnsupported) {
-		t.Fatalf("Detect(%v) error = %v, want %v", stopsEarlySvc, err, mysqlclient.ErrPasswordAuthUnsupported)
+	if err != nil {
+		t.Fatalf("Detect(%v) unexpected error: %v", stopsEarlySvc, err)
 	}
 	if len(reports.GetDetectionReports()) != 0 {
 		t.Errorf("len(Detect(%v).GetDetectionReports()) = %d, want 0", stopsEarlySvc, len(reports.GetDetectionReports()))

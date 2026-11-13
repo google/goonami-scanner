@@ -48,6 +48,11 @@ var (
 
 	// ErrVulnerabilityNil is returned when the handler's base vulnerability is nil.
 	ErrVulnerabilityNil = errors.New("handler vulnerability is nil")
+
+	// ErrStopBruteForce signals that the target service no longer accepts password
+	// authentication or is no longer reachable as the expected protocol, stopping
+	// remaining credential attempts cleanly without failing the detector module.
+	ErrStopBruteForce = errors.New("stop brute-forcing service")
 )
 
 // Detector is a generic brute-force vulnerability detector that wraps a Handler
