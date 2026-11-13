@@ -308,7 +308,10 @@ func identityToNewService(ctx context.Context, service *nspb.NetworkService, cra
 	// then all the identification information
 	var versions []*spb.Version
 	for _, v := range identity.Versions {
-		versions = append(versions, spb.Version_builder{FullVersionString: v}.Build())
+		versions = append(versions, spb.Version_builder{
+			Type:              spb.Version_NORMAL,
+			FullVersionString: v,
+		}.Build())
 	}
 
 	wsc := newService.GetServiceContext().GetWebServiceContext()

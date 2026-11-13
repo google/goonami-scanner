@@ -257,9 +257,9 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{FullVersionString: "v1.0"}.Build(),
-								spb.Version_builder{FullVersionString: "v2.0"}.Build(),
-								spb.Version_builder{FullVersionString: "v3.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v1.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v2.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v3.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
@@ -320,7 +320,7 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{FullVersionString: "v2.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v2.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
@@ -394,7 +394,7 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{FullVersionString: "v1.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v1.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
@@ -414,7 +414,7 @@ func TestFingerprint(t *testing.T) {
 						Software:        spb.Software_builder{Name: "nginx"}.Build(),
 						VersionSet: spb.VersionSet_builder{
 							Versions: []*spb.Version{
-								spb.Version_builder{FullVersionString: "v2.0"}.Build(),
+								spb.Version_builder{Type: spb.Version_NORMAL, FullVersionString: "v2.0"}.Build(),
 							},
 						}.Build(),
 						CrawlResults: []*wcpb.CrawlResult{
