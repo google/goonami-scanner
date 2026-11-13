@@ -1,0 +1,15 @@
+http_request {
+  method: GET
+  uri: "/MULTI_HEADER"
+  response {
+    http_status: 200
+    expect_all {
+      conditions {
+        header {
+          name: "Set-Cookie"
+        }
+        contains: "KC_RESTART=restart456"
+      }
+    }
+  }
+}

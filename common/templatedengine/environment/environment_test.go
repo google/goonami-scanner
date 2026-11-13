@@ -60,7 +60,7 @@ func TestEnvironment_InitializeFor(t *testing.T) {
 		{key: VarNetServicePort, wantVal: "80"},
 		{key: VarNetServiceIP, wantVal: "1.2.3.4"},
 		{key: VarNetServiceProtocol, wantVal: "TCP"},
-		{key: VarNetServiceBaseURL, wantVal: "http://example.com:80"},
+		{key: VarNetServiceBaseURL, wantVal: "http://example.com:80/"},
 		{key: VarUtilTimestamp, wantExpr: regexp.MustCompile(`^\d+$`)},
 	}
 

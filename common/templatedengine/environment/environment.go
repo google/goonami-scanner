@@ -76,6 +76,9 @@ func (e *Environment) InitializeFor(ctx context.Context, service *nspb.NetworkSe
 	if err != nil {
 		return err
 	}
+	if !strings.HasSuffix(webRoot, "/") {
+		webRoot += "/"
+	}
 
 	e.Set(VarNetServiceBaseURL, webRoot)
 	e.Set(VarNetServiceProtocol, strings.TrimSpace(service.GetTransportProtocol().String()))

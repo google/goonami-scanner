@@ -1,0 +1,23 @@
+http_request {
+  method: GET
+  uri: "/MULTI_HEADER"
+  response {
+    http_status: 200
+    extract_any {
+      patterns {
+        variable_name: "missing_var"
+        from_header {
+          name: "X-Missing"
+        }
+        regexp: "(.*)"
+      }
+      patterns {
+        variable_name: "empty_var"
+        from_header {
+          name: "X-Empty"
+        }
+        regexp: "(.*)"
+      }
+    }
+  }
+}

@@ -69,6 +69,11 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 		} else if r.URL.Path == "/HEADER_EXPECT" {
 			w.Header().Set("X-Status", "Ready")
 			w.WriteHeader(http.StatusOK)
+		} else if r.URL.Path == "/MULTI_HEADER" {
+			w.Header().Add("Set-Cookie", "AUTH_SESSION_ID=session123; Path=/; HttpOnly")
+			w.Header().Add("Set-Cookie", "KC_RESTART=restart456; Path=/; HttpOnly")
+			w.Header().Add("X-Empty", "")
+			w.WriteHeader(http.StatusOK)
 		} else if r.URL.Path == "/REDIRECT" {
 			http.Redirect(w, r, "/OK", http.StatusFound)
 		} else {
@@ -194,6 +199,28 @@ func TestHTTPActionRunner_Run(t *testing.T) {
 		{
 			name:       "when_disable_follow_redirects_is_false_follows_redirect_returns_ok",
 			actionFile: "testdata/follow_redirects.textproto",
+		},
+		{
+			name:       "when_multiple_headers_present_extracts_from_matching_values",
+			actionFile: "testdata/multi_header_extraction_succeeds.textproto",
+			wantVars: map[string]string{
+				"auth_session": "session123",
+				"kc_restart":   "restart456",
+			},
+		},
+		{
+			name:       "when_multiple_headers_present_expectation_matches_later_value",
+			actionFile: "testdata/multi_header_expectation_works.textproto",
+		},
+		{
+			name:       "when_multiple_headers_present_expectation_fails_returns_error",
+			actionFile: "testdata/multi_header_expectation_fails.textproto",
+			wantErr:    ErrActionFailed,
+		},
+		{
+			name:       "when_header_missing_or_empty_extraction_fails_returns_error",
+			actionFile: "testdata/missing_header_extraction_fails.textproto",
+			wantErr:    ErrActionFailed,
 		},
 	}
 

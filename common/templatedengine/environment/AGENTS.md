@@ -33,9 +33,9 @@ between actions.
 -   **Service and Utility Variable Keys (`VarUtilTimestamp`,
     `VarNetService*`)**: Built-in variable name constants populated by
     `InitializeFor` for workflow start time in milliseconds (`VarUtilTimestamp`)
-    and target web root, protocol, hostname, port, and IP
-    (`VarNetServiceBaseURL`, `VarNetServiceProtocol`, `VarNetServiceHostname`,
-    `VarNetServicePort`, `VarNetServiceIP`).
+    and target web root URL with trailing slash, protocol, hostname, port, and
+    IP (`VarNetServiceBaseURL`, `VarNetServiceProtocol`,
+    `VarNetServiceHostname`, `VarNetServicePort`, `VarNetServiceIP`).
 -   **Callback Variable Keys (`VarCallback*`)**: Built-in variable name
     constants for callback server parameters (`VarCallbackURI`,
     `VarCallbackDNS`, `VarCallbackSecret`, `VarCallbackAddress`,
@@ -76,7 +76,7 @@ func prepareTargetURL(
     return "", err
   }
 
-  tmpl := "{{ T_NS_BASEURL }}/verify?csrf={{ token }}"
+  tmpl := "{{ T_NS_BASEURL }}verify?csrf={{ token }}"
   return env.Substitute(ctx, tmpl), nil
 }
 ```

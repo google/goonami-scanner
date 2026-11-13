@@ -1,0 +1,23 @@
+http_request {
+  method: GET
+  uri: "/MULTI_HEADER"
+  response {
+    http_status: 200
+    extract_all {
+      patterns {
+        variable_name: "auth_session"
+        from_header {
+          name: "Set-Cookie"
+        }
+        regexp: "AUTH_SESSION_ID=([^;]+)"
+      }
+      patterns {
+        variable_name: "kc_restart"
+        from_header {
+          name: "set-cookie"
+        }
+        regexp: "KC_RESTART=([^;]+)"
+      }
+    }
+  }
+}

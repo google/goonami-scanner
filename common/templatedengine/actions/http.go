@@ -197,8 +197,10 @@ func (r *HTTPActionRunner) checkExpectation(ctx context.Context, resp *http.Resp
 
 	header := cond.GetHeader()
 	headerName := env.Substitute(ctx, header.GetName())
-	if strings.Contains(resp.Header.Get(headerName), contains) {
-		return nil
+	for _, headerValue := range resp.Header.Values(headerName) {
+		if strings.Contains(headerValue, contains) {
+			return nil
+		}
 	}
 
 	return fmt.Errorf("%w: %q: expectations: header %q does not contain %q", ErrActionFailed, name, headerName, contains)
@@ -250,13 +252,20 @@ func (r *HTTPActionRunner) performExtraction(ctx context.Context, resp *http.Res
 
 	header := ext.GetFromHeader()
 	headerName := env.Substitute(ctx, header.GetName())
-	headerValue := resp.Header.Get(headerName)
-
-	if err := env.Extract(ctx, headerValue, varName, pattern); err != nil {
-		return fmt.Errorf("%w: %q: %q header: %v", ErrActionFailed, name, headerName, err)
+	for _, headerValue := range resp.Header.Values(headerName) {
+		if headerValue == "" {
+			continue
+		}
+		err := env.Extract(ctx, headerValue, varName, pattern)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, environment.ErrFailedExtraction) {
+			return fmt.Errorf("%w: %q: %q header: %v", ErrActionFailed, name, headerName, err)
+		}
 	}
 
-	return nil
+	return fmt.Errorf("%w: %q: %q header: %v: %q using pattern %q", ErrActionFailed, name, headerName, environment.ErrFailedExtraction, varName, pattern)
 }
 
 func (r *HTTPActionRunner) getHTTPClient(cfg *config.Config, httpAction *tpb.HttpAction) (goohttp.Client, error) {
