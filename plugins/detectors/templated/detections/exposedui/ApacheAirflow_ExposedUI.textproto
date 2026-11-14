@@ -1,0 +1,99 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Exposed Apache Airflow Server Detector"
+  author: "am0o0"
+  version: "0.1"
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "APACHE_AIRFLOW_SERVER_EXPOSED"
+  }
+  severity: CRITICAL
+  title: "Exposed Apache Airflow Server"
+  description: "Apache Airflow Server is misconfigured and can be accessed publicly"
+  recommendation: "Please disable public access to your Apache Airflow instance. You can enable authentication for your instance by following the instructions here: https://airflow.apache.org/docs/apache-airflow-providers-fab/stable/auth-manager/api-authentication.html and here: https://airflow.apache.org/docs/apache-airflow-providers-fab/stable/auth-manager/webserver-authentication.html."
+}
+
+###########
+# ACTIONS #
+###########
+
+# Fingerprint the Apache Airflow instance via /api/v1/version.
+actions: {
+  name: "fingerprint_airflow"
+  http_request: {
+    method: GET
+    uri: "/api/v1/version"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"version\":" },
+          { body: {} contains: "\"git_version\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"version\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "AIRFLOW_VERSION"
+          }
+        ]
+      }
+    }
+  }
+}
+
+# Verify unauthenticated access to DAGs listing via /api/v1/dags.
+actions: {
+  name: "check_exposed_dags"
+  http_request: {
+    method: GET
+    uri: "/api/v1/dags"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"dags\":" },
+          { body: {} contains: "\"total_entries\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"total_entries\"\\s*:\\s*(\\d+)"
+            variable_name: "AIRFLOW_DAGS_COUNT"
+          }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "fingerprint_airflow",
+    "check_exposed_dags"
+  ]
+}
