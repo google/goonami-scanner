@@ -1,0 +1,76 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "InfluxDB_ExposedUI"
+}
+
+tests: {
+  name: "whenUnauthenticatedInfluxDbExecutesShowUsers_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 200
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.6" },
+          { name: "X-Influxdb-Build" value: "OSS" }
+        ]
+        body_content: "{\"results\":[{\"statement_id\":0,\"series\":[{\"name\":\"databases\",\"columns\":[\"name\"],\"values\":[[\"_internal\"]]}]},{\"statement_id\":1,\"series\":[{\"columns\":[\"user\",\"admin\"]}]}]}\n"
+        condition: {
+          request_type: POST
+          body_content: ["q=SHOW+DATABASES%3BSHOW+USERS"]
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenAuthEnabledReturns401_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.6" }
+        ]
+        body_content: "{\"error\":\"unable to parse authentication credentials\"}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNonInfluxJsonMissingHeaders_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 200
+        body_content: "{\"results\":[{\"statement_id\":0,\"series\":[{\"columns\":[\"user\",\"admin\"]}]}]}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServerReflectsQuery_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}

