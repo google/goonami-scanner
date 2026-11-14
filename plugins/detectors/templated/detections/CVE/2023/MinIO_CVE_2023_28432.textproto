@@ -1,0 +1,94 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "MinIO_CVE_2023_28432"
+  author: "Google Tsunami Team"
+  version: "1.0"
+  description:
+    "Detects CVE-2023-28432 unauthenticated cluster bootstrap information"
+    " disclosure in distributed MinIO deployments exposing plaintext root or"
+    " secret credentials via /minio/bootstrap/v1/verify."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "MINIO_INFORMATION_DISCLOSURE_CLUSTER_ENVIRONMENT"
+  }
+  severity: CRITICAL
+  title: "MinIO Information Disclosure in Cluster Environment"
+  description:
+    "In distributed MinIO cluster deployments (>= RELEASE.2019-12-17T23-16-33Z"
+    " and < RELEASE.2023-03-20T20-16-18Z), the /minio/bootstrap/v1/verify"
+    " endpoint lacks internode token authentication and returns serialized"
+    " ServerSystemConfig JSON containing all MINIO_* environment variables,"
+    " including plaintext MINIO_ROOT_USER / MINIO_ROOT_PASSWORD or legacy"
+    " MINIO_ACCESS_KEY / MINIO_SECRET_KEY administrative credentials."
+  recommendation:
+    "Upgrade MinIO to RELEASE.2023-03-20T20-16-18Z or later and rotate"
+    " MINIO_ROOT_PASSWORD / MINIO_SECRET_KEY credentials."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2023-28432"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "verify_bootstrap_env_disclosure"
+  action_phase: ACTION_PHASE_DETECTION
+  http_request: {
+    method: POST
+    uri: "/minio/bootstrap/v1/verify"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"MinioEndpoints\":[" },
+          { body: {} contains: "\"SetCount\":" },
+          { body: {} contains: "\"DrivesPerSet\":" },
+          { body: {} contains: "\"Endpoints\":[" },
+          { body: {} contains: "\"MinioEnv\":{" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"MINIO_ROOT_PASSWORD\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "leaked_secret"
+          },
+          {
+            from_body: {}
+            regexp: "\"MINIO_SECRET_KEY\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "leaked_secret"
+          }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "verify_bootstrap_env_disclosure"
+  ]
+}
