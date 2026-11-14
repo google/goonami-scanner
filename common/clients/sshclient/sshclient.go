@@ -58,10 +58,22 @@ var (
 	ErrAuthFailed = errors.New("ssh: authentication failed")
 )
 
+// SleepContext pauses execution for duration d or returns ctx.Err() immediately
+// if ctx is canceled before d elapses.
+func SleepContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // Client manages SSH connection establishment and password authentication.
 type Client struct {
-	coreConfig *config.Config
-	config     *sccpb.SSHClientConfig
+	config *sccpb.SSHClientConfig
 }
 
 // New creates a new SSH Client populated from configuration.
@@ -79,8 +91,7 @@ func New(cfg *config.Config) *Client {
 	}
 
 	return &Client{
-		coreConfig: cfg,
-		config:     sshCfg,
+		config: sshCfg,
 	}
 }
 
@@ -119,7 +130,8 @@ func (c *Client) dial(ctx context.Context, addr string, clientConfig *ssh.Client
 // responsible for closing). On failure, it returns a classified sentinel error (such as
 // ErrAuthFailed, ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
 func (c *Client) Connect(ctx context.Context, addr, username, password string) (*ssh.Client, error) {
-	return c.ConnectWithPasswords(ctx, addr, username, password)
+	client, _, err := c.ConnectAndReturnServerVersion(ctx, addr, username, password)
+	return client, err
 }
 
 // ConnectWithPasswords attempts SSH password or keyboard-interactive authentication with the given
@@ -128,8 +140,17 @@ func (c *Client) Connect(ctx context.Context, addr, username, password string) (
 // for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
 // ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
 func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, error) {
+	client, _, err := c.ConnectAndReturnServerVersion(ctx, addr, username, passwords...)
+	return client, err
+}
+
+// ConnectAndReturnServerVersion behaves like ConnectWithPasswords and additionally returns the
+// peer's SSH identification banner (for example, "SSH-2.0-OpenSSH_9.9") whenever the SSH handshake
+// reached user authentication, even if authentication subsequently fails with ErrAuthFailed or
+// ErrPasswordAuthUnsupported.
+func (c *Client) ConnectAndReturnServerVersion(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	ctx = log.ContextForModule(ctx, "clients/sshclient")
@@ -138,32 +159,10 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 	connCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	attempt := 0
-	abort := false
+	session := &passwordAuthSession{passwords: passwords}
 	clientConfig := &ssh.ClientConfig{
-		User: username,
-		AuthCallback: func(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
-			if abort {
-				return nil, ErrAuthFailed
-			}
-			hasPassword := slices.Contains(authCtx.AllowedMethods, "password")
-			hasKeyboardInteractive := slices.Contains(authCtx.AllowedMethods, "keyboard-interactive")
-			if !hasPassword && !hasKeyboardInteractive {
-				if attempt == 0 {
-					return nil, ErrPasswordAuthUnsupported
-				}
-				return nil, ErrAuthFailed
-			}
-			if attempt >= len(passwords) {
-				return nil, ErrAuthFailed
-			}
-			password := passwords[attempt]
-			attempt++
-			if hasPassword {
-				return ssh.Password(password), nil
-			}
-			return keyboardInteractiveAuth(password, &abort), nil
-		},
+		User:            username,
+		AuthCallback:    session.authCallback,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         timeout,
 	}
@@ -171,36 +170,90 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 	client, err := c.dial(connCtx, addr, clientConfig)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
+			return nil, session.serverVersion, ctxErr
 		}
 		log.DebugContextf(ctx, log.DebugLevelRequest, "SSH connection/authentication to %s for user %q failed: %v", addr, username, err)
 		if errors.Is(connCtx.Err(), context.DeadlineExceeded) {
-			return nil, fmt.Errorf("%w: %w", ErrNotSSHService, err)
+			return nil, session.serverVersion, fmt.Errorf("%w: %w", ErrNotSSHService, err)
 		}
-		return nil, ClassifyError(err)
+		return nil, session.serverVersion, ClassifyError(err)
 	}
-	return client, nil
+	if v := string(client.ServerVersion()); v != "" {
+		session.serverVersion = v
+	}
+	if session.acceptedUnchallengedNonEmptyPassword() {
+		_ = client.Close()
+		return nil, session.serverVersion, ErrAuthFailed
+	}
+	return client, session.serverVersion, nil
 }
 
-func keyboardInteractiveAuth(password string, abort *bool) ssh.AuthMethod {
+type passwordAuthSession struct {
+	passwords          []string
+	serverVersion      string
+	attempt            int
+	abort              bool
+	passwordChallenged bool
+}
+
+func (s *passwordAuthSession) authCallback(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
+	if authCtx.Metadata != nil {
+		s.serverVersion = string(authCtx.Metadata.ServerVersion())
+	}
+	if s.abort {
+		return nil, ErrAuthFailed
+	}
+	hasPassword := slices.Contains(authCtx.AllowedMethods, "password")
+	hasKeyboardInteractive := slices.Contains(authCtx.AllowedMethods, "keyboard-interactive")
+	if !hasPassword && !hasKeyboardInteractive {
+		if s.attempt == 0 {
+			return nil, ErrPasswordAuthUnsupported
+		}
+		return nil, ErrAuthFailed
+	}
+	if s.attempt >= len(s.passwords) {
+		return nil, ErrAuthFailed
+	}
+	password := s.passwords[s.attempt]
+	s.attempt++
+	s.passwordChallenged = hasPassword
+	if hasPassword {
+		return ssh.Password(password), nil
+	}
+	return s.keyboardInteractive(password), nil
+}
+
+func (s *passwordAuthSession) keyboardInteractive(password string) ssh.AuthMethod {
 	emptyPrompts := 0
-	passwordSent := false
 	return ssh.KeyboardInteractive(func(_, _ string, questions []string, _ []bool) ([]string, error) {
 		if len(questions) == 0 {
 			emptyPrompts++
 			if emptyPrompts > maxKeyboardInteractiveEmptyPrompts {
-				*abort = true
+				s.abort = true
 				return nil, ErrAuthFailed
 			}
 			return nil, nil
 		}
-		if passwordSent || len(questions) != 1 {
-			*abort = true
+		if s.passwordChallenged || len(questions) != 1 {
+			s.abort = true
 			return nil, ErrAuthFailed
 		}
-		passwordSent = true
+		s.passwordChallenged = true
 		return []string{password}, nil
 	})
+}
+
+// acceptedUnchallengedNonEmptyPassword reports whether ssh.NewClientConn
+// succeeded without challenging a candidate password while "" was absent from
+// the remaining candidate slice—either because go_crypto/ssh's implicit
+// pre-flight RFC 4252 "none" request succeeded (attempt == 0) or because a PAM
+// keyboard-interactive server granted access after zero prompts
+// (!passwordChallenged).
+func (s *passwordAuthSession) acceptedUnchallengedNonEmptyPassword() bool {
+	if s.passwordChallenged {
+		return false
+	}
+	return !slices.Contains(s.passwords[max(0, s.attempt-1):], "")
 }
 
 // ClassifyError maps standard network and SSH errors into canonical sentinels wrapping the original error.

@@ -18,18 +18,30 @@ non-SSH endpoints.
     `DefaultTimeout`.
 -   **`(*Client).Connect(ctx, addr, username, password)`**: Dials `addr` within
     `Timeout()`, skips host key verification, and attempts a single password or
-    keyboard-interactive login for `username`. Returns an established
-    `*ssh.Client` (which the caller must close) on success, or an error
-    classified via `ClassifyError` on failure.
+    single-prompt keyboard-interactive login for `username` (rejecting
+    non-empty passwords on unchallenged `"none"` or zero-prompt logins with
+    `ErrAuthFailed`). Returns an established `*ssh.Client` (which the caller
+    must close) on success, or a classified sentinel error on failure.
 -   **`(*Client).ConnectWithPasswords(ctx, addr, username, passwords...)`**:
     Dials `addr` within `Timeout()`, skips host key verification, and tries each
     password sequentially (using `"password"` authentication when advertised, or
-    falling back to `"keyboard-interactive"`) within a single SSH connection
-    handshake for `username`. Returns an established `*ssh.Client` on success,
-    or an error classified via `ClassifyError` on failure.
+    falling back to single-prompt `"keyboard-interactive"`) within a single SSH
+    connection handshake for `username`. Non-empty passwords that were never
+    challenged (such as RFC 4252 `"none"` or zero-prompt PAM
+    `"keyboard-interactive"` logins) are rejected with `ErrAuthFailed`. Returns
+    an established `*ssh.Client` on success, or a classified sentinel error on
+    failure.
+-   **`(*Client).ConnectAndReturnServerVersion(ctx, addr, username,
+    passwords...)`**: Behaves like `ConnectWithPasswords` and additionally
+    returns the peer's `SSH-*` identification banner whenever the SSH handshake
+    reaches user authentication, even if authentication subsequently fails with
+    `ErrAuthFailed` or `ErrPasswordAuthUnsupported`.
 -   **`(*Client).Timeout()` and `DefaultTimeout`**: `Timeout()` returns the
     active connection and authentication `time.Duration`, defaulting to
     `DefaultTimeout` (`5s`) when no positive timeout is configured.
+-   **`SleepContext(ctx context.Context, d time.Duration) error`**: Pauses for
+    `d` or returns `ctx.Err()` immediately if `ctx` is canceled, providing a
+    shared backoff helper for SSH penalty cooldown loops.
 -   **`ClassifyError(err error) error`**: Wraps raw network, EOF, banner, and
     SSH authentication errors with canonical sentinel errors while returning
     `nil`, context errors, and unrecognized errors unchanged.
