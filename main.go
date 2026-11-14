@@ -52,6 +52,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/detectors/php2shell"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
+	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/ftp"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/mysql"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/postgres"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/ssh"
