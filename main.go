@@ -54,6 +54,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/mysql"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/postgres"
+	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/redis"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/ssh"
 
 	cbpb "github.com/google/goonami-scanner/tools/callbackserver/callbackserver_config_go_proto"
