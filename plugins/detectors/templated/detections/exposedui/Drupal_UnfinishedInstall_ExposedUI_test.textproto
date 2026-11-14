@@ -1,0 +1,81 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "Drupal_UnfinishedInstall_ExposedUI"
+}
+
+tests: {
+  name: "whenVulnerable_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/install.php?langcode=en&profile=standard&continue=1&locale=en"
+        status: 200
+        body_content: "<meta name=\"Generator\" content=\"Drupal 9\" /><script src=\"/core/misc/drupal.js\"></script><form id=\"install-settings-form\"><h2>Set up database</h2></form>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenDrupalAlreadyInstalled_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/install.php?langcode=en&profile=standard&continue=1&locale=en"
+        status: 200
+        body_content: "<meta name=\"Generator\" content=\"Drupal 9\" /><script src=\"/core/misc/drupal.js\"></script><h2>Drupal already installed</h2><p>To start over, you must empty your existing database.</p>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "GET /install.php?langcode=en&profile=standard&continue=1&locale=en HTTP/1.1\r\nHost: echo.local\r\nUser-Agent: GoonamiScanner"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNonDrupal200_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "<html><body>Welcome to My Home Page</body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when404NotFound_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "404 Not Found"
+      }
+    ]
+  }
+}
