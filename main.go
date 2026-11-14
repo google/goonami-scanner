@@ -47,6 +47,7 @@ import (
 
 	// detectors
 	_ "github.com/google/goonami-scanner/plugins/detectors/adkweakcreds"
+	_ "github.com/google/goonami-scanner/plugins/detectors/cve20171000353"
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve202241137"
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve2026119618"
 	_ "github.com/google/goonami-scanner/plugins/detectors/opensshauthbypass"
