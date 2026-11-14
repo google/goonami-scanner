@@ -1,0 +1,234 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "InfluxDB_CVE_2019_20933"
+}
+
+tests: {
+  name: "whenEmptySecretJwtExecutesQueryForAdmin_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" }
+        ]
+        body_content: "{\"error\":\"signature is invalid\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.L8ss3NPOJA0eQHM4tLAQFUeWeniKp-zXBqLY9Nte40U"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 200
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" }
+        ]
+        body_content: "{\"results\":[{\"statement_id\":0,\"series\":[{\"name\":\"databases\",\"columns\":[\"name\"],\"values\":[[\"_internal\"]]}]},{\"statement_id\":1,\"series\":[{\"columns\":[\"user\",\"admin\"],\"values\":[[\"admin\",true]]}]}]}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.d0X7P6y7ysSyL91Rv5cSBxUAxXOVIQEPtqrDdJSIs-g"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" },
+          { name: "X-Influxdb-Build" value: "OSS" }
+        ]
+        body_content: "{\"error\":\"unable to parse authentication credentials\"}\n"
+        condition: {
+          request_type: POST
+          body_content: ["q=SHOW+USERS"]
+        }
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEmptySecretJwtBypassesSignatureWithCustomUsername_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" }
+        ]
+        body_content: "{\"error\":\"signature is invalid\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.L8ss3NPOJA0eQHM4tLAQFUeWeniKp-zXBqLY9Nte40U"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" }
+        ]
+        body_content: "{\"error\":\"user not found\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.d0X7P6y7ysSyL91Rv5cSBxUAxXOVIQEPtqrDdJSIs-g"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.5" }
+        ]
+        body_content: "{\"error\":\"unable to parse authentication credentials\"}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatched176DisablesEmptyBearerAuth_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.6" }
+        ]
+        body_content: "{\"error\":\"bearer auth disabld\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.L8ss3NPOJA0eQHM4tLAQFUeWeniKp-zXBqLY9Nte40U"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.6" }
+        ]
+        body_content: "{\"error\":\"unable to parse authentication credentials\"}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenConfiguredNonEmptySharedSecretRejectsEmptyJwt_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.4" }
+        ]
+        body_content: "{\"error\":\"signature is invalid\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.L8ss3NPOJA0eQHM4tLAQFUeWeniKp-zXBqLY9Nte40U"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.4" }
+        ]
+        body_content: "{\"error\":\"signature is invalid\"}\n"
+        condition: {
+          request_type: POST
+          headers: [
+            {
+              name: "Authorization"
+              value: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjo0MTAyNDQ0ODAwfQ.d0X7P6y7ysSyL91Rv5cSBxUAxXOVIQEPtqrDdJSIs-g"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/query"
+        status: 401
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.4" }
+        ]
+        body_content: "{\"error\":\"unable to parse authentication credentials\"}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenUnauthenticatedInfluxDb_returnsFalseForCve201920933"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/query"
+        status: 200
+        headers: [
+          { name: "X-Influxdb-Version" value: "1.7.6" }
+        ]
+        body_content: "{\"results\":[{\"statement_id\":0,\"series\":[{\"name\":\"databases\",\"columns\":[\"name\"],\"values\":[[\"_internal\"]]}]}]}\n"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServerReflectsRequest_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}
