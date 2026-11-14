@@ -1,0 +1,154 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ExposedArgoCDDetector"
+}
+
+tests: {
+  name: "whenUnauthenticatedCertificatesReturned_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.3+07ac038\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0+gd141386\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"serverName\":\"github.com\",\"certType\":\"ssh\",\"certSubType\":\"ssh-ed25519\",\"certData\":null,\"certInfo\":\"SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU\"}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEmptyCertificatesFallsBackToUnauthenticatedClusters_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.9.3+abc1234\",\"KustomizeVersion\":\"v5.1.0\",\"HelmVersion\":\"v3.12.2\",\"KubectlVersion\":\"v0.26.10\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[]}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"server\":\"https://kubernetes.default.svc\",\"name\":\"in-cluster\",\"connectionState\":{\"status\":\"Successful\"}}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenAuthenticatedArgoCdDeniesAnonymous_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.4+ac8b7df\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: certificates, get, \",\"code\":7,\"message\":\"permission denied: certificates, get, \"}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: clusters, get, *\",\"code\":7,\"message\":\"permission denied: clusters, get, *\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenRedirectToHtmlLandingPageWithScriptJson_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.4\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 302
+        headers: [
+          { name: "Location" value: "/landing" }
+        ]
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 302
+        headers: [
+          { name: "Location" value: "/landing" }
+        ]
+      },
+      {
+        uri: "/landing"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "text/html" }
+        ]
+        body_content: "<html><script>var data = {\"metadata\":{},\"items\":[{\"serverName\":\"github.com\",\"certType\":\"ssh\",\"certInfo\":\"SHA256:abc\"}]};</script></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServerReflectsRequest_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}

@@ -1,0 +1,233 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ArgoCD_CVE_2022_29165"
+}
+
+tests: {
+  name: "whenForgedJwtBypassesCertificatesRbac_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.3+07ac038\",\"BuildDate\":\"2022-03-30T00:06:18Z\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0+gd141386\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"serverName\":\"github.com\",\"certType\":\"ssh\",\"certSubType\":\"ssh-ed25519\",\"certData\":null,\"certInfo\":\"SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU\"}]}"
+        condition: {
+          request_type: GET
+          headers: [
+            {
+              name: "Cookie"
+              value: "argocd.token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: certificates, get, \",\"code\":7,\"message\":\"permission denied: certificates, get, \"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEmptyCertificatesFallsBackToClustersRbacBypass_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.2.8+abc1234\",\"KustomizeVersion\":\"v4.2.0\",\"HelmVersion\":\"v3.7.1\",\"KubectlVersion\":\"v0.22.2\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[]}"
+        condition: {
+          request_type: GET
+          headers: [
+            {
+              name: "Cookie"
+              value: "argocd.token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: certificates, get, \",\"code\":7,\"message\":\"permission denied: certificates, get, \"}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"server\":\"https://kubernetes.default.svc\",\"name\":\"in-cluster\",\"connectionState\":{\"status\":\"Successful\"}}]}"
+        condition: {
+          request_type: GET
+          headers: [
+            {
+              name: "Cookie"
+              value: "argocd.token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ"
+            }
+          ]
+        }
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: clusters, get, *\",\"code\":7,\"message\":\"permission denied: clusters, get, *\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatched234RejectsForgedJwt_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.4+ac8b7df\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: certificates, get, \",\"code\":7,\"message\":\"permission denied: certificates, get, \"}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 403
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"permission denied: clusters, get, *\",\"code\":7,\"message\":\"permission denied: clusters, get, *\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenAnonymousDisabledReturns401NoSession_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.3.3+07ac038\",\"KustomizeVersion\":\"v4.4.1\",\"HelmVersion\":\"v3.8.0\",\"KubectlVersion\":\"v0.23.1\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"no session information\",\"code\":16,\"message\":\"no session information\"}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 401
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"no session information\",\"code\":16,\"message\":\"no session information\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPubliclyExposedWithoutCookie_returnsFalseForCve202229165"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/version"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"Version\":\"v2.10.0+abc1234\",\"KustomizeVersion\":\"v5.2.1\",\"HelmVersion\":\"v3.14.0\",\"KubectlVersion\":\"v0.26.10\"}"
+      },
+      {
+        uri: "/api/v1/certificates"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"serverName\":\"github.com\",\"certType\":\"ssh\",\"certInfo\":\"SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU\"}]}"
+      },
+      {
+        uri: "/api/v1/clusters"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"metadata\":{},\"items\":[{\"server\":\"https://kubernetes.default.svc\",\"connectionState\":{\"status\":\"Successful\"}}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServerReflectsRequest_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}

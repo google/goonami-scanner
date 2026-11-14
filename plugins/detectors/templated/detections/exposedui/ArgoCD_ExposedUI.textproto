@@ -1,0 +1,103 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ExposedArgoCDDetector"
+  author: "JamesFoxxx"
+  version: "1.0"
+  description: "Detects publicly exposed Argo CD API servers granting unauthenticated administrative API access."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "EXPOSED_ARGOCD_API_SERVER"
+  }
+  severity: CRITICAL
+  title: "Argo CD API server Exposed"
+  description: "Argo CD API server is publicly exposed without any authentication. It allows attackers to access kubernetes clusters. Attackers can change parameters of clusters and possibly compromise it."
+  recommendation: "Please disable public access to your Argo CD API server."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_argocd_version"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/api/version"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "\"Version\":" },
+          { body: {} contains: "\"KustomizeVersion\":" },
+          { body: {} contains: "\"HelmVersion\":" },
+          { body: {} contains: "\"KubectlVersion\":" }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "check_unauthenticated_admin_resources"
+  http_request: {
+    method: GET
+    uri: [
+      "/api/v1/certificates",
+      "/api/v1/clusters"
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "\"metadata\":" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "argocd_exposed_resource"
+            regexp: "\"items\"\\s*:\\s*\\[\\{[^\\]]*\"serverName\"\\s*:\\s*\"([^\"]+)\"[^\\]]*\"certType\"\\s*:\\s*\"[^\"]+\"[^\\]]*\"certInfo\"\\s*:\\s*\"[^\"]+\""
+            from_body: {}
+          },
+          {
+            variable_name: "argocd_exposed_resource"
+            regexp: "\"items\"\\s*:\\s*\\[\\{[^\\]]*\"server\"\\s*:\\s*\"(https?://[^\"]+)\"[^\\]]*\"connectionState\"\\s*:\\s*\\{"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_argocd_version",
+    "check_unauthenticated_admin_resources"
+  ]
+}
