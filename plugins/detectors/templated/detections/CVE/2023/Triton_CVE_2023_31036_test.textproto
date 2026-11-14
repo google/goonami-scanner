@@ -1,0 +1,124 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "Triton_CVE_2023_31036"
+}
+
+tests: {
+  name: "whenVulnerable_returnsTrue"
+  expect_vulnerability: true
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/v2"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"name\":\"triton\",\"version\":\"2.39.0\"}"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerable_explicitControlRejected_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/v2"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"name\":\"triton\",\"version\":\"2.39.0\"}"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"error\":\"explicit model load / unload is not allowed if polling is enabled\"}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerable_reverseProxyHtml_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/v2"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"name\":\"triton\",\"version\":\"2.39.0\"}"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "text/html" }
+        ]
+        body_content: "<html><body>OK</body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotTriton_returnsFalse"
+  expect_vulnerability: false
+
+  mock_callback_server: {
+    enabled: false
+    has_interaction: false
+  }
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/v2"
+        status: 404
+        body_content: "<html><body>404 Not Found</body></html>"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
