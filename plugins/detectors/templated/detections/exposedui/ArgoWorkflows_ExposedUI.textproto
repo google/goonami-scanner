@@ -1,0 +1,92 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ArgoWorkflows_ExposedUI"
+  author:
+    "Goonami Authors, "
+    "JamesFoxxx for original Tsunami Java version"
+  version: "0.1"
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "ARGOWORKFLOWS_SERVER_EXPOSED"
+  }
+  title: "Argo Workflows server Exposed"
+  description: "Argo Workflows server is misconfigured and can be accessed publicly without authentication. All workflows can be accessed and modified, potentially leading to cluster compromise."
+  recommendation: "Please disable public access to your Argo Workflows server or enable client/SSO authentication by configuring --auth-mode=client or --auth-mode=sso on the argo-server container."
+  severity: CRITICAL
+}
+
+###########
+# ACTIONS #
+###########
+
+# Fingerprint the Argo Workflows instance via /api/v1/version.
+actions: {
+  name: "fingerprint_argo_workflows"
+  http_request: {
+    method: GET
+    uri: "/api/v1/version"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"version\":" },
+          { body: {} contains: "\"buildDate\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"version\"\\s*:\\s*\"([^\"]+)\""
+            variable_name: "ARGO_WORKFLOWS_VERSION"
+          }
+        ]
+      }
+    }
+  }
+}
+
+# Verify unauthenticated access to the workflows API via /api/v1/workflows/.
+actions: {
+  name: "check_unauthenticated_workflows"
+  http_request: {
+    method: GET
+    uri: "/api/v1/workflows/"
+    client_options: {
+      disable_follow_redirects: true
+    }
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"metadata\":" },
+          { body: {} contains: "\"items\":" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "fingerprint_argo_workflows",
+    "check_unauthenticated_workflows"
+  ]
+}
