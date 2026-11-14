@@ -50,6 +50,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve202241137"
 	_ "github.com/google/goonami-scanner/plugins/detectors/opensshauthbypass"
 	_ "github.com/google/goonami-scanner/plugins/detectors/php2shell"
+	_ "github.com/google/goonami-scanner/plugins/detectors/redisunauthrce"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/mysql"
