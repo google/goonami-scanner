@@ -2,8 +2,9 @@
 
 Package `opensshauthbypass` provides a Goonami vulnerability detector
 (`dt/opensshauthbypass`) that identifies OpenSSH servers linked against `musl`
-libc (such as on Alpine Linux) that are vulnerable to password authentication
-bypass via `crypt()` returning `"*"` on passwords exceeding 256 bytes.
+libc (such as on Alpine Linux, OpenWrt, Buildroot, and Yocto) that are
+vulnerable to password authentication bypass via `crypt()` returning `"*"` on
+passwords exceeding 256 bytes.
 
 ## Services
 
@@ -15,10 +16,13 @@ bypass via `crypt()` returning `"*"` on passwords exceeding 256 bytes.
     (`GOOGLE` / `OPENSSH_MUSL_PASSWORD_AUTH_BYPASS`, `CVE-2026-123158`,
     `Severity_CRITICAL`) supported by the detector.
 -   **`Module` / `(*Module).Detect(ctx context.Context, service
-    *nspb.NetworkService)`**: Skips web and non-TCP services, resolves the
-    endpoint authority, and verifies whether `root` authentication succeeds with
-    two distinct 512-byte passwords while rejecting a short (`<= 256` bytes)
-    invalid password. When verified, returns a `*dpb.DetectionReportList` with
+    *nspb.NetworkService)`**: Skips web and non-TCP services, verifies an
+    `SSH-2.0-OpenSSH` server banner on any port with bounded cooldown retries
+    for pre-banner rate-limit drops on wire-confirmed SSH endpoints, aborts
+    early when password authentication is disabled, and tests candidate accounts
+    (`root`, `alpine`, `sshuser`, `admin`, `user`, `guest`) using two distinct
+    300-byte passwords paired with a `<= 256`-byte negative control. When
+    verified, returns a `*dpb.DetectionReportList` with
     `DetectionStatus_VULNERABILITY_VERIFIED` and `Severity_CRITICAL`.
 
 ## Usage
