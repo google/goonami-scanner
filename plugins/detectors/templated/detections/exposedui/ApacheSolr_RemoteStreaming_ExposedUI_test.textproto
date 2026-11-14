@@ -1,0 +1,140 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "ApacheSolr_RemoteStreaming_ExposedUI"
+}
+
+tests: {
+  name: "whenLinuxSolrAllowsConfigApiAndReadsPasswd_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":0},\"initFailures\":{},\"status\":{\"gettingstarted\":{\"name\":\"gettingstarted\",\"instanceDir\":\"/var/solr/data/gettingstarted\"}}}"
+      },
+      {
+        uri: "/solr/gettingstarted/config"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":120}}"
+      },
+      {
+        uri: "/solr/gettingstarted/debug/dump?wt=json&param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":5,\"handler\":\"org.apache.solr.handler.DumpRequestHandler\"},\"streams\":[{\"name\":null,\"sourceInfo\":\"url\",\"size\":null,\"contentType\":null,\"stream\":\"root:x:0:0:root:/root:/bin/bash\\nsolr:x:8983:8983::/home/solr:/bin/sh\\n\"}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenWindowsSolrPreEnabledReadsWinIniViaSelectQtFallback_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":1},\"status\":{\"prod_core\":{\"name\":\"prod_core\"}}}"
+      },
+      {
+        uri: "/solr/prod_core/config"
+        status: 403
+        body_content: "{\"error\":{\"msg\":\"Config API is disabled\",\"code\":403}}"
+      },
+      {
+        uri: "/solr/prod_core/debug/dump?wt=json&param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/solr/prod_core/debug/dump?wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+        status: 404
+        body_content: "Not Found"
+      },
+      {
+        uri: "/solr/prod_core/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 500
+        body_content: "{\"error\":{\"msg\":\"C:\\\\etc\\\\passwd (The system cannot find the path specified)\",\"code\":500}}"
+      },
+      {
+        uri: "/solr/prod_core/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":3},\"streams\":[{\"name\":null,\"sourceInfo\":\"url\",\"stream\":\"; for 16-bit app support\\r\\n[fonts]\\r\\n[extensions]\\r\\n\"}]}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatchedSolr8113RejectsRemoteStreaming_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":0},\"status\":{\"gettingstarted\":{\"name\":\"gettingstarted\"}}}"
+      },
+      {
+        uri: "/solr/gettingstarted/config"
+        status: 200
+        body_content: "{\"responseHeader\":{\"status\":0,\"QTime\":150},\"WARNING\":\"This response format is experimental.\"}"
+      },
+      {
+        uri: "/solr/gettingstarted/debug/dump?wt=json&param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 400
+        body_content: "{\"error\":{\"msg\":\"Remote Streaming is disabled.\",\"code\":400}}"
+      },
+      {
+        uri: "/solr/gettingstarted/debug/dump?wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+        status: 400
+        body_content: "{\"error\":{\"msg\":\"Remote Streaming is disabled.\",\"code\":400}}"
+      },
+      {
+        uri: "/solr/gettingstarted/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///etc/passwd"
+        status: 400
+        body_content: "{\"error\":{\"msg\":\"Remote Streaming is disabled.\",\"code\":400}}"
+      },
+      {
+        uri: "/solr/gettingstarted/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+        status: 400
+        body_content: "{\"error\":{\"msg\":\"Remote Streaming is disabled.\",\"code\":400}}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenSolrRequiresAuthentication_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false"
+        status: 401
+        body_content: "Authentication required"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServerReflectsRequests_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}

