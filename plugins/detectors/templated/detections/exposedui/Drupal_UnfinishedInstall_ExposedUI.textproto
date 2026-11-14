@@ -1,0 +1,63 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Drupal_UnfinishedInstall_ExposedUI"
+  author: "Google Tsunami Team (tsunami-dev@google.com)"
+  version: "0.1"
+  description: "This detector checks whether an unfinished Drupal installation is exposed"
+}
+
+finding: {
+  main_id: {
+    publisher: "GOOGLE"
+    value: "DRUPAL_VULNERABLE_INSTALLATION_EXPOSED"
+  }
+  severity: CRITICAL
+  title: "Drupal unfinished installation is exposed"
+  description: "The Drupal installation file is exposed and unfinished. An attacker could hijack the installation process, configure an arbitrary database or administrative user, and execute code on the target machine."
+  recommendation: "Ensure Drupal is not externally accessible (firewall) until the installation is complete. Complete the installation process and set a strong password for the initial admin account."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_drupal_unfinished_install"
+  http_request: {
+    method: GET
+    uri: [
+      "/install.php?langcode=en&profile=standard&continue=1&locale=en",
+      "/core/install.php?langcode=en&profile=standard&continue=1&locale=en"
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "Drupal" },
+          { body: {} contains: "drupal.js" },
+          { body: {} contains: "install-settings-form" },
+          { body: {} contains: "Set up database" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_drupal_unfinished_install"
+  ]
+}
