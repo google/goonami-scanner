@@ -53,6 +53,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/detectors/daskunauthrce"
 	_ "github.com/google/goonami-scanner/plugins/detectors/opensshauthbypass"
 	_ "github.com/google/goonami-scanner/plugins/detectors/php2shell"
+	_ "github.com/google/goonami-scanner/plugins/detectors/redisunauth"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templated"
 	_ "github.com/google/goonami-scanner/plugins/detectors/templatedweakcredentials"
 	_ "github.com/google/goonami-scanner/plugins/detectors/weakcreds/mysql"
