@@ -118,6 +118,16 @@ func TestSimpleLabelConstructors(t *testing.T) {
 			label: LLMModel("gemini-3.6-flash"),
 			want:  Label{Key: LabelModel, Value: "gemini-3.6-flash"},
 		},
+		{
+			name:  "fingerprint",
+			label: Fingerprint("grafana"),
+			want:  Label{Key: LabelFingerprint, Value: "grafana"},
+		},
+		{
+			name:  "fingerprint_rule",
+			label: FingerprintRule("grafana_login_page"),
+			want:  Label{Key: LabelRule, Value: "grafana_login_page"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -159,10 +169,12 @@ func TestCatalogMetricsOnlyUseDeclaredLabelKeys(t *testing.T) {
 	// it is recorded with, and no metric may declare a key that is not a known
 	// label. A new key must be added to this list deliberately.
 	known := map[LabelKey]bool{
-		LabelModule:     true,
-		LabelErrorClass: true,
-		LabelLimitName:  true,
-		LabelModel:      true,
+		LabelModule:      true,
+		LabelErrorClass:  true,
+		LabelLimitName:   true,
+		LabelModel:       true,
+		LabelFingerprint: true,
+		LabelRule:        true,
 	}
 
 	for _, m := range catalogMetrics() {

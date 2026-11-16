@@ -38,6 +38,12 @@ const (
 	// LabelModel identifies the model that served a response, as reported by the
 	// backend.
 	LabelModel LabelKey = "model"
+
+	// LabelFingerprint identifies a matched web fingerprint definition.
+	LabelFingerprint LabelKey = "fingerprint"
+
+	// LabelRule identifies the rule that triggered a fingerprint identification.
+	LabelRule LabelKey = "rule"
 )
 
 // LimitNameValue is the name of a configured limit that can stop work early.
@@ -108,6 +114,14 @@ var (
 	// Findings counts the vulnerabilities reported by detectors.
 	Findings = NewCounter("findings",
 		"Vulnerabilities reported by detectors.", LabelModule)
+
+	// FingerprintIdentifications counts the rules that triggered a fingerprint
+	// identification, broken down by fingerprint and rule.
+	//
+	// Both labels come from the compiled fingerprint catalog rather than the
+	// target response, so their cardinality is bounded by the catalog size.
+	FingerprintIdentifications = NewCounter("fingerprint/identifications",
+		"Rules that triggered a fingerprint identification.", LabelFingerprint, LabelRule)
 
 	// BudgetExhausted counts the times a configured limit stopped work early.
 	BudgetExhausted = NewCounter("budget/exhausted",
@@ -185,6 +199,17 @@ func LimitName(limit LimitNameValue) Label {
 // LLMModel returns the label identifying the model that served a response.
 func LLMModel(name string) Label {
 	return Label{Key: LabelModel, Value: name}
+}
+
+// Fingerprint returns the label identifying a matched fingerprint definition.
+func Fingerprint(name string) Label {
+	return Label{Key: LabelFingerprint, Value: name}
+}
+
+// FingerprintRule returns the label identifying the rule that triggered a
+// fingerprint identification.
+func FingerprintRule(name string) Label {
+	return Label{Key: LabelRule, Value: name}
 }
 
 // ErrorClass returns the label identifying a bounded classification of err.
