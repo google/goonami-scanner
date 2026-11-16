@@ -18,25 +18,48 @@ non-SSH endpoints.
     `DefaultTimeout`.
 -   **`(*Client).Connect(ctx, addr, username, password)`**: Dials `addr` within
     `Timeout()`, skips host key verification, and attempts a single password or
-    keyboard-interactive login for `username`. Returns an established
-    `*ssh.Client` (which the caller must close) on success, or an error
-    classified via `ClassifyError` on failure.
+    single-prompt keyboard-interactive login for `username` (rejecting
+    non-empty passwords on unchallenged `"none"` or zero-prompt logins with
+    `ErrAuthFailed`). Returns an established `*ssh.Client` (which the caller
+    must close) on success, or a classified sentinel error (including
+    `ErrConnectionDropped` on pre-banner drops) on failure.
 -   **`(*Client).ConnectWithPasswords(ctx, addr, username, passwords...)`**:
     Dials `addr` within `Timeout()`, skips host key verification, and tries each
     password sequentially (using `"password"` authentication when advertised, or
-    falling back to `"keyboard-interactive"`) within a single SSH connection
-    handshake for `username`. Returns an established `*ssh.Client` on success,
-    or an error classified via `ClassifyError` on failure.
+    falling back to single-prompt `"keyboard-interactive"`) within a single SSH
+    connection handshake for `username`. Non-empty passwords that were never
+    challenged (such as RFC 4252 `"none"` or zero-prompt PAM
+    `"keyboard-interactive"` logins) are rejected with `ErrAuthFailed`. Returns
+    an established `*ssh.Client` on success, or a classified sentinel error on
+    failure.
+-   **`(*Client).ConnectAndReturnServerVersion(ctx, addr, username,
+    passwords...)`**: Behaves like `ConnectWithPasswords` and additionally
+    returns the peer's `SSH-*` identification banner whenever banner exchange
+    succeeds, even if authentication subsequently fails with `ErrAuthFailed` or
+    `ErrPasswordAuthUnsupported`.
 -   **`(*Client).Timeout()` and `DefaultTimeout`**: `Timeout()` returns the
     active connection and authentication `time.Duration`, defaulting to
     `DefaultTimeout` (`5s`) when no positive timeout is configured.
+-   **`(*Client).HasConfirmedSSH(addr string) bool`**: Reports whether an
+    `SSH-*` identification banner or OpenSSH pre-banner rate-limit notice has
+    been observed on the wire from `addr` by this `Client` (or by any `Client`
+    sharing the same non-`nil` `*config.Config`; `New(nil)` clients isolate
+    confirmation state per `Client`), allowing port-agnostic SSH detectors to
+    distinguish rate-limited SSH endpoints from non-SSH TCP peers that close
+    connections with zero bytes.
+-   **`SleepContext(ctx context.Context, d time.Duration) error`**: Pauses for
+    `d` or returns `ctx.Err()` immediately if `ctx` is canceled, providing a
+    shared backoff helper for SSH penalty cooldown loops.
 -   **`ClassifyError(err error) error`**: Wraps raw network, EOF, banner, and
     SSH authentication errors with canonical sentinel errors while returning
     `nil`, context errors, and unrecognized errors unchanged.
 -   **Sentinel Errors (`ErrAuthFailed`, `ErrPasswordAuthUnsupported`,
-    `ErrNotSSHService`)**: Classify connection outcomes via `errors.Is` into
-    rejected credentials (`ErrAuthFailed`), servers disallowing password and
-    keyboard-interactive login (`ErrPasswordAuthUnsupported`), or
+    `ErrConnectionDropped`, `ErrNotSSHService`)**: Classify connection outcomes
+    via `errors.Is` into rejected credentials (`ErrAuthFailed`), servers
+    disallowing password and keyboard-interactive login
+    (`ErrPasswordAuthUnsupported`), peers closing/resetting TCP or emitting an
+    OpenSSH pre-banner rate-limit notice prior to an `SSH-` banner
+    (`ErrConnectionDropped`, wrapped alongside `ErrNotSSHService`), or
     unreachable/non-SSH targets (`ErrNotSSHService`).
 -   **`SSHClientConfig` (`ssh_client_config.proto`)**: Protobuf configuration
     message (`goonami.proto.configs.clients.SSHClientConfig`) defining

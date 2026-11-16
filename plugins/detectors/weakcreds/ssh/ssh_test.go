@@ -22,8 +22,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/common/bruteforce"
@@ -221,27 +224,54 @@ func TestNewAndOptions(t *testing.T) {
 }
 
 func TestNew_DefaultStorePrependsEmptyPassword(t *testing.T) {
-	d, err := New(t.Context(), config.Default())
-	if err != nil {
-		t.Fatalf("New() unexpected error: %v", err)
+	testCases := []struct {
+		name string
+	}{
+		{
+			name: "when_default_store_built_prepends_empty_and_matching_username_plus_linux_defaults",
+		},
 	}
-	bfDetector, ok := d.(*bruteforce.Detector)
-	if !ok {
-		t.Fatalf("New() type = %T, want *bruteforce.Detector", d)
-	}
-	store := bfDetector.CredentialStore()
-	if len(store.Usernames()) == 0 {
-		t.Fatal("CredentialStore().Usernames() is empty, want default usernames")
-	}
-	for _, u := range store.Usernames() {
-		passes := store.Passwords(u)
-		if len(passes) == 0 {
-			t.Errorf("CredentialStore().Passwords(%q) is empty, want empty password first", u)
-			continue
-		}
-		if passes[0] != "" {
-			t.Errorf("CredentialStore().Passwords(%q)[0] = %q, want %q", u, passes[0], "")
-		}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := New(t.Context(), config.Default())
+			if err != nil {
+				t.Fatalf("New() unexpected error: %v", err)
+			}
+			bfDetector, ok := d.(*bruteforce.Detector)
+			if !ok {
+				t.Fatalf("New() type = %T, want *bruteforce.Detector", d)
+			}
+			store := bfDetector.CredentialStore()
+			users := store.Usernames()
+			if len(users) == 0 {
+				t.Fatal("CredentialStore().Usernames() is empty, want default usernames")
+			}
+			for _, extraUser := range []string{"ubuntu", "debian", "alpine"} {
+				if !slices.Contains(users, extraUser) {
+					t.Errorf("CredentialStore().Usernames() missing %q", extraUser)
+				}
+			}
+			for _, u := range users {
+				passes := store.Passwords(u)
+				if len(passes) < 2 {
+					t.Errorf("CredentialStore().Passwords(%q) len = %d, want >= 2", u, len(passes))
+					continue
+				}
+				if passes[0] != "" {
+					t.Errorf("CredentialStore().Passwords(%q)[0] = %q, want empty password", u, passes[0])
+				}
+				if passes[1] != u {
+					t.Errorf("CredentialStore().Passwords(%q)[1] = %q, want username %q", u, passes[1], u)
+				}
+			}
+			if rootPasses := store.Passwords("root"); len(rootPasses) < 3 || rootPasses[2] != "toor" {
+				t.Errorf("CredentialStore().Passwords(\"root\") = %v, want \"toor\" at index 2", rootPasses)
+			}
+			if piPasses := store.Passwords("pi"); len(piPasses) < 3 || piPasses[2] != "raspberry" {
+				t.Errorf("CredentialStore().Passwords(\"pi\") = %v, want \"raspberry\" at index 2", piPasses)
+			}
+		})
 	}
 }
 
@@ -276,13 +306,6 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 			wantCreds:   []string{"test:test"},
 		},
 		{
-			name:        "when_accept_all_ssh_server_fingerprints_and_returns_verified_finding",
-			acceptAll:   true,
-			stopAtFirst: true,
-			store:       smallStore([]string{"admin"}, []string{"admin"}),
-			wantCreds:   []string{"admin:admin"},
-		},
-		{
 			name: "when_stop_at_first_disabled_reports_all_valid_credentials",
 			validCreds: map[string]string{
 				"root":  "000000",
@@ -298,6 +321,12 @@ func TestDetect_WeakCredentialsFound(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := t.Context()
 			svc := startFakePasswordSSHServer(t, tc.validCreds, tc.acceptAll)
+			if tc.name == "when_service_name_is_empty_fingerprints_and_returns_verified_finding" {
+				svc.SetServiceName("")
+			}
+			if tc.name == "when_service_name_is_unknown_fingerprints_and_returns_verified_finding" {
+				svc.SetServiceName("unknown")
+			}
 
 			detector, err := NewWithOptions(ctx, fastBruteForceConfig(tc.stopAtFirst), &bruteforce.Options{
 				CredentialStore: tc.store,
@@ -361,6 +390,28 @@ func TestDetect_KeyboardInteractiveAndEmptyPassword(t *testing.T) {
 			},
 			opts:      nil,
 			wantCreds: []string{"root:"},
+		},
+		{
+			name: "when_pam_keyboard_interactive_zero_prompt_passwordless_user_exists_reports_empty_password_not_honeypot",
+			serverSetup: func(t *testing.T) *networkservicepb.NetworkService {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, _ ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if c.User() == "alpine" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New() failed: %v", err)
+				}
+				t.Cleanup(func() { _ = srv.Close() })
+				return srv.NetworkService()
+			},
+			opts: &bruteforce.Options{
+				CredentialStore: smallStore([]string{"alpine"}, []string{"alpine", ""}),
+			},
+			wantCreds: []string{"alpine:"},
 		},
 	}
 
@@ -607,42 +658,93 @@ func TestDetect_StopsCleanlyOnMidRunTransportFailure(t *testing.T) {
 	targetSvc := startFakePasswordSSHServer(t, nil, false)
 
 	// Proxy TCP connections: forward the first connection (fingerprint probe), then
-	// close subsequent connections immediately to simulate a target dropping SSH traffic.
+	// send a malformed post-banner SSH packet on subsequent connections to simulate
+	// a non-penalty mid-run transport failure.
 	targetAddr, err := netendpoint.ToURIAuthority(targetSvc.GetNetworkEndpoint())
 	if err != nil {
 		t.Fatalf("ToURIAuthority() failed: %v", err)
 	}
+	svc, connCount := startCustomDropSSHProxy(t, targetAddr, "SSH-2.0-Broken\r\n\x00\x00\x00\x01\x00", func(n int32) bool {
+		return n > 1
+	})
+
+	detector, err := NewWithOptions(t.Context(), fastBruteForceConfig(true), &bruteforce.Options{
+		CredentialStore: smallStore([]string{"root", "admin", "user"}, []string{"p1", "p2", "p3"}),
+	})
+	if err != nil {
+		t.Fatalf("NewWithOptions() unexpected error: %v", err)
+	}
+
+	reports, err := detector.Detect(t.Context(), svc)
+	if err != nil {
+		t.Fatalf("Detect() unexpected error: %v", err)
+	}
+	if len(reports.GetDetectionReports()) != 0 {
+		t.Errorf("len(Detect().GetDetectionReports()) = %d, want 0", len(reports.GetDetectionReports()))
+	}
+	// 1 fingerprint probe + maxConsecutiveTransportErrors (3) failed attempts = 4 connections, not 1+9=10.
+	if got, want := connCount.Load(), int32(1+maxConsecutiveTransportErrors); got != want {
+		t.Errorf("connection count = %d, want %d", got, want)
+	}
+}
+
+func startPenaltyDropSSHProxy(t *testing.T, upstreamAddr string, shouldDropPreBanner func(connNum int32) bool) (*networkservicepb.NetworkService, *atomic.Int32) {
+	t.Helper()
+	return startCustomDropSSHProxy(t, upstreamAddr, "Not allowed at this time\r\n", shouldDropPreBanner)
+}
+
+func startZeroByteDropSSHProxy(t *testing.T, upstreamAddr string, shouldDropPreBanner func(connNum int32) bool) (*networkservicepb.NetworkService, *atomic.Int32) {
+	t.Helper()
+	return startCustomDropSSHProxy(t, upstreamAddr, "", shouldDropPreBanner)
+}
+
+func startCustomDropSSHProxy(t *testing.T, upstreamAddr, dropBanner string, shouldDropPreBanner func(connNum int32) bool) (*networkservicepb.NetworkService, *atomic.Int32) {
+	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen() failed: %v", err)
 	}
-	t.Cleanup(func() { _ = ln.Close() })
-
 	var connCount atomic.Int32
+	var wg sync.WaitGroup
+	t.Cleanup(func() {
+		_ = ln.Close()
+		wg.Wait()
+	})
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for {
-			clientConn, err := ln.Accept()
-			if err != nil {
+			clientConn, acceptErr := ln.Accept()
+			if acceptErr != nil {
 				return
 			}
 			n := connCount.Add(1)
-			if n > 1 {
+			if shouldDropPreBanner != nil && shouldDropPreBanner(n) {
+				if dropBanner != "" {
+					_, _ = clientConn.Write([]byte(dropBanner))
+				}
 				_ = clientConn.Close()
 				continue
 			}
+			wg.Add(1)
 			go func(c net.Conn) {
+				defer wg.Done()
 				defer c.Close()
-				upstream, err := net.Dial("tcp", targetAddr)
-				if err != nil {
+				upstream, dialErr := net.Dial("tcp", upstreamAddr)
+				if dialErr != nil {
 					return
 				}
 				defer upstream.Close()
 				done := make(chan struct{})
 				go func() {
 					_, _ = io.Copy(upstream, c)
+					_ = upstream.Close()
+					_ = c.Close()
 					close(done)
 				}()
 				_, _ = io.Copy(c, upstream)
+				_ = c.Close()
+				_ = upstream.Close()
 				<-done
 			}(clientConn)
 		}
@@ -663,23 +765,363 @@ func TestDetect_StopsCleanlyOnMidRunTransportFailure(t *testing.T) {
 			}.Build(),
 		}.Build(),
 	}.Build()
+	return svc, &connCount
+}
 
-	detector, err := NewWithOptions(t.Context(), fastBruteForceConfig(true), &bruteforce.Options{
-		CredentialStore: smallStore([]string{"root", "admin", "user"}, []string{"p1", "p2", "p3"}),
+func TestPenaltyCooldownRetries(t *testing.T) {
+	targetSvc := startFakePasswordSSHServer(t, map[string]string{"ubuntu": "ubuntu"}, false)
+	targetAddr, err := netendpoint.ToURIAuthority(targetSvc.GetNetworkEndpoint())
+	if err != nil {
+		t.Fatalf("ToURIAuthority() failed: %v", err)
+	}
+
+	testCases := []struct {
+		name               string
+		serviceName        string
+		zeroByteDrop       bool
+		preConfirmViaShare bool
+		shouldDrop         func(connNum int32) bool
+		customSleepFn      func(sleepCalls *atomic.Int32) func(context.Context, time.Duration) error
+		store              *credentialstore.CredentialStore
+		wantCreds          []string
+		wantSleepCalls     int32
+		wantDetectErr      error
+		directCredCheck    bool
+		wantCredErr        error
+	}{
+		{
+			name:        "when_penalty_notices_occur_during_fingerprint_and_brute_force_within_budget_recovers_and_finds_cred",
+			serviceName: "",
+			shouldDrop: func(n int32) bool {
+				// 4 drops during Fingerprint (conns 1..4), conn 5 succeeds Fingerprint,
+				// 4 drops during TestCredential (conns 6..9), conn 10 tests root:wrong, conn 11 finds ubuntu:ubuntu.
+				return (n >= 1 && n <= 4) || (n >= 6 && n <= 9)
+			},
+			store:          smallStore([]string{"root", "ubuntu"}, []string{"ubuntu"}),
+			wantCreds:      []string{"ubuntu:ubuntu"},
+			wantSleepCalls: 8,
+		},
+		{
+			name:           "when_unconfirmed_endpoint_drops_with_zero_bytes_performs_zero_sleeps_even_when_labeled_ssh",
+			serviceName:    "ssh",
+			zeroByteDrop:   true,
+			shouldDrop:     func(int32) bool { return true },
+			store:          smallStore([]string{"ubuntu"}, []string{"ubuntu"}),
+			wantCreds:      nil,
+			wantSleepCalls: 0,
+		},
+		{
+			name:         "when_ssh_confirmed_in_fingerprint_retries_subsequent_zero_byte_drops_in_test_credential",
+			serviceName:  "",
+			zeroByteDrop: true,
+			shouldDrop: func(n int32) bool {
+				// Conn 1 succeeds Fingerprint; Conns 2..5 drop with 0 bytes during TestCredential; Conn 6 authenticates.
+				return n >= 2 && n <= 5
+			},
+			store:          smallStore([]string{"ubuntu"}, []string{"ubuntu"}),
+			wantCreds:      []string{"ubuntu:ubuntu"},
+			wantSleepCalls: 4,
+		},
+		{
+			name:               "when_prior_detector_sharing_config_confirmed_ssh_retries_zero_byte_drops_in_fingerprint",
+			serviceName:        "unknown",
+			zeroByteDrop:       true,
+			preConfirmViaShare: true,
+			shouldDrop: func(n int32) bool {
+				// Conn 1 is used by prior detector sharing cfg; Conns 2..4 drop with 0 bytes in Fingerprint; Conn 5 passes Fingerprint; Conn 6 authenticates.
+				return n >= 2 && n <= 4
+			},
+			store:          smallStore([]string{"ubuntu"}, []string{"ubuntu"}),
+			wantCreds:      []string{"ubuntu:ubuntu"},
+			wantSleepCalls: 3,
+		},
+		{
+			name:        "when_cumulative_penalty_budget_exhausted_across_fingerprint_and_test_credential_returns_stop_brute_force",
+			serviceName: "",
+			shouldDrop: func(n int32) bool {
+				// Conns 1..5 drop in Fingerprint (5 sleeps), Conn 6 passes Fingerprint, Conns 7+ drop forever (10 more sleeps = 15 total, then ErrStopBruteForce).
+				return n != 6
+			},
+			store:           smallStore([]string{"root", "admin", "ubuntu"}, []string{"p1", "p2", "ubuntu"}),
+			wantCreds:       nil,
+			wantSleepCalls:  maxPenaltyCooldownRetries,
+			directCredCheck: true,
+			wantCredErr:     bruteforce.ErrStopBruteForce,
+		},
+		{
+			name:        "when_context_canceled_during_fingerprint_penalty_sleep_returns_canceled_error",
+			serviceName: "",
+			shouldDrop:  func(int32) bool { return true },
+			customSleepFn: func(sleepCalls *atomic.Int32) func(context.Context, time.Duration) error {
+				return func(_ context.Context, _ time.Duration) error {
+					sleepCalls.Add(1)
+					return context.Canceled
+				}
+			},
+			store:          smallStore([]string{"ubuntu"}, []string{"ubuntu"}),
+			wantSleepCalls: 1,
+			wantDetectErr:  context.Canceled,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var svc *networkservicepb.NetworkService
+			if tc.zeroByteDrop {
+				svc, _ = startZeroByteDropSSHProxy(t, targetAddr, tc.shouldDrop)
+			} else {
+				svc, _ = startPenaltyDropSSHProxy(t, targetAddr, tc.shouldDrop)
+			}
+			svc.SetServiceName(tc.serviceName)
+
+			cfg := fastBruteForceConfig(true)
+			if tc.preConfirmViaShare {
+				proxyAddr, addrErr := netendpoint.ToURIAuthority(svc.GetNetworkEndpoint())
+				if addrErr != nil {
+					t.Fatalf("ToURIAuthority() failed: %v", addrErr)
+				}
+				if _, authErr := sshclient.New(cfg).Connect(t.Context(), proxyAddr, "probe", "invalid"); !errors.Is(authErr, sshclient.ErrAuthFailed) {
+					t.Fatalf("prior Connect() error = %v, want %v", authErr, sshclient.ErrAuthFailed)
+				}
+			}
+			h := newHandler(cfg)
+			var sleepCalls atomic.Int32
+			if tc.customSleepFn != nil {
+				h.sleepFn = tc.customSleepFn(&sleepCalls)
+			} else {
+				h.sleepFn = func(ctx context.Context, _ time.Duration) error {
+					sleepCalls.Add(1)
+					return ctx.Err()
+				}
+			}
+
+			if tc.directCredCheck {
+				ok, err := h.Fingerprint(t.Context(), svc)
+				if err != nil || !ok {
+					t.Fatalf("Fingerprint() = (%v, %v), want (true, nil)", ok, err)
+				}
+				_, credErr := h.TestCredential(t.Context(), svc, bruteforce.Credential{Username: "root", Password: "p1"})
+				if !errors.Is(credErr, tc.wantCredErr) {
+					t.Errorf("TestCredential() error = %v, want errors.Is %v", credErr, tc.wantCredErr)
+				}
+				if got := sleepCalls.Load(); got != tc.wantSleepCalls {
+					t.Errorf("sleepCalls = %d, want %d", got, tc.wantSleepCalls)
+				}
+				return
+			}
+
+			detector, err := bruteforce.New(t.Context(), cfg, h, &bruteforce.Options{
+				CredentialStore: tc.store,
+			})
+			if err != nil {
+				t.Fatalf("bruteforce.New() unexpected error: %v", err)
+			}
+
+			reports, err := detector.Detect(t.Context(), svc)
+			if !errors.Is(err, tc.wantDetectErr) {
+				t.Fatalf("Detect() error = %v, want %v", err, tc.wantDetectErr)
+			}
+			if got := sleepCalls.Load(); got != tc.wantSleepCalls {
+				t.Errorf("sleepCalls = %d, want %d", got, tc.wantSleepCalls)
+			}
+			if tc.wantDetectErr != nil {
+				return
+			}
+			gotCreds := extractFoundCredentials(reports)
+			if diff := cmp.Diff(tc.wantCreds, gotCreds); diff != "" {
+				t.Errorf("Detect() credentials diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+
+	t.Run("when_concurrent_workers_hit_same_penalty_wave_coalesces_into_single_sleep_and_close_clears_state", func(t *testing.T) {
+		const workers = 4
+		allDropped := make(chan struct{})
+		var droppedInWave atomic.Int32
+		svc, _ := startCustomDropSSHProxy(t, targetAddr, "Not allowed at this time\r\n", func(n int32) bool {
+			// Conn 1 passes Fingerprint; Conns 2..5 are the 4 concurrent workers hitting the same penalty wave; Conn 6+ succeed.
+			if n >= 2 && n <= 1+workers {
+				if droppedInWave.Add(1) == workers {
+					close(allDropped)
+				}
+				return true
+			}
+			return false
+		})
+		svc.SetServiceName("")
+
+		cfg := fastBruteForceConfig(false)
+		h := newHandler(cfg)
+		var sleepCalls atomic.Int32
+		h.sleepFn = func(ctx context.Context, _ time.Duration) error {
+			sleepCalls.Add(1)
+			select {
+			case <-allDropped:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+
+		ok, fpErr := h.Fingerprint(t.Context(), svc)
+		if fpErr != nil || !ok {
+			t.Fatalf("Fingerprint() = (%v, %v), want (true, nil)", ok, fpErr)
+		}
+
+		var wg sync.WaitGroup
+		for i := range workers {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				pass := fmt.Sprintf("wrong-%d", idx)
+				if idx == workers-1 {
+					pass = "ubuntu"
+				}
+				matched, credErr := h.NewWorker().TestCredential(t.Context(), svc, bruteforce.Credential{Username: "ubuntu", Password: pass})
+				if credErr != nil {
+					t.Errorf("worker %d TestCredential() unexpected error: %v", idx, credErr)
+				}
+				if want := idx == workers-1; matched != want {
+					t.Errorf("worker %d matched = %v, want %v", idx, matched, want)
+				}
+			}(i)
+		}
+		wg.Wait()
+
+		if got := sleepCalls.Load(); got != 1 {
+			t.Errorf("sleepCalls across %d concurrent workers = %d, want 1 coalesced sleep", workers, got)
+		}
+		proxyAddr, addrErr := netendpoint.ToURIAuthority(svc.GetNetworkEndpoint())
+		if addrErr != nil {
+			t.Fatalf("ToURIAuthority() failed: %v", addrErr)
+		}
+		st := h.getPenaltyState(proxyAddr)
+		st.mu.Lock()
+		gotRemaining := st.remaining
+		st.mu.Unlock()
+		if gotRemaining != maxPenaltyCooldownRetries-1 {
+			t.Errorf("remaining penalty budget = %d, want %d", gotRemaining, maxPenaltyCooldownRetries-1)
+		}
+		if closeErr := h.Close(); closeErr != nil {
+			t.Fatalf("Close() unexpected error: %v", closeErr)
+		}
+		h.mu.Lock()
+		remainingEntries := len(h.penaltyStates)
+		h.mu.Unlock()
+		if remainingEntries != 0 {
+			t.Errorf("len(h.penaltyStates) after Close() = %d, want 0", remainingEntries)
+		}
+	})
+}
+
+func TestHandler_TestCredential_MidRunPasswordAuthUnsupportedAndSleepCancel(t *testing.T) {
+	pubKeySrv, err := fakessh.NewPublicKeyOnly()
+	if err != nil {
+		t.Fatalf("fakessh.NewPublicKeyOnly() failed: %v", err)
+	}
+	t.Cleanup(func() { _ = pubKeySrv.Close() })
+
+	dropSvc, _ := startPenaltyDropSSHProxy(t, pubKeySrv.Addr(), func(int32) bool { return true })
+
+	testCases := []struct {
+		name    string
+		svc     *networkservicepb.NetworkService
+		sleepFn func(context.Context, time.Duration) error
+		wantErr error
+	}{
+		{
+			name:    "when_server_disables_password_auth_returns_stop_brute_force",
+			svc:     pubKeySrv.NetworkService(),
+			sleepFn: func(ctx context.Context, _ time.Duration) error { return ctx.Err() },
+			wantErr: bruteforce.ErrStopBruteForce,
+		},
+		{
+			name: "when_context_canceled_during_test_credential_sleep_returns_canceled",
+			svc:  dropSvc,
+			sleepFn: func(_ context.Context, _ time.Duration) error {
+				return context.Canceled
+			},
+			wantErr: context.Canceled,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			h := newHandler(fastBruteForceConfig(true))
+			h.sleepFn = func(c context.Context, d time.Duration) error {
+				err := tc.sleepFn(c, d)
+				if errors.Is(err, context.Canceled) {
+					cancel()
+				}
+				return err
+			}
+			w := h.NewWorker()
+			_, gotErr := w.TestCredential(ctx, tc.svc, bruteforce.Credential{Username: "root", Password: "x"})
+			if !errors.Is(gotErr, tc.wantErr) {
+				t.Errorf("Worker.TestCredential() error = %v, want errors.Is %v", gotErr, tc.wantErr)
+			}
+		})
+	}
+
+	t.Run("when_sleep_fn_is_nil_falls_back_to_default_sleep_with_canceled_context", func(t *testing.T) {
+		h := &Handler{client: sshclient.New(fastBruteForceConfig(true))}
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		if err := h.sleep(ctx, time.Second); !errors.Is(err, context.Canceled) {
+			t.Errorf("h.sleep() error = %v, want %v", err, context.Canceled)
+		}
+	})
+}
+
+func TestDetect_RejectsAcceptAllAndPerUserWildcardHoneypots(t *testing.T) {
+	globalAcceptAllSvc := startFakePasswordSSHServer(t, nil, true)
+
+	cowrieRootWildcardSrv, err := fakessh.New(&ssh.ServerConfig{
+		PasswordCallback: func(c ssh.ConnMetadata, _ []byte) (*ssh.Permissions, error) {
+			if c.User() == "root" {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("rejected")
+		},
 	})
 	if err != nil {
-		t.Fatalf("NewWithOptions() unexpected error: %v", err)
+		t.Fatalf("fakessh.New() failed: %v", err)
 	}
+	t.Cleanup(func() { _ = cowrieRootWildcardSrv.Close() })
 
-	reports, err := detector.Detect(t.Context(), svc)
+	noneAuthHoneypotSrv, err := fakessh.New(&ssh.ServerConfig{
+		NoClientAuth: true,
+	})
 	if err != nil {
-		t.Fatalf("Detect() unexpected error: %v", err)
+		t.Fatalf("fakessh.New() failed: %v", err)
 	}
-	if len(reports.GetDetectionReports()) != 0 {
-		t.Errorf("len(Detect().GetDetectionReports()) = %d, want 0", len(reports.GetDetectionReports()))
-	}
-	// 1 fingerprint probe + maxConsecutiveTransportErrors (3) failed attempts = 4 connections, not 1+9=10.
-	if got, want := connCount.Load(), int32(1+maxConsecutiveTransportErrors); got != want {
-		t.Errorf("connection count = %d, want %d", got, want)
+	t.Cleanup(func() { _ = noneAuthHoneypotSrv.Close() })
+
+	store := smallStore([]string{"root", "admin"}, []string{"", "root", "admin"})
+	for _, tc := range []struct {
+		name string
+		svc  *networkservicepb.NetworkService
+	}{
+		{name: "when_global_accept_all_honeypot_returns_zero_findings", svc: globalAcceptAllSvc},
+		{name: "when_per_user_wildcard_cowrie_honeypot_returns_zero_findings", svc: cowrieRootWildcardSrv.NetworkService()},
+		{name: "when_global_none_auth_honeypot_returns_zero_findings", svc: noneAuthHoneypotSrv.NetworkService()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			detector, err := NewWithOptions(t.Context(), fastBruteForceConfig(true), &bruteforce.Options{
+				CredentialStore: store,
+			})
+			if err != nil {
+				t.Fatalf("NewWithOptions() failed: %v", err)
+			}
+			reports, err := detector.Detect(t.Context(), tc.svc)
+			if err != nil {
+				t.Fatalf("Detect() unexpected error: %v", err)
+			}
+			if len(reports.GetDetectionReports()) != 0 {
+				t.Errorf("Detect() returned %d reports on honeypot, want 0: %v", len(reports.GetDetectionReports()), reports)
+			}
+		})
 	}
 }

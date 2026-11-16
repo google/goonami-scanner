@@ -19,15 +19,19 @@
 package sshclient
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
+	"weak"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
@@ -44,6 +48,9 @@ const (
 	// maxKeyboardInteractiveEmptyPrompts bounds consecutive or total zero-prompt
 	// informational challenges accepted in a single keyboard-interactive attempt.
 	maxKeyboardInteractiveEmptyPrompts = 3
+
+	maxBannerPreambleLines = 16
+	maxBannerLineBytes     = 512
 )
 
 var (
@@ -54,14 +61,96 @@ var (
 	// ErrNotSSHService indicates the target network service is not a valid SSH service.
 	ErrNotSSHService = errors.New("ssh: target is not an SSH service")
 
+	// ErrConnectionDropped indicates that an established TCP connection was closed
+	// or reset by the peer before sending any SSH protocol banner bytes (for example,
+	// during OpenSSH 9.8+ PerSourcePenalties or MaxStartups rate-limiting). It is
+	// always wrapped alongside ErrNotSSHService for backward compatibility.
+	ErrConnectionDropped = errors.New("ssh: connection closed before banner")
+
 	// ErrAuthFailed indicates the credentials were rejected by the SSH server.
 	ErrAuthFailed = errors.New("ssh: authentication failed")
+
+	// confirmedSSHByConfig shares wire-confirmed SSH endpoints across independent
+	// SSH detector plugins initialized with the same scan *config.Config without
+	// retaining strong references once a scan *config.Config becomes unreachable.
+	confirmedSSHMu       sync.RWMutex
+	confirmedSSHByConfig = make(map[weak.Pointer[config.Config]]*confirmedSSHSet)
 )
+
+type confirmedSSHSet struct {
+	mu    sync.RWMutex
+	addrs map[string]bool
+}
+
+func (s *confirmedSSHSet) has(addr string) bool {
+	if addr == "" {
+		return false
+	}
+	s.mu.RLock()
+	ok := s.addrs[addr]
+	s.mu.RUnlock()
+	return ok
+}
+
+func (s *confirmedSSHSet) add(addr string) {
+	if addr == "" || s.has(addr) {
+		return
+	}
+	s.mu.Lock()
+	if s.addrs == nil {
+		s.addrs = make(map[string]bool)
+	}
+	s.addrs[addr] = true
+	s.mu.Unlock()
+}
+
+func confirmedSetForConfig(cfg *config.Config) *confirmedSSHSet {
+	if cfg == nil {
+		return &confirmedSSHSet{}
+	}
+	wp := weak.Make(cfg)
+	confirmedSSHMu.RLock()
+	set, ok := confirmedSSHByConfig[wp]
+	confirmedSSHMu.RUnlock()
+	if ok {
+		return set
+	}
+
+	confirmedSSHMu.Lock()
+	defer confirmedSSHMu.Unlock()
+	set, ok = confirmedSSHByConfig[wp]
+	if !ok {
+		set = &confirmedSSHSet{}
+		confirmedSSHByConfig[wp] = set
+		runtime.AddCleanup(cfg, deleteConfirmedSSHEndpoints, wp)
+	}
+	return set
+}
+
+func deleteConfirmedSSHEndpoints(wp weak.Pointer[config.Config]) {
+	confirmedSSHMu.Lock()
+	delete(confirmedSSHByConfig, wp)
+	confirmedSSHMu.Unlock()
+}
+
+// SleepContext pauses execution for duration d or returns ctx.Err() immediately
+// if ctx is canceled before d elapses.
+func SleepContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 // Client manages SSH connection establishment and password authentication.
 type Client struct {
 	coreConfig *config.Config
 	config     *sccpb.SSHClientConfig
+	confirmed  *confirmedSSHSet
 }
 
 // New creates a new SSH Client populated from configuration.
@@ -81,6 +170,7 @@ func New(cfg *config.Config) *Client {
 	return &Client{
 		coreConfig: cfg,
 		config:     sshCfg,
+		confirmed:  confirmedSetForConfig(cfg),
 	}
 }
 
@@ -92,44 +182,160 @@ func (c *Client) Timeout() time.Duration {
 	return DefaultTimeout
 }
 
-func (c *Client) dial(ctx context.Context, addr string, clientConfig *ssh.ClientConfig) (*ssh.Client, error) {
+// HasConfirmedSSH reports whether an SSH protocol banner ("SSH-*") or OpenSSH
+// pre-banner rate-limit notice has been observed from addr by this Client (or,
+// when New was called with a non-nil *config.Config, by any Client sharing that
+// *config.Config; nil-config Clients isolate confirmation state per Client).
+func (c *Client) HasConfirmedSSH(addr string) bool {
+	if c.confirmed == nil {
+		return false
+	}
+	return c.confirmed.has(addr)
+}
+
+func (c *Client) recordConfirmedSSH(addr string) {
+	if c.confirmed != nil {
+		c.confirmed.add(addr)
+	}
+}
+
+type bannerCaptureConn struct {
+	net.Conn
+	mu              sync.Mutex
+	bytesRead       int
+	linesSeen       int
+	lineBuf         []byte
+	serverVersion   string
+	rateLimitBanner bool
+	bannerDone      bool
+}
+
+func (b *bannerCaptureConn) Read(p []byte) (int, error) {
+	n, err := b.Conn.Read(p)
+	if n > 0 {
+		b.mu.Lock()
+		b.bytesRead += n
+		if !b.bannerDone {
+			b.consumeBannerBytes(p[:n])
+		}
+		b.mu.Unlock()
+	}
+	return n, err
+}
+
+func (b *bannerCaptureConn) consumeBannerBytes(chunk []byte) {
+	for len(chunk) > 0 && !b.bannerDone {
+		nlIdx := bytes.IndexByte(chunk, '\n')
+		part := chunk
+		if nlIdx >= 0 {
+			part = chunk[:nlIdx]
+		}
+		if remaining := maxBannerLineBytes - len(b.lineBuf); remaining > 0 {
+			b.lineBuf = append(b.lineBuf, part[:min(len(part), remaining)]...)
+		}
+		if nlIdx < 0 {
+			return
+		}
+		chunk = chunk[nlIdx+1:]
+
+		line := strings.TrimSuffix(string(b.lineBuf), "\r")
+		b.lineBuf = b.lineBuf[:0]
+		b.linesSeen++
+		if strings.HasPrefix(line, "SSH-") {
+			b.serverVersion = line
+			b.bannerDone = true
+			return
+		}
+		if isOpenSSHRateLimitBanner(line) {
+			b.rateLimitBanner = true
+		}
+		if b.linesSeen >= maxBannerPreambleLines {
+			b.bannerDone = true
+			return
+		}
+	}
+}
+
+func isOpenSSHRateLimitBanner(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	return strings.EqualFold(trimmed, "Not allowed at this time") ||
+		strings.EqualFold(trimmed, "Exceeded MaxStartups")
+}
+
+func (b *bannerCaptureConn) snapshot() (bytesRead int, serverVersion string, rateLimitBanner bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.bytesRead, b.serverVersion, b.rateLimitBanner
+}
+
+func (c *Client) dial(ctx context.Context, addr string, clientConfig *ssh.ClientConfig) (*ssh.Client, string, bool, error) {
 	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	rawConn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return nil, err
+		droppedPreBanner := ctx.Err() == nil && isPreBannerDropError(err)
+		return nil, "", droppedPreBanner, err
 	}
 
+	trackedConn := &bannerCaptureConn{Conn: rawConn}
 	stop := context.AfterFunc(ctx, func() {
-		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+		if closeErr := rawConn.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "closed connection on context cancellation: %v", closeErr)
 		}
 	})
 	defer stop()
 
-	sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, clientConfig)
+	sshConn, chans, reqs, err := ssh.NewClientConn(trackedConn, addr, clientConfig)
+	bytesRead, capturedBanner, rateLimitBanner := trackedConn.snapshot()
 	if err != nil {
-		return nil, err
+		if strings.HasPrefix(capturedBanner, "SSH-") || rateLimitBanner {
+			c.recordConfirmedSSH(addr)
+		}
+		droppedPreBanner := (bytesRead == 0 || rateLimitBanner) && ctx.Err() == nil && isPreBannerDropError(err)
+		return nil, capturedBanner, droppedPreBanner, err
 	}
 
-	return ssh.NewClient(sshConn, chans, reqs), nil
+	serverVersion := string(sshConn.ServerVersion())
+	if serverVersion == "" {
+		serverVersion = capturedBanner
+	}
+	if strings.HasPrefix(serverVersion, "SSH-") {
+		c.recordConfirmedSSH(addr)
+	}
+	return ssh.NewClient(sshConn, chans, reqs), serverVersion, false, nil
 }
 
 // Connect attempts SSH password or keyboard-interactive authentication with the given username
 // and password. On success, it returns an established *ssh.Client connection (which the caller is
 // responsible for closing). On failure, it returns a classified sentinel error (such as
-// ErrAuthFailed, ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
+// ErrAuthFailed, ErrPasswordAuthUnsupported, ErrConnectionDropped, or ErrNotSSHService) wrapping
+// the underlying SSH error.
 func (c *Client) Connect(ctx context.Context, addr, username, password string) (*ssh.Client, error) {
-	return c.ConnectWithPasswords(ctx, addr, username, password)
+	client, _, err := c.connectAndReturnServerVersion(ctx, addr, username, []string{password})
+	return client, err
 }
 
 // ConnectWithPasswords attempts SSH password or keyboard-interactive authentication with the given
 // username by trying the provided passwords sequentially within a single SSH connection handshake.
 // On success, it returns an established *ssh.Client connection (which the caller is responsible
 // for closing). On failure, it returns a classified sentinel error (such as ErrAuthFailed,
-// ErrPasswordAuthUnsupported, or ErrNotSSHService) wrapping the underlying SSH error.
+// ErrPasswordAuthUnsupported, ErrConnectionDropped, or ErrNotSSHService) wrapping the underlying
+// SSH error.
 func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, error) {
+	client, _, err := c.connectAndReturnServerVersion(ctx, addr, username, passwords)
+	return client, err
+}
+
+// ConnectAndReturnServerVersion behaves like ConnectWithPasswords and additionally returns the
+// peer's SSH identification banner (for example, "SSH-2.0-OpenSSH_9.9") whenever the banner
+// exchange succeeded, even if authentication subsequently fails with ErrAuthFailed or
+// ErrPasswordAuthUnsupported.
+func (c *Client) ConnectAndReturnServerVersion(ctx context.Context, addr, username string, passwords ...string) (*ssh.Client, string, error) {
+	return c.connectAndReturnServerVersion(ctx, addr, username, passwords)
+}
+
+func (c *Client) connectAndReturnServerVersion(ctx context.Context, addr, username string, passwords []string) (*ssh.Client, string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	ctx = log.ContextForModule(ctx, "clients/sshclient")
@@ -138,69 +344,114 @@ func (c *Client) ConnectWithPasswords(ctx context.Context, addr, username string
 	connCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	attempt := 0
-	abort := false
+	session := &passwordAuthSession{passwords: passwords}
 	clientConfig := &ssh.ClientConfig{
-		User: username,
-		AuthCallback: func(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
-			if abort {
-				return nil, ErrAuthFailed
-			}
-			hasPassword := slices.Contains(authCtx.AllowedMethods, "password")
-			hasKeyboardInteractive := slices.Contains(authCtx.AllowedMethods, "keyboard-interactive")
-			if !hasPassword && !hasKeyboardInteractive {
-				if attempt == 0 {
-					return nil, ErrPasswordAuthUnsupported
-				}
-				return nil, ErrAuthFailed
-			}
-			if attempt >= len(passwords) {
-				return nil, ErrAuthFailed
-			}
-			password := passwords[attempt]
-			attempt++
-			if hasPassword {
-				return ssh.Password(password), nil
-			}
-			return keyboardInteractiveAuth(password, &abort), nil
-		},
+		User:            username,
+		AuthCallback:    session.authCallback,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         timeout,
 	}
 
-	client, err := c.dial(connCtx, addr, clientConfig)
+	client, serverVersion, droppedPreBanner, err := c.dial(connCtx, addr, clientConfig)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
+			return nil, serverVersion, ctxErr
 		}
 		log.DebugContextf(ctx, log.DebugLevelRequest, "SSH connection/authentication to %s for user %q failed: %v", addr, username, err)
 		if errors.Is(connCtx.Err(), context.DeadlineExceeded) {
-			return nil, fmt.Errorf("%w: %w", ErrNotSSHService, err)
+			return nil, serverVersion, fmt.Errorf("%w: %w", ErrNotSSHService, err)
 		}
-		return nil, ClassifyError(err)
+		if droppedPreBanner {
+			return nil, "", fmt.Errorf("%w: %w: %w", ErrNotSSHService, ErrConnectionDropped, err)
+		}
+		return nil, serverVersion, ClassifyError(err)
 	}
-	return client, nil
+	if session.acceptedUnchallengedNonEmptyPassword() {
+		_ = client.Close()
+		return nil, serverVersion, ErrAuthFailed
+	}
+	return client, serverVersion, nil
 }
 
-func keyboardInteractiveAuth(password string, abort *bool) ssh.AuthMethod {
+type passwordAuthSession struct {
+	passwords       []string
+	attempt         int
+	abort           bool
+	lastAttemptKbd  bool
+	kbdPasswordSent bool
+}
+
+func (s *passwordAuthSession) authCallback(authCtx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
+	if s.abort {
+		return nil, ErrAuthFailed
+	}
+	hasPassword := slices.Contains(authCtx.AllowedMethods, "password")
+	hasKeyboardInteractive := slices.Contains(authCtx.AllowedMethods, "keyboard-interactive")
+	if !hasPassword && !hasKeyboardInteractive {
+		if s.attempt == 0 {
+			return nil, ErrPasswordAuthUnsupported
+		}
+		return nil, ErrAuthFailed
+	}
+	if s.attempt >= len(s.passwords) {
+		return nil, ErrAuthFailed
+	}
+	password := s.passwords[s.attempt]
+	s.attempt++
+	s.lastAttemptKbd = !hasPassword
+	s.kbdPasswordSent = false
+	if hasPassword {
+		return ssh.Password(password), nil
+	}
+	return s.keyboardInteractive(password), nil
+}
+
+func (s *passwordAuthSession) keyboardInteractive(password string) ssh.AuthMethod {
 	emptyPrompts := 0
-	passwordSent := false
 	return ssh.KeyboardInteractive(func(_, _ string, questions []string, _ []bool) ([]string, error) {
 		if len(questions) == 0 {
 			emptyPrompts++
 			if emptyPrompts > maxKeyboardInteractiveEmptyPrompts {
-				*abort = true
+				s.abort = true
 				return nil, ErrAuthFailed
 			}
 			return nil, nil
 		}
-		if passwordSent || len(questions) != 1 {
-			*abort = true
+		if s.kbdPasswordSent || len(questions) != 1 {
+			s.abort = true
 			return nil, ErrAuthFailed
 		}
-		passwordSent = true
+		s.kbdPasswordSent = true
 		return []string{password}, nil
 	})
+}
+
+// acceptedUnchallengedNonEmptyPassword reports whether ssh.NewClientConn
+// succeeded without challenging a candidate password while "" was absent from
+// the remaining candidate slice—either because go_crypto/ssh's implicit
+// pre-flight RFC 4252 "none" request succeeded (attempt == 0) or because a PAM
+// keyboard-interactive server granted access after zero prompts
+// (!kbdPasswordSent).
+func (s *passwordAuthSession) acceptedUnchallengedNonEmptyPassword() bool {
+	if s.attempt == 0 {
+		return !slices.Contains(s.passwords, "")
+	}
+	return s.lastAttemptKbd && !s.kbdPasswordSent && !slices.Contains(s.passwords[s.attempt-1:], "")
+}
+
+func isPreBannerDropError(err error) bool {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return false
+	}
+	if matchesAnyError(err, preBannerDropSentinels) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	if msg == "eof" || strings.HasSuffix(msg, ": eof") || strings.Contains(msg, "unexpected eof") {
+		return true
+	}
+	return containsAny(msg, preBannerDropSubstrings)
 }
 
 // ClassifyError maps standard network and SSH errors into canonical sentinels wrapping the original error.
@@ -242,6 +493,21 @@ func ClassifyError(err error) error {
 }
 
 var (
+	preBannerDropSentinels = []error{
+		io.EOF,
+		io.ErrUnexpectedEOF,
+		net.ErrClosed,
+		syscall.ECONNRESET,
+		syscall.ECONNABORTED,
+		syscall.EPIPE,
+	}
+	preBannerDropSubstrings = []string{
+		"connection reset",
+		"forcibly closed",
+		"broken pipe",
+		"connection aborted",
+		"closed network connection",
+	}
 	notSSHServiceSentinels = []error{
 		io.EOF,
 		io.ErrUnexpectedEOF,
