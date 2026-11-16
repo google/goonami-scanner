@@ -22,7 +22,8 @@ application roots, and `CONTENT_TYPE_HASH` crawl results.
     unchanged, splits endpoints that carry both hostname and IP addresses,
     creates a per-service `SimpleCrawler` and `cache.Cache`, runs passive and
     active declarative workflows, records crawl hashes and optional HTML
-    artifacts, and reconciles identical endpoint results.
+    artifacts, reconciles identical endpoint results, and records
+    `metrics.FingerprintIdentifications` per reconciled `(fingerprint, rule)`.
 -   **Sentinel errors (`ErrSignaturesRead`, `ErrSignaturesUnmarshal`,
     `ErrArtifactsWrite`)**: Report signature loading/unmarshaling failures in
     `New` and artifact persistence failures during `Fingerprint`.

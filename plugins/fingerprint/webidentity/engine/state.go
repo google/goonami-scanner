@@ -27,6 +27,7 @@ type IdentificationResult struct {
 	Software        string
 	ApplicationRoot string
 	Versions        []string
+	MatchedSteps    []string
 }
 
 type matchState struct {
@@ -35,6 +36,8 @@ type matchState struct {
 	identified bool
 	versions   []string
 	versionSet map[string]bool
+	steps      []string
+	stepSet    map[string]bool
 }
 
 func newMatchState(software, rootPath string) *matchState {
@@ -42,16 +45,23 @@ func newMatchState(software, rootPath string) *matchState {
 		software:   software,
 		rootPath:   rootPath,
 		versionSet: make(map[string]bool),
+		stepSet:    make(map[string]bool),
 	}
 }
 
-func (s *matchState) recordSuccess(versions []string) {
+func (s *matchState) recordSuccess(versions, steps []string) {
 	s.identified = true
 	for _, v := range versions {
 		v = strings.TrimSpace(v)
 		if v != "" && !s.versionSet[v] {
 			s.versionSet[v] = true
 			s.versions = append(s.versions, v)
+		}
+	}
+	for _, step := range steps {
+		if step != "" && !s.stepSet[step] {
+			s.stepSet[step] = true
+			s.steps = append(s.steps, step)
 		}
 	}
 }
@@ -100,7 +110,7 @@ func mergeIdentifiedStates(states map[string]*matchState) []*matchState {
 		merged := false
 		for _, parent := range keptStates {
 			if parent.software == s.software && isSubpath(parent.rootPath, s.rootPath) {
-				parent.recordSuccess(s.versions)
+				parent.recordSuccess(s.versions, s.steps)
 				merged = true
 				break
 			}
@@ -116,10 +126,12 @@ func toIdentificationResults(states []*matchState) []*IdentificationResult {
 	var results []*IdentificationResult
 	for _, s := range states {
 		slices.Sort(s.versions)
+		slices.Sort(s.steps)
 		results = append(results, &IdentificationResult{
 			Software:        s.software,
 			ApplicationRoot: s.rootPath,
 			Versions:        s.versions,
+			MatchedSteps:    s.steps,
 		})
 	}
 

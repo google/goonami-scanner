@@ -39,6 +39,43 @@ type rootResult struct {
 	result    *engine.IdentificationResult
 }
 
+type identifiedApp struct {
+	software string
+	appRoot  string
+	versions []string
+	steps    []string
+}
+
+func mergeUniqueSorted(a, b []string) []string {
+	merged := make([]string, 0, len(a)+len(b))
+	merged = append(merged, a...)
+	merged = append(merged, b...)
+	slices.Sort(merged)
+	return slices.Compact(merged)
+}
+
+func reconcileIdentifiedApps(apps []*identifiedApp) []*identifiedApp {
+	var reconciled []*identifiedApp
+	for _, app := range apps {
+		idx := slices.IndexFunc(reconciled, func(existing *identifiedApp) bool {
+			return existing.software == app.software &&
+				existing.appRoot == app.appRoot &&
+				slices.Equal(existing.versions, app.versions)
+		})
+		if idx >= 0 {
+			reconciled[idx].steps = mergeUniqueSorted(reconciled[idx].steps, app.steps)
+			continue
+		}
+		reconciled = append(reconciled, &identifiedApp{
+			software: app.software,
+			appRoot:  app.appRoot,
+			versions: slices.Clone(app.versions),
+			steps:    mergeUniqueSorted(app.steps, nil),
+		})
+	}
+	return reconciled
+}
+
 func sameIdentification(a, b *engine.IdentificationResult) bool {
 	return a.Software == b.Software &&
 		a.ApplicationRoot == b.ApplicationRoot &&

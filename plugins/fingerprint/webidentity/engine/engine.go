@@ -99,7 +99,7 @@ func (e *Engine) evaluatePass1WithCache(ctx context.Context, c *cache.Cache, bas
 			for _, wf := range fp.workflows {
 				root, versions, matched, step0Matched := e.evaluateWorkflowPass1(ctx, c, baseURL, fp.software, wf, entry, entryMethod, ep, eu, stepCache)
 				if matched {
-					getOrCreateState(states, fp.software, root).recordSuccess(versions)
+					getOrCreateState(states, fp.software, root).recordSuccess(versions, workflowStepNames(wf))
 				} else if step0Matched {
 					getOrCreateState(states, fp.software, root)
 				}
@@ -200,7 +200,7 @@ func (e *Engine) evaluatePass2WithCache(ctx context.Context, c *cache.Cache, bas
 					continue
 				}
 				if wfPassed {
-					s.recordSuccess(versions)
+					s.recordSuccess(versions, workflowStepNames(wf))
 				}
 			}
 		}
@@ -363,6 +363,15 @@ func entryURL(entry *cache.CachedResponse, baseURL, path string) string {
 		return entry.URL.String()
 	}
 	return baseURL + path
+}
+
+func workflowStepNames(wf *matcher.CompiledWorkflow) []string {
+	steps := wf.Steps()
+	names := make([]string, 0, len(steps))
+	for _, step := range steps {
+		names = append(names, step.Name())
+	}
+	return names
 }
 
 func hasVersionExtractors(wf *matcher.CompiledWorkflow) bool {
