@@ -126,5 +126,6 @@ plugins: {
     max_concurrency: 5
     max_requests_per_second: 10
     stop_at_first_valid_credentials: true
+    timeout_seconds: 1200  # 20 minutes
   }
 }

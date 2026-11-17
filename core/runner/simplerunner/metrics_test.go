@@ -19,6 +19,7 @@ package simplerunner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/goonami-scanner/common/testfakes/fakemodule"
@@ -204,6 +205,12 @@ func TestRunRecordsPhaseMetrics(t *testing.T) {
 }
 
 func TestRunRecordsModuleMetrics(t *testing.T) {
+	errBruteForceDeadline := fmt.Errorf("%w: %w", config.ErrBruteForceTimeout, context.DeadlineExceeded)
+	detectPartialTimeout := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		reports, _ := detectOneFinding()(ctx, svc)
+		return reports, errBruteForceDeadline
+	}
+
 	testCases := []struct {
 		name           string
 		portScanner    module.PortScanner
@@ -256,6 +263,21 @@ func TestRunRecordsModuleMetrics(t *testing.T) {
 				"ps1": {runs: 1},
 				"fp1": {runs: 1},
 				"d1":  {runs: 1, errs: 1, failure: fakemodule.ErrFakeDetectGeneric},
+			},
+		},
+		{
+			name:           "when_a_detector_times_out_with_partial_findings_the_deadline_error_is_counted_and_remaining_detectors_run",
+			portScanner:    fakemodule.NewFakePortScanner("ps1", scanReport("svc1")),
+			fingerprinters: []module.Fingerprinter{fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing)},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", detectPartialTimeout),
+				fakemodule.NewFakeVulnDetector("d2", fakemodule.FakeDetectFnNoFindings),
+			},
+			wantRuns: map[string]moduleExpectation{
+				"ps1": {runs: 1},
+				"fp1": {runs: 1},
+				"d1":  {runs: 1, errs: 1, failure: errBruteForceDeadline},
+				"d2":  {runs: 1},
 			},
 		},
 		{
@@ -372,6 +394,18 @@ func TestRunRecordsFindings(t *testing.T) {
 			},
 			services:     []string{"svc1"},
 			wantFindings: map[string]int64{"d1": 1, "d2": 0},
+		},
+		{
+			name: "when_a_detector_returns_partial_findings_with_error_they_are_still_counted",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+					reports, _ := detectOneFinding()(ctx, svc)
+					return reports, fmt.Errorf("%w: %w", config.ErrBruteForceTimeout, context.DeadlineExceeded)
+				}),
+				fakemodule.NewFakeVulnDetector("d2", detectOneFinding()),
+			},
+			services:     []string{"svc1"},
+			wantFindings: map[string]int64{"d1": 1, "d2": 1},
 		},
 	}
 

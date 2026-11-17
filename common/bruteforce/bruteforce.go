@@ -59,9 +59,10 @@ var (
 // with rate limiting, bounded concurrency, and attempt budgets.
 type Detector struct {
 	*module.BaseModule
-	config  *bfpb.BruteForceConfig
-	handler Handler
-	store   *credentialstore.CredentialStore
+	coreConfig *config.Config
+	config     *bfpb.BruteForceConfig
+	handler    Handler
+	store      *credentialstore.CredentialStore
 }
 
 // New creates a new generic brute-force Detector wrapping the given Handler.
@@ -94,6 +95,7 @@ func New(ctx context.Context, cfg *config.Config, handler Handler, opts *Options
 
 	return &Detector{
 		BaseModule: module.NewBaseModule(handler.Name()),
+		coreConfig: cfg,
 		config:     bfCfg,
 		handler:    handler,
 		store:      store,
@@ -131,10 +133,22 @@ func (d *Detector) Detect(ctx context.Context, service *nspb.NetworkService) (*d
 	}
 
 	creds := d.candidates()
+	if len(creds) == 0 {
+		log.DebugContextf(ctx, log.DebugLevelService, "no candidate credentials to test, skipping brute-forcing")
+		return nil, nil
+	}
 	log.DebugContextf(ctx, log.DebugLevelService, "%d credentials generated (max attempts: %d) and will be used against the service", len(creds), d.config.GetMaxAttemptsPerService())
 
-	res, err := testCredentials(ctx, d.config, d.handler.NewWorker, service, creds)
+	var res poolResult
+	err = d.coreConfig.RunBruteForce(ctx, func(bfCtx context.Context) error {
+		var runErr error
+		res, runErr = testCredentials(bfCtx, d.config, d.handler.NewWorker, service, creds)
+		return runErr
+	})
 	if err != nil {
+		if len(res.validCreds) > 0 {
+			return d.buildDetectionReportList(service, res.validCreds), err
+		}
 		return nil, err
 	}
 

@@ -35,14 +35,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// BruteForceConfig contains configuration settings for the generic brute-force
-// library.
+// BruteForceConfig contains configuration settings for brute-forcing across
+// Goonami detectors.
 type BruteForceConfig struct {
 	state                                  protoimpl.MessageState `protogen:"opaque.v1"`
 	xxx_hidden_MaxAttemptsPerService       int32                  `protobuf:"varint,1,opt,name=max_attempts_per_service,json=maxAttemptsPerService,def=2000"`
 	xxx_hidden_MaxConcurrency              int32                  `protobuf:"varint,2,opt,name=max_concurrency,json=maxConcurrency,def=1"`
 	xxx_hidden_MaxRequestsPerSecond        int32                  `protobuf:"varint,3,opt,name=max_requests_per_second,json=maxRequestsPerSecond,def=10"`
 	xxx_hidden_StopAtFirstValidCredentials bool                   `protobuf:"varint,4,opt,name=stop_at_first_valid_credentials,json=stopAtFirstValidCredentials,def=1"`
+	xxx_hidden_TimeoutSeconds              int32                  `protobuf:"varint,5,opt,name=timeout_seconds,json=timeoutSeconds,def=1200"`
 	XXX_raceDetectHookData                 protoimpl.RaceDetectHookData
 	XXX_presence                           [1]uint32
 	unknownFields                          protoimpl.UnknownFields
@@ -55,6 +56,7 @@ const (
 	Default_BruteForceConfig_MaxConcurrency              = int32(1)
 	Default_BruteForceConfig_MaxRequestsPerSecond        = int32(10)
 	Default_BruteForceConfig_StopAtFirstValidCredentials = bool(true)
+	Default_BruteForceConfig_TimeoutSeconds              = int32(1200)
 )
 
 func (x *BruteForceConfig) Reset() {
@@ -118,24 +120,38 @@ func (x *BruteForceConfig) GetStopAtFirstValidCredentials() bool {
 	return Default_BruteForceConfig_StopAtFirstValidCredentials
 }
 
+func (x *BruteForceConfig) GetTimeoutSeconds() int32 {
+	if x != nil {
+		if protoimpl.X.Present(&(x.XXX_presence[0]), 4) {
+			return x.xxx_hidden_TimeoutSeconds
+		}
+	}
+	return Default_BruteForceConfig_TimeoutSeconds
+}
+
 func (x *BruteForceConfig) SetMaxAttemptsPerService(v int32) {
 	x.xxx_hidden_MaxAttemptsPerService = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 0, 5)
 }
 
 func (x *BruteForceConfig) SetMaxConcurrency(v int32) {
 	x.xxx_hidden_MaxConcurrency = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 1, 5)
 }
 
 func (x *BruteForceConfig) SetMaxRequestsPerSecond(v int32) {
 	x.xxx_hidden_MaxRequestsPerSecond = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 2, 5)
 }
 
 func (x *BruteForceConfig) SetStopAtFirstValidCredentials(v bool) {
 	x.xxx_hidden_StopAtFirstValidCredentials = v
-	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 4)
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 3, 5)
+}
+
+func (x *BruteForceConfig) SetTimeoutSeconds(v int32) {
+	x.xxx_hidden_TimeoutSeconds = v
+	protoimpl.X.SetPresent(&(x.XXX_presence[0]), 4, 5)
 }
 
 func (x *BruteForceConfig) HasMaxAttemptsPerService() bool {
@@ -166,6 +182,13 @@ func (x *BruteForceConfig) HasStopAtFirstValidCredentials() bool {
 	return protoimpl.X.Present(&(x.XXX_presence[0]), 3)
 }
 
+func (x *BruteForceConfig) HasTimeoutSeconds() bool {
+	if x == nil {
+		return false
+	}
+	return protoimpl.X.Present(&(x.XXX_presence[0]), 4)
+}
+
 func (x *BruteForceConfig) ClearMaxAttemptsPerService() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 0)
 }
@@ -182,6 +205,10 @@ func (x *BruteForceConfig) ClearStopAtFirstValidCredentials() {
 	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 3)
 }
 
+func (x *BruteForceConfig) ClearTimeoutSeconds() {
+	protoimpl.X.ClearPresent(&(x.XXX_presence[0]), 4)
+}
+
 type BruteForceConfig_builder struct {
 	_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.
 
@@ -194,6 +221,9 @@ type BruteForceConfig_builder struct {
 	// Whether to stop brute-forcing a service as soon as the first valid
 	// credential is found.
 	StopAtFirstValidCredentials *bool
+	// Maximum total active wall-clock time in seconds spent brute-forcing across
+	// the scan. A value <= 0 disables the limit.
+	TimeoutSeconds *int32
 }
 
 func (b0 BruteForceConfig_builder) Build() *BruteForceConfig {
@@ -201,20 +231,24 @@ func (b0 BruteForceConfig_builder) Build() *BruteForceConfig {
 	b, x := &b0, m0
 	_, _ = b, x
 	if b.MaxAttemptsPerService != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 0, 5)
 		x.xxx_hidden_MaxAttemptsPerService = *b.MaxAttemptsPerService
 	}
 	if b.MaxConcurrency != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 1, 5)
 		x.xxx_hidden_MaxConcurrency = *b.MaxConcurrency
 	}
 	if b.MaxRequestsPerSecond != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 2, 5)
 		x.xxx_hidden_MaxRequestsPerSecond = *b.MaxRequestsPerSecond
 	}
 	if b.StopAtFirstValidCredentials != nil {
-		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 4)
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 3, 5)
 		x.xxx_hidden_StopAtFirstValidCredentials = *b.StopAtFirstValidCredentials
+	}
+	if b.TimeoutSeconds != nil {
+		protoimpl.X.SetPresentNonAtomic(&(x.XXX_presence[0]), 4, 5)
+		x.xxx_hidden_TimeoutSeconds = *b.TimeoutSeconds
 	}
 	return m0
 }
@@ -223,12 +257,13 @@ var File_common_bruteforce_bruteforce_config_proto protoreflect.FileDescriptor
 
 const file_common_bruteforce_bruteforce_config_proto_rawDesc = "" +
 	"\n" +
-	")common/bruteforce/bruteforce_config.proto\x12 goonami.proto.configs.bruteforce\"\x84\x02\n" +
+	")common/bruteforce/bruteforce_config.proto\x12 goonami.proto.configs.bruteforce\"\xb3\x02\n" +
 	"\x10BruteForceConfig\x12=\n" +
 	"\x18max_attempts_per_service\x18\x01 \x01(\x05:\x042000R\x15maxAttemptsPerService\x12*\n" +
 	"\x0fmax_concurrency\x18\x02 \x01(\x05:\x011R\x0emaxConcurrency\x129\n" +
 	"\x17max_requests_per_second\x18\x03 \x01(\x05:\x0210R\x14maxRequestsPerSecond\x12J\n" +
-	"\x1fstop_at_first_valid_credentials\x18\x04 \x01(\b:\x04trueR\x1bstopAtFirstValidCredentialsB\x99\x01\n" +
+	"\x1fstop_at_first_valid_credentials\x18\x04 \x01(\b:\x04trueR\x1bstopAtFirstValidCredentials\x12-\n" +
+	"\x0ftimeout_seconds\x18\x05 \x01(\x05:\x041200R\x0etimeoutSecondsB\x99\x01\n" +
 	"+com.google.goonami.proto.configs.bruteforceB\x1aBruteForceConfigOuterClassZNgithub.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_protob\beditionsp\xe9\a"
 
 var file_common_bruteforce_bruteforce_config_proto_msgTypes = make([]protoimpl.MessageInfo, 1)

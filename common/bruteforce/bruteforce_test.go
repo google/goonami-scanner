@@ -1025,3 +1025,116 @@ func TestWorkerPool_DoneAndUserDone(t *testing.T) {
 		})
 	}
 }
+
+func TestDetector_Detect_BruteForceTimeout(t *testing.T) {
+	baseVuln := vpb.Vulnerability_builder{
+		Title: "Weak Credentials",
+	}.Build()
+
+	tests := []struct {
+		name          string
+		store         *credentialstore.CredentialStore
+		stopAtFirst   bool
+		swallowCtxErr bool
+		wantDetails   []string
+	}{
+		{
+			name:        "when_timeout_expires_after_valid_credential_returns_partial_findings_and_timeout_error",
+			store:       smallStore([]string{"u1", "u2"}, []string{"p1"}),
+			stopAtFirst: false,
+			wantDetails: []string{"u1:p1"},
+		},
+		{
+			name:          "when_timeout_expires_with_no_valid_credentials_and_worker_swallows_ctx_err_returns_timeout_error",
+			store:         smallStore([]string{"u1"}, []string{"p1"}),
+			stopAtFirst:   true,
+			swallowCtxErr: true,
+			wantDetails:   nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.FromProto(cpb.Config_builder{
+				Plugins: cpb.PluginsConfig_builder{
+					Bruteforce: bfpb.BruteForceConfig_builder{
+						TimeoutSeconds:              new(int32(1)),
+						MaxRequestsPerSecond:        new(int32(0)),
+						StopAtFirstValidCredentials: new(tc.stopAtFirst),
+					}.Build(),
+				}.Build(),
+			}.Build())
+			t.Cleanup(func() { _ = cfg.Close(context.Background()) })
+
+			handler := &fakeHandler{
+				vuln: baseVuln,
+				testCredFn: func(ctx context.Context, service *nspb.NetworkService, cred Credential) (bool, error) {
+					if !tc.swallowCtxErr && cred.Username == "u1" {
+						return true, nil
+					}
+					<-ctx.Done()
+					if tc.swallowCtxErr {
+						return false, nil
+					}
+					return false, ctx.Err()
+				},
+			}
+
+			d, err := New(t.Context(), cfg, handler, &Options{CredentialStore: tc.store})
+			if err != nil {
+				t.Fatalf("New() unexpected error: %v", err)
+			}
+
+			reports, err := d.Detect(t.Context(), testService())
+			if !errors.Is(err, config.ErrBruteForceTimeout) {
+				t.Fatalf("Detect() error = %v, want errors.Is(_, config.ErrBruteForceTimeout) = true", err)
+			}
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("Detect() error = %v, want errors.Is(_, context.DeadlineExceeded) = true", err)
+			}
+
+			gotDetails := additionalDetailTexts(reports)
+			if diff := cmp.Diff(tc.wantDetails, gotDetails); diff != "" {
+				t.Errorf("Detect() AdditionalDetails mismatch (-want +got):\n%s", diff)
+			}
+
+			// A non-matching detector sharing cfg still skips without failing on the exhausted budget.
+			nonMatchDetector, err := New(t.Context(), cfg, &fakeHandler{
+				name: "dt/fake_non_match",
+				fingerprintFn: func(ctx context.Context, service *nspb.NetworkService) (bool, error) {
+					return false, nil
+				},
+				testCredFn: func(ctx context.Context, service *nspb.NetworkService, cred Credential) (bool, error) {
+					t.Errorf("nonMatchDetector.TestCredential() called unexpectedly")
+					return false, nil
+				},
+			}, &Options{CredentialStore: smallStore([]string{"admin"}, []string{"pass"})})
+			if err != nil {
+				t.Fatalf("New(nonMatchDetector) unexpected error: %v", err)
+			}
+			nonMatchReports, err := nonMatchDetector.Detect(t.Context(), testService())
+			if err != nil || nonMatchReports != nil {
+				t.Errorf("nonMatchDetector.Detect() = (%v, %v), want (nil, nil)", nonMatchReports, err)
+			}
+
+			// A matching detector sharing cfg immediately fails with ErrBruteForceTimeout without probing.
+			matchDetector, err := New(t.Context(), cfg, &fakeHandler{
+				name: "dt/fake_match",
+				testCredFn: func(ctx context.Context, service *nspb.NetworkService, cred Credential) (bool, error) {
+					t.Errorf("matchDetector.TestCredential() called after budget exhausted")
+					return false, nil
+				},
+			}, &Options{CredentialStore: smallStore([]string{"admin"}, []string{"pass"})})
+			if err != nil {
+				t.Fatalf("New(matchDetector) unexpected error: %v", err)
+			}
+			matchReports, err := matchDetector.Detect(t.Context(), testService())
+			if !errors.Is(err, config.ErrBruteForceTimeout) || !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("matchDetector.Detect() error = %v, want ErrBruteForceTimeout + DeadlineExceeded", err)
+			}
+			if matchReports != nil {
+				t.Errorf("matchDetector.Detect() reports = %v, want nil", matchReports)
+			}
+		})
+	}
+}

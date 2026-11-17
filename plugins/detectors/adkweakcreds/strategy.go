@@ -127,8 +127,14 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 	}
 
 	var validCreds []*credential
+	var stopErr error
 
 	for _, cred := range a.AuthDetails.CredentialsToTest {
+		if err := ctx.Err(); err != nil {
+			stopErr = err
+			break
+		}
+
 		valid, err := a.validateCredential(ctx, cfg, service, cred)
 		if err != nil {
 			// Credentials that were already confirmed must never be discarded because a later
@@ -137,24 +143,30 @@ func (a *authStrategy) bruteforce(ctx context.Context, cfg *config.Config, servi
 				return nil, err
 			}
 			log.WarnContextf(ctx, "stopping brute force early: %v", err)
+			if ctx.Err() != nil {
+				stopErr = err
+			}
 			break
 		}
 
 		if valid {
 			log.DebugContextf(ctx, log.DebugLevelService, "valid credentials found: %v", cred)
 			validCreds = append(validCreds, cred)
+		} else if err := ctx.Err(); err != nil {
+			stopErr = err
+			break
 		}
 	}
 
 	if len(validCreds) == 0 {
-		return nil, nil
+		return nil, stopErr
 	}
 
 	return &finding{
 		ValidCredentials: validCreds,
 		LoginRequest:     a.AuthDetails.LoginRequest,
 		CsrfRequest:      a.AuthDetails.CsrfRequest,
-	}, nil
+	}, stopErr
 }
 
 // isAuthFailure reports whether the response indicates an authentication failure

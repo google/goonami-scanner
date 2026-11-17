@@ -22,8 +22,8 @@ option go_package = "github.com/google/goonami-scanner/common/bruteforce/brutefo
 option java_outer_classname = "BruteForceConfigOuterClass";
 option java_package = "com.google.goonami.proto.configs.bruteforce";
 
-// BruteForceConfig contains configuration settings for the generic brute-force
-// library.
+// BruteForceConfig contains configuration settings for brute-forcing across
+// Goonami detectors.
 message BruteForceConfig {
   // Maximum number of authentication attempts to make per service.
   int32 max_attempts_per_service = 1 [default = 2000];
@@ -37,4 +37,8 @@ message BruteForceConfig {
   // Whether to stop brute-forcing a service as soon as the first valid
   // credential is found.
   bool stop_at_first_valid_credentials = 4 [default = true];
+
+  // Maximum total active wall-clock time in seconds spent brute-forcing across
+  // the scan. A value <= 0 disables the limit.
+  int32 timeout_seconds = 5 [default = 1200];
 }

@@ -31,11 +31,17 @@ and allocate per-module artifact and cache directories.
     subdirectories under `artifacts/` and `cache/`, returning `ErrUninitialized`
     if directories were not initialized.
 -   **Section Accessors & Helpers (`GlobalConfig`, `ClientsConfig`,
-    `PluginsConfig`, `WorkflowConfig`, `TimeoutPerRequest`)**: Return the typed
-    sub-messages of the underlying `Config` proto for engine, client, plugin,
-    and workflow settings. `TimeoutPerRequest()` converts
+    `PluginsConfig`, `WorkflowConfig`, `TimeoutPerRequest`, `BruteForceTimeout`,
+    `RunBruteForce`)**: Return the typed sub-messages of the underlying
+    `Config` proto for engine, client, plugin, and workflow settings.
+    `TimeoutPerRequest()` converts
     `GlobalConfig().GetPerformance().GetTimeoutPerRequestSeconds()` into a
-    `time.Duration`.
+    `time.Duration`, and `BruteForceTimeout()` converts
+    `PluginsConfig().GetBruteforce().GetTimeoutSeconds()` into a `time.Duration`
+    (`<= 0` disables the limit). `RunBruteForce(ctx, fn)` enforces the
+    scan-wide active wall-clock brute-force budget shared across all callers on
+    the `*Config` instance, pausing when no brute-force call is active and
+    wrapping `ErrBruteForceTimeout` with `context.DeadlineExceeded` on expiry.
 -   **`(*Config).ApplyOverrides`**: Mutates fields in the underlying `Config`
     proto via protobuf reflection using `"key=value"` dot-separated proto field
     paths, supporting strings, booleans, 32/64-bit signed and unsigned integers,
@@ -50,13 +56,14 @@ and allocate per-module artifact and cache directories.
     plus ordered `ModuleFilter` `require`/`ignore` regex lists for
     `fingerprinters` and `detectors`), `ClientsConfig` (`nmap`, `http_crawler`,
     `llm`, `callback_server`, `ssh`, `mysql`, `postgres`), and `PluginsConfig`
-    (`webidentity`, `httpscan`, `templatedweakcredentials`).
+    (`webidentity`, `httpscan`, `bruteforce`).
 -   **Sentinel Errors**: Exports `ErrUninitialized`, `ErrWorkDirEmpty`,
     `ErrWorkDirAccess`, and `ErrCreateDir` for directory lifecycle failures;
     `ErrConfigRead` and `ErrConfigUnmarshal` for file I/O, textproto parsing,
-    and override value conversion errors; and `ErrInvalidOverrideFormat`,
+    and override value conversion errors; `ErrInvalidOverrideFormat`,
     `ErrFieldNotFound`, `ErrFieldNotMessage`, and `ErrUnsupportedFieldKind` for
-    invalid override paths or unsupported proto field kinds.
+    invalid override paths or unsupported proto field kinds; and
+    `ErrBruteForceTimeout` when the shared brute-force time limit is exceeded.
 
 ## Usage
 

@@ -106,26 +106,29 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
-	strategy, err := m.getStrategy(ctx, service)
+	var found *finding
+	err := m.coreConfig.RunBruteForce(ctx, func(bfCtx context.Context) error {
+		strategy, err := m.getStrategy(bfCtx, service)
+		if err != nil || strategy == nil {
+			return err
+		}
+
+		strategy.judgeBuilder = m.judgeBuilder
+		found, err = strategy.bruteforce(bfCtx, m.coreConfig, service)
+		return err
+	})
+
+	if found != nil {
+		report, buildErr := m.buildDetectionReport(ctx, service, *found)
+		if buildErr != nil {
+			return nil, errors.Join(err, buildErr)
+		}
+		return report, err
+	}
 	if err != nil {
 		return nil, err
 	}
-
-	if strategy == nil {
-		return nil, nil
-	}
-
-	strategy.judgeBuilder = m.judgeBuilder
-	finding, err := strategy.bruteforce(ctx, m.coreConfig, service)
-	if err != nil {
-		return nil, err
-	}
-
-	if finding == nil {
-		return nil, nil
-	}
-
-	return m.buildDetectionReport(ctx, service, *finding)
+	return nil, nil
 }
 
 func (m *Module) getStrategy(ctx context.Context, service *nspb.NetworkService) (*authStrategy, error) {

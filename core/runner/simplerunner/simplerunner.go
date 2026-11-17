@@ -367,7 +367,6 @@ func (r *SimpleRunner) detectService(ctx context.Context, svc *nspb.NetworkServi
 		if err != nil {
 			r.degraded.Store(true)
 			log.ErrorContextf(ctx, "detector %s failed, continuing without it: %s", dt.Name(), err)
-			continue
 		}
 
 		for range res.GetDetectionReports() {

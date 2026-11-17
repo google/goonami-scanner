@@ -456,6 +456,15 @@ func TestDetectStep(t *testing.T) {
 			},
 		}.Build(), nil
 	}
+	fakeDetectFnPartialOnError := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		return dpb.DetectionReportList_builder{
+			DetectionReports: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: svc,
+				}.Build(),
+			},
+		}.Build(), fmt.Errorf("%w: %w", config.ErrBruteForceTimeout, context.DeadlineExceeded)
+	}
 
 	tests := []struct {
 		name      string
@@ -523,6 +532,28 @@ func TestDetectStep(t *testing.T) {
 			want: []*dpb.DetectionReport{
 				dpb.DetectionReport_builder{
 					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+				}.Build(),
+			},
+			wantErr: nil,
+		},
+		{
+			name: "when_detector_errors_with_partial_reports_preserves_reports_and_runs_remaining_detectors",
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnPartialOnError),
+				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnWithFinding),
+			},
+			want: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+				}.Build(),
+				dpb.DetectionReport_builder{
+					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
 				}.Build(),
 				dpb.DetectionReport_builder{
 					NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
@@ -746,6 +777,42 @@ func TestRun(t *testing.T) {
 		}
 		return dpb.DetectionReportList_builder{
 			DetectionReports: reports,
+		}.Build(), nil
+	}
+
+	fakeDetectFnPartialTimeout := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		if svc.GetServiceName() != "svc1" {
+			return nil, nil
+		}
+		return dpb.DetectionReportList_builder{
+			DetectionReports: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					DetectionStatus: dpb.DetectionStatus_VULNERABILITY_VERIFIED,
+					NetworkService:  svc,
+					Vulnerability: vpb.Vulnerability_builder{
+						MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+						Title:  "Fake Vulnerability 1",
+					}.Build(),
+				}.Build(),
+			},
+		}.Build(), fmt.Errorf("%w: %w", config.ErrBruteForceTimeout, context.DeadlineExceeded)
+	}
+
+	fakeDetectFnSecondDetector := func(ctx context.Context, svc *nspb.NetworkService) (*dpb.DetectionReportList, error) {
+		if svc.GetServiceName() != "svc2" {
+			return nil, nil
+		}
+		return dpb.DetectionReportList_builder{
+			DetectionReports: []*dpb.DetectionReport{
+				dpb.DetectionReport_builder{
+					DetectionStatus: dpb.DetectionStatus_VULNERABILITY_PRESENT,
+					NetworkService:  svc,
+					Vulnerability: vpb.Vulnerability_builder{
+						MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+						Title:  "Fake Vulnerability 2",
+					}.Build(),
+				}.Build(),
+			},
 		}.Build(), nil
 	}
 
@@ -990,6 +1057,97 @@ func TestRun(t *testing.T) {
 						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
 						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
 						nspb.NetworkService_builder{ServiceName: "svc3"}.Build(),
+					},
+				}.Build(),
+			}.Build(),
+		},
+		{
+			name:        "when_detector_errors_with_partial_findings_scan_is_partially_succeeded_and_findings_preserved",
+			portScanner: fakemodule.NewFakePortScanner("ps1", testReportFn),
+			fingerprinters: []module.Fingerprinter{
+				fakemodule.NewFakeFingerprinter("fp1", fakemodule.FakeFingerprintFnDoNothing),
+			},
+			detectors: []module.VulnDetector{
+				fakemodule.NewFakeVulnDetector("d1", fakeDetectFnPartialTimeout),
+				fakemodule.NewFakeVulnDetector("d2", fakeDetectFnSecondDetector),
+			},
+			wantErr: nil,
+			want: srpb.ScanResults_builder{
+				ScanStatus:  srpb.ScanStatus_PARTIALLY_SUCCEEDED,
+				TargetAlive: true,
+				ScanFindings: []*srpb.ScanFinding{
+					srpb.ScanFinding_builder{
+						TargetInfo: rpb.TargetInfo_builder{
+							NetworkEndpoints: []*npb.NetworkEndpoint{
+								npb.NetworkEndpoint_builder{
+									Type: npb.NetworkEndpoint_IP,
+									IpAddress: npb.IpAddress_builder{
+										AddressFamily: npb.AddressFamily_IPV4,
+										Address:       "1.1.1.1",
+									}.Build(),
+								}.Build(),
+							},
+						}.Build(),
+						NetworkService: nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						Vulnerability: vpb.Vulnerability_builder{
+							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+							Title:  "Fake Vulnerability 1",
+						}.Build(),
+					}.Build(),
+					srpb.ScanFinding_builder{
+						TargetInfo: rpb.TargetInfo_builder{
+							NetworkEndpoints: []*npb.NetworkEndpoint{
+								npb.NetworkEndpoint_builder{
+									Type: npb.NetworkEndpoint_IP,
+									IpAddress: npb.IpAddress_builder{
+										AddressFamily: npb.AddressFamily_IPV4,
+										Address:       "1.1.1.1",
+									}.Build(),
+								}.Build(),
+							},
+						}.Build(),
+						NetworkService: nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+						Vulnerability: vpb.Vulnerability_builder{
+							MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+							Title:  "Fake Vulnerability 2",
+						}.Build(),
+					}.Build(),
+				},
+				FullDetectionReports: srpb.FullDetectionReports_builder{
+					DetectionReports: []*dpb.DetectionReport{
+						dpb.DetectionReport_builder{
+							DetectionStatus: dpb.DetectionStatus_VULNERABILITY_VERIFIED,
+							NetworkService:  nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+							Vulnerability: vpb.Vulnerability_builder{
+								MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln1"}.Build(),
+								Title:  "Fake Vulnerability 1",
+							}.Build(),
+						}.Build(),
+						dpb.DetectionReport_builder{
+							DetectionStatus: dpb.DetectionStatus_VULNERABILITY_PRESENT,
+							NetworkService:  nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
+							Vulnerability: vpb.Vulnerability_builder{
+								MainId: vpb.VulnerabilityId_builder{Publisher: "FAKE", Value: "Vuln2"}.Build(),
+								Title:  "Fake Vulnerability 2",
+							}.Build(),
+						}.Build(),
+					},
+				}.Build(),
+				ReconnaissanceReport: rpb.ReconnaissanceReport_builder{
+					TargetInfo: rpb.TargetInfo_builder{
+						NetworkEndpoints: []*npb.NetworkEndpoint{
+							npb.NetworkEndpoint_builder{
+								Type: npb.NetworkEndpoint_IP,
+								IpAddress: npb.IpAddress_builder{
+									AddressFamily: npb.AddressFamily_IPV4,
+									Address:       "1.1.1.1",
+								}.Build(),
+							}.Build(),
+						},
+					}.Build(),
+					NetworkServices: []*nspb.NetworkService{
+						nspb.NetworkService_builder{ServiceName: "svc1"}.Build(),
+						nspb.NetworkService_builder{ServiceName: "svc2"}.Build(),
 					},
 				}.Build(),
 			}.Build(),

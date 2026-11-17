@@ -45,6 +45,10 @@ func (h *Handler) Name() string {
 // Fingerprint executes the ACTION_PHASE_FINGERPRINT phase of the templated workflow.
 func (h *Handler) Fingerprint(ctx context.Context, service *nspb.NetworkService) (bool, error) {
 	if _, err := h.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_FINGERPRINT, nil); err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return false, ctxErr
+		}
+
 		if errors.Is(err, actions.ErrActionFailed) {
 			log.DebugContextf(ctx, log.DebugLevelService, "service fingerprinting failed: %v", err)
 			return false, nil
@@ -85,6 +89,10 @@ func (h *Handler) TestCredential(ctx context.Context, service *nspb.NetworkServi
 
 	reports, err := h.baseDetector.DetectForPhase(ctx, service, tpb.PluginAction_ACTION_PHASE_DETECTION, extraVars)
 	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return false, ctxErr
+		}
+
 		if errors.Is(err, actions.ErrActionFailed) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "attempt failed: %v", err)
 			return false, nil

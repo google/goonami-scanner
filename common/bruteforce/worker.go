@@ -96,11 +96,8 @@ func testCredentials(ctx context.Context, cfg *bfpb.BruteForceConfig, newWorker 
 		})
 	}
 
-	if err := group.Wait(); err != nil {
-		return poolResult{}, err
-	}
-
-	return pool.result(), nil
+	err := group.Wait()
+	return pool.result(), err
 }
 
 func (p *workerPool) runWorker(ctx context.Context, worker Worker) error {
@@ -153,6 +150,8 @@ func (p *workerPool) runWorker(ctx context.Context, worker Worker) error {
 		if valid {
 			log.DebugContextf(ctx, log.DebugLevelService, "valid credentials identified: %s", cred)
 			p.recordMatch(idx)
+		} else if err := ctx.Err(); err != nil {
+			return err
 		}
 	}
 	return nil

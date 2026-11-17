@@ -38,9 +38,11 @@ import (
 	_ "github.com/google/goonami-scanner/core/net/http/simpleclient"
 	"github.com/google/goonami-scanner/plugins/detectors/adkweakcreds/cache"
 	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/session"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 
+	bfpb "github.com/google/goonami-scanner/common/bruteforce/bruteforce_config_go_proto"
 	lccpb "github.com/google/goonami-scanner/common/clients/llm/llm_client_config_go_proto"
 	cpb "github.com/google/goonami-scanner/core/config/config_go_proto"
 	npb "github.com/google/tsunami-security-scanner/proto/go/network_go_proto"
@@ -910,6 +912,183 @@ func TestAdvisories(t *testing.T) {
 				if second[0].GetTitle() == "mutated title" {
 					t.Errorf("Advisories() returned a mutable reference, expected an isolated clone")
 				}
+			}
+		})
+	}
+}
+
+func TestDetect_BruteForceTimeout(t *testing.T) {
+	strategyJSON := `{
+  "supports_authentication": true,
+  "authentication_details": {
+    "login_request": {
+      "method": "POST",
+      "path": "/login",
+      "body": "user=[[username]]&pass=[[password]]",
+      "extraction_regex": "(error)",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/x-www-form-urlencoded"
+        }
+      ]
+    },
+    "credentials_to_test": [
+      {"username": "admin", "password": "password"},
+      {"username": "slow", "password": "slow"}
+    ]
+  }
+}`
+
+	tests := []struct {
+		name               string
+		blockInDiscovery   bool
+		wantFoundUsernames []string
+	}{
+		{
+			name:               "when_timeout_expires_during_strategy_discovery_returns_brute_force_timeout",
+			blockInDiscovery:   true,
+			wantFoundUsernames: nil,
+		},
+		{
+			name:               "when_timeout_expires_during_bruteforce_after_confirmed_cred_preserves_finding_and_returns_timeout",
+			blockInDiscovery:   false,
+			wantFoundUsernames: []string{"admin"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/login" {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				user := r.FormValue("user")
+				pass := r.FormValue("pass")
+				if user == "slow" {
+					<-r.Context().Done()
+					return
+				}
+				if user == "admin" && pass == "password" {
+					_, _ = w.Write([]byte("success"))
+					return
+				}
+				_, _ = w.Write([]byte("error"))
+			}))
+			defer ts.Close()
+
+			host, portStr, _ := net.SplitHostPort(ts.Listener.Addr().String())
+			port, err := strconv.Atoi(portStr)
+			if err != nil {
+				t.Fatalf("strconv.Atoi(%q) unexpected error: %v", portStr, err)
+			}
+
+			webService := nspb.NetworkService_builder{
+				ServiceName:          "http",
+				SupportedHttpMethods: []string{"GET", "POST"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: host}.Build(),
+					Port:      npb.Port_builder{PortNumber: uint32(port)}.Build(),
+				}.Build(),
+			}.Build()
+
+			nonWebService := nspb.NetworkService_builder{
+				ServiceName: "ssh",
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: host}.Build(),
+					Port:      npb.Port_builder{PortNumber: 22}.Build(),
+				}.Build(),
+			}.Build()
+
+			cfg := config.FromProto(cpb.Config_builder{
+				Globalcfg: cpb.GlobalConfig_builder{
+					Performance: cpb.GlobalConfig_Performance_builder{
+						HttpRetryInitialBackoffSeconds: new(int32(0)),
+					}.Build(),
+				}.Build(),
+				Clients: cpb.ClientsConfig_builder{
+					Llm: lccpb.LlmClientConfig_builder{
+						MaxAttempts: new(int32(3)),
+					}.Build(),
+				}.Build(),
+				Plugins: cpb.PluginsConfig_builder{
+					Bruteforce: bfpb.BruteForceConfig_builder{
+						TimeoutSeconds: new(int32(1)),
+					}.Build(),
+				}.Build(),
+			}.Build())
+			t.Cleanup(func() { _ = cfg.Close(context.Background()) })
+
+			m, err := New(t.Context(), cfg)
+			if err != nil {
+				t.Fatalf("New() unexpected error: %v", err)
+			}
+			mod := m.(*Module)
+			var agentCalls int
+			mod.agentBuilder = func(ctx context.Context, config *config.Config, service *nspb.NetworkService) (agent.Agent, error) {
+				agentCalls++
+				if tc.blockInDiscovery {
+					return fakellmagent.NewWithFunc(func(ic agent.InvocationContext) (*session.Event, error) {
+						<-ic.Done()
+						return nil, ic.Err()
+					}), nil
+				}
+				return fakellmagent.NewWithSimpleAnswer(strategyJSON), nil
+			}
+			mod.judgeBuilder = func(ctx context.Context, config *config.Config) (agent.Agent, error) {
+				return fakellmagent.NewWithSimpleAnswer(`{"authenticated": true}`), nil
+			}
+
+			reports, err := mod.Detect(t.Context(), webService)
+			if !errors.Is(err, config.ErrBruteForceTimeout) {
+				t.Fatalf("Detect(webService) error = %v, want errors.Is(_, config.ErrBruteForceTimeout) = true", err)
+			}
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("Detect(webService) error = %v, want errors.Is(_, context.DeadlineExceeded) = true", err)
+			}
+
+			if len(tc.wantFoundUsernames) == 0 {
+				if reports != nil && len(reports.GetDetectionReports()) > 0 {
+					t.Errorf("Detect(webService) returned reports %v, want none", reports)
+				}
+			} else {
+				if len(reports.GetDetectionReports()) != 1 {
+					t.Fatalf("len(Detect(webService).GetDetectionReports()) = %d, want 1", len(reports.GetDetectionReports()))
+				}
+				extraDetails := reports.GetDetectionReports()[0].GetVulnerability().GetAdditionalDetails()[0].GetTextData().GetText()
+				var parsed finding
+				if err := json.Unmarshal([]byte(extraDetails), &parsed); err != nil {
+					t.Fatalf("json.Unmarshal(%q) unexpected error: %v", extraDetails, err)
+				}
+				var gotUsers []string
+				for _, c := range parsed.ValidCredentials {
+					gotUsers = append(gotUsers, c.Username)
+				}
+				if diff := cmp.Diff(tc.wantFoundUsernames, gotUsers); diff != "" {
+					t.Errorf("ValidCredentials usernames mismatch (-want +got):\n%s", diff)
+				}
+			}
+
+			// Once exhausted, another web service fails immediately without calling the discovery agent,
+			// while a non-web service still returns (nil, nil).
+			callsBeforeSecond := agentCalls
+			secondReports, err := mod.Detect(t.Context(), webService)
+			if !errors.Is(err, config.ErrBruteForceTimeout) || !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("second Detect(webService) error = %v, want ErrBruteForceTimeout + DeadlineExceeded", err)
+			}
+			if secondReports != nil {
+				t.Errorf("second Detect(webService) reports = %v, want nil", secondReports)
+			}
+			if agentCalls != callsBeforeSecond {
+				t.Errorf("agentCalls after budget exhaustion = %d, want %d (no discovery call)", agentCalls, callsBeforeSecond)
+			}
+
+			nonWebReports, err := mod.Detect(t.Context(), nonWebService)
+			if err != nil || nonWebReports != nil {
+				t.Errorf("Detect(nonWebService) = (%v, %v), want (nil, nil)", nonWebReports, err)
 			}
 		})
 	}

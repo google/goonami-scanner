@@ -41,7 +41,8 @@ and finding metrics are recorded automatically.
     returns the combined `[]*dpb.DetectionReport` slice (or `nil` when no
     detectors are registered). Individual detector errors are logged, recorded
     in metrics, and mark the scan degraded without stopping remaining detectors
-    unless `ctx` is canceled.
+    unless `ctx` is canceled, while still preserving any partial
+    `DetectionReport` findings returned alongside the error.
 -   **`(*SimpleRunner).Run(ctx, target)`**: Executes `PortScanStep`,
     `FingerprintStep`, and `DetectStep` sequentially, records phase and scan
     metrics, and builds `*srpb.ScanResults`. It populates `ScanFindings` only

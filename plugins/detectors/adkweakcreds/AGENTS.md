@@ -25,13 +25,16 @@ before reporting `GENERIC_AGENTIC_WEAK_CREDENTIALS` findings.
 -   **`(*Module).Advisories`**: Returns the static base vulnerability advisory
     (`GOOGLE` / `GENERIC_AGENTIC_WEAK_CREDENTIALS`, `Severity: HIGH`) supported
     by the detector.
--   **`(*Module).Detect`**: Evaluates a `*nspb.NetworkService` by obtaining an
-    authentication strategy and testing its candidate credentials, returning
-    `(nil, nil)` for non-web services or services without password/secret
-    authentication. Confirmed credentials produce a verified `HIGH`-severity
-    `*dpb.DetectionReportList` (`GOOGLE` / `GENERIC_AGENTIC_WEAK_CREDENTIALS`)
-    with JSON-serialized `valid_credentials`, `login_request`, and
-    `csrf_request` in `AdditionalDetails`.
+-   **`(*Module).Detect`**: Evaluates a `*nspb.NetworkService` within
+    `config.RunBruteForce` (bounding combined strategy discovery and credential
+    testing to the scan-wide brute-force time limit), returning `(nil, nil)`
+    for non-web services without consuming budget or for services without
+    password/secret authentication. Confirmed credentials produce a verified
+    `HIGH`-severity `*dpb.DetectionReportList` (`GOOGLE` /
+    `GENERIC_AGENTIC_WEAK_CREDENTIALS`) with JSON-serialized
+    `valid_credentials`, `login_request`, and `csrf_request` in
+    `AdditionalDetails`, and are preserved alongside
+    `config.ErrBruteForceTimeout` if the brute-force timeout expires mid-run.
 -   **Authentication Strategy Discovery & Caching**: On a cache miss, `Detect`
     runs the `authentication-agent` (`llm.ModelTierFast`, `prompt.md`, and the
     `httpclient` tool) via `llm.Client.RunWithFeedbackLoop` to synthesize a JSON

@@ -62,6 +62,9 @@ var (
 
 	// ErrUnsupportedFieldKind is returned when a configuration field kind is not supported.
 	ErrUnsupportedFieldKind = errors.New("unsupported configuration field kind")
+
+	// ErrBruteForceTimeout is returned when the scan-wide brute-force time limit is exceeded.
+	ErrBruteForceTimeout = errors.New("brute-force timeout exceeded")
 )
 
 // Config is the configuration used by Goonami. It holds configuration for clients, plugins and
@@ -85,6 +88,7 @@ type Config struct {
 	tempDir      string
 	artifactsDir string
 	cacheDir     string
+	bfBudget     bruteForceBudget
 }
 
 // FromFile creates a new Config from a textproto file. Caller is still responsible for explicitly
@@ -156,6 +160,7 @@ func (c *Config) CreateDirectories(workdir string) error {
 
 // Close ensures proper clean-up is performed.
 func (c *Config) Close(ctx context.Context) error {
+	c.bfBudget.stop()
 	ctx = log.ContextForModule(ctx, "core/config")
 	if c.tempDir == "" {
 		log.WarnContext(ctx, "Clean-up could not be performed. Configuration was never Initialized.")
