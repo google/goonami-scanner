@@ -179,21 +179,7 @@ hand-rolled wire parsers or `fmt.Sprintf` protocol frames.
     standard `# Package <name>`, `## Services`, and `## Usage` sections to
     document its module name, exported constructors/methods/errors, detection
     mechanism, and blank-import usage.
-3.  Keep all exported `plugins/` files compatible with `copy.bara.sky` and
-    `leakr.dic` (only the root `AGENTS.md` and `private/` directories are
-    excluded from GitHub export, and `.md` files have no comment scrubber):
-    -   In plugin `.md` files, format internal package references exclusively as
-        double-quoted Go import literals (such as
-        `"github.com/google/goonami-scanner/plugins/detectors/example"`) and
-        cross-package doc links as
-        `[core/module](/core/module/AGENTS.md)`
-        so `copy.bara.sky` rewrites them; omit unquoted/backticked monorepo
-        paths, build CLI commands, and `leakr.dic`-restricted terms.
-    -   In plugin `.textproto` files, use the `# proto-file:` path prefix
-        expected by `replace_piper_paths_with_relative` in `copy.bara.sky`.
-    -   When importing an external Go library not yet mapped in `copy.bara.sky`,
-        add a sorted `core.replace` entry to `imports_transforms`.
-4.  Write hermetic table-driven unit tests using `common/testfakes/` (such as
+3.  Write hermetic table-driven unit tests using `common/testfakes/` (such as
     `fakehttp` and `fakecallbackserver`) or `127.0.0.1:0` ephemeral loopback
     listeners—never external network dependencies—covering non-default ports,
     TLS vs. plaintext, non-matching services, malformed/oversized responses,
