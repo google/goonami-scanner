@@ -29,7 +29,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -181,9 +180,9 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
-	transports := preferredTransports(service)
+	mode := selectTransport(service)
 	defaultPort := uint32(defaultHTTPPort)
-	if transports[0] == transportH2TLS {
+	if mode == transportH2TLS {
 		defaultPort = defaultHTTPSPort
 	}
 
@@ -193,22 +192,16 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 	}
 
 	candidatePaths := extractCandidatePaths(service, maxCrawledFallbacks)
-
-	for _, mode := range transports {
-		if err := ctx.Err(); err != nil {
-			return nil, err
+	ev, err := m.probeTransport(ctx, mode, target, candidatePaths)
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
 		}
-		ev, err := m.probeTransport(ctx, mode, target, candidatePaths)
-		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return nil, err
-			}
-			log.DebugContextf(ctx, log.DebugLevelService, "HTTP/2 %s probe on %s did not match: %v", mode, target.dialAddr, err) // NOMUTANTS -- diagnostic logging
-			continue
-		}
-		if ev != nil {
-			return m.buildDetectionReport(service, ev), nil
-		}
+		log.DebugContextf(ctx, log.DebugLevelService, "HTTP/2 %s probe on %s did not match: %v", mode, target.dialAddr, err) // NOMUTANTS -- diagnostic logging
+		return nil, nil
+	}
+	if ev != nil {
+		return m.buildDetectionReport(service, ev), nil
 	}
 
 	return nil, nil
@@ -232,18 +225,11 @@ func isSupportedService(service *nspb.NetworkService) bool {
 	return false
 }
 
-func preferredTransports(service *nspb.NetworkService) []transportMode {
-	name := strings.ToLower(strings.TrimSpace(service.GetServiceName()))
-	port := service.GetNetworkEndpoint().GetPort().GetPortNumber()
-	tlsFirst := len(service.GetSupportedSslVersions()) > 0 ||
-		strings.Contains(name, "https") ||
-		strings.Contains(name, "ssl") ||
-		port == 443 ||
-		port == 8443
-	if tlsFirst {
-		return []transportMode{transportH2TLS, transportH2C}
+func selectTransport(service *nspb.NetworkService) transportMode {
+	if netservice.HasTLS(service) {
+		return transportH2TLS
 	}
-	return []transportMode{transportH2C, transportH2TLS}
+	return transportH2C
 }
 
 func (m *Module) probeTransport(ctx context.Context, mode transportMode, target endpointTarget, candidatePaths []string) (*detectionEvidence, error) {

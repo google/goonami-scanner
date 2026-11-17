@@ -60,8 +60,11 @@ const (
 type dialFunc func(ctx context.Context, mode transportMode, dialAddr, sniHost string, timeout time.Duration) (net.Conn, error)
 
 func defaultDial(ctx context.Context, mode transportMode, dialAddr, sniHost string, timeout time.Duration) (net.Conn, error) {
-	dialer := &net.Dialer{Timeout: timeout}
-	rawConn, err := dialer.DialContext(ctx, "tcp", dialAddr)
+	dialCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var dialer net.Dialer
+	rawConn, err := dialer.DialContext(dialCtx, "tcp", dialAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +84,7 @@ func defaultDial(ctx context.Context, mode transportMode, dialAddr, sniHost stri
 	}
 
 	tlsConn := tls.Client(rawConn, tlsCfg)
-	_ = rawConn.SetDeadline(time.Now().Add(timeout)) // NOMUTANTS -- defensive handshake deadline
-	if err := tlsConn.HandshakeContext(ctx); err != nil {
+	if err := tlsConn.HandshakeContext(dialCtx); err != nil {
 		_ = rawConn.Close() // NOMUTANTS(SBR): Resource cleanup on failed TLS handshake; unobservable on returned error.
 		return nil, err
 	}
@@ -143,7 +145,8 @@ func (s *h2ProbeSession) connect(ctx context.Context) error {
 			_ = conn.Close() // NOMUTANTS(SBR): Best-effort socket cleanup on failed HTTP/2 preface exchange.
 		}
 	}()
-	_ = conn.SetDeadline(time.Now().Add(s.timeout)) // NOMUTANTS -- defensive connection deadline
+	stopDeadline := armConnDeadline(ctx, conn, s.timeout)
+	defer stopDeadline()
 
 	// Send client connection preface and empty initial SETTINGS frame (9 bytes) together.
 	if _, err := io.WriteString(conn, h2ClientPreface+"\x00\x00\x00\x04\x00\x00\x00\x00\x00"); err != nil {
@@ -206,18 +209,19 @@ func (s *h2ProbeSession) roundTrip(ctx context.Context, headers []hpack.HeaderFi
 	}
 
 	canRetry := s.nextStream > 1
-	resp, err := s.exchangeOnce(headers, body)
+	resp, err := s.exchangeOnce(ctx, headers, body)
 	if err != nil && canRetry && errors.Is(err, errGoAwayReconnect) {
 		if reconnErr := s.connect(ctx); reconnErr != nil {
 			return h2Response{}, reconnErr
 		}
-		return s.exchangeOnce(headers, body)
+		return s.exchangeOnce(ctx, headers, body)
 	}
 	return resp, err
 }
 
-func (s *h2ProbeSession) exchangeOnce(headers []hpack.HeaderField, body []byte) (h2Response, error) {
-	_ = s.conn.SetDeadline(time.Now().Add(s.timeout)) // NOMUTANTS -- per-stream socket deadline
+func (s *h2ProbeSession) exchangeOnce(ctx context.Context, headers []hpack.HeaderField, body []byte) (h2Response, error) {
+	stopDeadline := armConnDeadline(ctx, s.conn, s.timeout)
+	defer stopDeadline()
 
 	streamID := s.nextStream
 	s.nextStream += 2
@@ -426,4 +430,20 @@ func isRetryableReadErr(err error) bool {
 		return false
 	}
 	return true
+}
+
+func armConnDeadline(ctx context.Context, conn net.Conn, timeout time.Duration) func() {
+	reqCtx, cancel := context.WithTimeout(ctx, timeout)
+	done := make(chan struct{})
+	stop := context.AfterFunc(reqCtx, func() {
+		defer close(done)
+		_ = conn.SetDeadline(time.Now())
+	})
+	return func() {
+		if !stop() {
+			<-done
+			_ = conn.SetDeadline(time.Time{})
+		}
+		cancel()
+	}
 }

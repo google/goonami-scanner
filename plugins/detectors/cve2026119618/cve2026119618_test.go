@@ -507,7 +507,6 @@ func TestDetectPositive(t *testing.T) {
 		name            string
 		useTLS          bool
 		stream5Mode     string
-		failFirstMode   bool
 		wantMode        string
 		wantScheme      string
 		wantStream5Note string
@@ -523,24 +522,6 @@ func TestDetectPositive(t *testing.T) {
 		{
 			name:            "when_vulnerable_apache_h2_tls_trace_enable_extended_returns_verified_finding",
 			useTLS:          true,
-			stream5Mode:     "200_extended",
-			wantMode:        "h2",
-			wantScheme:      "https",
-			wantStream5Note: "HTTP 200 echoed 1-byte body (TraceEnable extended)",
-		},
-		{
-			name:            "when_tls_first_transport_fails_falls_back_to_h2c_and_returns_verified_finding",
-			useTLS:          true,
-			failFirstMode:   true,
-			stream5Mode:     "413_rst",
-			wantMode:        "h2c",
-			wantScheme:      "http",
-			wantStream5Note: "HTTP 413 (TraceEnable on)",
-		},
-		{
-			name:            "when_h2c_first_transport_fails_falls_back_to_h2_tls_and_returns_verified_finding",
-			useTLS:          false,
-			failFirstMode:   true,
 			stream5Mode:     "200_extended",
 			wantMode:        "h2",
 			wantScheme:      "https",
@@ -564,7 +545,6 @@ func TestDetectPositive(t *testing.T) {
 			apacheCfg := defaultVulnerableApacheConfig()
 			apacheCfg.stream5Mode = tc.stream5Mode
 
-			targetSpeakTLS := (tc.useTLS && !tc.failFirstMode) || (!tc.useTLS && tc.failFirstMode)
 			go func() {
 				for {
 					rawConn, acceptErr := ln.Accept()
@@ -572,7 +552,7 @@ func TestDetectPositive(t *testing.T) {
 						return
 					}
 					go func(c net.Conn) {
-						if targetSpeakTLS {
+						if tc.useTLS {
 							tlsSrv := tls.Server(c, &tls.Config{
 								Certificates: []tls.Certificate{cert},
 								NextProtos:   []string{"h2"},
@@ -590,14 +570,15 @@ func TestDetectPositive(t *testing.T) {
 			}()
 
 			port := uint32(ln.Addr().(*net.TCPAddr).Port)
-			svcName := "http"
+			var sslVersions []string
 			if tc.useTLS {
-				svcName = "https"
+				sslVersions = []string{"TLSv1.3"}
 			}
 			svc := nspb.NetworkService_builder{
-				ServiceName:          svcName,
+				ServiceName:          "http",
 				TransportProtocol:    npb.TransportProtocol_TCP,
 				SupportedHttpMethods: []string{"GET"},
+				SupportedSslVersions: sslVersions,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Type: npb.NetworkEndpoint_IP_PORT,
 					IpAddress: npb.IpAddress_builder{
@@ -1461,6 +1442,7 @@ func TestDetectWireFramingAndAdversarialPeers(t *testing.T) {
 				ServiceName:          "https",
 				TransportProtocol:    npb.TransportProtocol_TCP,
 				SupportedHttpMethods: []string{"GET"},
+				SupportedSslVersions: []string{"TLSv1.3"},
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
 					Port:      npb.Port_builder{PortNumber: port}.Build(),
@@ -1497,10 +1479,10 @@ func (p *prefixedConn) Read(b []byte) (int, error) {
 
 func TestServiceEligibilityAndTransportParity(t *testing.T) {
 	testCases := []struct {
-		name           string
-		svc            *nspb.NetworkService
-		wantSupported  bool
-		wantTransports []transportMode
+		name          string
+		svc           *nspb.NetworkService
+		wantSupported bool
+		wantTransport transportMode
 	}{
 		{
 			name:          "when_nil_service_returns_not_supported",
@@ -1519,7 +1501,7 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 			wantSupported: false,
 		},
 		{
-			name: "when_nmap_http_service_without_supported_http_methods_on_custom_port_matches_java_parity",
+			name: "when_nmap_http_service_without_supported_http_methods_on_custom_port_selects_h2c",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "http",
 				TransportProtocol: npb.TransportProtocol_TCP,
@@ -1527,11 +1509,11 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 					Port: npb.Port_builder{PortNumber: 9080}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2C, transportH2TLS},
+			wantSupported: true,
+			wantTransport: transportH2C,
 		},
 		{
-			name: "when_nmap_https_service_without_supported_http_methods_on_custom_port_matches_java_parity",
+			name: "when_https_service_without_supported_ssl_versions_selects_h2c",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "https",
 				TransportProtocol: npb.TransportProtocol_TCP,
@@ -1539,35 +1521,24 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 					Port: npb.Port_builder{PortNumber: 9443}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2TLS, transportH2C},
+			wantSupported: true,
+			wantTransport: transportH2C,
 		},
 		{
-			name: "when_nmap_ssl_http_service_without_methods_matches_java_parity",
+			name: "when_service_with_supported_ssl_versions_selects_h2_tls",
 			svc: nspb.NetworkService_builder{
-				ServiceName:       "ssl/http",
-				TransportProtocol: npb.TransportProtocol_TCP,
+				ServiceName:          "http",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 9443}.Build(),
+					Port: npb.Port_builder{PortNumber: 8080}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2TLS, transportH2C},
+			wantSupported: true,
+			wantTransport: transportH2TLS,
 		},
 		{
-			name: "when_http_over_ssl_on_arbitrary_port_tries_h2_before_h2c",
-			svc: nspb.NetworkService_builder{
-				ServiceName:       "http over ssl",
-				TransportProtocol: npb.TransportProtocol_TCP,
-				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 10443}.Build(),
-				}.Build(),
-			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2TLS, transportH2C},
-		},
-		{
-			name: "when_tcpwrapped_on_standard_web_port_8080_is_supported_h2c_first",
+			name: "when_tcpwrapped_on_standard_web_port_8080_is_supported_h2c",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "tcpwrapped",
 				TransportProtocol: npb.TransportProtocol_TCP,
@@ -1575,20 +1546,21 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 					Port: npb.Port_builder{PortNumber: 8080}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2C, transportH2TLS},
+			wantSupported: true,
+			wantTransport: transportH2C,
 		},
 		{
-			name: "when_empty_service_name_on_port_8443_is_supported_h2_first",
+			name: "when_empty_service_name_on_port_8443_with_ssl_versions_is_supported_h2_tls",
 			svc: nspb.NetworkService_builder{
-				ServiceName:       "",
-				TransportProtocol: npb.TransportProtocol_TCP,
+				ServiceName:          "",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.2"},
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Port: npb.Port_builder{PortNumber: 8443}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported:  true,
-			wantTransports: []transportMode{transportH2TLS, transportH2C},
+			wantSupported: true,
+			wantTransport: transportH2TLS,
 		},
 		{
 			name: "when_tcpwrapped_on_ssh_port_22_returns_not_supported",
@@ -1621,9 +1593,8 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 				t.Fatalf("isSupportedService() = %v, want %v", got, tc.wantSupported)
 			}
 			if tc.wantSupported {
-				gotTransports := preferredTransports(tc.svc)
-				if diff := cmp.Diff(tc.wantTransports, gotTransports); diff != "" {
-					t.Errorf("preferredTransports() diff (-want +got):\n%s", diff)
+				if gotTransport := selectTransport(tc.svc); gotTransport != tc.wantTransport {
+					t.Errorf("selectTransport() = %q, want %q", gotTransport, tc.wantTransport)
 				}
 			}
 		})
@@ -1969,33 +1940,40 @@ func TestParseTraceEchoAndContextErrors(t *testing.T) {
 		}
 
 		var cancelDialCalls atomic.Int32
+		cancelCtx, cancel := context.WithCancel(t.Context())
+		defer cancel()
 		dialCancel := func(_ context.Context, _ transportMode, _, _ string, _ time.Duration) (net.Conn, error) {
 			cancelDialCalls.Add(1)
+			cancel()
 			return nil, context.Canceled
 		}
 		validHTTPSSvc := nspb.NetworkService_builder{
 			ServiceName:          "https",
 			TransportProtocol:    npb.TransportProtocol_TCP,
 			SupportedHttpMethods: []string{"GET"},
+			SupportedSslVersions: []string{"TLSv1.3"},
 			NetworkEndpoint: npb.NetworkEndpoint_builder{
 				IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
 			}.Build(),
 		}.Build()
-		if _, cErr := newTestModule(dialCancel).Detect(t.Context(), validHTTPSSvc); !errors.Is(cErr, context.Canceled) {
+		if _, cErr := newTestModule(dialCancel).Detect(cancelCtx, validHTTPSSvc); !errors.Is(cErr, context.Canceled) {
 			t.Errorf("Detect(mid-probe cancel) err = %v, want context.Canceled", cErr)
 		}
 		if cancelDialCalls.Load() != 1 {
-			t.Errorf("cancelDialCalls = %d, want 1 (must abort immediately without probing fallback transport)", cancelDialCalls.Load())
+			t.Errorf("cancelDialCalls = %d, want 1", cancelDialCalls.Load())
 		}
 
 		var deadlineDialCalls atomic.Int32
 		var observedHTTPSAddr, observedHTTPAddr string
-		dialDeadline := func(_ context.Context, _ transportMode, dialAddr, _ string, _ time.Duration) (net.Conn, error) {
+		expCtx, expCancel := context.WithTimeout(t.Context(), 30*time.Millisecond)
+		defer expCancel()
+		dialDeadline := func(ctx context.Context, _ transportMode, dialAddr, _ string, _ time.Duration) (net.Conn, error) {
 			deadlineDialCalls.Add(1)
 			observedHTTPSAddr = dialAddr
-			return nil, context.DeadlineExceeded
+			<-ctx.Done()
+			return nil, ctx.Err()
 		}
-		if _, dErr := newTestModule(dialDeadline).Detect(t.Context(), validHTTPSSvc); !errors.Is(dErr, context.DeadlineExceeded) {
+		if _, dErr := newTestModule(dialDeadline).Detect(expCtx, validHTTPSSvc); !errors.Is(dErr, context.DeadlineExceeded) {
 			t.Errorf("Detect(mid-probe deadline) err = %v, want context.DeadlineExceeded", dErr)
 		}
 		if deadlineDialCalls.Load() != 1 {
@@ -2003,6 +1981,14 @@ func TestParseTraceEchoAndContextErrors(t *testing.T) {
 		}
 		if observedHTTPSAddr != "127.0.0.1:443" {
 			t.Errorf("observedHTTPSAddr = %q, want 127.0.0.1:443 for portless https service", observedHTTPSAddr)
+		}
+
+		// Per-request dial timeout with active caller context returns (nil, nil).
+		dialPerReqTimeout := func(_ context.Context, _ transportMode, _, _ string, _ time.Duration) (net.Conn, error) {
+			return nil, &net.OpError{Op: "dial", Net: "tcp", Err: context.DeadlineExceeded}
+		}
+		if got, pErr := newTestModule(dialPerReqTimeout).Detect(t.Context(), validHTTPSSvc); pErr != nil || got != nil {
+			t.Errorf("Detect(per-request dial timeout) = (%v, %v), want (nil, nil)", got, pErr)
 		}
 
 		portlessHTTPSvc := nspb.NetworkService_builder{
@@ -2075,7 +2061,8 @@ func TestParseTraceEchoAndContextErrors(t *testing.T) {
 
 	t.Run("when_extract_candidate_paths_evaluates_relative_https_ipv6_and_invalid_urls", func(t *testing.T) {
 		svc := nspb.NetworkService_builder{
-			ServiceName: "https",
+			ServiceName:          "https",
+			SupportedSslVersions: []string{"TLSv1.3"},
 			ServiceContext: nspb.ServiceContext_builder{
 				WebServiceContext: nspb.WebServiceContext_builder{
 					ApplicationRoot: "root#frag",
@@ -2824,4 +2811,160 @@ func TestH2SessionProtocolEdgeCases(t *testing.T) {
 			t.Errorf("stream3FatalConns = %d, want 1 (must not reconnect on non-GoAway error)", stream3FatalConns.Load())
 		}
 	})
+}
+
+func acceptH2CStream1(c net.Conn) bool {
+	preface := make([]byte, len(h2ClientPreface))
+	if _, err := io.ReadFull(c, preface); err != nil {
+		return false
+	}
+	fr := http2.NewFramer(c, c)
+	_ = fr.WriteSettings()
+	for {
+		f, err := fr.ReadFrame()
+		if err != nil {
+			return false
+		}
+		if _, ok := f.(*http2.HeadersFrame); ok {
+			return true
+		}
+	}
+}
+
+func TestDetectTimeoutsAndCallerContext(t *testing.T) {
+	testCases := []struct {
+		name        string
+		sslVersions []string
+		reqTimeout  time.Duration
+		ctxTimeout  time.Duration
+		handleConn  func(c net.Conn, cancel context.CancelFunc, done <-chan struct{})
+		wantMode    transportMode
+		wantErr     error
+	}{
+		{
+			name:        "when_dial_times_out_with_active_context_returns_nil_and_dials_once",
+			sslVersions: []string{"TLSv1.3"},
+			reqTimeout:  time.Nanosecond,
+			wantMode:    transportH2TLS,
+		},
+		{
+			name:        "when_tls_handshake_stalls_past_request_timeout_returns_nil_and_dials_once",
+			sslVersions: []string{"TLSv1.3"},
+			reqTimeout:  35 * time.Millisecond,
+			handleConn: func(_ net.Conn, _ context.CancelFunc, done <-chan struct{}) {
+				<-done
+			},
+			wantMode: transportH2TLS,
+		},
+		{
+			name:       "when_h2c_preface_stalls_past_request_timeout_returns_nil_and_dials_once",
+			reqTimeout: 35 * time.Millisecond,
+			handleConn: func(c net.Conn, _ context.CancelFunc, done <-chan struct{}) {
+				buf := make([]byte, len(h2ClientPreface)+9)
+				_, _ = io.ReadFull(c, buf)
+				<-done
+			},
+			wantMode: transportH2C,
+		},
+		{
+			name:       "when_stream_stalls_past_request_timeout_returns_nil_and_dials_once",
+			reqTimeout: 35 * time.Millisecond,
+			handleConn: func(c net.Conn, _ context.CancelFunc, done <-chan struct{}) {
+				if acceptH2CStream1(c) {
+					<-done
+				}
+			},
+			wantMode: transportH2C,
+		},
+		{
+			name:       "when_caller_context_canceled_during_stream_read_returns_context_canceled",
+			reqTimeout: time.Second,
+			handleConn: func(c net.Conn, cancel context.CancelFunc, _ <-chan struct{}) {
+				if acceptH2CStream1(c) {
+					cancel()
+				}
+			},
+			wantMode: transportH2C,
+			wantErr:  context.Canceled,
+		},
+		{
+			name:       "when_caller_context_deadline_exceeded_during_stalled_stream_returns_deadline_exceeded",
+			reqTimeout: 2 * time.Second,
+			ctxTimeout: 40 * time.Millisecond,
+			handleConn: func(c net.Conn, _ context.CancelFunc, done <-chan struct{}) {
+				if acceptH2CStream1(c) {
+					<-done
+				}
+			},
+			wantMode: transportH2C,
+			wantErr:  context.DeadlineExceeded,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan struct{})
+			t.Cleanup(func() { close(done) })
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			if tc.ctxTimeout > 0 {
+				var expCancel context.CancelFunc
+				ctx, expCancel = context.WithTimeout(ctx, tc.ctxTimeout)
+				defer expCancel()
+			}
+
+			ln, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				t.Fatalf("net.Listen failed: %v", err)
+			}
+			t.Cleanup(func() { _ = ln.Close() })
+
+			if tc.handleConn != nil {
+				go func() {
+					for {
+						conn, acceptErr := ln.Accept()
+						if acceptErr != nil {
+							return
+						}
+						go func(c net.Conn) {
+							defer c.Close()
+							tc.handleConn(c, cancel, done)
+						}(conn)
+					}
+				}()
+			}
+
+			var dialModes []transportMode
+			dialFn := func(dCtx context.Context, mode transportMode, dialAddr, sniHost string, timeout time.Duration) (net.Conn, error) {
+				dialModes = append(dialModes, mode)
+				return defaultDial(dCtx, mode, dialAddr, sniHost, timeout)
+			}
+
+			port := uint32(ln.Addr().(*net.TCPAddr).Port)
+			svc := nspb.NetworkService_builder{
+				ServiceName:          "https",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedHttpMethods: []string{"GET"},
+				SupportedSslVersions: tc.sslVersions,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: port}.Build(),
+				}.Build(),
+			}.Build()
+
+			m := newTestModule(dialFn)
+			m.timeout = tc.reqTimeout
+			got, err := m.Detect(ctx, svc)
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Detect() error = %v, want %v", err, tc.wantErr)
+			}
+			if got != nil {
+				t.Errorf("Detect() report = %v, want nil", got)
+			}
+			if diff := cmp.Diff([]transportMode{tc.wantMode}, dialModes); diff != "" {
+				t.Errorf("Detect() dialed transport modes diff (-want +got):\n%s", diff)
+			}
+		})
+	}
 }

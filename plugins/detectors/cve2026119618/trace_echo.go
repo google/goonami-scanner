@@ -227,7 +227,7 @@ func resolvedServicePort(service *nspb.NetworkService) uint32 {
 	if port := service.GetNetworkEndpoint().GetPort().GetPortNumber(); port > 0 {
 		return port
 	}
-	if preferredTransports(service)[0] == transportH2TLS {
+	if selectTransport(service) == transportH2TLS {
 		return defaultHTTPSPort
 	}
 	return defaultHTTPPort
