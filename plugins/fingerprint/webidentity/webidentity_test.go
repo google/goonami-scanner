@@ -20,8 +20,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1244,6 +1247,190 @@ func TestFingerprintRecordsIdentificationMetrics(t *testing.T) {
 			}
 			if diff := cmp.Diff(want, got); diff != "" {
 				t.Errorf("Fingerprint() FingerprintIdentifications metrics diff (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestFingerprintCrawlEOF(t *testing.T) {
+	const (
+		grafanaPage     = "I am Grafana"
+		linkWithEOFPage = `<a href="/broken">broken</a><a href="/v1/app">v1</a>`
+	)
+
+	grafanaHash := pageHash(t, grafanaPage)
+	linkWithEOFHash := pageHash(t, linkWithEOFPage)
+
+	fingerprints := []*fpb.WebFingerprint{
+		fpb.WebFingerprint_builder{
+			Info: fpb.FingerprintInfo_builder{
+				Name:     "grafana",
+				Software: "grafana",
+			}.Build(),
+			Steps: []*fpb.Step{
+				fpb.Step_builder{
+					Name: "grafana_root",
+					Path: proto.String("/"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: grafanaPage,
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
+				}.Build(),
+				fpb.Step_builder{
+					Name:       "grafana_subpath",
+					PathSuffix: proto.String("/app"),
+					Response: fpb.HttpResponse_builder{
+						StatusCodes: []int32{200},
+						ExpectAll: fpb.HttpResponse_ExpectAll_builder{
+							Conditions: []*fpb.HttpResponse_Expectation{
+								fpb.HttpResponse_Expectation_builder{
+									Body:     &fpb.HttpResponse_Body{},
+									Contains: grafanaPage,
+								}.Build(),
+							},
+						}.Build(),
+					}.Build(),
+				}.Build(),
+			},
+			Workflows: []*fpb.Workflow{
+				fpb.Workflow_builder{Steps: []string{"grafana_root"}}.Build(),
+				fpb.Workflow_builder{Steps: []string{"grafana_subpath"}}.Build(),
+			},
+		}.Build(),
+	}
+
+	tests := []struct {
+		name      string
+		epType    npb.NetworkEndpoint_Type
+		hostPages map[string]string
+		ipPages   map[string]string
+		eofIP     bool
+		eofPaths  []string
+		want      []*nspb.NetworkService
+	}{
+		{
+			name:   "when_seed_returns_eof_returns_unidentified_service",
+			epType: npb.NetworkEndpoint_IP_PORT,
+			eofIP:  true,
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", ""),
+			},
+		},
+		{
+			name:   "when_linked_page_returns_eof_identifies_reachable_pages",
+			epType: npb.NetworkEndpoint_IP_PORT,
+			ipPages: map[string]string{
+				"/":       linkWithEOFPage,
+				"/v1/app": grafanaPage,
+			},
+			eofPaths: []string{"/broken"},
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "/v1", "grafana",
+					buildTestCrawl("{ip_uri}/v1/app", 1, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", "",
+					buildTestCrawl("{ip_uri}/", 0, linkWithEOFHash),
+				),
+			},
+		},
+		{
+			name:      "when_ip_endpoint_returns_eof_identifies_hostname_endpoint",
+			epType:    npb.NetworkEndpoint_IP_HOSTNAME_PORT,
+			hostPages: map[string]string{"/": grafanaPage},
+			eofIP:     true,
+			want: []*nspb.NetworkService{
+				buildTestService(npb.NetworkEndpoint_HOSTNAME_PORT, "/", "grafana",
+					buildTestCrawl("{host_uri}/", 0, grafanaHash),
+				),
+				buildTestService(npb.NetworkEndpoint_IP_PORT, "", ""),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				isHost := strings.HasPrefix(r.Host, "localhost")
+				if (!isHost && tc.eofIP) || slices.Contains(tc.eofPaths, r.URL.Path) {
+					hj, ok := w.(http.Hijacker)
+					if !ok {
+						http.Error(w, "hijacking not supported", http.StatusInternalServerError)
+						return
+					}
+					conn, _, err := hj.Hijack()
+					if err != nil {
+						return
+					}
+					_ = conn.Close()
+					return
+				}
+
+				pages := tc.ipPages
+				if isHost {
+					pages = tc.hostPages
+				}
+				p, ok := pages[r.URL.Path]
+				if !ok {
+					http.NotFound(w, r)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html")
+				fmt.Fprintln(w, p)
+			}))
+			defer server.Close()
+
+			ip, port, _ := serverInfo(t, server)
+			service := nspb.NetworkService_builder{
+				NetworkEndpoint:      buildTestEndpoint(tc.epType, ip, port),
+				SupportedHttpMethods: []string{"GET"},
+			}.Build()
+
+			mod := newTestModuleWithFingerprints(t, fingerprints, nil, "")
+			gotServices, err := mod.Fingerprint(t.Context(), service)
+			if err != nil {
+				t.Fatalf("Fingerprint() returned unexpected error: %v", err)
+			}
+
+			hostURI := fmt.Sprintf("http://localhost:%d", port)
+			ipURI := fmt.Sprintf("http://%s:%d", ip, port)
+			replacePlaceholders := func(s string) string {
+				s = strings.ReplaceAll(s, "{host_uri}", hostURI)
+				return strings.ReplaceAll(s, "{ip_uri}", ipURI)
+			}
+
+			wantServices := make([]*nspb.NetworkService, len(tc.want))
+			for i, svc := range tc.want {
+				cloned := proto.CloneOf(svc)
+				cloned.SetNetworkEndpoint(buildTestEndpoint(cloned.GetNetworkEndpoint().GetType(), ip, port))
+				wsc := cloned.GetServiceContext().GetWebServiceContext()
+				if wsc.GetApplicationRoot() != "" {
+					wsc.SetApplicationRoot(replacePlaceholders(wsc.GetApplicationRoot()))
+				}
+				for _, cr := range wsc.GetCrawlResults() {
+					cr.GetCrawlTarget().SetUrl(replacePlaceholders(cr.GetCrawlTarget().GetUrl()))
+				}
+				wantServices[i] = cloned
+			}
+
+			sortServices := cmpopts.SortSlices(func(a, b *nspb.NetworkService) bool {
+				aRoot := a.GetServiceContext().GetWebServiceContext().GetApplicationRoot()
+				bRoot := b.GetServiceContext().GetWebServiceContext().GetApplicationRoot()
+				if aRoot != bRoot {
+					return aRoot < bRoot
+				}
+				return a.GetNetworkEndpoint().GetType() < b.GetNetworkEndpoint().GetType()
+			})
+			sortCrawlResults := protocmp.SortRepeatedFields((*nspb.WebServiceContext)(nil), "crawl_results")
+
+			if diff := cmp.Diff(wantServices, gotServices, sortServices, protocmp.Transform(), sortCrawlResults); diff != "" {
+				t.Errorf("Fingerprint() returned unexpected diff (-want +got):\n%s", diff)
 			}
 		})
 	}

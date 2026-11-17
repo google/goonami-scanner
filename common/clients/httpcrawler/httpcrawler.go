@@ -188,9 +188,14 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 
 	resp, err := run.client.Do(req)
 	if err != nil {
-		// Do not consider deadline errors as fatal.
+		// Do not consider deadline or EOF errors as fatal.
 		if errors.Is(err, context.DeadlineExceeded) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (deadline exceeded): %q", page.URL)
+			return nil
+		}
+
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (EOF): %q", page.URL)
 			return nil
 		}
 
@@ -199,8 +204,9 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 
 	maxsize := int(c.config.GetMaxPageSizeBytes())
 	content, err := goohttp.ReadBody(resp, maxsize)
+	resp.Body.Close()
 	if err != nil {
-		if err == goohttp.ErrPageTooBig {
+		if errors.Is(err, goohttp.ErrPageTooBig) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (page too big): %q", page.URL)
 			return nil
 		}
@@ -210,14 +216,13 @@ func (c *SimpleCrawler) crawlPage(ctx context.Context, run *crawlRun, page *Page
 			return nil
 		}
 
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			log.DebugContextf(ctx, log.DebugLevelRequest, "skipping (empty page): %q", page.URL)
 			return nil
 		}
 
 		return fmt.Errorf("%w: %v", ErrReadResponseBody, err)
 	}
-	resp.Body.Close()
 
 	if content == nil {
 		return nil

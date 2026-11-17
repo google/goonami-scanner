@@ -40,7 +40,9 @@ import (
 )
 
 type testPage struct {
-	links []string
+	links         []string
+	closeConn     bool
+	unexpectedEOF bool
 }
 
 func newTestServer(pages map[string]*testPage) *httptest.Server {
@@ -48,6 +50,24 @@ func newTestServer(pages map[string]*testPage) *httptest.Server {
 		p, ok := pages[r.URL.Path]
 		if !ok {
 			http.NotFound(w, r)
+			return
+		}
+
+		if p.closeConn || p.unexpectedEOF {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "hijacking not supported", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				return
+			}
+			if p.unexpectedEOF {
+				_, _ = bufrw.WriteString("HTTP/1.1 200 OK\r\nHeader: incomplete")
+				_ = bufrw.Flush()
+			}
+			_ = conn.Close()
 			return
 		}
 
@@ -146,14 +166,20 @@ func testConfig() *config.Config {
 func TestCrawl(t *testing.T) {
 	errTest := errors.New("test error")
 	pages := map[string]*testPage{
-		"/":              {links: []string{"/d1", "/d2", "/excluded/page", "/d3"}},
-		"/d1":            {links: []string{"/d1/1"}},
-		"/d1/1":          {links: []string{"/d1/1/2"}},
-		"/d1/1/2":        {links: []string{"/", "/d1/"}},
-		"/d2":            {links: []string{"http://outofscopedomain.lan/"}},
-		"/d3":            {links: []string{"://localhost"}},
-		"/empty":         {},
-		"/excluded/page": {links: []string{"/d1"}},
+		"/":                              {links: []string{"/d1", "/d2", "/excluded/page", "/d3"}},
+		"/d1":                            {links: []string{"/d1/1"}},
+		"/d1/1":                          {links: []string{"/d1/1/2"}},
+		"/d1/1/2":                        {links: []string{"/", "/d1/"}},
+		"/d2":                            {links: []string{"http://outofscopedomain.lan/"}},
+		"/d3":                            {links: []string{"://localhost"}},
+		"/empty":                         {},
+		"/excluded/page":                 {links: []string{"/d1"}},
+		"/eof":                           {closeConn: true},
+		"/unexpected-eof":                {unexpectedEOF: true},
+		"/links-with-eof":                {links: []string{"/links-with-eof/eof", "/links-with-eof/unexpected-eof", "/links-with-eof/ok"}},
+		"/links-with-eof/eof":            {closeConn: true},
+		"/links-with-eof/unexpected-eof": {unexpectedEOF: true},
+		"/links-with-eof/ok":             {links: []string{"http://outofscopedomain.lan/"}},
 	}
 	srv := newTestServer(pages)
 	defer srv.Close()
@@ -363,6 +389,30 @@ func TestCrawl(t *testing.T) {
 			callback:    cb,
 			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
 			wantCrawled: nil,
+		},
+		{
+			name:        "when_request_returns_eof_it_is_ignored",
+			config:      testConfig(),
+			startURLs:   []string{srv.URL + "/eof"},
+			callback:    cb,
+			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
+			wantCrawled: nil,
+		},
+		{
+			name:        "when_request_returns_unexpected_eof_it_is_ignored",
+			config:      testConfig(),
+			startURLs:   []string{srv.URL + "/unexpected-eof"},
+			callback:    cb,
+			wantStats:   &CrawlStats{TotalPagesCrawled: 1},
+			wantCrawled: nil,
+		},
+		{
+			name:        "when_linked_page_returns_eof_crawl_continues",
+			config:      testConfig(),
+			startURLs:   []string{srv.URL + "/links-with-eof"},
+			callback:    cb,
+			wantStats:   &CrawlStats{TotalPagesCrawled: 4},
+			wantCrawled: []string{srv.URL + "/links-with-eof", srv.URL + "/links-with-eof/ok"},
 		},
 		{
 			name: "when_http_client_is_unregistered_returns_error",

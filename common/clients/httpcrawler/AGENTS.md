@@ -18,9 +18,9 @@ crawl run.
     starting a web crawl from seed URLs.
 -   **`SimpleCrawler`**: Concurrent `Crawler` implementation that fetches pages,
     extracts HTML links, enforces scope and regex path exclusions, and skips
-    timed-out, oversized, or empty responses without aborting the run. Its
-    `max_requests` budget is tracked on the `SimpleCrawler` instance and shared
-    across calls to `Crawl`.
+    timed-out or EOF requests and oversized or empty responses without aborting
+    the run. Its `max_requests` budget is tracked on the `SimpleCrawler`
+    instance and shared across calls to `Crawl`.
 -   **`NewSimpleCrawler`**: Constructs a `*SimpleCrawler` from `*config.Config`,
     merging any configured `HttpCrawlerClientConfig` over
     `DefaultClientConfig()` and replacing default exclusions when custom
