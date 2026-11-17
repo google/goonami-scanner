@@ -201,8 +201,15 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 	}
 
 	metaMsg, vulnerable, err := m.probeTarget(ctx, addr)
-	if err != nil || !vulnerable {
-		return nil, err
+	if err != nil {
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		log.DebugContextf(ctx, log.DebugLevelService, "Hive Metastore probe to %q failed: %v", addr, err)
+		return nil, nil
+	}
+	if !vulnerable {
+		return nil, nil
 	}
 
 	return buildDetectionReport(service, metaMsg), nil
@@ -234,18 +241,12 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 	// NoSuchObjectException ("table not found").
 	controlMsg, err := m.sendGetPartitionsByExpr(ctx, addr, controlSeqID, dbName, tblName, controlExprNodeProbe)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return "", false, err
-		}
-		return "", false, nil
+		return "", false, err
 	}
 	if strings.Contains(controlMsg, tableNotFoundSubstring) {
 		foundDB, foundTbl, findErr := m.discoverExistingTable(ctx, addr)
 		if findErr != nil {
-			if errors.Is(findErr, context.Canceled) || errors.Is(findErr, context.DeadlineExceeded) {
-				return "", false, findErr
-			}
-			return "", false, nil
+			return "", false, findErr
 		}
 		if foundDB == "" || foundTbl == "" {
 			return "", false, nil
@@ -254,10 +255,7 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 		tblName = foundTbl
 		controlMsg, err = m.sendGetPartitionsByExpr(ctx, addr, controlSeqID, dbName, tblName, controlExprNodeProbe)
 		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return "", false, err
-			}
-			return "", false, nil
+			return "", false, err
 		}
 	}
 	if !strings.Contains(controlMsg, controlExpectedExprNode) || strings.Contains(controlMsg, vulnCastSubstring) {
@@ -276,10 +274,7 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 
 	vulnMsg, err := m.sendGetPartitionsByExpr(ctx, addr, vulnSeqID, dbName, tblName, probePayload)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return "", false, err
-		}
-		return "", false, nil
+		return "", false, err
 	}
 
 	if strings.Contains(vulnMsg, patchedMarkerSubstring) || strings.Contains(vulnMsg, patchedNotAllowedMarker) {
@@ -307,8 +302,8 @@ func (m *Module) discoverExistingTable(ctx context.Context, addr string) (string
 	for _, db := range dbs {
 		tbls, err := m.sendGetAllTables(ctx, addr, db)
 		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				return "", "", err
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return "", "", ctxErr
 			}
 			continue
 		}
@@ -340,85 +335,46 @@ func (m *Module) sendGetAllTables(ctx context.Context, addr, dbName string) ([]s
 	return m.sendThriftStringListRPC(ctx, addr, thriftGetAllTblsMethod, listTblsSeqID, buf.Bytes())
 }
 
-func (m *Module) sendThriftStringListRPC(ctx context.Context, addr, methodName string, seqID uint32, req []byte) ([]string, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	dialer := net.Dialer{Timeout: m.timeout}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
+func (m *Module) openThriftConn(ctx context.Context, addr string, req []byte) (net.Conn, func(), error) {
+	reqCtx, cancel := context.WithTimeout(ctx, m.timeout)
+	var dialer net.Dialer
+	conn, err := dialer.DialContext(reqCtx, "tcp", addr)
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
-		}
-		return nil, err
+		cancel()
+		return nil, nil, err
 	}
-	defer conn.Close()
-
-	deadline := time.Now().Add(m.timeout)
-	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
-		deadline = ctxDeadline
+	stop := context.AfterFunc(reqCtx, func() {
+		_ = conn.Close()
+	})
+	cleanup := func() {
+		stop()
+		cancel()
+		_ = conn.Close()
 	}
-	if err := conn.SetDeadline(deadline); err != nil {
-		return nil, err
-	}
-
 	if _, err := conn.Write(req); err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
-		}
-		return nil, err
+		cleanup()
+		return nil, nil, err
 	}
+	return conn, cleanup, nil
+}
 
-	items, err := readStringListReply(conn, methodName, seqID)
+func (m *Module) sendThriftStringListRPC(ctx context.Context, addr, methodName string, seqID uint32, req []byte) ([]string, error) {
+	conn, cleanup, err := m.openThriftConn(ctx, addr, req)
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, ctxErr
-		}
 		return nil, err
 	}
-	return items, nil
+	defer cleanup()
+	return readStringListReply(conn, methodName, seqID)
 }
 
 func (m *Module) sendGetPartitionsByExpr(ctx context.Context, addr string, seqID uint32, dbName, tblName string, exprBytes []byte) (string, error) {
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
-
-	dialer := net.Dialer{Timeout: m.timeout}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
-		}
-		return "", err
-	}
-	defer conn.Close()
-
-	deadline := time.Now().Add(m.timeout)
-	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
-		deadline = ctxDeadline
-	}
-	if err := conn.SetDeadline(deadline); err != nil {
-		return "", err
-	}
-
 	req := buildGetPartitionsByExprRequest(seqID, dbName, tblName, exprBytes)
-	if _, err := conn.Write(req); err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
-		}
-		return "", err
-	}
-
-	msg, err := readMetaExceptionReply(conn, seqID)
+	conn, cleanup, err := m.openThriftConn(ctx, addr, req)
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
-		}
 		return "", err
 	}
-	return msg, nil
+	defer cleanup()
+	return readMetaExceptionReply(conn, seqID)
 }
 
 func buildGetPartitionsByExprRequest(seqID uint32, dbName, tblName string, exprBytes []byte) []byte {

@@ -381,12 +381,22 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 		thriftTypeString, 1,
 		"Buffer underflow.\nSerialization trace:\nchidren (org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc)",
 	)
+	noSuchObjectReply := buildMetaExceptionReplyBytes(
+		controlSeqID,
+		thriftMethodName,
+		thriftTypeStruct, 2,
+		thriftTypeString, 1,
+		"hive.default.tsunami_probe table not found",
+	)
+	listDBsReply := buildStringListReplyBytes(listDBsSeqID, thriftGetAllDBsMethod, []string{"db1", "db2"})
 
 	testCases := []struct {
 		name              string
 		svc               *nspb.NetworkService
 		cancelBeforeStart bool
-		cancelOnProbeStep int32
+		ctxTimeout        time.Duration
+		cancelOnCall      int32
+		replies           [][]byte
 		wantErr           error
 	}{
 		{
@@ -395,13 +405,9 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 				ServiceName:          "http",
 				SupportedHttpMethods: []string{"GET"},
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Type: npb.NetworkEndpoint_IP_PORT,
-					IpAddress: npb.IpAddress_builder{
-						Address: "127.0.0.1",
-					}.Build(),
-					Port: npb.Port_builder{
-						PortNumber: 9083,
-					}.Build(),
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 9083}.Build(),
 				}.Build(),
 			}.Build(),
 		},
@@ -411,13 +417,9 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 				ServiceName:       "thrift",
 				TransportProtocol: npb.TransportProtocol_UDP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Type: npb.NetworkEndpoint_IP_PORT,
-					IpAddress: npb.IpAddress_builder{
-						Address: "127.0.0.1",
-					}.Build(),
-					Port: npb.Port_builder{
-						PortNumber: 9083,
-					}.Build(),
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 9083}.Build(),
 				}.Build(),
 			}.Build(),
 		},
@@ -427,13 +429,9 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 				ServiceName:       "ssh",
 				TransportProtocol: npb.TransportProtocol_TCP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Type: npb.NetworkEndpoint_IP_PORT,
-					IpAddress: npb.IpAddress_builder{
-						Address: "127.0.0.1",
-					}.Build(),
-					Port: npb.Port_builder{
-						PortNumber: 22,
-					}.Build(),
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 22}.Build(),
 				}.Build(),
 			}.Build(),
 		},
@@ -443,13 +441,9 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 				ServiceName:       "tcpwrapped",
 				TransportProtocol: npb.TransportProtocol_TCP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Type: npb.NetworkEndpoint_IP_PORT,
-					IpAddress: npb.IpAddress_builder{
-						Address: "127.0.0.1",
-					}.Build(),
-					Port: npb.Port_builder{
-						PortNumber: 22,
-					}.Build(),
+					Type:      npb.NetworkEndpoint_IP_PORT,
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 22}.Build(),
 				}.Build(),
 			}.Build(),
 		},
@@ -470,14 +464,26 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 			wantErr:           context.Canceled,
 		},
 		{
-			name:              "when_context_canceled_during_first_probe_returns_error",
-			cancelOnProbeStep: 1,
-			wantErr:           context.Canceled,
+			name:         "when_context_canceled_during_first_probe_returns_error",
+			cancelOnCall: 1,
+			wantErr:      context.Canceled,
 		},
 		{
-			name:              "when_context_canceled_during_second_probe_returns_error",
-			cancelOnProbeStep: 2,
-			wantErr:           context.Canceled,
+			name:         "when_context_canceled_during_second_probe_returns_error",
+			cancelOnCall: 2,
+			replies:      [][]byte{vulnerableControlReply},
+			wantErr:      context.Canceled,
+		},
+		{
+			name:         "when_context_canceled_during_get_all_tables_aborts_and_returns_error",
+			cancelOnCall: 3,
+			replies:      [][]byte{noSuchObjectReply, listDBsReply},
+			wantErr:      context.Canceled,
+		},
+		{
+			name:       "when_context_deadline_exceeded_during_stalled_probe_returns_error",
+			ctxTimeout: 40 * time.Millisecond,
+			wantErr:    context.DeadlineExceeded,
 		},
 	}
 
@@ -485,23 +491,32 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
+			if tc.ctxTimeout > 0 {
+				var expCancel context.CancelFunc
+				ctx, expCancel = context.WithTimeout(ctx, tc.ctxTimeout)
+				defer expCancel()
+			}
 			if tc.cancelBeforeStart {
 				cancel()
 			}
 
 			svc := tc.svc
-			if tc.cancelOnProbeStep > 0 {
+			if svc == nil {
 				svc = startFakeThriftServer(t, "unknown", func(conn net.Conn, callNum int32) {
 					_ = readClientRequest(conn)
-					if callNum < tc.cancelOnProbeStep {
-						_, _ = conn.Write(vulnerableControlReply)
+					if callNum == tc.cancelOnCall {
+						cancel()
 						return
 					}
-					cancel()
+					if idx := int(callNum - 1); idx < len(tc.replies) && tc.replies[idx] != nil {
+						_, _ = conn.Write(tc.replies[idx])
+						return
+					}
+					<-ctx.Done()
 				})
 			}
 
-			detector, err := New(ctx, config.Default())
+			detector, err := New(t.Context(), config.Default())
 			if err != nil {
 				t.Fatalf("New() unexpected error: %v", err)
 			}
@@ -512,6 +527,101 @@ func TestDetectServiceFilteringAndErrors(t *testing.T) {
 			}
 			if reports != nil && len(reports.GetDetectionReports()) > 0 {
 				t.Errorf("Detect() returned unexpected reports: %v", reports)
+			}
+		})
+	}
+}
+
+func TestDetectPerRequestTimeoutsReturnNil(t *testing.T) {
+	noSuchObjectReply := buildMetaExceptionReplyBytes(
+		controlSeqID,
+		thriftMethodName,
+		thriftTypeStruct, 2,
+		thriftTypeString, 1,
+		"hive.default.tsunami_probe table not found",
+	)
+	hive4ControlReply := buildMetaExceptionReplyBytes(
+		controlSeqID,
+		thriftMethodName,
+		thriftTypeStruct, 1,
+		thriftTypeString, 1,
+		"Buffer underflow.\nSerialization trace:\nchidren (org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc)",
+	)
+	vulnerableTreeMapReply := buildMetaExceptionReplyBytes(
+		vulnSeqID,
+		thriftMethodName,
+		thriftTypeStruct, 1,
+		thriftTypeString, 1,
+		"java.lang.ClassCastException: java.util.ArrayList cannot be cast to java.lang.Comparable\nSerialization trace:\nchidren (org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc)",
+	)
+	listTwoDBsReply := buildStringListReplyBytes(listDBsSeqID, thriftGetAllDBsMethod, []string{"stalled_db", "healthy_db"})
+	listTblsReply := buildStringListReplyBytes(listTblsSeqID, thriftGetAllTblsMethod, []string{"sample_tbl"})
+
+	testCases := []struct {
+		name         string
+		reqTimeout   time.Duration
+		stallOnCall  int32
+		replies      [][]byte
+		wantFindings bool
+	}{
+		{
+			name:       "when_dial_times_out_with_active_context_returns_nil_without_error",
+			reqTimeout: time.Nanosecond,
+		},
+		{
+			name:        "when_control_probe_stalls_past_request_timeout_returns_nil_without_error",
+			reqTimeout:  35 * time.Millisecond,
+			stallOnCall: 1,
+		},
+		{
+			name:        "when_get_all_databases_stalls_past_request_timeout_returns_nil_without_error",
+			reqTimeout:  35 * time.Millisecond,
+			stallOnCall: 2,
+			replies:     [][]byte{noSuchObjectReply},
+		},
+		{
+			name:         "when_first_db_get_all_tables_times_out_continues_to_second_db_and_returns_finding",
+			reqTimeout:   35 * time.Millisecond,
+			stallOnCall:  3,
+			replies:      [][]byte{noSuchObjectReply, listTwoDBsReply, nil, listTblsReply, hive4ControlReply, vulnerableTreeMapReply},
+			wantFindings: true,
+		},
+		{
+			name:        "when_vulnerability_probe_stalls_past_request_timeout_returns_nil_without_error",
+			reqTimeout:  35 * time.Millisecond,
+			stallOnCall: 2,
+			replies:     [][]byte{hive4ControlReply},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan struct{})
+			t.Cleanup(func() { close(done) })
+
+			svc := startFakeThriftServer(t, "hive-metastore", func(conn net.Conn, callNum int32) {
+				_ = readClientRequest(conn)
+				if callNum == tc.stallOnCall {
+					<-done
+					return
+				}
+				if idx := int(callNum - 1); idx < len(tc.replies) && tc.replies[idx] != nil {
+					_, _ = conn.Write(tc.replies[idx])
+				}
+			})
+
+			det, err := New(t.Context(), config.Default())
+			if err != nil {
+				t.Fatalf("New() unexpected error: %v", err)
+			}
+			det.(*Module).timeout = tc.reqTimeout
+
+			reports, err := det.Detect(t.Context(), svc)
+			if err != nil {
+				t.Fatalf("Detect() unexpected error: %v", err)
+			}
+			if got := len(reports.GetDetectionReports()) > 0; got != tc.wantFindings {
+				t.Errorf("Detect() findings = %v, want %v", got, tc.wantFindings)
 			}
 		})
 	}
