@@ -43,14 +43,14 @@ before reporting `GENERIC_AGENTIC_WEAK_CREDENTIALS` findings.
 -   **Brute-Force Execution & LLM Judge Adjudication**: Each login attempt runs
     in an isolated cookie-storing HTTP client that fetches any required CSRF
     token, restricts redirects to the target authority, records the
-    post-redirect `FinalURI`, and treats `extraction_regex` matches or HTTP
-    401/403 statuses as failures. Candidate responses that do not fail must pass
-    a mutated-password negative baseline check and receive
-    `{"authenticated": true}` from the stateless
+    post-redirect `FinalURI` and raw `SetCookies` across redirects, and treats
+    `extraction_regex` matches or HTTP 401/403 statuses as failures. Candidate
+    responses that do not fail must pass a mutated-password negative baseline
+    check and receive `{"authenticated": true}` from the stateless
     `authentication-judge-agent` (`llm.ModelTierPro`, `judge_prompt.md`), which
-    evaluates the response status, `final_uri`, and body against the negative
-    baseline while preserving already-confirmed credentials if a later attempt
-    errors.
+    evaluates the response status, `final_uri`, `set_cookies`, and body against
+    the negative baseline while preserving already-confirmed credentials if a
+    later attempt errors.
 
 ## Usage
 
