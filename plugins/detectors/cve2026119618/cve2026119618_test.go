@@ -1538,6 +1538,44 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 			wantTransport: transportH2TLS,
 		},
 		{
+			name: "when_nmap_http2_service_on_nonstandard_port_is_supported_h2c",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "HTTP2",
+				TransportProtocol: npb.TransportProtocol_TCP,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 1777}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2C,
+		},
+		{
+			name: "when_nmap_ssl_http2_service_on_nonstandard_port_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "ssl/http2",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 9443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
+			name: "when_nmap_ssl_http_alt_service_on_nonstandard_port_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "ssl/http-alt",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 9000}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
 			name: "when_tcpwrapped_on_standard_web_port_8080_is_supported_h2c",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "tcpwrapped",
@@ -1548,6 +1586,104 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 			}.Build(),
 			wantSupported: true,
 			wantTransport: transportH2C,
+		},
+		{
+			name: "when_tcpwrapped_on_port_8081_is_supported_h2c",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "tcpwrapped",
+				TransportProtocol: npb.TransportProtocol_TCP,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 8081}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2C,
+		},
+		{
+			name: "when_nmap_table_blackice_icecap_on_port_8081_is_supported_h2c",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "blackice-icecap",
+				TransportProtocol: npb.TransportProtocol_TCP,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 8081}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2C,
+		},
+		{
+			name: "when_nmap_table_ssl_blackice_icecap_on_port_8081_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "ssl/blackice-icecap",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 8081}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
+			name: "when_tcpwrapped_on_port_1443_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "tcpwrapped",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 1443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
+			name: "when_nmap_table_ies_lm_on_port_1443_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "ies-lm",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 1443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
+			name: "when_nmap_table_ssl_ies_lm_on_port_1443_with_ssl_versions_is_supported_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "ssl/ies-lm",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 1443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: true,
+			wantTransport: transportH2TLS,
+		},
+		{
+			name: "when_nmap_table_ies_lm_on_nonstandard_port_9999_returns_not_supported",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "ies-lm",
+				TransportProtocol: npb.TransportProtocol_TCP,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 9999}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: false,
+		},
+		{
+			name: "when_nmap_table_blackice_icecap_on_nonstandard_port_9999_returns_not_supported",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "blackice-icecap",
+				TransportProtocol: npb.TransportProtocol_TCP,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					Port: npb.Port_builder{PortNumber: 9999}.Build(),
+				}.Build(),
+			}.Build(),
+			wantSupported: false,
 		},
 		{
 			name: "when_empty_service_name_on_port_8443_with_ssl_versions_is_supported_h2_tls",
