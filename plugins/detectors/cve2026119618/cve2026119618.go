@@ -75,10 +75,13 @@ var (
 		"http":                true,
 		"http-alt":            true,
 		"http-proxy":          true,
+		"http2":               true,
 		"https":               true,
 		"https-alt":           true,
 		"radan-http":          true,
 		"ssl/http":            true,
+		"ssl/http-alt":        true,
+		"ssl/http2":           true,
 		"ssl/https":           true,
 		"ssl/https-alt":       true,
 		"ssl/http-proxy":      true,
@@ -88,19 +91,27 @@ var (
 	}
 
 	// portGatedServiceNames are probed only when listening on standardWebPorts
-	// so banner-hidden HTTP/2 listeners are covered without scanning SSH/DB ports.
+	// so banner-hidden or Nmap table-fallback HTTP/2 listeners (such as ies-lm
+	// on 1443 and blackice-icecap on 8081) are covered without scanning SSH/DB
+	// or unrelated ports.
 	portGatedServiceNames = map[string]bool{
-		"":            true,
-		"unknown":     true,
-		"ssl/unknown": true,
-		"tcpwrapped":  true,
+		"":                    true,
+		"blackice-icecap":     true,
+		"ies-lm":              true,
+		"ssl/blackice-icecap": true,
+		"ssl/ies-lm":          true,
+		"ssl/unknown":         true,
+		"tcpwrapped":          true,
+		"unknown":             true,
 	}
 
 	standardWebPorts = map[uint32]bool{
 		80:   true,
 		443:  true,
+		1443: true,
 		8008: true,
 		8080: true,
+		8081: true,
 		8088: true,
 		8443: true,
 	}
