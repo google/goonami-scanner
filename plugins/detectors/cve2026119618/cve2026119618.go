@@ -30,12 +30,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/log"
 	"github.com/google/goonami-scanner/core/module"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"github.com/google/goonami-scanner/core/net/netservice"
 	"golang.org/x/net/http2/hpack"
 
@@ -65,45 +65,6 @@ const (
 	probeHeaderCamelName = "X-Tsunami-Probe"
 	probeContentTypeVal  = "text/plain"
 	traceBodyPayload     = "x"
-)
-
-var (
-	// extraHTTPServiceNames covers Nmap HTTP/HTTPS service labels (matching
-	// Tsunami's NetworkServiceUtils.isWebService plus HTTPS alt/SSL variants)
-	// when HTTP/1.1 fingerprinting did not populate supported_http_methods.
-	extraHTTPServiceNames = map[string]bool{
-		"http":                true,
-		"http-alt":            true,
-		"http-proxy":          true,
-		"https":               true,
-		"https-alt":           true,
-		"radan-http":          true,
-		"ssl/http":            true,
-		"ssl/https":           true,
-		"ssl/https-alt":       true,
-		"ssl/http-proxy":      true,
-		"ssl/tungsten-https":  true,
-		"ssl/wso2esb-console": true,
-		"http over ssl":       true,
-	}
-
-	// portGatedServiceNames are probed only when listening on standardWebPorts
-	// so banner-hidden HTTP/2 listeners are covered without scanning SSH/DB ports.
-	portGatedServiceNames = map[string]bool{
-		"":            true,
-		"unknown":     true,
-		"ssl/unknown": true,
-		"tcpwrapped":  true,
-	}
-
-	standardWebPorts = map[uint32]bool{
-		80:   true,
-		443:  true,
-		8008: true,
-		8080: true,
-		8088: true,
-		8443: true,
-	}
 )
 
 // Module implements the module.VulnDetector interface for CVE-2026-119618.
@@ -180,10 +141,17 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
+	if _, err := netendpoint.ToURIAuthority(service.GetNetworkEndpoint()); err != nil {
+		return nil, err
+	}
+
 	mode := selectTransport(service)
-	defaultPort := uint32(defaultHTTPPort)
-	if mode == transportH2TLS {
-		defaultPort = defaultHTTPSPort
+	var defaultPort uint32
+	if netservice.IsWebService(service) {
+		defaultPort = defaultHTTPPort
+		if mode == transportH2TLS {
+			defaultPort = defaultHTTPSPort
+		}
 	}
 
 	target, ok := resolveEndpointTarget(service.GetNetworkEndpoint(), defaultPort)
@@ -209,20 +177,7 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 
 func isSupportedService(service *nspb.NetworkService) bool {
 	tp := service.GetTransportProtocol()
-	if tp != npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED && tp != npb.TransportProtocol_TCP {
-		return false
-	}
-	if netservice.IsWebService(service) {
-		return true
-	}
-	name := strings.ToLower(strings.TrimSpace(service.GetServiceName()))
-	if extraHTTPServiceNames[name] {
-		return true
-	}
-	if portGatedServiceNames[name] {
-		return standardWebPorts[service.GetNetworkEndpoint().GetPort().GetPortNumber()]
-	}
-	return false
+	return tp == npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED || tp == npb.TransportProtocol_TCP
 }
 
 func selectTransport(service *nspb.NetworkService) transportMode {

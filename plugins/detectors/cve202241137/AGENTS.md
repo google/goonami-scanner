@@ -15,9 +15,10 @@ Thrift `get_partitions_by_expr` RPC (`CVE-2022-41137` / `HIVE-26539`).
     (`GOOGLE` / `APACHE_HIVE_METASTORE_CVE_2022_41137`, `CVE-2022-41137`,
     `Severity_CRITICAL`) supported by the detector.
 -   **`Module` / `(*Module).Detect(ctx context.Context, service
-    *nspb.NetworkService)`**: Skips web, non-TCP, and non-candidate services,
-    sends a negative-control Thrift `get_partitions_by_expr` call with a
-    56-byte truncated `ExprNodeGenericFuncDesc` Kryo header (falling back to
+    *nspb.NetworkService)`**: Skips web and non-TCP services, connects over TLS
+    or plaintext TCP on any port based on TLS fingerprinting, sends a
+    negative-control Thrift `get_partitions_by_expr` call with a 56-byte
+    truncated `ExprNodeGenericFuncDesc` Kryo header (falling back to
     `get_all_databases` / `get_all_tables` discovery when Hive 2.x/3.x requires
     an existing table name), and then sends a benign nested `java.util.TreeMap`
     gadget inside `ExprNodeGenericFuncDesc.chidren` using both Hive 2.x/3.x

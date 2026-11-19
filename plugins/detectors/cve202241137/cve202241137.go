@@ -22,6 +22,7 @@ package cve202241137
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -47,9 +48,8 @@ import (
 const (
 	moduleName = "dt/cve202241137"
 
-	defaultMetastorePort = 9083
-	defaultTimeout       = 5 * time.Second
-	maxMetaExceptionLen  = 8192
+	defaultTimeout      = 5 * time.Second
+	maxMetaExceptionLen = 8192
 
 	thriftVersion1Call  uint32 = 0x80010001
 	thriftVersion1Reply uint32 = 0x80010002
@@ -178,7 +178,7 @@ func baseVulnerability() *vpb.Vulnerability {
 
 // Detect probes the target network service for CVE-2022-41137.
 func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb.DetectionReportList, error) {
-	ctx = log.ContextForModuleAndService(ctx, m.Name(), service)
+	ctx = log.ContextForModuleAndService(ctx, m.Name(), service) // NOMUTANTS -- diagnostic logging context
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -191,21 +191,22 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 		return nil, nil
 	}
 
-	if !isCandidateService(service) {
-		return nil, nil
-	}
-
 	addr, err := netendpoint.ToURIAuthority(service.GetNetworkEndpoint())
 	if err != nil {
 		return nil, err
 	}
 
-	metaMsg, vulnerable, err := m.probeTarget(ctx, addr)
+	client := &thriftClient{
+		addr:    addr,
+		useTLS:  netservice.HasTLS(service),
+		timeout: m.timeout,
+	}
+	metaMsg, vulnerable, err := client.probeTarget(ctx)
 	if err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
 		}
-		log.DebugContextf(ctx, log.DebugLevelService, "Hive Metastore probe to %q failed: %v", addr, err)
+		log.DebugContextf(ctx, log.DebugLevelService, "Hive Metastore probe to %q failed: %v", addr, err) // NOMUTANTS -- diagnostic logging
 		return nil, nil
 	}
 	if !vulnerable {
@@ -215,20 +216,13 @@ func (m *Module) Detect(ctx context.Context, service *nspb.NetworkService) (*dpb
 	return buildDetectionReport(service, metaMsg), nil
 }
 
-func isCandidateService(service *nspb.NetworkService) bool {
-	name := strings.ToLower(strings.TrimSpace(service.GetServiceName()))
-	switch name {
-	case "", "thrift", "apache-thrift", "hive", "hive-metastore", "metastore", "emc-pp-mgmtsvc", "unknown":
-		return true
-	case "tcpwrapped":
-		port := service.GetNetworkEndpoint().GetPort().GetPortNumber()
-		return port == defaultMetastorePort
-	default:
-		return false
-	}
+type thriftClient struct {
+	addr    string
+	useTLS  bool
+	timeout time.Duration
 }
 
-func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, error) {
+func (c *thriftClient) probeTarget(ctx context.Context) (string, bool, error) {
 	dbName := probeDBName
 	tblName := probeTableName
 
@@ -239,12 +233,12 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 	// table existence before Kryo deserialization, discover an existing table via
 	// get_all_databases / get_all_tables if default.tsunami_probe returns
 	// NoSuchObjectException ("table not found").
-	controlMsg, err := m.sendGetPartitionsByExpr(ctx, addr, controlSeqID, dbName, tblName, controlExprNodeProbe)
+	controlMsg, err := c.sendGetPartitionsByExpr(ctx, controlSeqID, dbName, tblName, controlExprNodeProbe)
 	if err != nil {
 		return "", false, err
 	}
 	if strings.Contains(controlMsg, tableNotFoundSubstring) {
-		foundDB, foundTbl, findErr := m.discoverExistingTable(ctx, addr)
+		foundDB, foundTbl, findErr := c.discoverExistingTable(ctx)
 		if findErr != nil {
 			return "", false, findErr
 		}
@@ -253,7 +247,7 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 		}
 		dbName = foundDB
 		tblName = foundTbl
-		controlMsg, err = m.sendGetPartitionsByExpr(ctx, addr, controlSeqID, dbName, tblName, controlExprNodeProbe)
+		controlMsg, err = c.sendGetPartitionsByExpr(ctx, controlSeqID, dbName, tblName, controlExprNodeProbe)
 		if err != nil {
 			return "", false, err
 		}
@@ -272,7 +266,7 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 		probePayload = hive23NestedTreeMapExpr
 	}
 
-	vulnMsg, err := m.sendGetPartitionsByExpr(ctx, addr, vulnSeqID, dbName, tblName, probePayload)
+	vulnMsg, err := c.sendGetPartitionsByExpr(ctx, vulnSeqID, dbName, tblName, probePayload)
 	if err != nil {
 		return "", false, err
 	}
@@ -291,8 +285,8 @@ func (m *Module) probeTarget(ctx context.Context, addr string) (string, bool, er
 	return "", false, nil
 }
 
-func (m *Module) discoverExistingTable(ctx context.Context, addr string) (string, string, error) {
-	dbs, err := m.sendGetAllDatabases(ctx, addr)
+func (c *thriftClient) discoverExistingTable(ctx context.Context) (string, string, error) {
+	dbs, err := c.sendGetAllDatabases(ctx)
 	if err != nil {
 		return "", "", err
 	}
@@ -300,7 +294,7 @@ func (m *Module) discoverExistingTable(ctx context.Context, addr string) (string
 		dbs = []string{probeDBName}
 	}
 	for _, db := range dbs {
-		tbls, err := m.sendGetAllTables(ctx, addr, db)
+		tbls, err := c.sendGetAllTables(ctx, db)
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return "", "", ctxErr
@@ -314,16 +308,16 @@ func (m *Module) discoverExistingTable(ctx context.Context, addr string) (string
 	return "", "", nil
 }
 
-func (m *Module) sendGetAllDatabases(ctx context.Context, addr string) ([]string, error) {
+func (c *thriftClient) sendGetAllDatabases(ctx context.Context) ([]string, error) {
 	var buf bytes.Buffer
 	_ = binary.Write(&buf, binary.BigEndian, thriftVersion1Call)
 	writeThriftString(&buf, []byte(thriftGetAllDBsMethod))
 	_ = binary.Write(&buf, binary.BigEndian, listDBsSeqID)
 	buf.WriteByte(thriftTypeStop)
-	return m.sendThriftStringListRPC(ctx, addr, thriftGetAllDBsMethod, listDBsSeqID, buf.Bytes())
+	return c.sendThriftStringListRPC(ctx, thriftGetAllDBsMethod, listDBsSeqID, buf.Bytes())
 }
 
-func (m *Module) sendGetAllTables(ctx context.Context, addr, dbName string) ([]string, error) {
+func (c *thriftClient) sendGetAllTables(ctx context.Context, dbName string) ([]string, error) {
 	var buf bytes.Buffer
 	_ = binary.Write(&buf, binary.BigEndian, thriftVersion1Call)
 	writeThriftString(&buf, []byte(thriftGetAllTblsMethod))
@@ -332,24 +326,42 @@ func (m *Module) sendGetAllTables(ctx context.Context, addr, dbName string) ([]s
 	_ = binary.Write(&buf, binary.BigEndian, int16(1))
 	writeThriftString(&buf, []byte(dbName))
 	buf.WriteByte(thriftTypeStop)
-	return m.sendThriftStringListRPC(ctx, addr, thriftGetAllTblsMethod, listTblsSeqID, buf.Bytes())
+	return c.sendThriftStringListRPC(ctx, thriftGetAllTblsMethod, listTblsSeqID, buf.Bytes())
 }
 
-func (m *Module) openThriftConn(ctx context.Context, addr string, req []byte) (net.Conn, func(), error) {
-	reqCtx, cancel := context.WithTimeout(ctx, m.timeout)
-	var dialer net.Dialer
-	conn, err := dialer.DialContext(reqCtx, "tcp", addr)
+func (c *thriftClient) openConn(ctx context.Context, req []byte) (net.Conn, func(), error) {
+	reqCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	var (
+		conn net.Conn
+		err  error
+	)
+	if c.useTLS {
+		tlsDialer := tls.Dialer{
+			Config: &tls.Config{
+				// Scanner probes arbitrary network endpoints that frequently serve self-signed or IP-bound certificates.
+				InsecureSkipVerify: true, // NOLINT
+			},
+		}
+		conn, err = tlsDialer.DialContext(reqCtx, "tcp", c.addr)
+	} else {
+		var dialer net.Dialer
+		conn, err = dialer.DialContext(reqCtx, "tcp", c.addr)
+	}
 	if err != nil {
 		cancel()
 		return nil, nil, err
 	}
+	if deadline, ok := reqCtx.Deadline(); ok { // NOMUTANTS -- defensive deadline guard; WithTimeout always sets a deadline
+		_ = conn.SetDeadline(deadline) // NOMUTANTS -- defensive socket deadline alongside AfterFunc teardown
+	}
 	stop := context.AfterFunc(reqCtx, func() {
-		_ = conn.Close()
+		_ = conn.SetDeadline(time.Now()) // NOMUTANTS -- immediate netpoll wakeup before TLS closeNotify
+		_ = conn.Close()                 // NOMUTANTS -- defensive deadline socket teardown
 	})
 	cleanup := func() {
 		stop()
 		cancel()
-		_ = conn.Close()
+		_ = conn.Close() // NOMUTANTS -- resource cleanup
 	}
 	if _, err := conn.Write(req); err != nil {
 		cleanup()
@@ -358,8 +370,8 @@ func (m *Module) openThriftConn(ctx context.Context, addr string, req []byte) (n
 	return conn, cleanup, nil
 }
 
-func (m *Module) sendThriftStringListRPC(ctx context.Context, addr, methodName string, seqID uint32, req []byte) ([]string, error) {
-	conn, cleanup, err := m.openThriftConn(ctx, addr, req)
+func (c *thriftClient) sendThriftStringListRPC(ctx context.Context, methodName string, seqID uint32, req []byte) ([]string, error) {
+	conn, cleanup, err := c.openConn(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -367,9 +379,9 @@ func (m *Module) sendThriftStringListRPC(ctx context.Context, addr, methodName s
 	return readStringListReply(conn, methodName, seqID)
 }
 
-func (m *Module) sendGetPartitionsByExpr(ctx context.Context, addr string, seqID uint32, dbName, tblName string, exprBytes []byte) (string, error) {
+func (c *thriftClient) sendGetPartitionsByExpr(ctx context.Context, seqID uint32, dbName, tblName string, exprBytes []byte) (string, error) {
 	req := buildGetPartitionsByExprRequest(seqID, dbName, tblName, exprBytes)
-	conn, cleanup, err := m.openThriftConn(ctx, addr, req)
+	conn, cleanup, err := c.openConn(ctx, req)
 	if err != nil {
 		return "", err
 	}

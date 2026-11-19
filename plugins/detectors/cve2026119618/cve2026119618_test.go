@@ -36,6 +36,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/goonami-scanner/core/config"
 	"github.com/google/goonami-scanner/core/module"
+	"github.com/google/goonami-scanner/core/net/netendpoint"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
 	"google.golang.org/protobuf/proto"
@@ -505,6 +506,9 @@ func generateSelfSignedCert(t *testing.T) tls.Certificate {
 func TestDetectPositive(t *testing.T) {
 	testCases := []struct {
 		name            string
+		serviceName     string
+		transport       npb.TransportProtocol
+		httpMethods     []string
 		useTLS          bool
 		stream5Mode     string
 		wantMode        string
@@ -513,6 +517,9 @@ func TestDetectPositive(t *testing.T) {
 	}{
 		{
 			name:            "when_vulnerable_apache_h2c_trace_enable_on_returns_verified_finding",
+			serviceName:     "http",
+			transport:       npb.TransportProtocol_TCP,
+			httpMethods:     []string{"GET"},
 			useTLS:          false,
 			stream5Mode:     "413_rst",
 			wantMode:        "h2c",
@@ -521,11 +528,36 @@ func TestDetectPositive(t *testing.T) {
 		},
 		{
 			name:            "when_vulnerable_apache_h2_tls_trace_enable_extended_returns_verified_finding",
+			serviceName:     "http",
+			transport:       npb.TransportProtocol_TCP,
+			httpMethods:     []string{"GET"},
 			useTLS:          true,
 			stream5Mode:     "200_extended",
 			wantMode:        "h2",
 			wantScheme:      "https",
 			wantStream5Note: "HTTP 200 echoed 1-byte body (TraceEnable extended)",
+		},
+		{
+			name:            "when_arbitrary_service_name_without_http_methods_over_h2c_on_non_standard_port_returns_verified_finding",
+			serviceName:     "ssh",
+			transport:       npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED,
+			httpMethods:     nil,
+			useTLS:          false,
+			stream5Mode:     "413_rst",
+			wantMode:        "h2c",
+			wantScheme:      "http",
+			wantStream5Note: "HTTP 413 (TraceEnable on)",
+		},
+		{
+			name:            "when_tcpwrapped_service_without_http_methods_over_h2_tls_on_non_standard_port_returns_verified_finding",
+			serviceName:     "tcpwrapped",
+			transport:       npb.TransportProtocol_TCP,
+			httpMethods:     nil,
+			useTLS:          true,
+			stream5Mode:     "413_rst",
+			wantMode:        "h2",
+			wantScheme:      "https",
+			wantStream5Note: "HTTP 413 (TraceEnable on)",
 		},
 	}
 
@@ -575,9 +607,9 @@ func TestDetectPositive(t *testing.T) {
 				sslVersions = []string{"TLSv1.3"}
 			}
 			svc := nspb.NetworkService_builder{
-				ServiceName:          "http",
-				TransportProtocol:    npb.TransportProtocol_TCP,
-				SupportedHttpMethods: []string{"GET"},
+				ServiceName:          tc.serviceName,
+				TransportProtocol:    tc.transport,
+				SupportedHttpMethods: tc.httpMethods,
 				SupportedSslVersions: sslVersions,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
 					Type: npb.NetworkEndpoint_IP_PORT,
@@ -1481,121 +1513,128 @@ func TestServiceEligibilityAndTransportParity(t *testing.T) {
 	testCases := []struct {
 		name          string
 		svc           *nspb.NetworkService
-		wantSupported bool
-		wantTransport transportMode
+		wantDialModes []transportMode
+		wantDialAddr  string
 	}{
 		{
-			name:          "when_nil_service_returns_not_supported",
-			svc:           nil,
-			wantSupported: false,
-		},
-		{
-			name: "when_udp_service_returns_not_supported",
+			name: "when_udp_service_skips_without_dialing",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "http",
 				TransportProtocol: npb.TransportProtocol_UDP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 80}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 80}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported: false,
 		},
 		{
-			name: "when_nmap_http_service_without_supported_http_methods_on_custom_port_selects_h2c",
+			name: "when_sctp_service_skips_without_dialing",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "http",
-				TransportProtocol: npb.TransportProtocol_TCP,
+				TransportProtocol: npb.TransportProtocol_SCTP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 9080}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 443}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported: true,
-			wantTransport: transportH2C,
 		},
 		{
-			name: "when_https_service_without_supported_ssl_versions_selects_h2c",
+			name: "when_portless_non_web_tcp_service_skips_without_synthesizing_fallback_port",
 			svc: nspb.NetworkService_builder{
-				ServiceName:       "https",
+				ServiceName:       "unknown",
 				TransportProtocol: npb.TransportProtocol_TCP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 9443}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported: true,
-			wantTransport: transportH2C,
 		},
 		{
-			name: "when_service_with_supported_ssl_versions_selects_h2_tls",
+			name: "when_portless_non_web_tls_service_skips_without_synthesizing_fallback_port",
 			svc: nspb.NetworkService_builder{
-				ServiceName:          "http",
+				ServiceName:          "unknown",
 				TransportProtocol:    npb.TransportProtocol_TCP,
 				SupportedSslVersions: []string{"TLSv1.3"},
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 8080}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported: true,
-			wantTransport: transportH2TLS,
 		},
 		{
-			name: "when_tcpwrapped_on_standard_web_port_8080_is_supported_h2c",
-			svc: nspb.NetworkService_builder{
-				ServiceName:       "tcpwrapped",
-				TransportProtocol: npb.TransportProtocol_TCP,
-				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 8080}.Build(),
-				}.Build(),
-			}.Build(),
-			wantSupported: true,
-			wantTransport: transportH2C,
-		},
-		{
-			name: "when_empty_service_name_on_port_8443_with_ssl_versions_is_supported_h2_tls",
-			svc: nspb.NetworkService_builder{
-				ServiceName:          "",
-				TransportProtocol:    npb.TransportProtocol_TCP,
-				SupportedSslVersions: []string{"TLSv1.2"},
-				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 8443}.Build(),
-				}.Build(),
-			}.Build(),
-			wantSupported: true,
-			wantTransport: transportH2TLS,
-		},
-		{
-			name: "when_tcpwrapped_on_ssh_port_22_returns_not_supported",
-			svc: nspb.NetworkService_builder{
-				ServiceName:       "tcpwrapped",
-				TransportProtocol: npb.TransportProtocol_TCP,
-				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 22}.Build(),
-				}.Build(),
-			}.Build(),
-			wantSupported: false,
-		},
-		{
-			name: "when_ssh_service_on_port_80_returns_not_supported",
+			name: "when_tcp_service_without_tls_on_non_standard_port_dials_h2c",
 			svc: nspb.NetworkService_builder{
 				ServiceName:       "ssh",
 				TransportProtocol: npb.TransportProtocol_TCP,
 				NetworkEndpoint: npb.NetworkEndpoint_builder{
-					Port: npb.Port_builder{PortNumber: 80}.Build(),
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 19080}.Build(),
 				}.Build(),
 			}.Build(),
-			wantSupported: false,
+			wantDialModes: []transportMode{transportH2C},
+			wantDialAddr:  "127.0.0.1:19080",
+		},
+		{
+			name: "when_tcp_service_with_tls_on_non_standard_port_dials_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "custom-rpc",
+				TransportProtocol:    npb.TransportProtocol_TCP,
+				SupportedSslVersions: []string{"TLSv1.3"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 19443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantDialModes: []transportMode{transportH2TLS},
+			wantDialAddr:  "127.0.0.1:19443",
+		},
+		{
+			name: "when_unspecified_transport_without_tls_on_non_standard_port_dials_h2c",
+			svc: nspb.NetworkService_builder{
+				ServiceName:       "tcpwrapped",
+				TransportProtocol: npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED,
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 31337}.Build(),
+				}.Build(),
+			}.Build(),
+			wantDialModes: []transportMode{transportH2C},
+			wantDialAddr:  "127.0.0.1:31337",
+		},
+		{
+			name: "when_unspecified_transport_with_tls_and_empty_service_name_dials_h2_tls",
+			svc: nspb.NetworkService_builder{
+				ServiceName:          "",
+				TransportProtocol:    npb.TransportProtocol_TRANSPORT_PROTOCOL_UNSPECIFIED,
+				SupportedSslVersions: []string{"TLSv1.2"},
+				NetworkEndpoint: npb.NetworkEndpoint_builder{
+					IpAddress: npb.IpAddress_builder{Address: "127.0.0.1"}.Build(),
+					Port:      npb.Port_builder{PortNumber: 8443}.Build(),
+				}.Build(),
+			}.Build(),
+			wantDialModes: []transportMode{transportH2TLS},
+			wantDialAddr:  "127.0.0.1:8443",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := isSupportedService(tc.svc)
-			if got != tc.wantSupported {
-				t.Fatalf("isSupportedService() = %v, want %v", got, tc.wantSupported)
+			var (
+				dialModes []transportMode
+				dialAddr  string
+			)
+			dial := func(_ context.Context, mode transportMode, addr, _ string, _ time.Duration) (net.Conn, error) {
+				dialModes = append(dialModes, mode)
+				dialAddr = addr
+				return nil, errNotH2Peer
 			}
-			if tc.wantSupported {
-				if gotTransport := selectTransport(tc.svc); gotTransport != tc.wantTransport {
-					t.Errorf("selectTransport() = %q, want %q", gotTransport, tc.wantTransport)
-				}
+			reports, err := newTestModule(dial).Detect(t.Context(), tc.svc)
+			if err != nil || reports != nil {
+				t.Fatalf("Detect() = (%v, %v), want (nil, nil)", reports, err)
+			}
+			if diff := cmp.Diff(tc.wantDialModes, dialModes); diff != "" {
+				t.Errorf("Detect() dialed transport modes diff (-want +got):\n%s", diff)
+			}
+			if dialAddr != tc.wantDialAddr {
+				t.Errorf("Detect() dialAddr = %q, want %q", dialAddr, tc.wantDialAddr)
 			}
 		})
 	}
@@ -1928,15 +1967,30 @@ func TestParseTraceEchoAndContextErrors(t *testing.T) {
 	})
 
 	t.Run("when_endpoint_missing_address_or_context_canceled_mid_probe_handles_cleanly", func(t *testing.T) {
+		if got, err := newTestModule(defaultDial).Detect(t.Context(), nil); !errors.Is(err, netendpoint.ErrEndpointMissingAddress) || got != nil {
+			t.Errorf("Detect(nil) = (%v, %v), want (nil, %v)", got, err, netendpoint.ErrEndpointMissingAddress)
+		}
+
 		emptyEpSvc := nspb.NetworkService_builder{
 			ServiceName:          "http",
 			TransportProtocol:    npb.TransportProtocol_TCP,
 			SupportedHttpMethods: []string{"GET"},
 			NetworkEndpoint:      &npb.NetworkEndpoint{},
 		}.Build()
-		got, err := newTestModule(defaultDial).Detect(t.Context(), emptyEpSvc)
-		if err != nil || got != nil {
-			t.Errorf("Detect(empty endpoint) = (%v, %v), want (nil, nil)", got, err)
+		if got, err := newTestModule(defaultDial).Detect(t.Context(), emptyEpSvc); !errors.Is(err, netendpoint.ErrEndpointMissingAddress) || got != nil {
+			t.Errorf("Detect(empty endpoint) = (%v, %v), want (nil, %v)", got, err, netendpoint.ErrEndpointMissingAddress)
+		}
+
+		dotOnlyHostSvc := nspb.NetworkService_builder{
+			ServiceName:       "http",
+			TransportProtocol: npb.TransportProtocol_TCP,
+			NetworkEndpoint: npb.NetworkEndpoint_builder{
+				Hostname: npb.Hostname_builder{Name: "..."}.Build(),
+				Port:     npb.Port_builder{PortNumber: 8080}.Build(),
+			}.Build(),
+		}.Build()
+		if got, err := newTestModule(defaultDial).Detect(t.Context(), dotOnlyHostSvc); err != nil || got != nil {
+			t.Errorf("Detect(dot-only hostname) = (%v, %v), want (nil, nil)", got, err)
 		}
 
 		var cancelDialCalls atomic.Int32

@@ -137,6 +137,9 @@ func resolveEndpointTarget(ep *npb.NetworkEndpoint, defaultPort uint32) (endpoin
 	}
 	port := ep.GetPort().GetPortNumber()
 	if port == 0 {
+		if defaultPort == 0 {
+			return endpointTarget{}, false
+		}
 		port = defaultPort
 	}
 	portStr := strconv.FormatUint(uint64(port), 10)

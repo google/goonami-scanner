@@ -19,13 +19,14 @@ state and pivot RIP to ROP gadgets in `libc` or `httpd`.
     `Severity_CRITICAL`) supported by the detector.
 -   **`Module` /
     `(*Module).Detect(ctx context.Context, service *nspb.NetworkService)`**:
-    Executes a non-destructive 3-stream sequential HTTP/2 (`h2` TLS ALPN and
-    cleartext `h2c` prior knowledge) `TRACE` causal-ablation check (`<10`
-    headers per stream, zero concurrency) verifying whether `assign_headers()`
-    omits synthesized `Content-Length: 0` from `r->headers_in` on body-less
-    `Content-Type` requests while preserving explicit `Content-Length: 0` on
-    Stream 3 and enforcing Apache `ap_send_http_trace` request-body semantics on
-    Stream 5.
+    Skips non-TCP services and executes a port- and service-name-agnostic,
+    non-destructive 3-stream sequential HTTP/2 (`h2` TLS ALPN when TLS is
+    detected and cleartext `h2c` prior knowledge otherwise) `TRACE`
+    causal-ablation check (`<10` headers per stream, zero concurrency) verifying
+    whether `assign_headers()` omits synthesized `Content-Length: 0` from
+    `r->headers_in` on body-less `Content-Type` requests while preserving
+    explicit `Content-Length: 0` on Stream 3 and enforcing Apache
+    `ap_send_http_trace` request-body semantics on Stream 5.
 
 ## Usage
 
