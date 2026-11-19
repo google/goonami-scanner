@@ -1,0 +1,79 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "InfluxDB_ExposedUI"
+  author: "Secureness"
+  version: "1.0"
+  description: "Detects InfluxDB instances exposed without HTTP authentication enabled."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "MISSING_AUTHENTICATION_FOR_INFLUX_DB"
+  }
+  severity: CRITICAL
+  title: "InfluxDB instance without any authentication"
+  description: "Attacker can access any DB information for this InfluxDB instance because there are no authentication."
+  recommendation: "Set authentication value to true in InfluxDB setup config file before running an instance of InfluxDB."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "check_unauthenticated_influxql_query"
+  http_request: {
+    method: POST
+    uri: "/query"
+    headers: [
+      { name: "Content-Type" value: "application/x-www-form-urlencoded" }
+    ]
+    data: "q=SHOW+DATABASES%3BSHOW+USERS"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"results\":[{\"statement_id\":0" },
+          { body: {} contains: "\"columns\":[\"user\",\"admin\"]" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "influxdb_header"
+            regexp: "^([vV]?[0-9]+\\.[0-9]+.*)$"
+            from_header: { name: "X-Influxdb-Version" }
+          },
+          {
+            variable_name: "influxdb_header"
+            regexp: "^(OSS|Enterprise.*)$"
+            from_header: { name: "X-Influxdb-Build" }
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "check_unauthenticated_influxql_query"
+  ]
+}
