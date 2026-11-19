@@ -50,6 +50,7 @@ import (
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve202241137"
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve2026111497"
 	_ "github.com/google/goonami-scanner/plugins/detectors/cve2026119618"
+	_ "github.com/google/goonami-scanner/plugins/detectors/cve2026123007"
 	_ "github.com/google/goonami-scanner/plugins/detectors/daskunauthrce"
 	_ "github.com/google/goonami-scanner/plugins/detectors/opensshauthbypass"
 	_ "github.com/google/goonami-scanner/plugins/detectors/php2shell"
