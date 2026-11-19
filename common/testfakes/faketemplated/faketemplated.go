@@ -22,9 +22,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/google/goonami-scanner/common/templatedengine/environment"
@@ -85,34 +87,74 @@ func LoadPluginsAndTests(fsys fs.FS) (map[string]*tpb.TemplatedPlugin, map[strin
 // specification and template environment.
 func NewHTTPServer(ctx context.Context, mockServer *ttpb.MockHttpServer, env *environment.Environment) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, mockResp := range mockServer.GetMockResponses() {
-			mockURL := env.Substitute(ctx, mockResp.GetUri())
+		responses := mockServer.GetMockResponses()
 
-			// mockURL is the path, i.e. /index.php?foo=bar, so it should start with a "/". But if it is
-			// one of the magic strings, it should not have a leading "/".
-			if len(mockURL) > 0 && mockURL[0] != '/' && !strings.HasPrefix(mockURL, environment.VarTestingMagicPrefix) {
-				mockURL = "/" + mockURL
-			}
-
-			if mockURL != environment.VarTestingMagicAnyURI && r.URL.String() != mockURL && r.URL.Path != mockURL {
+		for _, mockResp := range responses {
+			mockURL := resolveMockURI(ctx, mockResp.GetUri(), env)
+			if strings.HasPrefix(mockURL, environment.VarTestingMagicPrefix) {
 				continue
 			}
-
-			if !MatchesConditions(ctx, r, mockResp.GetCondition(), env) {
-				continue
+			if (r.URL.String() == mockURL || r.URL.Path == mockURL) && MatchesConditions(ctx, r, mockResp.GetCondition(), env) {
+				writeMockResponse(ctx, w, mockResp, env, env.Substitute(ctx, mockResp.GetBodyContent()))
+				return
 			}
+		}
 
-			for _, header := range mockResp.GetHeaders() {
-				w.Header().Add(header.GetName(), env.Substitute(ctx, header.GetValue()))
+		for _, mockResp := range responses {
+			if env.Substitute(ctx, mockResp.GetUri()) == environment.VarTestingMagicAnyURI && MatchesConditions(ctx, r, mockResp.GetCondition(), env) {
+				writeMockResponse(ctx, w, mockResp, env, env.Substitute(ctx, mockResp.GetBodyContent()))
+				return
 			}
+		}
 
-			w.WriteHeader(int(mockResp.GetStatus()))
-			fmt.Fprint(w, env.Substitute(ctx, mockResp.GetBodyContent()))
-			return
+		for _, mockResp := range responses {
+			if env.Substitute(ctx, mockResp.GetUri()) == environment.VarTestingMagicEchoServer && MatchesConditions(ctx, r, mockResp.GetCondition(), env) {
+				writeMockResponse(ctx, w, mockResp, env, formatEchoBody(r))
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusNotFound)
 	}))
+}
+
+func resolveMockURI(ctx context.Context, rawURI string, env *environment.Environment) string {
+	mockURL := env.Substitute(ctx, rawURI)
+	// mockURL is the path, i.e. /index.php?foo=bar, so it should start with a "/". But if it is
+	// one of the magic strings, it should not have a leading "/".
+	if len(mockURL) > 0 && mockURL[0] != '/' && !strings.HasPrefix(mockURL, environment.VarTestingMagicPrefix) {
+		return "/" + mockURL
+	}
+	return mockURL
+}
+
+func writeMockResponse(ctx context.Context, w http.ResponseWriter, mockResp *ttpb.MockHttpServer_MockResponse, env *environment.Environment, body string) {
+	for _, header := range mockResp.GetHeaders() {
+		w.Header().Add(header.GetName(), env.Substitute(ctx, header.GetValue()))
+	}
+
+	status := int(mockResp.GetStatus())
+	if status == 0 {
+		status = http.StatusOK
+	}
+	w.WriteHeader(status)
+	fmt.Fprint(w, body)
+}
+
+func formatEchoBody(r *http.Request) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s %s %s\n", r.Method, r.URL.RequestURI(), r.Proto)
+	for _, name := range slices.Sorted(maps.Keys(r.Header)) {
+		for _, val := range r.Header[name] {
+			fmt.Fprintf(&b, "%s: %s\n", name, val)
+		}
+	}
+	b.WriteByte('\n')
+	if r.Body != nil {
+		body, _ := io.ReadAll(r.Body)
+		b.Write(body)
+	}
+	return b.String()
 }
 
 // MatchesConditions reports whether an HTTP request satisfies all conditions in cond after

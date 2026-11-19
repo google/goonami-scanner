@@ -19,14 +19,17 @@ network dependencies.
     path). Non-`.textproto` entries are ignored, and directory walk or
     `prototext` unmarshaling failures return an error.
 -   **`NewHTTPServer`**: `NewHTTPServer(ctx, mockServer, env)` starts an
-    `*httptest.Server` that evaluates `mockServer.GetMockResponses()` in order,
-    substituting template variables from `env` into each mock URI (prepending
-    `"/"` when relative unless prefixed with
-    `environment.VarTestingMagicPrefix`) and matching against
-    `environment.VarTestingMagicAnyURI`, `r.URL.String()`, or `r.URL.Path`. For
-    the first URI match where `MatchesConditions` succeeds, it writes the
-    variable-substituted response headers, status code, and body, or responds
-    with `404 Not Found` if none match.
+    `*httptest.Server` that substitutes template variables from `env` into each
+    mock URI in `mockServer.GetMockResponses()` (prepending `"/"` when relative
+    unless prefixed with `environment.VarTestingMagicPrefix`) and evaluates
+    matches in three passes: first exact URI matches (`r.URL.String()` or
+    `r.URL.Path`), then `environment.VarTestingMagicAnyURI`, and finally
+    `environment.VarTestingMagicEchoServer`. For the first matching entry where
+    `MatchesConditions` succeeds, it writes any variable-substituted response
+    headers and status code (defaulting `0` to `200 OK`) along with either the
+    substituted response body or, for `TSUNAMI_MAGIC_ECHO_SERVER`, the echoed
+    request line, sorted headers, and body. Responds with `404 Not Found` if
+    no entry matches.
 -   **`MatchesConditions`**: `MatchesConditions(ctx, r, cond, env)` reports
     whether an `*http.Request` satisfies all header, `GET` query parameter, HTTP
     method (`request_type`), and body substring checks in `cond` after variable

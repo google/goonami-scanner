@@ -149,6 +149,166 @@ func TestNewHTTPServer(t *testing.T) {
 	}
 }
 
+func TestNewHTTPServerMagicURIs(t *testing.T) {
+	precedenceResponses := []*ttpb.MockHttpServer_MockResponse{
+		ttpb.MockHttpServer_MockResponse_builder{
+			Uri: environment.VarTestingMagicEchoServer,
+		}.Build(),
+		ttpb.MockHttpServer_MockResponse_builder{
+			Uri:         environment.VarTestingMagicAnyURI,
+			Status:      http.StatusOK,
+			BodyContent: "from-any",
+			Condition: ttpb.MockHttpServer_HttpCondition_builder{
+				Headers: []*ttpb.MockHttpServer_HttpHeader{
+					ttpb.MockHttpServer_HttpHeader_builder{Name: "X-Fallback", Value: "any"}.Build(),
+				},
+			}.Build(),
+		}.Build(),
+		ttpb.MockHttpServer_MockResponse_builder{
+			Uri:         "exact",
+			Status:      http.StatusAccepted,
+			BodyContent: "from-exact",
+		}.Build(),
+	}
+
+	conditionalEchoResponses := []*ttpb.MockHttpServer_MockResponse{
+		ttpb.MockHttpServer_MockResponse_builder{
+			Uri:    environment.VarTestingMagicEchoServer,
+			Status: http.StatusCreated,
+			Headers: []*ttpb.MockHttpServer_HttpHeader{
+				ttpb.MockHttpServer_HttpHeader_builder{Name: "X-Echo-Mode", Value: "{{ EXPECTED_TOKEN }}"}.Build(),
+			},
+			Condition: ttpb.MockHttpServer_HttpCondition_builder{
+				BodyContent: []string{"must-match"},
+			}.Build(),
+		}.Build(),
+	}
+
+	tests := []struct {
+		name               string
+		mockResponses      []*ttpb.MockHttpServer_MockResponse
+		method             string
+		path               string
+		reqHeaders         map[string]string
+		reqBody            string
+		wantStatus         int
+		wantRespHeaders    map[string]string
+		wantBodySubstrings []string
+	}{
+		{
+			name: "when_echo_server_status_unset_defaults_to_200_and_echoes_request_line_headers_and_body",
+			mockResponses: []*ttpb.MockHttpServer_MockResponse{
+				ttpb.MockHttpServer_MockResponse_builder{
+					Uri: environment.VarTestingMagicEchoServer,
+				}.Build(),
+			},
+			method:     http.MethodPost,
+			path:       "/cgi-bin/status?probe=1",
+			reqHeaders: map[string]string{"X-Payload": "() { :; }; echo 123"},
+			reqBody:    "raw-body-payload",
+			wantStatus: http.StatusOK,
+			wantBodySubstrings: []string{
+				"POST /cgi-bin/status?probe=1 HTTP/1.1\n",
+				"X-Payload: () { :; }; echo 123\n",
+				"\n\nraw-body-payload",
+			},
+		},
+		{
+			name:               "when_echo_server_has_custom_status_headers_and_body_condition_echoes_matching_request",
+			mockResponses:      conditionalEchoResponses,
+			method:             http.MethodPost,
+			path:               "/echo",
+			reqBody:            "payload:must-match",
+			wantStatus:         http.StatusCreated,
+			wantRespHeaders:    map[string]string{"X-Echo-Mode": "secret123"},
+			wantBodySubstrings: []string{"POST /echo HTTP/1.1\n", "\n\npayload:must-match"},
+		},
+		{
+			name:          "when_echo_server_condition_fails_returns_404",
+			mockResponses: conditionalEchoResponses,
+			method:        http.MethodPost,
+			path:          "/echo",
+			reqBody:       "other-body",
+			wantStatus:    http.StatusNotFound,
+		},
+		{
+			name:               "when_specific_uri_and_magic_uris_configured_prefers_specific_uri",
+			mockResponses:      precedenceResponses,
+			method:             http.MethodGet,
+			path:               "/exact",
+			reqHeaders:         map[string]string{"X-Fallback": "any"},
+			wantStatus:         http.StatusAccepted,
+			wantBodySubstrings: []string{"from-exact"},
+		},
+		{
+			name:               "when_any_uri_and_echo_server_configured_prefers_any_uri_when_conditions_match",
+			mockResponses:      precedenceResponses,
+			method:             http.MethodGet,
+			path:               "/unmatched",
+			reqHeaders:         map[string]string{"X-Fallback": "any"},
+			wantStatus:         http.StatusOK,
+			wantBodySubstrings: []string{"from-any"},
+		},
+		{
+			name:               "when_any_uri_condition_fails_falls_back_to_echo_server",
+			mockResponses:      precedenceResponses,
+			method:             http.MethodGet,
+			path:               "/unmatched",
+			wantStatus:         http.StatusOK,
+			wantBodySubstrings: []string{"GET /unmatched HTTP/1.1\n"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+			env := environment.New(config.Default())
+			env.Set("EXPECTED_TOKEN", "secret123")
+
+			mockServer := ttpb.MockHttpServer_builder{
+				MockResponses: tc.mockResponses,
+			}.Build()
+			srv := NewHTTPServer(ctx, mockServer, env)
+			defer srv.Close()
+
+			req, err := http.NewRequestWithContext(ctx, tc.method, srv.URL+tc.path, strings.NewReader(tc.reqBody))
+			if err != nil {
+				t.Fatalf("http.NewRequestWithContext(%q, %q) error = %v", tc.method, tc.path, err)
+			}
+			for k, v := range tc.reqHeaders {
+				req.Header.Set(k, v)
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("Do(%q %q) error = %v", tc.method, tc.path, err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("NewHTTPServer(%s %s) status = %d, want %d", tc.method, tc.path, resp.StatusCode, tc.wantStatus)
+			}
+			for k, want := range tc.wantRespHeaders {
+				if got := resp.Header.Get(k); got != want {
+					t.Errorf("NewHTTPServer(%s %s) header %q = %q, want %q", tc.method, tc.path, k, got, want)
+				}
+			}
+			if len(tc.wantBodySubstrings) > 0 {
+				gotBytes, err := io.ReadAll(resp.Body)
+				if err != nil {
+					t.Fatalf("io.ReadAll(resp.Body) error = %v", err)
+				}
+				gotBody := string(gotBytes)
+				for _, sub := range tc.wantBodySubstrings {
+					if !strings.Contains(gotBody, sub) {
+						t.Errorf("NewHTTPServer(%s %s) body = %q, want substring %q", tc.method, tc.path, gotBody, sub)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestLoadPluginsAndTests(t *testing.T) {
 	tests := []struct {
 		name        string
