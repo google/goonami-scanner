@@ -135,13 +135,7 @@ func TestDial(t *testing.T) {
 		{
 			name: "when_connection_refused_returns_error",
 			serverSetup: func(t *testing.T) (string, func()) {
-				l, err := net.Listen("tcp", "127.0.0.1:0")
-				if err != nil {
-					t.Fatalf("net.Listen failed: %v", err)
-				}
-				addr := l.Addr().String()
-				_ = l.Close()
-				return addr, func() {}
+				return closedTCPAddr(t), func() {}
 			},
 			clientSetup: func(t *testing.T) (context.Context, *ssh.ClientConfig) {
 				return t.Context(), &ssh.ClientConfig{
@@ -359,6 +353,46 @@ func TestConnect(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			name: "when_keyboard_interactive_zero_prompt_passwordless_account_authenticates_empty_password",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, _ ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if c.User() == "alpine" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "alpine",
+			password:    "",
+			expectedErr: nil,
+		},
+		{
+			name: "when_keyboard_interactive_zero_prompt_passwordless_account_rejects_non_empty_password",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, _ ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if c.User() == "alpine" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "alpine",
+			password:    "non-empty-canary",
+			expectedErr: ErrAuthFailed,
+		},
+		{
 			name: "when_keyboard_interactive_excessive_empty_prompts_returns_auth_failed",
 			serverSetup: func(t *testing.T) (string, func()) {
 				srv, err := fakessh.New(&ssh.ServerConfig{
@@ -558,6 +592,73 @@ func TestConnectWithPasswords(t *testing.T) {
 			passwords:   []string{"wrong1", "wrong2"},
 			expectedErr: ErrAuthFailed,
 		},
+		{
+			name: "when_server_accepts_rfc4252_none_auth_rejects_non_empty_passwords",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					NoClientAuth: true,
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{"non-empty-password"},
+			expectedErr: ErrAuthFailed,
+		},
+		{
+			name: "when_server_accepts_rfc4252_none_auth_succeeds_for_explicit_empty_password",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					NoClientAuth: true,
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "root",
+			passwords:   []string{""},
+			expectedErr: nil,
+		},
+		{
+			name: "when_zero_prompt_keyboard_interactive_server_receives_non_empty_then_empty_password_succeeds",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, _ ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						if c.User() == "alpine" {
+							return nil, nil
+						}
+						return nil, fmt.Errorf("auth failed")
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "alpine",
+			passwords:   []string{"alpine", ""},
+			expectedErr: nil,
+		},
+		{
+			name: "when_zero_prompt_keyboard_interactive_server_receives_only_non_empty_passwords_returns_auth_failed",
+			serverSetup: func(t *testing.T) (string, func()) {
+				srv, err := fakessh.New(&ssh.ServerConfig{
+					KeyboardInteractiveCallback: func(c ssh.ConnMetadata, _ ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+						return nil, nil
+					},
+				})
+				if err != nil {
+					t.Fatalf("fakessh.New failed: %v", err)
+				}
+				return srv.Addr(), func() { _ = srv.Close() }
+			},
+			username:    "alpine",
+			passwords:   []string{"wrong1", "wrong2"},
+			expectedErr: ErrAuthFailed,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -602,7 +703,6 @@ func TestConnect_NonSSHAndNetworkErrors(t *testing.T) {
 
 	resetAddr := startFakeTCPServer(t, func(conn net.Conn) {
 		if tcpConn, ok := conn.(*net.TCPConn); ok {
-			// SetLinger(0) forces a TCP RST on Close() instead of FIN.
 			_ = tcpConn.SetLinger(0)
 		}
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
@@ -677,8 +777,7 @@ func TestConnect_ContextErrors(t *testing.T) {
 			setupClient: func(t *testing.T) (*Client, context.Context) {
 				ctx, cancel := context.WithCancel(t.Context())
 				cancel()
-				client := New(nil)
-				return client, ctx
+				return New(nil), ctx
 			},
 			expectedErr: context.Canceled,
 		},
@@ -688,8 +787,7 @@ func TestConnect_ContextErrors(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 1*time.Nanosecond)
 				defer cancel()
 				time.Sleep(2 * time.Millisecond)
-				client := New(nil)
-				return client, ctx
+				return New(nil), ctx
 			},
 			expectedErr: context.DeadlineExceeded,
 		},
@@ -961,4 +1059,217 @@ func closedTCPAddr(t *testing.T) string {
 		t.Fatalf("listener.Close failed: %v", err)
 	}
 	return addr
+}
+
+func startPreambleSSHProxy(t *testing.T, preamble string, upstreamAddr string) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen failed: %v", err)
+	}
+	var wg sync.WaitGroup
+	t.Cleanup(func() {
+		_ = listener.Close()
+		wg.Wait()
+	})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			clientConn, acceptErr := listener.Accept()
+			if acceptErr != nil {
+				return
+			}
+			wg.Add(1)
+			go func(c net.Conn) {
+				defer wg.Done()
+				defer c.Close()
+				upstream, dialErr := net.Dial("tcp", upstreamAddr)
+				if dialErr != nil {
+					return
+				}
+				defer upstream.Close()
+				if preamble != "" {
+					_, _ = c.Write([]byte(preamble))
+				}
+				done := make(chan struct{})
+				go func() {
+					_, _ = io.Copy(upstream, c)
+					_ = upstream.Close()
+					_ = c.Close()
+					close(done)
+				}()
+				_, _ = io.Copy(c, upstream)
+				_ = c.Close()
+				_ = upstream.Close()
+				<-done
+			}(clientConn)
+		}
+	}()
+	return listener.Addr().String()
+}
+
+func TestConnectAndReturnServerVersion(t *testing.T) {
+	shortTimeoutCfg := config.FromProto(cpb.Config_builder{
+		Clients: cpb.ClientsConfig_builder{
+			Ssh: sccpb.SSHClientConfig_builder{
+				TimeoutSeconds: proto.Int32(1),
+			}.Build(),
+		}.Build(),
+	}.Build())
+
+	eofPreBannerAddr := startFakeTCPServer(t, func(conn net.Conn) {
+		_ = conn.Close()
+	})
+	httpBannerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(httpBannerServer.Close)
+
+	passwordOpenSSH, err := fakessh.New(&ssh.ServerConfig{
+		ServerVersion: "SSH-2.0-OpenSSH_9.9",
+		PasswordCallback: func(c ssh.ConnMetadata, pass []byte) (*ssh.Permissions, error) {
+			if c.User() == "alpine" && string(pass) == "validpass" {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("rejected")
+		},
+	})
+	if err != nil {
+		t.Fatalf("fakessh.New failed: %v", err)
+	}
+	t.Cleanup(func() { _ = passwordOpenSSH.Close() })
+
+	pubKeyOpenSSH, err := fakessh.New(&ssh.ServerConfig{
+		ServerVersion: "SSH-2.0-OpenSSH_9.9",
+		PublicKeyCallback: func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+			return nil, fmt.Errorf("rejected")
+		},
+	})
+	if err != nil {
+		t.Fatalf("fakessh.New failed: %v", err)
+	}
+	t.Cleanup(func() { _ = pubKeyOpenSSH.Close() })
+
+	preamble := "Authorized uses only.\r\nNotice: activity is logged.\n"
+	preamblePasswordAddr := startPreambleSSHProxy(t, preamble, passwordOpenSSH.Addr())
+	preamblePubKeyAddr := startPreambleSSHProxy(t, preamble, pubKeyOpenSSH.Addr())
+
+	testCases := []struct {
+		name              string
+		cfg               *config.Config
+		addr              string
+		username          string
+		passwords         []string
+		wantServerVersion string
+		wantErr           error
+	}{
+		{
+			name:              "when_peer_closes_immediately_with_eof_returns_not_ssh_service",
+			cfg:               shortTimeoutCfg,
+			addr:              eofPreBannerAddr,
+			username:          "root",
+			passwords:         []string{"pass"},
+			wantServerVersion: "",
+			wantErr:           ErrNotSSHService,
+		},
+		{
+			name:              "when_non_ssh_http_banner_returns_not_ssh_service",
+			cfg:               shortTimeoutCfg,
+			addr:              httpBannerServer.Listener.Addr().String(),
+			username:          "root",
+			passwords:         []string{"pass"},
+			wantServerVersion: "",
+			wantErr:           ErrNotSSHService,
+		},
+		{
+			name:              "when_connection_refused_returns_not_ssh_service",
+			cfg:               shortTimeoutCfg,
+			addr:              closedTCPAddr(t),
+			username:          "root",
+			passwords:         []string{"pass"},
+			wantServerVersion: "",
+			wantErr:           ErrNotSSHService,
+		},
+		{
+			name:              "when_multiline_preamble_before_openssh_banner_and_auth_succeeds_returns_exact_banner",
+			addr:              preamblePasswordAddr,
+			username:          "alpine",
+			passwords:         []string{"validpass"},
+			wantServerVersion: "SSH-2.0-OpenSSH_9.9",
+			wantErr:           nil,
+		},
+		{
+			name:              "when_multiline_preamble_before_openssh_banner_and_auth_fails_returns_exact_banner",
+			addr:              preamblePasswordAddr,
+			username:          "alpine",
+			passwords:         []string{"wrongpass"},
+			wantServerVersion: "SSH-2.0-OpenSSH_9.9",
+			wantErr:           ErrAuthFailed,
+		},
+		{
+			name:              "when_multiline_preamble_before_openssh_banner_and_pubkey_only_returns_exact_banner",
+			addr:              preamblePubKeyAddr,
+			username:          "alpine",
+			passwords:         []string{"anypass"},
+			wantServerVersion: "SSH-2.0-OpenSSH_9.9",
+			wantErr:           ErrPasswordAuthUnsupported,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := New(tc.cfg)
+			sshClient, gotBanner, err := client.ConnectAndReturnServerVersion(t.Context(), tc.addr, tc.username, tc.passwords...)
+			if sshClient != nil {
+				_ = sshClient.Close()
+			}
+			if gotBanner != tc.wantServerVersion {
+				t.Errorf("ConnectAndReturnServerVersion() banner = %q, want %q", gotBanner, tc.wantServerVersion)
+			}
+			if tc.wantErr == nil {
+				if err != nil {
+					t.Fatalf("ConnectAndReturnServerVersion() unexpected error = %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("ConnectAndReturnServerVersion() error = %v, want errors.Is %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestSleepContext(t *testing.T) {
+	testCases := []struct {
+		name     string
+		setupCtx func(t *testing.T) context.Context
+		duration time.Duration
+		wantErr  error
+	}{
+		{
+			name:     "when_duration_elapses_returns_nil",
+			setupCtx: func(t *testing.T) context.Context { return t.Context() },
+			duration: time.Millisecond,
+			wantErr:  nil,
+		},
+		{
+			name: "when_context_canceled_returns_canceled_error",
+			setupCtx: func(t *testing.T) context.Context {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+				return ctx
+			},
+			duration: time.Hour,
+			wantErr:  context.Canceled,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := SleepContext(tc.setupCtx(t), tc.duration); !errors.Is(err, tc.wantErr) {
+				t.Errorf("SleepContext() error = %v, want %v", err, tc.wantErr)
+			}
+		})
+	}
 }
