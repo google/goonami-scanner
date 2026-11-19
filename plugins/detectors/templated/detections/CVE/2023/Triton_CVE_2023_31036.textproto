@@ -1,0 +1,90 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin.proto
+# proto-message: TemplatedPlugin
+
+###############
+# PLUGIN INFO #
+###############
+
+info: {
+  type: VULN_DETECTION
+  name: "Triton_CVE_2023_31036"
+  author: "secureness (Java original), anniemao (templated port)"
+  version: "1.0"
+}
+
+finding: {
+  main_id: {
+    publisher: "TSUNAMI_COMMUNITY"
+    value: "TritonInferenceServerRce"
+  }
+  severity: CRITICAL
+  title: "Triton Inference Server Model Overwrite RCE"
+  description:
+    "This detector checks triton inference server RCE with explicit model-control"
+    " option enabled. All versions of triton inference server with the"
+    " `--model-control explicit` option allow loaded models to be overwritten"
+    " by malicious models and lead to RCE."
+  recommendation:
+    "Do not use `--model-control explicit` option with public access. Restrict"
+    " Triton control ports to trusted networks or run with default polling mode."
+  related_id: {
+    publisher: "CVE"
+    value: "CVE-2023-31036"
+  }
+}
+
+config: {}
+
+###########
+# ACTIONS #
+###########
+
+actions: {
+  name: "fingerprint_triton"
+  action_phase: ACTION_PHASE_FINGERPRINT
+  http_request: {
+    method: GET
+    uri: "/v2"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { body: {} contains: "\"name\":\"triton\"" },
+          { header: { name: "Content-Type" } contains: "application/json" }
+        ]
+      }
+    }
+  }
+}
+
+actions: {
+  name: "probe_model_control"
+  action_phase: ACTION_PHASE_DETECTION
+  http_request: {
+    method: POST
+    uri: "/v2/repository/models/tsunami_probe_{{ T_UTL_CURRENT_TIMESTAMP_MS }}/unload"
+    headers: [
+      { name: "Content-Type" value: "application/json" }
+    ]
+    data: "{}"
+    response: {
+      http_status: 200
+      expect_all: {
+        conditions: [
+          { header: { name: "Content-Type" } contains: "application/json" }
+        ]
+      }
+    }
+  }
+}
+
+#############
+# WORKFLOWS #
+#############
+
+workflows: {
+  actions: [
+    "fingerprint_triton",
+    "probe_model_control"
+  ]
+}
