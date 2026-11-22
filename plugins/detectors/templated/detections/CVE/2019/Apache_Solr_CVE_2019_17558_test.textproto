@@ -1,0 +1,160 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "SolrVelocityTemplateRceDetector"
+}
+
+#########
+# TESTS #
+#########
+
+tests: {
+  name: "whenVulnerable_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0},\"status\":{\"demo\":{\"name\":\"demo\"}}}"
+      },
+      {
+        uri: "/solr/demo/config"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0}}"
+      },
+      {
+        uri: "/solr/demo/select?q=1&wt=tsunami_{{ T_UTL_CURRENT_TIMESTAMP_MS }}&v.template=custom&v.template.custom=%23set($x=%27TSUNAMI%27)%23set($y=8923*4217)%23set($str=$x.toLowerCase().substring(4)%2b$x.substring(0,4))$str$y$str"
+        status: 200
+        body_content: "amiTSUN37628291amiTSUN"
+      },
+      {
+        uri: "/solr/demo/config"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0}}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotVulnerable_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0},\"status\":{\"demo\":{\"name\":\"demo\"}}}"
+      },
+      {
+        uri: "/solr/demo/config"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0}}"
+      },
+      {
+        uri: "/solr/demo/select?q=1&wt=tsunami_{{ T_UTL_CURRENT_TIMESTAMP_MS }}&v.template=custom&v.template.custom=%23set($x=%27TSUNAMI%27)%23set($y=8923*4217)%23set($str=$x.toLowerCase().substring(4)%2b$x.substring(0,4))$str$y$str"
+        status: 200
+        body_content: "<html><body>Solr response without Velocity evaluation</body></html>"
+      },
+      {
+        uri: "/solr/demo/config"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0}}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenConfigRejected_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0},\"status\":{\"demo\":{\"name\":\"demo\"}}}"
+      },
+      {
+        uri: "/solr/demo/config"
+        status: 400
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":400},\"error\":{\"msg\":\"Error loading class 'solr.VelocityResponseWriter'\",\"code\":400}}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNoCores_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/solr/admin/cores?wt=json&indexInfo=false&_={{ T_UTL_CURRENT_TIMESTAMP_MS }}"
+        status: 200
+        headers: [
+          { name: "Content-Type" value: "application/json" }
+        ]
+        body_content: "{\"responseHeader\":{\"status\":0},\"status\":{}}"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenNotSolr_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "<html><body>404 Not Found</body></html>"
+      }
+    ]
+  }
+}
