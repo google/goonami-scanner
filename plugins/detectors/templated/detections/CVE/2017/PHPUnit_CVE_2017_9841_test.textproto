@@ -1,0 +1,65 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "PHPUnitExposedEvalStdinDetector"
+}
+
+tests: {
+  name: "whenVulnerable_returnsTrue"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php"
+        status: 200
+        body_content: "tsunami-phpunit"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenPatchedOrRemoved_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php"
+        status: 404
+        body_content: "<!doctype html><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1></body></html>"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenEchoServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "whenGenericServer_returnsFalse"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 200
+        body_content: "<html><body>Welcome to standard PHP page</body></html>"
+      }
+    ]
+  }
+}
