@@ -1,0 +1,109 @@
+# proto-file: github.com/google/tsunami-security-scanner-plugins/templated/templateddetector/proto/templated_plugin_tests.proto
+# proto-message: TemplatedPluginTests
+
+config: {
+  tested_plugin: "Exposed Apache Airflow Server Detector"
+}
+
+tests: {
+  name: "when_exposed_airflow_returns_vuln"
+  expect_vulnerability: true
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body_content: "{\"git_version\": \".release:f1243537838516b8bb8156130bc001595bfbeb01\", \"version\": \"2.7.3\"}"
+      },
+      {
+        uri: "/api/v1/dags"
+        status: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body_content: "{\"dags\": [], \"total_entries\": 0}"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_secure_airflow_returns_not_vuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "/api/v1/version"
+        status: 200
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/json"
+          }
+        ]
+        body_content: "{\"git_version\": \".release:f1243537838516b8bb8156130bc001595bfbeb01\", \"version\": \"2.7.3\"}"
+      },
+      {
+        uri: "/api/v1/dags"
+        status: 401
+        headers: [
+          {
+            name: "Content-Type"
+            value: "application/problem+json"
+          }
+        ]
+        body_content: "{\"detail\": null, \"status\": 401, \"title\": \"Unauthorized\"}"
+      },
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_not_airflow_returns_not_vuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ANY_URI"
+        status: 404
+        body_content: "Not Found"
+      }
+    ]
+  }
+}
+
+tests: {
+  name: "when_echo_server_returns_not_vuln"
+  expect_vulnerability: false
+
+  mock_http_server: {
+    mock_responses: [
+      {
+        uri: "TSUNAMI_MAGIC_ECHO_SERVER"
+        status: 200
+      }
+    ]
+  }
+}
